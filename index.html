@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Заполнение бланка заказа</title>
+    <script type="module" src="/src/app.js"></script>
+  </head>
+  <body>
+    <main class="shell">
+      <section class="workspace">
+        <div class="topbar">
+          <div>
+            <h1>Заполнение бланка заказа</h1>
+            <p>Файлы обрабатываются прямо в браузере и не отправляются на сервер.</p>
+          </div>
+          <div class="status" id="status">Готов к загрузке</div>
+        </div>
+
+        <form class="upload-grid" id="uploadForm">
+          <label class="month-field" for="orderMonth">
+            <span class="label">Месяц заказа</span>
+            <input id="orderMonth" name="orderMonth" type="month" required />
+          </label>
+
+          <label class="dropzone" for="sourceFile">
+            <span class="icon">↑</span>
+            <span class="label">Таблица заказа товара</span>
+            <span class="filename" id="sourceName">.xlsx или .xlsm</span>
+            <input id="sourceFile" name="source" type="file" accept=".xlsx,.xlsm" required />
+          </label>
+
+          <label class="dropzone" for="blankFile">
+            <span class="icon">↑</span>
+            <span class="label">Актуальный бланк</span>
+            <span class="filename" id="blankName">.xlsx или .xlsm</span>
+            <input id="blankFile" name="blank" type="file" accept=".xlsx,.xlsm" required />
+          </label>
+
+          <button class="primary" type="submit">
+            <span>✓</span>
+            Заполнить бланк
+          </button>
+        </form>
+
+        <section class="result hidden" id="result">
+          <div class="result-head">
+            <h2>Отчет</h2>
+            <button class="download" id="downloadButton" type="button">Скачать готовый бланк</button>
+          </div>
+
+          <div class="period-note" id="periodNote"></div>
+          <div class="metrics" id="metrics"></div>
+
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Статус</th>
+                  <th>Артикул</th>
+                  <th>Товар в бланке</th>
+                  <th>Рекоменд.</th>
+                  <th>Вставлено</th>
+                  <th>Совпадение</th>
+                </tr>
+              </thead>
+              <tbody id="reportBody"></tbody>
+            </table>
+          </div>
+        </section>
+      </section>
+    </main>
+  </body>
+</html>
