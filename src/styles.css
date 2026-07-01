@@ -266,7 +266,7 @@ p {
 
 table {
   width: 100%;
-  min-width: 1500px;
+  min-width: 1620px;
   border-collapse: collapse;
   table-layout: fixed;
 }
@@ -287,6 +287,7 @@ table {
 .col-stock,
 .col-transit,
 .col-recommended,
+.col-box,
 .col-match {
   width: 115px;
 }

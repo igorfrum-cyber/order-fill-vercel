@@ -99,6 +99,7 @@ function renderReport(rows) {
           <td>${escapeHtml(row.stock ?? "")}</td>
           <td>${escapeHtml(row.inTransit ?? "")}</td>
           <td>${Number(row.recommended).toFixed(2)}</td>
+          <td>${escapeHtml(row.blankBoxSize ?? "")}</td>
           <td>
             <input
               class="qty-input"
