@@ -344,6 +344,11 @@ td {
   outline: 2px solid #d8edf3;
 }
 
+.comment-input.needs-comment {
+  border-color: #d05f1f;
+  outline: 2px solid #ffe0cf;
+}
+
 tr.invalid td {
   background: #fff4ed;
 }

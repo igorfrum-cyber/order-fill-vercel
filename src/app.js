@@ -231,6 +231,32 @@ function validateEdits() {
   return true;
 }
 
+function rowNeedsComment(row) {
+  const qtyInput = row.querySelector(".qty-input");
+  const commentInput = row.querySelector(".comment-input");
+  if (!qtyInput || !commentInput) return false;
+
+  const initial = qtyInput.dataset.initialValue === "" ? null : Number(qtyInput.dataset.initialValue);
+  const autoComment = (qtyInput.dataset.autoComment || "").trim().toLowerCase();
+  let value;
+  try {
+    value = normalizeOrderValue(qtyInput.value);
+  } catch {
+    return false;
+  }
+
+  const changed = value !== initial;
+  const comment = commentInput.value.trim();
+  const stillAutoComment = autoComment && comment.toLowerCase() === autoComment;
+  return changed && (!comment || stillAutoComment);
+}
+
+function updateCommentHint(row) {
+  const commentInput = row.querySelector(".comment-input");
+  if (!commentInput) return;
+  commentInput.classList.toggle("needs-comment", rowNeedsComment(row));
+}
+
 function triggerDownload(url, fileName) {
   const anchor = document.createElement("a");
   anchor.href = url;
@@ -295,6 +321,8 @@ downloadButton.addEventListener("click", async () => {
 
 reportBody.addEventListener("input", (event) => {
   if (event.target.matches(".qty-input, .comment-input")) {
-    event.target.closest("tr")?.classList.remove("invalid");
+    const row = event.target.closest("tr");
+    row?.classList.remove("invalid");
+    if (row) updateCommentHint(row);
   }
 });
