@@ -266,9 +266,37 @@ p {
 
 table {
   width: 100%;
-  min-width: 1360px;
+  min-width: 1500px;
   border-collapse: collapse;
   table-layout: fixed;
+}
+
+.col-status {
+  width: 130px;
+}
+
+.col-article {
+  width: 115px;
+}
+
+.col-name {
+  width: 260px;
+}
+
+.col-unit,
+.col-stock,
+.col-transit,
+.col-recommended,
+.col-match {
+  width: 115px;
+}
+
+.col-inserted {
+  width: 140px;
+}
+
+.col-comment {
+  width: 260px;
 }
 
 th,
@@ -295,7 +323,8 @@ td {
 
 .qty-input,
 .comment-input {
-  width: 96px;
+  width: 100%;
+  max-width: 116px;
   height: 34px;
   border: 1px solid var(--line);
   border-radius: 8px;
@@ -306,7 +335,7 @@ td {
 }
 
 .comment-input {
-  width: 170px;
+  max-width: 236px;
 }
 
 .qty-input:focus,
