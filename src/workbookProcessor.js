@@ -562,6 +562,10 @@ function setTextCell(sheet, row, col, value) {
   if (record) record.value = text;
 }
 
+function normalizedBaselineQuantity(rowInfo) {
+  return Number(rowInfo.rounded) > 0 ? Number(rowInfo.rounded) : null;
+}
+
 export function parseEditValue(value) {
   const text = asText(value);
   if (!text) return null;
@@ -606,7 +610,8 @@ export function applyFinalEdits({ blankWorkbook, sourceWorkbook, reportRows, edi
 
     const blankRow = Number(rowInfo.blankRow);
     const sourceRow = Number(rowInfo.sourceRow);
-    prepared.push({ blankRow, sourceRow, quantity, comment });
+    const shouldRecordSourceFact = quantity !== normalizedBaselineQuantity(rowInfo);
+    prepared.push({ blankRow, sourceRow, quantity, comment, shouldRecordSourceFact });
   }
 
   for (const edit of prepared) {
@@ -614,8 +619,8 @@ export function applyFinalEdits({ blankWorkbook, sourceWorkbook, reportRows, edi
       setNumericCell(blank.sheet, edit.blankRow, blank.columns.quantity, edit.quantity);
     }
     if (Number.isInteger(edit.sourceRow) && edit.sourceRow > source.headerRow) {
-      setNumericCell(source.sheet, edit.sourceRow, source.columns.orderedFact, edit.quantity);
-      setTextCell(source.sheet, edit.sourceRow, source.columns.comment, edit.comment);
+      setNumericCell(source.sheet, edit.sourceRow, source.columns.orderedFact, edit.shouldRecordSourceFact ? edit.quantity : null);
+      setTextCell(source.sheet, edit.sourceRow, source.columns.comment, edit.shouldRecordSourceFact ? edit.comment : "");
     }
   }
 
