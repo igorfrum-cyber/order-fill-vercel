@@ -45,11 +45,15 @@
         <section class="result hidden" id="result">
           <div class="result-head">
             <h2>Отчет</h2>
-            <button class="download" id="downloadButton" type="button">Скачать готовый бланк</button>
+            <button class="download" id="downloadButton" type="button">Скачать заполненные файлы</button>
           </div>
 
           <div class="period-note" id="periodNote"></div>
           <div class="metrics" id="metrics"></div>
+          <div class="download-links hidden" id="downloadLinks">
+            <a class="file-link" id="blankDownloadLink" href="#">Скачать бланк</a>
+            <a class="file-link" id="sourceDownloadLink" href="#">Скачать таблицу заказа</a>
+          </div>
 
           <div class="table-wrap">
             <table>
@@ -58,8 +62,12 @@
                   <th>Статус</th>
                   <th>Артикул</th>
                   <th>Товар в бланке</th>
+                  <th>Объем мл/гр</th>
+                  <th>Остаток</th>
+                  <th>В пути</th>
                   <th>Рекоменд.</th>
                   <th>Вставлено</th>
+                  <th>Комментарий</th>
                   <th>Совпадение</th>
                 </tr>
               </thead>

@@ -1,5 +1,13 @@
 import "./styles.css";
-import { applyEdits, fillWorkbook, loadXlsx, outputFileName, saveXlsx } from "./workbookProcessor.js";
+import {
+  applyFinalEdits,
+  fillWorkbook,
+  loadXlsx,
+  normalizeOrderValue,
+  outputFileName,
+  saveXlsx,
+  sourceOutputFileName,
+} from "./workbookProcessor.js";
 
 const form = document.querySelector("#uploadForm");
 const statusEl = document.querySelector("#status");
@@ -13,11 +21,17 @@ const metricsEl = document.querySelector("#metrics");
 const periodNote = document.querySelector("#periodNote");
 const reportBody = document.querySelector("#reportBody");
 const downloadButton = document.querySelector("#downloadButton");
+const downloadLinks = document.querySelector("#downloadLinks");
+const blankDownloadLink = document.querySelector("#blankDownloadLink");
+const sourceDownloadLink = document.querySelector("#sourceDownloadLink");
 const submitButton = form.querySelector("button");
 
 let currentResult = null;
 let currentBlankWorkbook = null;
-let currentOutputName = "blank заполненный.xlsx";
+let currentSourceWorkbook = null;
+let currentBlankOutputName = "blank заполненный.xlsx";
+let currentSourceOutputName = "order заполненная таблица.xlsx";
+let currentDownloadUrls = [];
 
 function setDefaultOrderMonth() {
   const date = new Date();
@@ -72,15 +86,18 @@ function renderMetrics(summary) {
 
 function renderReport(rows) {
   reportBody.innerHTML = rows
-    .slice(0, 500)
     .map((row) => {
       const cls = row.status === "warning_name_differs" || row.status === "warning_name_only" ? "warn" : row.status === "matched" || row.status === "matched_by_name" ? "ok" : "muted";
-      const inserted = row.status === "matched" || row.status === "matched_by_name" ? row.rounded : "";
+      const inserted = row.inserted ?? "";
+      const comment = row.autoComment || "";
       return `
         <tr>
           <td class="${cls}">${statusLabel(row.status)}</td>
           <td>${escapeHtml(row.blankArticle)}</td>
           <td>${escapeHtml(row.blankName)}</td>
+          <td>${escapeHtml(row.blankUnit)}</td>
+          <td>${escapeHtml(row.stock ?? "")}</td>
+          <td>${escapeHtml(row.inTransit ?? "")}</td>
           <td>${Number(row.recommended).toFixed(2)}</td>
           <td>
             <input
@@ -90,8 +107,19 @@ function renderReport(rows) {
               step="1"
               inputmode="numeric"
               data-row="${row.blankRow}"
-              value="${inserted}"
+              data-initial-value="${inserted}"
+              data-auto-comment="${escapeHtml(row.autoComment || "")}"
+              value="${escapeHtml(inserted)}"
               aria-label="Количество для строки ${row.blankRow}"
+            />
+          </td>
+          <td>
+            <input
+              class="comment-input"
+              type="text"
+              data-row="${row.blankRow}"
+              value="${escapeHtml(comment)}"
+              aria-label="Комментарий для строки ${row.blankRow}"
             />
           </td>
           <td>${Math.round(Number(row.similarity || 0) * 100)}%</td>
@@ -114,8 +142,10 @@ form.addEventListener("submit", async (event) => {
   submitButton.disabled = true;
   downloadButton.disabled = true;
   resultEl.classList.add("hidden");
+  clearDownloadLinks();
   currentResult = null;
   currentBlankWorkbook = null;
+  currentSourceWorkbook = null;
 
   try {
     const [sourceWorkbook, blankWorkbook] = await Promise.all([
@@ -130,7 +160,9 @@ form.addEventListener("submit", async (event) => {
 
     currentResult = result;
     currentBlankWorkbook = result.blankWorkbook;
-    currentOutputName = outputFileName(blankFile.files[0].name);
+    currentSourceWorkbook = result.sourceWorkbook;
+    currentBlankOutputName = outputFileName(blankFile.files[0].name);
+    currentSourceOutputName = sourceOutputFileName(sourceFile.files[0].name);
 
     renderMetrics(result.summary);
     renderReport(result.reportRows);
@@ -146,42 +178,123 @@ form.addEventListener("submit", async (event) => {
 });
 
 function collectEdits() {
+  const comments = new Map(Array.from(document.querySelectorAll(".comment-input")).map((input) => [Number(input.dataset.row), input.value]));
   return Array.from(document.querySelectorAll(".qty-input")).map((input) => ({
     blankRow: Number(input.dataset.row),
     value: input.value,
+    comment: comments.get(Number(input.dataset.row)) || "",
   }));
 }
 
-function downloadBlob(blob, fileName) {
-  const url = URL.createObjectURL(blob);
+function clearDownloadLinks() {
+  for (const url of currentDownloadUrls) URL.revokeObjectURL(url);
+  currentDownloadUrls = [];
+  downloadLinks.classList.add("hidden");
+  blankDownloadLink.removeAttribute("download");
+  sourceDownloadLink.removeAttribute("download");
+  blankDownloadLink.href = "#";
+  sourceDownloadLink.href = "#";
+}
+
+function validateEdits() {
+  let invalidCount = 0;
+  for (const row of reportBody.querySelectorAll("tr")) row.classList.remove("invalid");
+
+  for (const input of document.querySelectorAll(".qty-input")) {
+    const row = input.closest("tr");
+    const commentInput = row.querySelector(".comment-input");
+    const initial = input.dataset.initialValue === "" ? null : Number(input.dataset.initialValue);
+    const autoComment = (input.dataset.autoComment || "").trim().toLowerCase();
+    let value;
+    try {
+      value = normalizeOrderValue(input.value);
+    } catch {
+      row.classList.add("invalid");
+      invalidCount += 1;
+      continue;
+    }
+    const comment = commentInput.value.trim();
+    const changed = value !== initial;
+    const stillAutoComment = autoComment && comment.toLowerCase() === autoComment;
+    if (changed && (!comment || stillAutoComment)) {
+      row.classList.add("invalid");
+      invalidCount += 1;
+    }
+  }
+
+  if (invalidCount > 0) {
+    const firstInvalid = reportBody.querySelector("tr.invalid");
+    firstInvalid?.scrollIntoView({ block: "center", behavior: "smooth" });
+    alert("Есть строки, где изменено значение «Вставлено», но не заполнен новый комментарий.");
+    return false;
+  }
+  return true;
+}
+
+function triggerDownload(url, fileName) {
   const anchor = document.createElement("a");
   anchor.href = url;
   anchor.download = fileName;
   document.body.append(anchor);
   anchor.click();
   anchor.remove();
-  URL.revokeObjectURL(url);
+}
+
+function prepareDownloadLinks(blankBlob, sourceBlob) {
+  clearDownloadLinks();
+  const blankUrl = URL.createObjectURL(blankBlob);
+  const sourceUrl = URL.createObjectURL(sourceBlob);
+  currentDownloadUrls = [blankUrl, sourceUrl];
+
+  blankDownloadLink.href = blankUrl;
+  blankDownloadLink.download = currentBlankOutputName;
+  sourceDownloadLink.href = sourceUrl;
+  sourceDownloadLink.download = currentSourceOutputName;
+  downloadLinks.classList.remove("hidden");
+
+  triggerDownload(blankUrl, currentBlankOutputName);
+  window.setTimeout(() => triggerDownload(sourceUrl, currentSourceOutputName), 250);
 }
 
 downloadButton.addEventListener("click", async () => {
-  if (!currentResult || !currentBlankWorkbook) {
+  if (!currentResult || !currentBlankWorkbook || !currentSourceWorkbook) {
     alert("Сначала заполните бланк.");
     return;
   }
+  if (!validateEdits()) return;
+
   downloadButton.disabled = true;
   statusEl.textContent = "Сохраняю правки...";
   try {
-    applyEdits(currentBlankWorkbook, collectEdits());
+    const edited = applyFinalEdits({
+      blankWorkbook: currentBlankWorkbook,
+      sourceWorkbook: currentSourceWorkbook,
+      reportRows: currentResult.reportRows,
+      edits: collectEdits(),
+    });
+    currentBlankWorkbook = edited.blankWorkbook;
+    currentSourceWorkbook = edited.sourceWorkbook;
+
     const bytes = saveXlsx(currentBlankWorkbook);
-    const blob = new Blob([bytes], {
+    const sourceBytes = saveXlsx(currentSourceWorkbook);
+    const blankBlob = new Blob([bytes], {
       type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
     });
-    downloadBlob(blob, currentOutputName);
-    statusEl.textContent = "Файл готов";
+    const sourceBlob = new Blob([sourceBytes], {
+      type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    });
+    prepareDownloadLinks(blankBlob, sourceBlob);
+    statusEl.textContent = "Файлы готовы";
   } catch (error) {
     statusEl.textContent = "Ошибка";
     alert(error.message || "Не удалось сохранить правки.");
   } finally {
     downloadButton.disabled = false;
+  }
+});
+
+reportBody.addEventListener("input", (event) => {
+  if (event.target.matches(".qty-input, .comment-input")) {
+    event.target.closest("tr")?.classList.remove("invalid");
   }
 });

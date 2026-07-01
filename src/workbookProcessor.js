@@ -258,6 +258,10 @@ function sourceMatchers() {
     article: (h) => h.includes("арт") || h.includes("артикул") || h.includes("код"),
     name: (h) => h.includes("товар") || h.includes("номенклатура") || h.includes("наименование") || h.includes("название"),
     recommended: (h) => h.includes("рекоменд") && h.includes("заказ"),
+    stock: (h) => h.includes("остаток"),
+    inTransit: (h) => h.includes("в пути"),
+    orderedFact: (h) => h.includes("заказано") && h.includes("факт"),
+    comment: (h) => h.includes("комментар"),
   };
 }
 
@@ -265,7 +269,9 @@ function blankMatchers() {
   return {
     article: (h) => h.includes("арт") || h.includes("артикул") || h.includes("код"),
     name: (h) => h.includes("товар") || h.includes("номенклатура") || h.includes("наименование") || h.includes("название"),
+    unit: (h) => h.includes("объем") || h.includes("обьем") || (h.includes("мл") && h.includes("гр")),
     quantity: (h) => h.includes("кол во") || h.includes("количество") || h.includes("кол-во") || h.includes("к во") || h.includes("qty"),
+    boxSize: (h) => h.includes("короб") || (h.includes("шт") && h.includes("упак")),
   };
 }
 
@@ -333,9 +339,42 @@ function readSource(workbook, orderMonth) {
     const recommended = parseNumber(sheetCellValue(detection.sheet, row, detection.columns.recommended));
     if (!articleRaw && !name && recommended == null) continue;
     if (recommended == null) continue;
-    items.push({ rowIndex: row, articleRaw, article: normalizeArticle(articleRaw), name, recommended, rounded: roundHalfUp(recommended) });
+    items.push({
+      rowIndex: row,
+      articleRaw,
+      article: normalizeArticle(articleRaw),
+      name,
+      recommended,
+      rounded: roundHalfUp(recommended),
+      stock: sheetCellValue(detection.sheet, row, detection.columns.stock),
+      inTransit: sheetCellValue(detection.sheet, row, detection.columns.inTransit),
+    });
   }
   return { detection, items, periodInfo };
+}
+
+function calculateBoxAdjustedQuantity(recommended, boxSizeValue) {
+  const rounded = roundHalfUp(recommended);
+  if (rounded <= 0) return { rounded, inserted: null, autoComment: "", boxAdjusted: false };
+
+  const boxSize = parseNumber(boxSizeValue);
+  if (!boxSize || boxSize <= 0) return { rounded, inserted: rounded, autoComment: "", boxAdjusted: false };
+
+  const box = Math.round(boxSize);
+  if (box <= 0 || rounded % box === 0) return { rounded, inserted: rounded, autoComment: "", boxAdjusted: false };
+
+  const lower = Math.floor(rounded / box) * box;
+  const upper = Math.ceil(rounded / box) * box;
+  const upPercent = (upper - rounded) / rounded;
+  const downPercent = lower > 0 ? (rounded - lower) / rounded : Infinity;
+
+  if (upPercent > 0 && upPercent <= 0.15) {
+    return { rounded, inserted: upper, autoComment: "до коробки", boxAdjusted: true };
+  }
+  if (downPercent > 0 && downPercent <= 0.05) {
+    return { rounded, inserted: lower, autoComment: "до коробки", boxAdjusted: true };
+  }
+  return { rounded, inserted: rounded, autoComment: "", boxAdjusted: false };
 }
 
 function chooseCandidate(candidates, blankName) {
@@ -376,10 +415,13 @@ export function fillWorkbook({ sourceWorkbook, blankWorkbook, orderMonth }) {
     const blankArticleRaw = asText(sheetCellValue(blank.sheet, row, blank.columns.article));
     const blankArticle = normalizeArticle(blankArticleRaw);
     const blankName = asText(sheetCellValue(blank.sheet, row, blank.columns.name));
+    const blankUnit = asText(sheetCellValue(blank.sheet, row, blank.columns.unit));
+    const blankBoxSize = sheetCellValue(blank.sheet, row, blank.columns.boxSize);
     if (!blankArticle) continue;
     let selected;
     let score;
     let status;
+    let order;
     const candidates = sourceIndex.get(blankArticle) || [];
     if (!candidates.length) {
       const fallback = chooseNameFallback(noArticleItems, blankName);
@@ -391,7 +433,8 @@ export function fillWorkbook({ sourceWorkbook, blankWorkbook, orderMonth }) {
       score = fallback.score;
       if (selected.rounded > 0) {
         suspicious += 1;
-        reportRows.push(makeReportRow("warning_name_only", row, blankArticleRaw, blankName, selected, score));
+        order = calculateBoxAdjustedQuantity(selected.recommended, blankBoxSize);
+        reportRows.push(makeReportRow("warning_name_only", row, blankArticleRaw, blankName, blankUnit, blankBoxSize, selected, score, { ...order, inserted: null, autoComment: "" }));
         continue;
       }
       status = "matched_by_name";
@@ -406,17 +449,20 @@ export function fillWorkbook({ sourceWorkbook, blankWorkbook, orderMonth }) {
         suspicious += 1;
       }
     }
-    if (selected.rounded <= 0) {
+    order = calculateBoxAdjustedQuantity(selected.recommended, blankBoxSize);
+    if (order.inserted == null) {
       setNumericCell(blank.sheet, row, blank.columns.quantity, null);
       leftBlank += 1;
       status = "left_blank_nonpositive";
     } else {
-      setNumericCell(blank.sheet, row, blank.columns.quantity, selected.rounded);
+      setNumericCell(blank.sheet, row, blank.columns.quantity, order.inserted);
       filled += 1;
     }
-    reportRows.push(makeReportRow(status, row, blankArticleRaw, blankName, selected, score));
+    reportRows.push(makeReportRow(status, row, blankArticleRaw, blankName, blankUnit, blankBoxSize, selected, score, order));
   }
   return {
+    sourceWorkbook,
+    sourceDetection: source.detection,
     blankWorkbook,
     blankDetection: blank,
     summary: {
@@ -437,17 +483,24 @@ export function fillWorkbook({ sourceWorkbook, blankWorkbook, orderMonth }) {
   };
 }
 
-function makeReportRow(status, row, blankArticle, blankName, selected, score) {
+function makeReportRow(status, row, blankArticle, blankName, blankUnit, blankBoxSize, selected, score, order) {
   return {
     status,
     blankRow: row,
     blankArticle,
     blankName,
+    blankUnit,
+    blankBoxSize,
     sourceRow: selected.rowIndex,
     sourceArticle: selected.articleRaw,
     sourceName: selected.name,
+    stock: selected.stock,
+    inTransit: selected.inTransit,
     recommended: selected.recommended,
-    rounded: selected.rounded,
+    rounded: order.rounded,
+    inserted: order.inserted,
+    autoComment: order.autoComment,
+    boxAdjusted: order.boxAdjusted,
     similarity: Number(score.toFixed(4)),
   };
 }
@@ -492,6 +545,23 @@ function setNumericCell(sheet, row, col, value) {
   if (record) record.value = value ?? "";
 }
 
+function setTextCell(sheet, row, col, value) {
+  const text = asText(value);
+  const cell = findOrCreateCell(sheet, row, col);
+  clearCellChildren(cell);
+  if (text) {
+    cell.setAttribute("t", "inlineStr");
+    const inline = sheet.xml.createElementNS(NS_MAIN, "is");
+    const node = sheet.xml.createElementNS(NS_MAIN, "t");
+    node.appendChild(sheet.xml.createTextNode(text));
+    inline.appendChild(node);
+    cell.appendChild(inline);
+  }
+  const key = cellKey(row, col);
+  const record = sheet.cells.get(key);
+  if (record) record.value = text;
+}
+
 export function parseEditValue(value) {
   const text = asText(value);
   if (!text) return null;
@@ -510,7 +580,54 @@ export function applyEdits(blankWorkbook, edits) {
   return blankWorkbook;
 }
 
+export function normalizeOrderValue(value) {
+  return parseEditValue(value);
+}
+
+export function applyFinalEdits({ blankWorkbook, sourceWorkbook, reportRows, edits }) {
+  const blank = detectColumns(blankWorkbook, "blank");
+  const source = detectColumns(sourceWorkbook, "source");
+  const editsByRow = new Map(edits.map((edit) => [Number(edit.blankRow), edit]));
+  const prepared = [];
+
+  for (const rowInfo of reportRows) {
+    const edit = editsByRow.get(Number(rowInfo.blankRow));
+    if (!edit) continue;
+
+    const quantity = parseEditValue(edit.value);
+    const comment = asText(edit.comment);
+    const initial = rowInfo.inserted == null ? null : Number(rowInfo.inserted);
+    const changed = quantity !== initial;
+    const stillAutoComment = rowInfo.autoComment && comment.toLowerCase() === rowInfo.autoComment.toLowerCase();
+
+    if (changed && (!comment || stillAutoComment)) {
+      throw new Error("Если значение в колонке «Вставлено» изменено, нужно заполнить комментарий.");
+    }
+
+    const blankRow = Number(rowInfo.blankRow);
+    const sourceRow = Number(rowInfo.sourceRow);
+    prepared.push({ blankRow, sourceRow, quantity, comment });
+  }
+
+  for (const edit of prepared) {
+    if (Number.isInteger(edit.blankRow) && edit.blankRow > blank.headerRow) {
+      setNumericCell(blank.sheet, edit.blankRow, blank.columns.quantity, edit.quantity);
+    }
+    if (Number.isInteger(edit.sourceRow) && edit.sourceRow > source.headerRow) {
+      setNumericCell(source.sheet, edit.sourceRow, source.columns.orderedFact, edit.quantity);
+      setTextCell(source.sheet, edit.sourceRow, source.columns.comment, edit.comment);
+    }
+  }
+
+  return { blankWorkbook, sourceWorkbook };
+}
+
 export function outputFileName(originalName) {
   const stem = asText(originalName).replace(/\.(xlsx|xlsm)$/i, "").replace(/[^\p{L}\p{N}_ .-]+/gu, "").trim() || "blank";
   return `${stem} заполненный.xlsx`;
+}
+
+export function sourceOutputFileName(originalName) {
+  const stem = asText(originalName).replace(/\.(xlsx|xlsm)$/i, "").replace(/[^\p{L}\p{N}_ .-]+/gu, "").trim() || "order";
+  return `${stem} заполненная таблица.xlsx`;
 }

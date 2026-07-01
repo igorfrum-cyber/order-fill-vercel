@@ -1,11 +1,12 @@
 import fs from "node:fs/promises";
 import path from "node:path";
 
-import { applyEdits, fillWorkbook, loadXlsx, saveXlsx } from "../src/workbookProcessor.js";
+import { applyFinalEdits, fillWorkbook, loadXlsx, saveXlsx } from "../src/workbookProcessor.js";
 
 const sourcePath = "/Users/igorfrumes/Downloads/агио артикул.xlsx";
 const blankPath = "/Users/igorfrumes/Downloads/2026 06 23 Бланк заказа ANGIOPHARM (1).xlsx";
-const outputPath = path.resolve("test-output/browser-filled.xlsx");
+const blankOutputPath = path.resolve("test-output/browser-filled-blank.xlsx");
+const sourceOutputPath = path.resolve("test-output/browser-filled-source.xlsx");
 
 const [sourceWorkbook, blankWorkbook] = await Promise.all([
   fs.readFile(sourcePath).then((buffer) => loadXlsx(buffer)),
@@ -25,6 +26,7 @@ const checks = [
   ["E60", 94],
   ["E127", 32],
   ["E33", ""],
+  ["E249", 60],
 ];
 for (const [address, expected] of checks) {
   const actual = getValue(address);
@@ -33,13 +35,45 @@ for (const [address, expected] of checks) {
   }
 }
 
-applyEdits(result.blankWorkbook, [
-  { blankRow: 60, value: "101" },
-  { blankRow: 33, value: "" },
-]);
+const boxAdjusted = result.reportRows.find((row) => row.blankArticle === "MV71");
+if (!boxAdjusted || boxAdjusted.inserted !== 60 || boxAdjusted.autoComment !== "до коробки") {
+  throw new Error("Box adjustment for MV71 was not applied.");
+}
+
+try {
+  applyFinalEdits({
+    blankWorkbook: result.blankWorkbook,
+    sourceWorkbook: result.sourceWorkbook,
+    reportRows: result.reportRows,
+    edits: [{ blankRow: 249, value: "61", comment: "до коробки" }],
+  });
+  throw new Error("Expected a comment validation error for changed box-adjusted row.");
+} catch (error) {
+  if (!String(error.message).includes("комментарий")) throw error;
+}
+
+applyFinalEdits({
+  blankWorkbook: result.blankWorkbook,
+  sourceWorkbook: result.sourceWorkbook,
+  reportRows: result.reportRows,
+  edits: [
+    { blankRow: 60, value: "101", comment: "ручная правка" },
+    { blankRow: 33, value: "", comment: "" },
+    { blankRow: 249, value: "61", comment: "ручная правка коробки" },
+  ],
+});
 if (getValue("E60") !== 101) throw new Error("Manual edit for E60 was not applied.");
 if (getValue("E33") !== "") throw new Error("Blank edit for E33 was not applied.");
+if (getValue("E249") !== 61) throw new Error("Manual edit for E249 was not applied.");
 
-await fs.mkdir(path.dirname(outputPath), { recursive: true });
-await fs.writeFile(outputPath, saveXlsx(result.blankWorkbook));
-console.log(outputPath);
+const sourceSheet = result.sourceWorkbook.sheets.find((item) => item.name === "Лист_1");
+const sourceFact = sourceSheet.cells.get("134:33")?.value;
+const sourceComment = sourceSheet.cells.get("134:34")?.value;
+if (sourceFact !== 61) throw new Error(`Source fact for MV71: expected 61, got ${sourceFact}`);
+if (sourceComment !== "ручная правка коробки") throw new Error(`Source comment for MV71: expected manual comment, got ${sourceComment}`);
+
+await fs.mkdir(path.dirname(blankOutputPath), { recursive: true });
+await fs.writeFile(blankOutputPath, saveXlsx(result.blankWorkbook));
+await fs.writeFile(sourceOutputPath, saveXlsx(result.sourceWorkbook));
+console.log(blankOutputPath);
+console.log(sourceOutputPath);
