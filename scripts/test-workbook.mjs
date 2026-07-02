@@ -26,6 +26,7 @@ const checks = [
   ["E60", 94],
   ["E127", 32],
   ["E33", ""],
+  ["E79", ""],
   ["E249", 60],
 ];
 for (const [address, expected] of checks) {
@@ -42,6 +43,10 @@ if (!boxAdjusted || boxAdjusted.inserted !== 60 || boxAdjusted.autoComment !== "
 const unchanged = result.reportRows.find((row) => row.blankArticle === "AG17");
 if (!unchanged || unchanged.rounded !== 20 || unchanged.inserted !== 20) {
   throw new Error("Unchanged AG17 fixture was not found.");
+}
+const underMinimum = result.reportRows.find((row) => row.blankArticle === "AG11");
+if (!underMinimum || underMinimum.recommended !== 1 || underMinimum.rounded !== 1 || underMinimum.inserted !== null) {
+  throw new Error("Recommendations below 1.5 should stay blank.");
 }
 
 try {
@@ -63,6 +68,7 @@ applyFinalEdits({
   edits: [
     { blankRow: 60, value: "101", comment: "ручная правка" },
     { blankRow: 83, value: "20", comment: "" },
+    { blankRow: 79, value: "", comment: "" },
     { blankRow: 33, value: "", comment: "" },
     { blankRow: 249, value: "61", comment: "ручная правка коробки" },
   ],
@@ -80,6 +86,10 @@ const unchangedFact = sourceSheet.cells.get("56:33")?.value;
 const unchangedComment = sourceSheet.cells.get("56:34")?.value;
 if (unchangedFact !== "") throw new Error(`Source fact for AG17 should stay empty, got ${unchangedFact}`);
 if (unchangedComment !== "") throw new Error(`Source comment for AG17 should stay empty, got ${unchangedComment}`);
+const underMinimumFact = sourceSheet.cells.get("80:33")?.value;
+const underMinimumComment = sourceSheet.cells.get("80:34")?.value;
+if (underMinimumFact !== "") throw new Error(`Source fact for AG11 should stay empty, got ${underMinimumFact}`);
+if (underMinimumComment !== "") throw new Error(`Source comment for AG11 should stay empty, got ${underMinimumComment}`);
 
 await fs.mkdir(path.dirname(blankOutputPath), { recursive: true });
 await fs.writeFile(blankOutputPath, saveXlsx(result.blankWorkbook));

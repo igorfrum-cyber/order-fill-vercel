@@ -355,6 +355,7 @@ function readSource(workbook, orderMonth) {
 
 function calculateBoxAdjustedQuantity(recommended, boxSizeValue) {
   const rounded = roundHalfUp(recommended);
+  if (recommended < 1.5) return { rounded, inserted: null, autoComment: "", boxAdjusted: false };
   if (rounded <= 0) return { rounded, inserted: null, autoComment: "", boxAdjusted: false };
 
   const boxSize = parseNumber(boxSizeValue);
@@ -563,6 +564,7 @@ function setTextCell(sheet, row, col, value) {
 }
 
 function normalizedBaselineQuantity(rowInfo) {
+  if (rowInfo.inserted == null) return null;
   return Number(rowInfo.rounded) > 0 ? Number(rowInfo.rounded) : null;
 }
 
