@@ -11,25 +11,32 @@ import {
 
 const form = document.querySelector("#uploadForm");
 const statusEl = document.querySelector("#status");
+const brandSelect = document.querySelector("#brandSelect");
 const orderMonth = document.querySelector("#orderMonth");
 const sourceFile = document.querySelector("#sourceFile");
 const blankFile = document.querySelector("#blankFile");
+const homeFile = document.querySelector("#homeFile");
+const proffFile = document.querySelector("#proffFile");
 const sourceName = document.querySelector("#sourceName");
 const blankName = document.querySelector("#blankName");
+const homeName = document.querySelector("#homeName");
+const proffName = document.querySelector("#proffName");
+const blankField = document.querySelector("#blankField");
+const homeField = document.querySelector("#homeField");
+const proffField = document.querySelector("#proffField");
 const resultEl = document.querySelector("#result");
 const metricsEl = document.querySelector("#metrics");
 const periodNote = document.querySelector("#periodNote");
 const reportBody = document.querySelector("#reportBody");
+const adjustmentHeader = document.querySelector("#adjustmentHeader");
 const downloadButton = document.querySelector("#downloadButton");
 const downloadLinks = document.querySelector("#downloadLinks");
-const blankDownloadLink = document.querySelector("#blankDownloadLink");
-const sourceDownloadLink = document.querySelector("#sourceDownloadLink");
 const submitButton = form.querySelector("button");
 
-let currentResult = null;
-let currentBlankWorkbook = null;
+let currentResults = [];
+let currentBlankWorkbooks = new Map();
 let currentSourceWorkbook = null;
-let currentBlankOutputName = "blank заполненный.xlsx";
+let currentBlankOutputNames = new Map();
 let currentSourceOutputName = "order заполненная таблица.xlsx";
 let currentDownloadUrls = [];
 
@@ -49,6 +56,28 @@ function bindFileName(input, output) {
 
 bindFileName(sourceFile, sourceName);
 bindFileName(blankFile, blankName);
+bindFileName(homeFile, homeName);
+bindFileName(proffFile, proffName);
+
+function selectedBrand() {
+  return brandSelect.value || "angiopharm";
+}
+
+function configureBrandFields() {
+  const isChristina = selectedBrand() === "christina";
+  blankField.classList.toggle("hidden", isChristina);
+  homeField.classList.toggle("hidden", !isChristina);
+  proffField.classList.toggle("hidden", !isChristina);
+  blankFile.required = !isChristina;
+  homeFile.required = isChristina;
+  proffFile.required = isChristina;
+  adjustmentHeader.textContent = isChristina ? "Кратность" : "Шт. в коробке";
+  resultEl.classList.add("hidden");
+  clearDownloadLinks();
+}
+
+brandSelect.addEventListener("change", configureBrandFields);
+configureBrandFields();
 
 function statusLabel(status) {
   const labels = {
@@ -70,6 +99,18 @@ function escapeHtml(value) {
     .replaceAll("'", "&#039;");
 }
 
+function combinedSummary(results) {
+  const first = results[0]?.summary || {};
+  return {
+    ...first,
+    filled: results.reduce((sum, result) => sum + result.summary.filled, 0),
+    leftBlank: results.reduce((sum, result) => sum + result.summary.leftBlank, 0),
+    suspicious: results.reduce((sum, result) => sum + result.summary.suspicious, 0),
+    unmatched: results.reduce((sum, result) => sum + result.summary.unmatched, 0),
+    duplicates: results.reduce((sum, result) => sum + result.summary.duplicates, 0),
+  };
+}
+
 function renderMetrics(summary) {
   const rows = [
     ["Заполнено", summary.filled],
@@ -81,7 +122,7 @@ function renderMetrics(summary) {
   metricsEl.innerHTML = rows
     .map(([label, value]) => `<div class="metric"><strong>${value}</strong><span>${label}</span></div>`)
     .join("");
-  periodNote.textContent = `Заказ на ${summary.orderMonthLabel}. Период: ${summary.actualMainPeriod}. Прошлый период: ${summary.actualPreviousPeriod}.`;
+  periodNote.textContent = `${summary.brand}. Заказ на ${summary.orderMonthLabel}. Период: ${summary.actualMainPeriod}. Прошлый период: ${summary.actualPreviousPeriod}.`;
 }
 
 function renderReport(rows) {
@@ -93,6 +134,7 @@ function renderReport(rows) {
       return `
         <tr>
           <td class="${cls}">${statusLabel(row.status)}</td>
+          <td>${escapeHtml(row.blankLabel)}</td>
           <td>${escapeHtml(row.blankArticle)}</td>
           <td>${escapeHtml(row.blankName)}</td>
           <td>${escapeHtml(row.blankUnit)}</td>
@@ -107,6 +149,8 @@ function renderReport(rows) {
               min="0"
               step="1"
               inputmode="numeric"
+              data-key="${escapeHtml(`${row.blankId}:${row.blankRow}`)}"
+              data-blank-id="${escapeHtml(row.blankId)}"
               data-row="${row.blankRow}"
               data-initial-value="${inserted}"
               data-auto-comment="${escapeHtml(row.autoComment || "")}"
@@ -118,6 +162,8 @@ function renderReport(rows) {
             <input
               class="comment-input"
               type="text"
+              data-key="${escapeHtml(`${row.blankId}:${row.blankRow}`)}"
+              data-blank-id="${escapeHtml(row.blankId)}"
               data-row="${row.blankRow}"
               value="${escapeHtml(comment)}"
               aria-label="Комментарий для строки ${row.blankRow}"
@@ -137,36 +183,49 @@ async function loadWorkbook(file) {
 
 form.addEventListener("submit", async (event) => {
   event.preventDefault();
-  if (!sourceFile.files[0] || !blankFile.files[0]) return;
+  const brand = selectedBrand();
+  const blankInputs = brand === "christina"
+    ? [
+        { id: "home", label: "HOME", file: homeFile.files[0] },
+        { id: "proff", label: "PROFF", file: proffFile.files[0] },
+      ]
+    : [{ id: "main", label: "ANGIO", file: blankFile.files[0] }];
+  if (!sourceFile.files[0] || blankInputs.some((item) => !item.file)) return;
 
   statusEl.textContent = "Обработка...";
   submitButton.disabled = true;
   downloadButton.disabled = true;
   resultEl.classList.add("hidden");
   clearDownloadLinks();
-  currentResult = null;
-  currentBlankWorkbook = null;
+  currentResults = [];
+  currentBlankWorkbooks = new Map();
+  currentBlankOutputNames = new Map();
   currentSourceWorkbook = null;
 
   try {
-    const [sourceWorkbook, blankWorkbook] = await Promise.all([
-      loadWorkbook(sourceFile.files[0]),
-      loadWorkbook(blankFile.files[0]),
-    ]);
-    const result = fillWorkbook({
+    const sourceWorkbook = await loadWorkbook(sourceFile.files[0]);
+    const blankWorkbooks = await Promise.all(blankInputs.map((item) => loadWorkbook(item.file)));
+    const results = blankInputs.map((item, index) => fillWorkbook({
       sourceWorkbook,
-      blankWorkbook,
+      blankWorkbook: blankWorkbooks[index],
       orderMonth: orderMonth.value,
-    });
+      brand,
+      blankId: item.id,
+      blankLabel: item.label,
+    }));
 
-    currentResult = result;
-    currentBlankWorkbook = result.blankWorkbook;
-    currentSourceWorkbook = result.sourceWorkbook;
-    currentBlankOutputName = outputFileName(blankFile.files[0].name);
+    currentResults = results;
+    currentSourceWorkbook = sourceWorkbook;
+    currentBlankWorkbooks = new Map(results.map((result) => [result.blankId, result.blankWorkbook]));
+    for (const [index, item] of blankInputs.entries()) {
+      currentBlankWorkbooks.set(item.id, results[index].blankWorkbook);
+      currentBlankOutputNames.set(item.id, outputFileName(item.file.name));
+    }
     currentSourceOutputName = sourceOutputFileName(sourceFile.files[0].name);
 
-    renderMetrics(result.summary);
-    renderReport(result.reportRows);
+    const rows = results.flatMap((result) => result.reportRows);
+    renderMetrics(combinedSummary(results));
+    renderReport(rows);
     resultEl.classList.remove("hidden");
     downloadButton.disabled = false;
     statusEl.textContent = "Готово";
@@ -179,11 +238,13 @@ form.addEventListener("submit", async (event) => {
 });
 
 function collectEdits() {
-  const comments = new Map(Array.from(document.querySelectorAll(".comment-input")).map((input) => [Number(input.dataset.row), input.value]));
+  const comments = new Map(Array.from(document.querySelectorAll(".comment-input")).map((input) => [input.dataset.key, input.value]));
   return Array.from(document.querySelectorAll(".qty-input")).map((input) => ({
+    key: input.dataset.key,
+    blankId: input.dataset.blankId,
     blankRow: Number(input.dataset.row),
     value: input.value,
-    comment: comments.get(Number(input.dataset.row)) || "",
+    comment: comments.get(input.dataset.key) || "",
   }));
 }
 
@@ -191,10 +252,7 @@ function clearDownloadLinks() {
   for (const url of currentDownloadUrls) URL.revokeObjectURL(url);
   currentDownloadUrls = [];
   downloadLinks.classList.add("hidden");
-  blankDownloadLink.removeAttribute("download");
-  sourceDownloadLink.removeAttribute("download");
-  blankDownloadLink.href = "#";
-  sourceDownloadLink.href = "#";
+  downloadLinks.innerHTML = "";
 }
 
 function validateEdits() {
@@ -267,24 +325,22 @@ function triggerDownload(url, fileName) {
   anchor.remove();
 }
 
-function prepareDownloadLinks(blankBlob, sourceBlob) {
+function prepareDownloadLinks(files) {
   clearDownloadLinks();
-  const blankUrl = URL.createObjectURL(blankBlob);
-  const sourceUrl = URL.createObjectURL(sourceBlob);
-  currentDownloadUrls = [blankUrl, sourceUrl];
+  currentDownloadUrls = files.map((file) => URL.createObjectURL(file.blob));
 
-  blankDownloadLink.href = blankUrl;
-  blankDownloadLink.download = currentBlankOutputName;
-  sourceDownloadLink.href = sourceUrl;
-  sourceDownloadLink.download = currentSourceOutputName;
+  downloadLinks.innerHTML = files
+    .map((file, index) => `<a class="file-link" href="${currentDownloadUrls[index]}" download="${escapeHtml(file.name)}">${escapeHtml(file.label)}</a>`)
+    .join("");
   downloadLinks.classList.remove("hidden");
 
-  triggerDownload(blankUrl, currentBlankOutputName);
-  window.setTimeout(() => triggerDownload(sourceUrl, currentSourceOutputName), 250);
+  currentDownloadUrls.forEach((url, index) => {
+    window.setTimeout(() => triggerDownload(url, files[index].name), index * 250);
+  });
 }
 
 downloadButton.addEventListener("click", async () => {
-  if (!currentResult || !currentBlankWorkbook || !currentSourceWorkbook) {
+  if (!currentResults.length || !currentBlankWorkbooks.size || !currentSourceWorkbook) {
     alert("Сначала заполните бланк.");
     return;
   }
@@ -293,24 +349,36 @@ downloadButton.addEventListener("click", async () => {
   downloadButton.disabled = true;
   statusEl.textContent = "Сохраняю правки...";
   try {
-    const edited = applyFinalEdits({
-      blankWorkbook: currentBlankWorkbook,
-      sourceWorkbook: currentSourceWorkbook,
-      reportRows: currentResult.reportRows,
-      edits: collectEdits(),
-    });
-    currentBlankWorkbook = edited.blankWorkbook;
-    currentSourceWorkbook = edited.sourceWorkbook;
+    const edits = collectEdits();
+    const files = [];
+    for (const result of currentResults) {
+      const edited = applyFinalEdits({
+        blankWorkbook: result.blankWorkbook,
+        sourceWorkbook: currentSourceWorkbook,
+        reportRows: result.reportRows,
+        edits,
+        brand: selectedBrand(),
+      });
+      result.blankWorkbook = edited.blankWorkbook;
+      currentSourceWorkbook = edited.sourceWorkbook;
+      files.push({
+        label: `Скачать ${result.blankLabel || "бланк"}`,
+        name: currentBlankOutputNames.get(result.blankId) || "blank заполненный.xlsx",
+        blob: new Blob([saveXlsx(result.blankWorkbook)], {
+          type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        }),
+      });
+    }
 
-    const bytes = saveXlsx(currentBlankWorkbook);
     const sourceBytes = saveXlsx(currentSourceWorkbook);
-    const blankBlob = new Blob([bytes], {
-      type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    files.push({
+      label: "Скачать таблицу заказа",
+      name: currentSourceOutputName,
+      blob: new Blob([sourceBytes], {
+        type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      }),
     });
-    const sourceBlob = new Blob([sourceBytes], {
-      type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-    });
-    prepareDownloadLinks(blankBlob, sourceBlob);
+    prepareDownloadLinks(files);
     statusEl.textContent = "Файлы готовы";
   } catch (error) {
     statusEl.textContent = "Ошибка";

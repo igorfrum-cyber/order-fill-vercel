@@ -78,11 +78,17 @@ p {
 }
 
 .upload-grid {
-  grid-template-columns: 240px 1fr 1fr auto;
+  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
   align-items: stretch;
   margin-bottom: 24px;
 }
 
+.brand-field,
+.month-field {
+  min-width: 0;
+}
+
+.brand-field,
 .month-field,
 .dropzone {
   position: relative;
@@ -94,11 +100,13 @@ p {
   padding: 18px;
 }
 
+.brand-field,
 .month-field {
   align-content: center;
   gap: 8px;
 }
 
+.brand-field select,
 .month-field input {
   width: 100%;
   height: 38px;
@@ -108,6 +116,10 @@ p {
   color: var(--ink);
   font: inherit;
   background: #fff;
+}
+
+.hidden {
+  display: none !important;
 }
 
 .dropzone {
@@ -272,7 +284,11 @@ table {
 }
 
 .col-status {
-  width: 6.5%;
+  width: 6%;
+}
+
+.col-blank {
+  width: 5.5%;
 }
 
 .col-article {
@@ -280,7 +296,7 @@ table {
 }
 
 .col-name {
-  width: 18%;
+  width: 17%;
 }
 
 .col-unit,
@@ -297,7 +313,7 @@ table {
 }
 
 .col-comment {
-  width: 19%;
+  width: 16.5%;
 }
 
 th,

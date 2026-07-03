@@ -2,10 +2,12 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import { strFromU8, unzipSync } from "fflate";
 
-import { applyFinalEdits, fillWorkbook, loadXlsx, saveXlsx } from "../src/workbookProcessor.js";
+import { adjustQuantityForBrand, applyFinalEdits, detectColumns, fillWorkbook, loadXlsx, saveXlsx } from "../src/workbookProcessor.js";
 
 const sourcePath = "/Users/igorfrumes/Downloads/агио артикул.xlsx";
 const blankPath = "/Users/igorfrumes/Downloads/2026 06 23 Бланк заказа ANGIOPHARM (1).xlsx";
+const homeBlankPath = "/Users/igorfrumes/Downloads/Актуальный бланк HOME 17.06.2026.xlsx";
+const proffBlankPath = "/Users/igorfrumes/Downloads/Актуальный_бланк_PROFF_1 от 17.06.26.xlsx";
 const blankOutputPath = path.resolve("test-output/browser-filled-blank.xlsx");
 const sourceOutputPath = path.resolve("test-output/browser-filled-source.xlsx");
 
@@ -13,6 +15,23 @@ const [sourceWorkbook, blankWorkbook] = await Promise.all([
   fs.readFile(sourcePath).then((buffer) => loadXlsx(buffer)),
   fs.readFile(blankPath).then((buffer) => loadXlsx(buffer)),
 ]);
+
+const [homeBlankWorkbook, proffBlankWorkbook] = await Promise.all([
+  fs.readFile(homeBlankPath).then((buffer) => loadXlsx(buffer)),
+  fs.readFile(proffBlankPath).then((buffer) => loadXlsx(buffer)),
+]);
+
+const homeDetection = detectColumns(homeBlankWorkbook, "blank", { requireBox: false });
+const proffDetection = detectColumns(proffBlankWorkbook, "blank", { requireBox: false });
+if (homeDetection.headerRow !== 7 || homeDetection.columns.quantity !== 5) throw new Error("HOME blank columns were not detected.");
+if (proffDetection.headerRow !== 7 || proffDetection.columns.quantity !== 5) throw new Error("PROFF blank columns were not detected.");
+
+const christinaUp = adjustQuantityForBrand(8, "christina");
+if (christinaUp.inserted !== 9 || christinaUp.autoComment !== "до кратности 3") throw new Error("Christina should round up to a multiple of 3 first.");
+const christinaNoAdjust = adjustQuantityForBrand(13, "christina");
+if (christinaNoAdjust.inserted !== 13 || christinaNoAdjust.autoComment !== "") throw new Error("Christina should keep the value when neither multiple direction fits thresholds.");
+const christinaSmall = adjustQuantityForBrand(1, "christina");
+if (christinaSmall.inserted !== null) throw new Error("Christina should skip recommendations below 1.5.");
 
 const result = fillWorkbook({ sourceWorkbook, blankWorkbook, orderMonth: "2026-07" });
 console.log(result.summary);

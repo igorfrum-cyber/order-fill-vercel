@@ -12,6 +12,21 @@ const MONTHS_RU = ["", "январь", "февраль", "март", "апрел
 const NS_MAIN = "http://schemas.openxmlformats.org/spreadsheetml/2006/main";
 const XML_PARSER = new DOMParser();
 const XML_SERIALIZER = new XMLSerializer();
+const BRAND_RULES = {
+  angiopharm: {
+    label: "ANGIOPHARM",
+    adjustment: "box",
+    adjustmentLabel: "Шт. в коробке",
+    adjustmentComment: "до коробки",
+  },
+  christina: {
+    label: "CHRISTINA",
+    adjustment: "multiple",
+    multiple: 3,
+    adjustmentLabel: "Кратность",
+    adjustmentComment: "до кратности 3",
+  },
+};
 
 export function loadXlsx(buffer) {
   const files = unzipSync(new Uint8Array(buffer));
@@ -297,22 +312,25 @@ function sourceMatchers() {
   };
 }
 
-function blankMatchers() {
-  return {
+function blankMatchers(options = {}) {
+  const matchers = {
     article: (h) => h.includes("арт") || h.includes("артикул") || h.includes("код"),
     name: (h) => h.includes("товар") || h.includes("номенклатура") || h.includes("наименование") || h.includes("название"),
-    unit: (h) => h.includes("объем") || h.includes("обьем") || (h.includes("мл") && h.includes("гр")),
+    unit: (h) => h.includes("объем") || h.includes("обьем") || h.includes("форма выпуска") || (h.includes("мл") && h.includes("гр")),
     quantity: (h) => h.includes("кол во") || h.includes("количество") || h.includes("кол-во") || h.includes("к во") || h.includes("qty"),
-    boxSize: (h) => h.includes("короб") || (h.includes("шт") && h.includes("упак")),
   };
+  if (options.requireBox !== false) {
+    matchers.boxSize = (h) => h.includes("короб") || (h.includes("шт") && h.includes("упак"));
+  }
+  return matchers;
 }
 
 function combinations(arrays) {
   return arrays.reduce((acc, current) => acc.flatMap((items) => current.map((item) => [...items, item])), [[]]);
 }
 
-export function detectColumns(workbook, mode) {
-  const matchers = mode === "source" ? sourceMatchers() : blankMatchers();
+export function detectColumns(workbook, mode, options = {}) {
+  const matchers = mode === "source" ? sourceMatchers() : blankMatchers(options);
   const required = Object.keys(matchers);
   let bestFound = {};
   let bestScore = -1;
@@ -385,27 +403,44 @@ function readSource(workbook, orderMonth) {
   return { detection, items, periodInfo };
 }
 
-function calculateBoxAdjustedQuantity(recommended, boxSizeValue) {
+function brandRule(brand) {
+  return BRAND_RULES[brand] || BRAND_RULES.angiopharm;
+}
+
+function calculateAdjustedQuantity(recommended, rule, boxSizeValue) {
   const rounded = roundHalfUp(recommended);
   if (recommended < 1.5) return { rounded, inserted: null, autoComment: "", boxAdjusted: false };
   if (rounded <= 0) return { rounded, inserted: null, autoComment: "", boxAdjusted: false };
 
+  if (rule.adjustment === "multiple") {
+    return calculateMultipleAdjustedQuantity(rounded, rule.multiple, rule.adjustmentComment);
+  }
+
   const boxSize = parseNumber(boxSizeValue);
   if (!boxSize || boxSize <= 0) return { rounded, inserted: rounded, autoComment: "", boxAdjusted: false };
-
   const box = Math.round(boxSize);
-  if (box <= 0 || rounded % box === 0) return { rounded, inserted: rounded, autoComment: "", boxAdjusted: false };
+  return calculateMultipleAdjustedQuantity(rounded, box, rule.adjustmentComment);
+}
 
-  const lower = Math.floor(rounded / box) * box;
-  const upper = Math.ceil(rounded / box) * box;
+export function adjustQuantityForBrand(recommended, brand = "angiopharm", boxSizeValue = null) {
+  const rule = brandRule(brand);
+  return calculateAdjustedQuantity(recommended, rule, boxSizeValue ?? rule.multiple);
+}
+
+function calculateMultipleAdjustedQuantity(rounded, multiple, comment) {
+  const step = Math.round(Number(multiple));
+  if (step <= 0 || rounded % step === 0) return { rounded, inserted: rounded, autoComment: "", boxAdjusted: false };
+
+  const lower = Math.floor(rounded / step) * step;
+  const upper = Math.ceil(rounded / step) * step;
   const upPercent = (upper - rounded) / rounded;
   const downPercent = lower > 0 ? (rounded - lower) / rounded : Infinity;
 
   if (upPercent > 0 && upPercent <= 0.15) {
-    return { rounded, inserted: upper, autoComment: "до коробки", boxAdjusted: true };
+    return { rounded, inserted: upper, autoComment: comment, boxAdjusted: true };
   }
   if (downPercent > 0 && downPercent <= 0.05) {
-    return { rounded, inserted: lower, autoComment: "до коробки", boxAdjusted: true };
+    return { rounded, inserted: lower, autoComment: comment, boxAdjusted: true };
   }
   return { rounded, inserted: rounded, autoComment: "", boxAdjusted: false };
 }
@@ -424,7 +459,8 @@ function chooseNameFallback(candidates, blankName) {
   return scored[0];
 }
 
-export function fillWorkbook({ sourceWorkbook, blankWorkbook, orderMonth }) {
+export function fillWorkbook({ sourceWorkbook, blankWorkbook, orderMonth, brand = "angiopharm", blankId = "blank", blankLabel = "" }) {
+  const rule = brandRule(brand);
   const source = readSource(sourceWorkbook, orderMonth);
   const sourceIndex = new Map();
   const noArticleItems = [];
@@ -436,7 +472,7 @@ export function fillWorkbook({ sourceWorkbook, blankWorkbook, orderMonth }) {
       noArticleItems.push(item);
     }
   }
-  const blank = detectColumns(blankWorkbook, "blank");
+  const blank = detectColumns(blankWorkbook, "blank", { requireBox: rule.adjustment === "box" });
   const reportRows = [];
   let filled = 0;
   let leftBlank = 0;
@@ -449,7 +485,7 @@ export function fillWorkbook({ sourceWorkbook, blankWorkbook, orderMonth }) {
     const blankArticle = normalizeArticle(blankArticleRaw);
     const blankName = asText(sheetCellValue(blank.sheet, row, blank.columns.name));
     const blankUnit = asText(sheetCellValue(blank.sheet, row, blank.columns.unit));
-    const blankBoxSize = sheetCellValue(blank.sheet, row, blank.columns.boxSize);
+    const blankBoxSize = rule.adjustment === "box" ? sheetCellValue(blank.sheet, row, blank.columns.boxSize) : rule.multiple;
     if (!blankArticle) continue;
     let selected;
     let score;
@@ -466,8 +502,8 @@ export function fillWorkbook({ sourceWorkbook, blankWorkbook, orderMonth }) {
       score = fallback.score;
       if (selected.rounded > 0) {
         suspicious += 1;
-        order = calculateBoxAdjustedQuantity(selected.recommended, blankBoxSize);
-        reportRows.push(makeReportRow("warning_name_only", row, blankArticleRaw, blankName, blankUnit, blankBoxSize, selected, score, { ...order, inserted: null, autoComment: "" }));
+        order = calculateAdjustedQuantity(selected.recommended, rule, blankBoxSize);
+        reportRows.push(makeReportRow("warning_name_only", row, blankArticleRaw, blankName, blankUnit, blankBoxSize, selected, score, { ...order, inserted: null, autoComment: "" }, { blankId, blankLabel, adjustmentLabel: rule.adjustmentLabel }));
         continue;
       }
       status = "matched_by_name";
@@ -482,7 +518,7 @@ export function fillWorkbook({ sourceWorkbook, blankWorkbook, orderMonth }) {
         suspicious += 1;
       }
     }
-    order = calculateBoxAdjustedQuantity(selected.recommended, blankBoxSize);
+    order = calculateAdjustedQuantity(selected.recommended, rule, blankBoxSize);
     if (order.inserted == null) {
       setNumericCell(blank.sheet, row, blank.columns.quantity, null);
       leftBlank += 1;
@@ -491,9 +527,11 @@ export function fillWorkbook({ sourceWorkbook, blankWorkbook, orderMonth }) {
       setNumericCell(blank.sheet, row, blank.columns.quantity, order.inserted);
       filled += 1;
     }
-    reportRows.push(makeReportRow(status, row, blankArticleRaw, blankName, blankUnit, blankBoxSize, selected, score, order));
+    reportRows.push(makeReportRow(status, row, blankArticleRaw, blankName, blankUnit, blankBoxSize, selected, score, order, { blankId, blankLabel, adjustmentLabel: rule.adjustmentLabel }));
   }
   return {
+    blankId,
+    blankLabel,
     sourceWorkbook,
     sourceDetection: source.detection,
     blankWorkbook,
@@ -510,15 +548,20 @@ export function fillWorkbook({ sourceWorkbook, blankWorkbook, orderMonth }) {
       sourceHeaderRow: source.detection.headerRow,
       blankSheet: blank.sheetName,
       blankHeaderRow: blank.headerRow,
+      brand: rule.label,
+      adjustmentLabel: rule.adjustmentLabel,
       ...source.periodInfo,
     },
     reportRows,
   };
 }
 
-function makeReportRow(status, row, blankArticle, blankName, blankUnit, blankBoxSize, selected, score, order) {
+function makeReportRow(status, row, blankArticle, blankName, blankUnit, blankBoxSize, selected, score, order, context) {
   return {
     status,
+    blankId: context.blankId,
+    blankLabel: context.blankLabel,
+    adjustmentLabel: context.adjustmentLabel,
     blankRow: row,
     blankArticle,
     blankName,
@@ -622,14 +665,15 @@ export function normalizeOrderValue(value) {
   return parseEditValue(value);
 }
 
-export function applyFinalEdits({ blankWorkbook, sourceWorkbook, reportRows, edits }) {
-  const blank = detectColumns(blankWorkbook, "blank");
+export function applyFinalEdits({ blankWorkbook, sourceWorkbook, reportRows, edits, brand = "angiopharm" }) {
+  const rule = brandRule(brand);
+  const blank = detectColumns(blankWorkbook, "blank", { requireBox: rule.adjustment === "box" });
   const source = detectColumns(sourceWorkbook, "source");
-  const editsByRow = new Map(edits.map((edit) => [Number(edit.blankRow), edit]));
+  const editsByRow = new Map(edits.map((edit) => [edit.key || String(Number(edit.blankRow)), edit]));
   const prepared = [];
 
   for (const rowInfo of reportRows) {
-    const edit = editsByRow.get(Number(rowInfo.blankRow));
+    const edit = editsByRow.get(`${rowInfo.blankId}:${rowInfo.blankRow}`) || editsByRow.get(String(Number(rowInfo.blankRow)));
     if (!edit) continue;
 
     const quantity = parseEditValue(edit.value);

@@ -17,6 +17,14 @@
         </div>
 
         <form class="upload-grid" id="uploadForm">
+          <label class="brand-field" for="brandSelect">
+            <span class="label">Бренд</span>
+            <select id="brandSelect" name="brand" required>
+              <option value="angiopharm">ANGIOPHARM</option>
+              <option value="christina">CHRISTINA</option>
+            </select>
+          </label>
+
           <label class="month-field" for="orderMonth">
             <span class="label">Месяц заказа</span>
             <input id="orderMonth" name="orderMonth" type="month" required />
@@ -29,11 +37,25 @@
             <input id="sourceFile" name="source" type="file" accept=".xlsx,.xlsm" required />
           </label>
 
-          <label class="dropzone" for="blankFile">
+          <label class="dropzone" id="blankField" for="blankFile">
             <span class="icon">↑</span>
             <span class="label">Актуальный бланк</span>
             <span class="filename" id="blankName">.xlsx или .xlsm</span>
             <input id="blankFile" name="blank" type="file" accept=".xlsx,.xlsm" required />
+          </label>
+
+          <label class="dropzone christina-only hidden" id="homeField" for="homeFile">
+            <span class="icon">↑</span>
+            <span class="label">Бланк HOME</span>
+            <span class="filename" id="homeName">.xlsx или .xlsm</span>
+            <input id="homeFile" name="home" type="file" accept=".xlsx,.xlsm" />
+          </label>
+
+          <label class="dropzone christina-only hidden" id="proffField" for="proffFile">
+            <span class="icon">↑</span>
+            <span class="label">Бланк PROFF</span>
+            <span class="filename" id="proffName">.xlsx или .xlsm</span>
+            <input id="proffFile" name="proff" type="file" accept=".xlsx,.xlsm" />
           </label>
 
           <button class="primary" type="submit">
@@ -50,15 +72,13 @@
 
           <div class="period-note" id="periodNote"></div>
           <div class="metrics" id="metrics"></div>
-          <div class="download-links hidden" id="downloadLinks">
-            <a class="file-link" id="blankDownloadLink" href="#">Скачать бланк</a>
-            <a class="file-link" id="sourceDownloadLink" href="#">Скачать таблицу заказа</a>
-          </div>
+          <div class="download-links hidden" id="downloadLinks"></div>
 
           <div class="table-wrap">
             <table>
               <colgroup>
                 <col class="col-status" />
+                <col class="col-blank" />
                 <col class="col-article" />
                 <col class="col-name" />
                 <col class="col-unit" />
@@ -73,13 +93,14 @@
               <thead>
                 <tr>
                   <th>Статус</th>
+                  <th>Бланк</th>
                   <th>Артикул</th>
                   <th>Товар в бланке</th>
                   <th>Объем мл/гр</th>
                   <th>Остаток</th>
                   <th>В пути</th>
                   <th>Рекоменд.</th>
-                  <th>Шт. в коробке</th>
+                  <th id="adjustmentHeader">Шт. в коробке</th>
                   <th>Вставлено</th>
                   <th>Комментарий</th>
                   <th>Совпадение</th>
