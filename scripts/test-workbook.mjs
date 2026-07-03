@@ -1,5 +1,6 @@
 import fs from "node:fs/promises";
 import path from "node:path";
+import { strFromU8, unzipSync } from "fflate";
 
 import { applyFinalEdits, fillWorkbook, loadXlsx, saveXlsx } from "../src/workbookProcessor.js";
 
@@ -92,7 +93,14 @@ if (underMinimumFact !== "") throw new Error(`Source fact for AG11 should stay e
 if (underMinimumComment !== "") throw new Error(`Source comment for AG11 should stay empty, got ${underMinimumComment}`);
 
 await fs.mkdir(path.dirname(blankOutputPath), { recursive: true });
-await fs.writeFile(blankOutputPath, saveXlsx(result.blankWorkbook));
+const blankBytes = saveXlsx(result.blankWorkbook);
+const blankZip = unzipSync(blankBytes);
+const workbookXml = strFromU8(blankZip["xl/workbook.xml"]);
+if (!/calcMode="auto"/.test(workbookXml) || !/fullCalcOnLoad="1"/.test(workbookXml) || !/forceFullCalc="1"/.test(workbookXml)) {
+  throw new Error("Workbook should force formula recalculation on open.");
+}
+if (blankZip["xl/calcChain.xml"]) throw new Error("calcChain.xml should be removed after editing formula inputs.");
+await fs.writeFile(blankOutputPath, blankBytes);
 await fs.writeFile(sourceOutputPath, saveXlsx(result.sourceWorkbook));
 console.log(blankOutputPath);
 console.log(sourceOutputPath);

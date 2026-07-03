@@ -39,7 +39,39 @@ export function saveXlsx(workbook) {
   for (const sheet of workbook.sheets) {
     files[sheet.path] = strToU8(XML_SERIALIZER.serializeToString(sheet.xml));
   }
+  forceFormulaRecalculation(files);
   return zipSync(files, { level: 6 });
+}
+
+function forceFormulaRecalculation(files) {
+  const workbookPath = "xl/workbook.xml";
+  if (files[workbookPath]) {
+    const xml = parseXml(files[workbookPath]);
+    let calcPr = firstElement(xml, "calcPr");
+    if (!calcPr) {
+      calcPr = xml.createElementNS(NS_MAIN, "calcPr");
+      xml.documentElement.appendChild(calcPr);
+    }
+    calcPr.setAttribute("calcMode", "auto");
+    calcPr.setAttribute("fullCalcOnLoad", "1");
+    calcPr.setAttribute("forceFullCalc", "1");
+    files[workbookPath] = strToU8(XML_SERIALIZER.serializeToString(xml));
+  }
+
+  delete files["xl/calcChain.xml"];
+  removeNodesByAttribute(files, "xl/_rels/workbook.xml.rels", "Relationship", "Type", "calcChain");
+  removeNodesByAttribute(files, "[Content_Types].xml", "Override", "PartName", "/xl/calcChain.xml");
+}
+
+function removeNodesByAttribute(files, path, tagName, attrName, attrValuePart) {
+  if (!files[path]) return;
+  const xml = parseXml(files[path]);
+  for (const node of elements(xml, tagName)) {
+    if ((node.getAttribute(attrName) || "").includes(attrValuePart)) {
+      node.parentNode?.removeChild(node);
+    }
+  }
+  files[path] = strToU8(XML_SERIALIZER.serializeToString(xml));
 }
 
 function parseXml(bytes) {
