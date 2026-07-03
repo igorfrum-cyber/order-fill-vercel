@@ -24,11 +24,11 @@ body {
 
 .shell {
   min-height: 100vh;
-  padding: 28px;
+  padding: 24px;
 }
 
 .workspace {
-  width: min(1180px, 100%);
+  width: 100%;
   margin: 0 auto;
 }
 
@@ -261,26 +261,26 @@ p {
 
 .table-wrap {
   max-height: 460px;
-  overflow: auto;
+  overflow-y: auto;
+  overflow-x: hidden;
 }
 
 table {
   width: 100%;
-  min-width: 1620px;
   border-collapse: collapse;
   table-layout: fixed;
 }
 
 .col-status {
-  width: 130px;
+  width: 6.5%;
 }
 
 .col-article {
-  width: 115px;
+  width: 5.5%;
 }
 
 .col-name {
-  width: 260px;
+  width: 18%;
 }
 
 .col-unit,
@@ -289,20 +289,20 @@ table {
 .col-recommended,
 .col-box,
 .col-match {
-  width: 115px;
+  width: 6.5%;
 }
 
 .col-inserted {
-  width: 140px;
+  width: 8.5%;
 }
 
 .col-comment {
-  width: 260px;
+  width: 19%;
 }
 
 th,
 td {
-  padding: 10px 12px;
+  padding: 9px 10px;
   border-bottom: 1px solid var(--line);
   text-align: left;
   vertical-align: top;
