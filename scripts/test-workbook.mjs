@@ -36,6 +36,46 @@ if (christinaSmall.inserted !== null) throw new Error("Christina should skip rec
 const result = fillWorkbook({ sourceWorkbook, blankWorkbook, orderMonth: "2026-07" });
 console.log(result.summary);
 
+const [sourceWithFact, blankWithFact] = await Promise.all([
+  fs.readFile(sourcePath).then((buffer) => loadXlsx(buffer)),
+  fs.readFile(blankPath).then((buffer) => loadXlsx(buffer)),
+]);
+const factSourceSheet = sourceWithFact.sheets.find((item) => item.name === "Лист_1");
+factSourceSheet.cells.get("56:33").value = 25;
+factSourceSheet.cells.get("56:34").value = "";
+const factResult = fillWorkbook({ sourceWorkbook: sourceWithFact, blankWorkbook: blankWithFact, orderMonth: "2026-07" });
+const factRow = factResult.reportRows.find((row) => row.blankArticle === "AG17");
+if (!factRow || !factRow.hasOrderedFact || factRow.orderedFact !== 25 || factRow.inserted !== 25 || factRow.sourceComment !== "") {
+  throw new Error("Pre-filled ordered fact should be used as inserted value.");
+}
+try {
+  applyFinalEdits({
+    blankWorkbook: factResult.blankWorkbook,
+    sourceWorkbook: factResult.sourceWorkbook,
+    reportRows: factResult.reportRows,
+    edits: [{ key: `${factRow.blankId}:${factRow.blankRow}`, blankRow: factRow.blankRow, value: "25", comment: "" }],
+  });
+  throw new Error("Expected a comment validation error for pre-filled ordered fact.");
+} catch (error) {
+  if (!String(error.message).includes("комментарий")) throw error;
+}
+applyFinalEdits({
+  blankWorkbook: factResult.blankWorkbook,
+  sourceWorkbook: factResult.sourceWorkbook,
+  reportRows: factResult.reportRows,
+  edits: [{ key: `${factRow.blankId}:${factRow.blankRow}`, blankRow: factRow.blankRow, value: "25", comment: "ручная правка из таблицы" }],
+});
+if (factSourceSheet.cells.get("56:33")?.value !== 25) throw new Error("Ordered fact should remain 25 after valid comment.");
+if (factSourceSheet.cells.get("56:34")?.value !== "ручная правка из таблицы") throw new Error("Source comment should be written for pre-filled ordered fact.");
+applyFinalEdits({
+  blankWorkbook: factResult.blankWorkbook,
+  sourceWorkbook: factResult.sourceWorkbook,
+  reportRows: factResult.reportRows,
+  edits: [{ key: `${factRow.blankId}:${factRow.blankRow}`, blankRow: factRow.blankRow, value: "20", comment: "" }],
+});
+if (factSourceSheet.cells.get("56:33")?.value !== "") throw new Error("Ordered fact should be cleared when returned to recommendation.");
+if (factSourceSheet.cells.get("56:34")?.value !== "") throw new Error("Source comment should be cleared when returned to recommendation.");
+
 const sheet = result.blankWorkbook.sheets.find((item) => item.name === "Бланк");
 function getValue(address) {
   const match = /^([A-Z]+)(\d+)$/.exec(address);

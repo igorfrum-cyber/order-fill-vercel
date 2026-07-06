@@ -387,8 +387,12 @@ function readSource(workbook, orderMonth) {
     const articleRaw = asText(sheetCellValue(detection.sheet, row, detection.columns.article));
     const name = asText(sheetCellValue(detection.sheet, row, detection.columns.name));
     const recommended = parseNumber(sheetCellValue(detection.sheet, row, detection.columns.recommended));
+    const orderedFactRaw = sheetCellValue(detection.sheet, row, detection.columns.orderedFact);
+    const orderedFact = parseNumber(orderedFactRaw);
+    const hasOrderedFact = asText(orderedFactRaw) !== "";
     if (!articleRaw && !name && recommended == null) continue;
     if (recommended == null) continue;
+    if (hasOrderedFact && orderedFact == null) throw new Error(`В строке ${row} таблицы заказа некорректно заполнено «Заказано по факту».`);
     items.push({
       rowIndex: row,
       articleRaw,
@@ -396,6 +400,9 @@ function readSource(workbook, orderMonth) {
       name,
       recommended,
       rounded: roundHalfUp(recommended),
+      hasOrderedFact,
+      orderedFact,
+      sourceComment: asText(sheetCellValue(detection.sheet, row, detection.columns.comment)),
       stock: sheetCellValue(detection.sheet, row, detection.columns.stock),
       inTransit: sheetCellValue(detection.sheet, row, detection.columns.inTransit),
     });
@@ -425,6 +432,15 @@ function calculateAdjustedQuantity(recommended, rule, boxSizeValue) {
 export function adjustQuantityForBrand(recommended, brand = "angiopharm", boxSizeValue = null) {
   const rule = brandRule(brand);
   return calculateAdjustedQuantity(recommended, rule, boxSizeValue ?? rule.multiple);
+}
+
+function orderForItem(item, rule, adjustmentValue) {
+  if (!item.hasOrderedFact) return calculateAdjustedQuantity(item.recommended, rule, adjustmentValue);
+  return {
+    ...calculateAdjustedQuantity(item.orderedFact, rule, adjustmentValue),
+    autoComment: "",
+    fromOrderedFact: true,
+  };
 }
 
 function calculateMultipleAdjustedQuantity(rounded, multiple, comment) {
@@ -502,7 +518,7 @@ export function fillWorkbook({ sourceWorkbook, blankWorkbook, orderMonth, brand 
       score = fallback.score;
       if (selected.rounded > 0) {
         suspicious += 1;
-        order = calculateAdjustedQuantity(selected.recommended, rule, blankBoxSize);
+        order = orderForItem(selected, rule, blankBoxSize);
         reportRows.push(makeReportRow("warning_name_only", row, blankArticleRaw, blankName, blankUnit, blankBoxSize, selected, score, { ...order, inserted: null, autoComment: "" }, { blankId, blankLabel, adjustmentLabel: rule.adjustmentLabel }));
         continue;
       }
@@ -518,7 +534,7 @@ export function fillWorkbook({ sourceWorkbook, blankWorkbook, orderMonth, brand 
         suspicious += 1;
       }
     }
-    order = calculateAdjustedQuantity(selected.recommended, rule, blankBoxSize);
+    order = orderForItem(selected, rule, blankBoxSize);
     if (order.inserted == null) {
       setNumericCell(blank.sheet, row, blank.columns.quantity, null);
       leftBlank += 1;
@@ -570,10 +586,14 @@ function makeReportRow(status, row, blankArticle, blankName, blankUnit, blankBox
     sourceRow: selected.rowIndex,
     sourceArticle: selected.articleRaw,
     sourceName: selected.name,
+    hasOrderedFact: selected.hasOrderedFact,
+    orderedFact: selected.hasOrderedFact ? selected.orderedFact : null,
+    sourceComment: selected.sourceComment,
     stock: selected.stock,
     inTransit: selected.inTransit,
     recommended: selected.recommended,
-    rounded: order.rounded,
+    rounded: selected.rounded,
+    baseRounded: order.rounded,
     inserted: order.inserted,
     autoComment: order.autoComment,
     boxAdjusted: order.boxAdjusted,
@@ -639,7 +659,7 @@ function setTextCell(sheet, row, col, value) {
 }
 
 function normalizedBaselineQuantity(rowInfo) {
-  if (rowInfo.inserted == null) return null;
+  if (Number(rowInfo.recommended) < 1.5) return null;
   return Number(rowInfo.rounded) > 0 ? Number(rowInfo.rounded) : null;
 }
 
@@ -679,17 +699,20 @@ export function applyFinalEdits({ blankWorkbook, sourceWorkbook, reportRows, edi
     const quantity = parseEditValue(edit.value);
     const comment = asText(edit.comment);
     const initial = rowInfo.inserted == null ? null : Number(rowInfo.inserted);
-    const changed = quantity !== initial;
+    const baseline = normalizedBaselineQuantity(rowInfo);
+    const requiresComment = quantity !== baseline;
     const stillAutoComment = rowInfo.autoComment && comment.toLowerCase() === rowInfo.autoComment.toLowerCase();
+    const autoCommentAllowed = stillAutoComment && quantity === initial;
 
-    if (changed && (!comment || stillAutoComment)) {
+    if (requiresComment && (!comment || (stillAutoComment && !autoCommentAllowed))) {
       throw new Error("Если значение в колонке «Вставлено» изменено, нужно заполнить комментарий.");
     }
 
     const blankRow = Number(rowInfo.blankRow);
     const sourceRow = Number(rowInfo.sourceRow);
     const shouldRecordSourceFact = quantity !== normalizedBaselineQuantity(rowInfo);
-    prepared.push({ blankRow, sourceRow, quantity, comment, shouldRecordSourceFact });
+    const sourceFactValue = shouldRecordSourceFact ? (quantity ?? 0) : null;
+    prepared.push({ blankRow, sourceRow, quantity, comment, shouldRecordSourceFact, sourceFactValue });
   }
 
   for (const edit of prepared) {
@@ -697,7 +720,7 @@ export function applyFinalEdits({ blankWorkbook, sourceWorkbook, reportRows, edi
       setNumericCell(blank.sheet, edit.blankRow, blank.columns.quantity, edit.quantity);
     }
     if (Number.isInteger(edit.sourceRow) && edit.sourceRow > source.headerRow) {
-      setNumericCell(source.sheet, edit.sourceRow, source.columns.orderedFact, edit.shouldRecordSourceFact ? edit.quantity : null);
+      setNumericCell(source.sheet, edit.sourceRow, source.columns.orderedFact, edit.sourceFactValue);
       setTextCell(source.sheet, edit.sourceRow, source.columns.comment, edit.shouldRecordSourceFact ? edit.comment : "");
     }
   }

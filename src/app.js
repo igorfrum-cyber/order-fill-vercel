@@ -130,7 +130,8 @@ function renderReport(rows) {
     .map((row) => {
       const cls = row.status === "warning_name_differs" || row.status === "warning_name_only" ? "warn" : row.status === "matched" || row.status === "matched_by_name" ? "ok" : "muted";
       const inserted = row.inserted ?? "";
-      const comment = row.autoComment || "";
+      const comment = row.sourceComment || row.autoComment || "";
+      const baseline = Number(row.recommended) < 1.5 || Number(row.rounded) <= 0 ? "" : row.rounded;
       return `
         <tr>
           <td class="${cls}">${statusLabel(row.status)}</td>
@@ -141,6 +142,7 @@ function renderReport(rows) {
           <td>${escapeHtml(row.stock ?? "")}</td>
           <td>${escapeHtml(row.inTransit ?? "")}</td>
           <td>${Number(row.recommended).toFixed(2)}</td>
+          <td>${row.hasOrderedFact ? escapeHtml(row.orderedFact) : ""}</td>
           <td>${escapeHtml(row.blankBoxSize ?? "")}</td>
           <td>
             <input
@@ -153,6 +155,7 @@ function renderReport(rows) {
               data-blank-id="${escapeHtml(row.blankId)}"
               data-row="${row.blankRow}"
               data-initial-value="${inserted}"
+              data-baseline-value="${baseline}"
               data-auto-comment="${escapeHtml(row.autoComment || "")}"
               value="${escapeHtml(inserted)}"
               aria-label="Количество для строки ${row.blankRow}"
@@ -174,6 +177,7 @@ function renderReport(rows) {
       `;
     })
     .join("");
+  for (const row of reportBody.querySelectorAll("tr")) updateCommentHint(row);
 }
 
 async function loadWorkbook(file) {
@@ -263,6 +267,7 @@ function validateEdits() {
     const row = input.closest("tr");
     const commentInput = row.querySelector(".comment-input");
     const initial = input.dataset.initialValue === "" ? null : Number(input.dataset.initialValue);
+    const baseline = input.dataset.baselineValue === "" ? null : Number(input.dataset.baselineValue);
     const autoComment = (input.dataset.autoComment || "").trim().toLowerCase();
     let value;
     try {
@@ -273,9 +278,10 @@ function validateEdits() {
       continue;
     }
     const comment = commentInput.value.trim();
-    const changed = value !== initial;
+    const requiresComment = value !== baseline;
     const stillAutoComment = autoComment && comment.toLowerCase() === autoComment;
-    if (changed && (!comment || stillAutoComment)) {
+    const autoCommentAllowed = stillAutoComment && value === initial;
+    if (requiresComment && (!comment || (stillAutoComment && !autoCommentAllowed))) {
       row.classList.add("invalid");
       invalidCount += 1;
     }
@@ -296,6 +302,7 @@ function rowNeedsComment(row) {
   if (!qtyInput || !commentInput) return false;
 
   const initial = qtyInput.dataset.initialValue === "" ? null : Number(qtyInput.dataset.initialValue);
+  const baseline = qtyInput.dataset.baselineValue === "" ? null : Number(qtyInput.dataset.baselineValue);
   const autoComment = (qtyInput.dataset.autoComment || "").trim().toLowerCase();
   let value;
   try {
@@ -304,10 +311,10 @@ function rowNeedsComment(row) {
     return false;
   }
 
-  const changed = value !== initial;
   const comment = commentInput.value.trim();
   const stillAutoComment = autoComment && comment.toLowerCase() === autoComment;
-  return changed && (!comment || stillAutoComment);
+  const autoCommentAllowed = stillAutoComment && value === initial;
+  return value !== baseline && (!comment || (stillAutoComment && !autoCommentAllowed));
 }
 
 function updateCommentHint(row) {

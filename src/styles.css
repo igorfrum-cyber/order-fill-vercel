@@ -303,9 +303,10 @@ table {
 .col-stock,
 .col-transit,
 .col-recommended,
+.col-source-fact,
 .col-box,
 .col-match {
-  width: 6.5%;
+  width: 6%;
 }
 
 .col-inserted {
@@ -313,7 +314,7 @@ table {
 }
 
 .col-comment {
-  width: 16.5%;
+  width: 15%;
 }
 
 th,
