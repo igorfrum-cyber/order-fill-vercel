@@ -194,6 +194,13 @@ p {
   opacity: 0.7;
 }
 
+.primary.completed:disabled {
+  background: #8c98a8;
+  color: #f8fafc;
+  cursor: default;
+  opacity: 1;
+}
+
 .result {
   background: var(--panel);
   border: 1px solid var(--line);

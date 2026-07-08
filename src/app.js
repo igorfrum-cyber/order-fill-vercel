@@ -39,6 +39,7 @@ let currentSourceWorkbook = null;
 let currentBlankOutputNames = new Map();
 let currentSourceOutputName = "order заполненная таблица.xlsx";
 let currentDownloadUrls = [];
+let isFormFilled = false;
 
 function setDefaultOrderMonth() {
   const date = new Date();
@@ -51,6 +52,7 @@ setDefaultOrderMonth();
 function bindFileName(input, output) {
   input.addEventListener("change", () => {
     output.textContent = input.files[0]?.name || ".xlsx или .xlsm";
+    resetFillState();
   });
 }
 
@@ -72,12 +74,49 @@ function configureBrandFields() {
   homeFile.required = isChristina;
   proffFile.required = isChristina;
   adjustmentHeader.textContent = isChristina ? "Кратность" : "Шт. в коробке";
-  resultEl.classList.add("hidden");
-  clearDownloadLinks();
+  resetFillState();
 }
 
 brandSelect.addEventListener("change", configureBrandFields);
+orderMonth.addEventListener("change", resetFillState);
 configureBrandFields();
+
+function setSubmitButtonState(state) {
+  submitButton.classList.toggle("completed", state === "completed");
+
+  if (state === "processing") {
+    submitButton.disabled = true;
+    submitButton.innerHTML = "<span>✓</span> Заполняю...";
+    return;
+  }
+
+  if (state === "completed") {
+    submitButton.disabled = true;
+    submitButton.innerHTML = "<span>✓</span> Бланк заполнен";
+    return;
+  }
+
+  submitButton.disabled = false;
+  submitButton.innerHTML = "<span>✓</span> Заполнить бланк";
+}
+
+function resetFillState() {
+  if (!isFormFilled && !currentResults.length && resultEl.classList.contains("hidden")) {
+    setSubmitButtonState("ready");
+    return;
+  }
+
+  isFormFilled = false;
+  currentResults = [];
+  currentBlankWorkbooks = new Map();
+  currentBlankOutputNames = new Map();
+  currentSourceWorkbook = null;
+  resultEl.classList.add("hidden");
+  downloadButton.disabled = true;
+  clearDownloadLinks();
+  statusEl.textContent = "Готов к загрузке";
+  setSubmitButtonState("ready");
+}
 
 function statusLabel(status) {
   const labels = {
@@ -197,10 +236,11 @@ form.addEventListener("submit", async (event) => {
   if (!sourceFile.files[0] || blankInputs.some((item) => !item.file)) return;
 
   statusEl.textContent = "Обработка...";
-  submitButton.disabled = true;
+  setSubmitButtonState("processing");
   downloadButton.disabled = true;
   resultEl.classList.add("hidden");
   clearDownloadLinks();
+  isFormFilled = false;
   currentResults = [];
   currentBlankWorkbooks = new Map();
   currentBlankOutputNames = new Map();
@@ -233,11 +273,14 @@ form.addEventListener("submit", async (event) => {
     resultEl.classList.remove("hidden");
     downloadButton.disabled = false;
     statusEl.textContent = "Готово";
+    isFormFilled = true;
+    setSubmitButtonState("completed");
   } catch (error) {
     statusEl.textContent = "Ошибка";
+    setSubmitButtonState("ready");
     alert(error.message || "Не удалось обработать файлы.");
   } finally {
-    submitButton.disabled = false;
+    if (!isFormFilled) setSubmitButtonState("ready");
   }
 });
 
