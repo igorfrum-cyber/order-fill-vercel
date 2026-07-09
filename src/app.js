@@ -65,15 +65,27 @@ function selectedBrand() {
   return brandSelect.value || "angiopharm";
 }
 
+function adjustmentLabelForBrand(brand) {
+  if (brand === "christina") return "Кратность";
+  if (brand === "levissime") return "Кол-во в уп.";
+  return "Шт. в коробке";
+}
+
+function mainBlankLabelForBrand(brand) {
+  if (brand === "levissime") return "LeviSsime";
+  return "ANGIO";
+}
+
 function configureBrandFields() {
-  const isChristina = selectedBrand() === "christina";
+  const brand = selectedBrand();
+  const isChristina = brand === "christina";
   blankField.classList.toggle("hidden", isChristina);
   homeField.classList.toggle("hidden", !isChristina);
   proffField.classList.toggle("hidden", !isChristina);
   blankFile.required = !isChristina;
   homeFile.required = isChristina;
   proffFile.required = isChristina;
-  adjustmentHeader.textContent = isChristina ? "Кратность" : "Шт. в коробке";
+  adjustmentHeader.textContent = adjustmentLabelForBrand(brand);
   resetFillState();
 }
 
@@ -232,7 +244,7 @@ form.addEventListener("submit", async (event) => {
         { id: "home", label: "HOME", file: homeFile.files[0] },
         { id: "proff", label: "PROFF", file: proffFile.files[0] },
       ]
-    : [{ id: "main", label: "ANGIO", file: blankFile.files[0] }];
+    : [{ id: "main", label: mainBlankLabelForBrand(brand), file: blankFile.files[0] }];
   if (!sourceFile.files[0] || blankInputs.some((item) => !item.file)) return;
 
   statusEl.textContent = "Обработка...";

@@ -26,6 +26,15 @@ const BRAND_RULES = {
     adjustmentLabel: "Кратность",
     adjustmentComment: "до кратности 3",
   },
+  levissime: {
+    label: "LeviSsime",
+    adjustment: "box",
+    adjustmentLabel: "Кол-во в уп.",
+    adjustmentComment: "до коробки",
+    articlePrefixAliases: ["MT"],
+    blankQuantityHeader: "order",
+    blankBoxHeader: "packageQuantity",
+  },
 };
 
 export function loadXlsx(buffer) {
@@ -205,8 +214,13 @@ export function normalizeName(value) {
 
 export function parseNumber(value) {
   if (value == null || asText(value) === "") return null;
-  const number = Number(asText(value).replace(/\s+/g, "").replace(",", "."));
-  return Number.isFinite(number) ? number : null;
+  const normalized = asText(value).replace(/\s+/g, "").replace(",", ".");
+  const number = Number(normalized);
+  if (Number.isFinite(number)) return number;
+  const match = normalized.match(/-?\d+(?:\.\d+)?/);
+  if (!match) return null;
+  const extracted = Number(match[0]);
+  return Number.isFinite(extracted) ? extracted : null;
 }
 
 export function roundHalfUp(value) {
@@ -313,14 +327,20 @@ function sourceMatchers() {
 }
 
 function blankMatchers(options = {}) {
+  const quantityMatcher = options.quantityHeader === "order"
+    ? (h) => h === "заказ" || h.includes("коробка заказ")
+    : (h) => h.includes("кол во") || h.includes("количество") || h.includes("кол-во") || h.includes("к во") || h.includes("qty");
+  const boxMatcher = options.boxHeader === "packageQuantity"
+    ? (h) => h.includes("кол во в уп") || h === "кол во" || h === "количество"
+    : (h) => h.includes("короб") || (h.includes("шт") && h.includes("упак"));
   const matchers = {
     article: (h) => h.includes("арт") || h.includes("артикул") || h.includes("код"),
     name: (h) => h.includes("товар") || h.includes("номенклатура") || h.includes("наименование") || h.includes("название"),
     unit: (h) => h.includes("объем") || h.includes("обьем") || h.includes("форма выпуска") || (h.includes("мл") && h.includes("гр")),
-    quantity: (h) => h.includes("кол во") || h.includes("количество") || h.includes("кол-во") || h.includes("к во") || h.includes("qty"),
+    quantity: quantityMatcher,
   };
   if (options.requireBox !== false) {
-    matchers.boxSize = (h) => h.includes("короб") || (h.includes("шт") && h.includes("упак"));
+    matchers.boxSize = boxMatcher;
   }
   return matchers;
 }
@@ -414,6 +434,35 @@ function brandRule(brand) {
   return BRAND_RULES[brand] || BRAND_RULES.angiopharm;
 }
 
+function blankDetectionOptions(rule) {
+  return {
+    requireBox: rule.adjustment === "box",
+    quantityHeader: rule.blankQuantityHeader,
+    boxHeader: rule.blankBoxHeader,
+  };
+}
+
+function articleKeys(article, rule) {
+  const keys = new Set([article]);
+  for (const prefix of rule.articlePrefixAliases || []) {
+    if (article.startsWith(prefix) && /^\d+$/.test(article.slice(prefix.length))) {
+      keys.add(article.slice(prefix.length));
+    } else if (/^\d+$/.test(article)) {
+      keys.add(`${prefix}${article}`);
+    }
+  }
+  return Array.from(keys).filter(Boolean);
+}
+
+function uniqueBySourceRow(items) {
+  const seen = new Set();
+  return items.filter((item) => {
+    if (seen.has(item.rowIndex)) return false;
+    seen.add(item.rowIndex);
+    return true;
+  });
+}
+
 function calculateAdjustedQuantity(recommended, rule, boxSizeValue) {
   const rounded = roundHalfUp(recommended);
   if (recommended < 1.5) return { rounded, inserted: null, autoComment: "", boxAdjusted: false };
@@ -482,13 +531,15 @@ export function fillWorkbook({ sourceWorkbook, blankWorkbook, orderMonth, brand 
   const noArticleItems = [];
   for (const item of source.items) {
     if (item.article) {
-      if (!sourceIndex.has(item.article)) sourceIndex.set(item.article, []);
-      sourceIndex.get(item.article).push(item);
+      for (const key of articleKeys(item.article, rule)) {
+        if (!sourceIndex.has(key)) sourceIndex.set(key, []);
+        sourceIndex.get(key).push(item);
+      }
     } else {
       noArticleItems.push(item);
     }
   }
-  const blank = detectColumns(blankWorkbook, "blank", { requireBox: rule.adjustment === "box" });
+  const blank = detectColumns(blankWorkbook, "blank", blankDetectionOptions(rule));
   const reportRows = [];
   let filled = 0;
   let leftBlank = 0;
@@ -507,7 +558,7 @@ export function fillWorkbook({ sourceWorkbook, blankWorkbook, orderMonth, brand 
     let score;
     let status;
     let order;
-    const candidates = sourceIndex.get(blankArticle) || [];
+    const candidates = uniqueBySourceRow(articleKeys(blankArticle, rule).flatMap((key) => sourceIndex.get(key) || []));
     if (!candidates.length) {
       const fallback = chooseNameFallback(noArticleItems, blankName);
       if (!fallback.item) {
@@ -559,7 +610,7 @@ export function fillWorkbook({ sourceWorkbook, blankWorkbook, orderMonth, brand 
       unmatched,
       duplicates,
       sourceItems: source.items.length,
-      sourceArticles: sourceIndex.size,
+      sourceArticles: new Set(source.items.map((item) => item.article).filter(Boolean)).size,
       sourceSheet: source.detection.sheetName,
       sourceHeaderRow: source.detection.headerRow,
       blankSheet: blank.sheetName,
@@ -687,7 +738,7 @@ export function normalizeOrderValue(value) {
 
 export function applyFinalEdits({ blankWorkbook, sourceWorkbook, reportRows, edits, brand = "angiopharm" }) {
   const rule = brandRule(brand);
-  const blank = detectColumns(blankWorkbook, "blank", { requireBox: rule.adjustment === "box" });
+  const blank = detectColumns(blankWorkbook, "blank", blankDetectionOptions(rule));
   const source = detectColumns(sourceWorkbook, "source");
   const editsByRow = new Map(edits.map((edit) => [edit.key || String(Number(edit.blankRow)), edit]));
   const prepared = [];
@@ -729,11 +780,11 @@ export function applyFinalEdits({ blankWorkbook, sourceWorkbook, reportRows, edi
 }
 
 export function outputFileName(originalName) {
-  const stem = asText(originalName).replace(/\.(xlsx|xlsm)$/i, "").replace(/[^\p{L}\p{N}_ .-]+/gu, "").trim() || "blank";
+  const stem = asText(originalName).replace(/\.(xlsx|xlsm|xls)$/i, "").replace(/[^\p{L}\p{N}_ .-]+/gu, "").trim() || "blank";
   return `${stem} заполненный.xlsx`;
 }
 
 export function sourceOutputFileName(originalName) {
-  const stem = asText(originalName).replace(/\.(xlsx|xlsm)$/i, "").replace(/[^\p{L}\p{N}_ .-]+/gu, "").trim() || "order";
+  const stem = asText(originalName).replace(/\.(xlsx|xlsm|xls)$/i, "").replace(/[^\p{L}\p{N}_ .-]+/gu, "").trim() || "order";
   return `${stem} заполненная таблица.xlsx`;
 }

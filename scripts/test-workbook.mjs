@@ -8,6 +8,7 @@ const sourcePath = "/Users/igorfrumes/Downloads/агио артикул.xlsx";
 const blankPath = "/Users/igorfrumes/Downloads/2026 06 23 Бланк заказа ANGIOPHARM (1).xlsx";
 const homeBlankPath = "/Users/igorfrumes/Downloads/Актуальный бланк HOME 17.06.2026.xlsx";
 const proffBlankPath = "/Users/igorfrumes/Downloads/Актуальный_бланк_PROFF_1 от 17.06.26.xlsx";
+const levissimeBlankPath = "/private/tmp/03.07.2026 LeviSsime БЛАНК ЗАКАЗА.xlsx";
 const blankOutputPath = path.resolve("test-output/browser-filled-blank.xlsx");
 const sourceOutputPath = path.resolve("test-output/browser-filled-source.xlsx");
 
@@ -32,6 +33,45 @@ const christinaNoAdjust = adjustQuantityForBrand(13, "christina");
 if (christinaNoAdjust.inserted !== 13 || christinaNoAdjust.autoComment !== "") throw new Error("Christina should keep the value when neither multiple direction fits thresholds.");
 const christinaSmall = adjustQuantityForBrand(1, "christina");
 if (christinaSmall.inserted !== null) throw new Error("Christina should skip recommendations below 1.5.");
+
+try {
+  await fs.access(levissimeBlankPath);
+  const [levissimeSourceWorkbook, levissimeBlankWorkbook] = await Promise.all([
+    fs.readFile(sourcePath).then((buffer) => loadXlsx(buffer)),
+    fs.readFile(levissimeBlankPath).then((buffer) => loadXlsx(buffer)),
+  ]);
+  const levissimeDetection = detectColumns(levissimeBlankWorkbook, "blank", {
+    requireBox: true,
+    quantityHeader: "order",
+    boxHeader: "packageQuantity",
+  });
+  if (levissimeDetection.headerRow !== 29 || levissimeDetection.columns.quantity !== 7 || levissimeDetection.columns.boxSize !== 4) {
+    throw new Error("LeviSsime blank columns were not detected.");
+  }
+  const levissimeSourceDetection = detectColumns(levissimeSourceWorkbook, "source");
+  const sourceRow = levissimeSourceDetection.headerRow + 1;
+  levissimeSourceDetection.sheet.cells.get(`${sourceRow}:${levissimeSourceDetection.columns.article}`).value = "МТ4532";
+  levissimeSourceDetection.sheet.cells.get(`${sourceRow}:${levissimeSourceDetection.columns.name}`).value = "Крем для снятия макияжа Aqua Cleanser";
+  levissimeSourceDetection.sheet.cells.get(`${sourceRow}:${levissimeSourceDetection.columns.recommended}`).value = 11;
+  levissimeSourceDetection.sheet.cells.get(`${sourceRow}:${levissimeSourceDetection.columns.orderedFact}`).value = "";
+  levissimeSourceDetection.sheet.cells.get(`${sourceRow}:${levissimeSourceDetection.columns.comment}`).value = "";
+
+  const levissimeResult = fillWorkbook({
+    sourceWorkbook: levissimeSourceWorkbook,
+    blankWorkbook: levissimeBlankWorkbook,
+    orderMonth: "2026-07",
+    brand: "levissime",
+  });
+  const levissimeRow = levissimeResult.reportRows.find((row) => row.blankArticle === "4532");
+  if (!levissimeRow || levissimeRow.inserted !== 12 || levissimeRow.autoComment !== "до коробки") {
+    throw new Error("LeviSsime should match MT-prefixed articles and round to package quantity.");
+  }
+  const levissimeSheet = levissimeResult.blankWorkbook.sheets.find((item) => item.name === "Заказ");
+  if (levissimeSheet.cells.get("44:7")?.value !== 12) throw new Error("LeviSsime order quantity should be written to column G.");
+} catch (error) {
+  if (error.code !== "ENOENT") throw error;
+  console.warn("LeviSsime fixture is not available; skipping LeviSsime workbook test.");
+}
 
 const result = fillWorkbook({ sourceWorkbook, blankWorkbook, orderMonth: "2026-07" });
 console.log(result.summary);
