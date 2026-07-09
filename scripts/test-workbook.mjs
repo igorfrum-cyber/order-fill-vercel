@@ -1,6 +1,7 @@
 import fs from "node:fs/promises";
 import path from "node:path";
 import { strFromU8, unzipSync } from "fflate";
+import { read as readSpreadsheet, write as writeSpreadsheet } from "xlsx";
 
 import { adjustQuantityForBrand, applyFinalEdits, detectColumns, fillWorkbook, loadXlsx, saveXlsx } from "../src/workbookProcessor.js";
 
@@ -9,8 +10,22 @@ const blankPath = "/Users/igorfrumes/Downloads/2026 06 23 Бланк заказ�
 const homeBlankPath = "/Users/igorfrumes/Downloads/Актуальный бланк HOME 17.06.2026.xlsx";
 const proffBlankPath = "/Users/igorfrumes/Downloads/Актуальный_бланк_PROFF_1 от 17.06.26.xlsx";
 const levissimeBlankPath = "/private/tmp/03.07.2026 LeviSsime БЛАНК ЗАКАЗА.xlsx";
+const levissimeLegacyBlankPath = "/Users/igorfrumes/Downloads/03.07.2026 LeviSsime БЛАНК ЗАКАЗА.XLS";
 const blankOutputPath = path.resolve("test-output/browser-filled-blank.xlsx");
 const sourceOutputPath = path.resolve("test-output/browser-filled-source.xlsx");
+
+function convertLegacyXlsToXlsx(buffer) {
+  const workbook = readSpreadsheet(buffer, {
+    type: "buffer",
+    cellFormula: true,
+    cellStyles: true,
+    cellDates: false,
+  });
+  return writeSpreadsheet(workbook, {
+    bookType: "xlsx",
+    type: "buffer",
+  });
+}
 
 const [sourceWorkbook, blankWorkbook] = await Promise.all([
   fs.readFile(sourcePath).then((buffer) => loadXlsx(buffer)),
@@ -33,6 +48,22 @@ const christinaNoAdjust = adjustQuantityForBrand(13, "christina");
 if (christinaNoAdjust.inserted !== 13 || christinaNoAdjust.autoComment !== "") throw new Error("Christina should keep the value when neither multiple direction fits thresholds.");
 const christinaSmall = adjustQuantityForBrand(1, "christina");
 if (christinaSmall.inserted !== null) throw new Error("Christina should skip recommendations below 1.5.");
+
+try {
+  await fs.access(levissimeLegacyBlankPath);
+  const levissimeLegacyWorkbook = loadXlsx(convertLegacyXlsToXlsx(await fs.readFile(levissimeLegacyBlankPath)));
+  const levissimeLegacyDetection = detectColumns(levissimeLegacyWorkbook, "blank", {
+    requireBox: true,
+    quantityHeader: "order",
+    boxHeader: "packageQuantity",
+  });
+  if (levissimeLegacyDetection.headerRow !== 29 || levissimeLegacyDetection.columns.quantity !== 7 || levissimeLegacyDetection.columns.boxSize !== 4) {
+    throw new Error("Legacy XLS LeviSsime blank should be converted and detected.");
+  }
+} catch (error) {
+  if (error.code !== "ENOENT") throw error;
+  console.warn("Legacy LeviSsime XLS fixture is not available; skipping XLS conversion test.");
+}
 
 try {
   await fs.access(levissimeBlankPath);

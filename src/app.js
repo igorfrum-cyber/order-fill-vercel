@@ -51,7 +51,7 @@ setDefaultOrderMonth();
 
 function bindFileName(input, output) {
   input.addEventListener("change", () => {
-    output.textContent = input.files[0]?.name || ".xlsx или .xlsm";
+    output.textContent = input.files[0]?.name || ".xlsx, .xlsm или .xls";
     resetFillState();
   });
 }
@@ -233,7 +233,30 @@ function renderReport(rows) {
 
 async function loadWorkbook(file) {
   const buffer = await file.arrayBuffer();
-  return loadXlsx(buffer);
+  return loadXlsx(await normalizeWorkbookBytes(buffer, file.name));
+}
+
+function isLegacyXls(fileName) {
+  return /\.xls$/i.test(fileName) && !/\.xlsx$/i.test(fileName) && !/\.xlsm$/i.test(fileName);
+}
+
+async function normalizeWorkbookBytes(buffer, fileName) {
+  if (!isLegacyXls(fileName)) return buffer;
+  try {
+    const { read: readSpreadsheet, write: writeSpreadsheet } = await import("xlsx");
+    const workbook = readSpreadsheet(buffer, {
+      type: "array",
+      cellFormula: true,
+      cellStyles: true,
+      cellDates: false,
+    });
+    return writeSpreadsheet(workbook, {
+      bookType: "xlsx",
+      type: "array",
+    });
+  } catch {
+    throw new Error(`Файл «${fileName}» в старом формате .xls не удалось автоматически прочитать. Откройте его в Excel и сохраните как .xlsx.`);
+  }
 }
 
 form.addEventListener("submit", async (event) => {
