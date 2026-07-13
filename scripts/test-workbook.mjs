@@ -11,6 +11,7 @@ const homeBlankPath = "/Users/igorfrumes/Downloads/Актуальный бла
 const proffBlankPath = "/Users/igorfrumes/Downloads/Актуальный_бланк_PROFF_1 от 17.06.26.xlsx";
 const levissimeBlankPath = "/private/tmp/03.07.2026 LeviSsime БЛАНК ЗАКАЗА.xlsx";
 const levissimeLegacyBlankPath = "/Users/igorfrumes/Downloads/03.07.2026 LeviSsime БЛАНК ЗАКАЗА.XLS";
+const sothysLegacyBlankPath = "/Users/igorfrumes/Downloads/Сотис бланк (1).xls";
 const blankOutputPath = path.resolve("test-output/browser-filled-blank.xlsx");
 const sourceOutputPath = path.resolve("test-output/browser-filled-source.xlsx");
 
@@ -102,6 +103,46 @@ try {
 } catch (error) {
   if (error.code !== "ENOENT") throw error;
   console.warn("LeviSsime fixture is not available; skipping LeviSsime workbook test.");
+}
+
+try {
+  await fs.access(sothysLegacyBlankPath);
+  const [sothysSourceWorkbook, sothysBlankWorkbook] = await Promise.all([
+    fs.readFile(sourcePath).then((buffer) => loadXlsx(buffer)),
+    fs.readFile(sothysLegacyBlankPath).then((buffer) => loadXlsx(convertLegacyXlsToXlsx(buffer))),
+  ]);
+  const sothysSourceDetection = detectColumns(sothysSourceWorkbook, "source");
+  const sothysFixtures = [
+    ["160172", "Vitality Cleansing Milk 200 мл", 2.4],
+    ["360173", "Vitality Cleansing Milk 500 мл", 4.5],
+    ["350532-1", "Mask-Scrub Black tea 180 мл", 1.4],
+  ];
+  for (const [index, [article, name, recommended]] of sothysFixtures.entries()) {
+    const sourceRow = sothysSourceDetection.headerRow + 1 + index;
+    sothysSourceDetection.sheet.cells.get(`${sourceRow}:${sothysSourceDetection.columns.article}`).value = article;
+    sothysSourceDetection.sheet.cells.get(`${sourceRow}:${sothysSourceDetection.columns.name}`).value = name;
+    sothysSourceDetection.sheet.cells.get(`${sourceRow}:${sothysSourceDetection.columns.recommended}`).value = recommended;
+    sothysSourceDetection.sheet.cells.get(`${sourceRow}:${sothysSourceDetection.columns.orderedFact}`).value = "";
+    sothysSourceDetection.sheet.cells.get(`${sourceRow}:${sothysSourceDetection.columns.comment}`).value = "";
+  }
+
+  const sothysResult = fillWorkbook({
+    sourceWorkbook: sothysSourceWorkbook,
+    blankWorkbook: sothysBlankWorkbook,
+    orderMonth: "2026-07",
+    brand: "sothys",
+  });
+  const sothysRows = new Map(sothysResult.reportRows.map((row) => [row.blankArticle, row]));
+  if (sothysRows.get("160172")?.inserted !== 2) throw new Error("SOTHYS should write rounded quantity for the left variant.");
+  if (sothysRows.get("360173")?.inserted !== 5) throw new Error("SOTHYS should write rounded quantity for the right variant.");
+  if (sothysRows.get("350532-1")?.inserted !== null) throw new Error("SOTHYS should keep recommendations below 1.5 blank and preserve hyphenated articles.");
+  const sothysSheet = sothysResult.blankWorkbook.sheets.find((item) => item.name === "Прайс SOTHYS");
+  if (sothysSheet.cells.get("35:8")?.value !== 2) throw new Error("SOTHYS left order should be written to column H.");
+  if (sothysSheet.cells.get("35:14")?.value !== 5) throw new Error("SOTHYS right order should be written to column N.");
+  if (sothysSheet.cells.get("227:14")?.value !== "") throw new Error("SOTHYS recommendation below 1.5 should clear the order cell.");
+} catch (error) {
+  if (error.code !== "ENOENT") throw error;
+  console.warn("SOTHYS fixture is not available; skipping SOTHYS workbook test.");
 }
 
 const result = fillWorkbook({ sourceWorkbook, blankWorkbook, orderMonth: "2026-07" });

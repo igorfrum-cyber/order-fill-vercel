@@ -68,11 +68,13 @@ function selectedBrand() {
 function adjustmentLabelForBrand(brand) {
   if (brand === "christina") return "Кратность";
   if (brand === "levissime") return "Кол-во в уп.";
+  if (brand === "sothys") return "Округление";
   return "Шт. в коробке";
 }
 
 function mainBlankLabelForBrand(brand) {
   if (brand === "levissime") return "LeviSsime";
+  if (brand === "sothys") return "SOTHYS";
   return "ANGIO";
 }
 
@@ -183,6 +185,7 @@ function renderReport(rows) {
       const inserted = row.inserted ?? "";
       const comment = row.sourceComment || row.autoComment || "";
       const baseline = Number(row.recommended) < 1.5 || Number(row.rounded) <= 0 ? "" : row.rounded;
+      const rowKey = row.key || `${row.blankId}:${row.blankRow}`;
       return `
         <tr>
           <td class="${cls}">${statusLabel(row.status)}</td>
@@ -202,7 +205,7 @@ function renderReport(rows) {
               min="0"
               step="1"
               inputmode="numeric"
-              data-key="${escapeHtml(`${row.blankId}:${row.blankRow}`)}"
+              data-key="${escapeHtml(rowKey)}"
               data-blank-id="${escapeHtml(row.blankId)}"
               data-row="${row.blankRow}"
               data-initial-value="${inserted}"
@@ -216,7 +219,7 @@ function renderReport(rows) {
             <input
               class="comment-input"
               type="text"
-              data-key="${escapeHtml(`${row.blankId}:${row.blankRow}`)}"
+              data-key="${escapeHtml(rowKey)}"
               data-blank-id="${escapeHtml(row.blankId)}"
               data-row="${row.blankRow}"
               value="${escapeHtml(comment)}"

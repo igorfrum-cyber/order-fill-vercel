@@ -35,6 +35,13 @@ const BRAND_RULES = {
     blankQuantityHeader: "order",
     blankBoxHeader: "packageQuantity",
   },
+  sothys: {
+    label: "SOTHYS",
+    adjustment: "none",
+    adjustmentLabel: "Без округления",
+    preserveArticleHyphen: true,
+    blankLayout: "splitVariants",
+  },
 };
 
 export function loadXlsx(buffer) {
@@ -204,8 +211,9 @@ export function normalizeHeader(value) {
   return asText(value).toLowerCase().replaceAll("ё", "е").replace(/[^\p{L}\p{N}%]+/gu, " ").replace(/\s+/g, " ").trim();
 }
 
-export function normalizeArticle(value) {
-  return asText(value).replace(/[АВЕКМНОРСТХУавекмнорстху]/g, (ch) => ARTICLE_TRANSLATION.get(ch) || ch).toUpperCase().replace(/[^A-Z0-9]/g, "");
+export function normalizeArticle(value, options = {}) {
+  const allowed = options.preserveHyphen ? /[^A-Z0-9-]/g : /[^A-Z0-9]/g;
+  return asText(value).replace(/[АВЕКМНОРСТХУавекмнорстху]/g, (ch) => ARTICLE_TRANSLATION.get(ch) || ch).toUpperCase().replace(allowed, "");
 }
 
 export function normalizeName(value) {
@@ -398,7 +406,7 @@ export function similarity(left, right) {
   return (2 * rows[b.length]) / (a.length + b.length);
 }
 
-function readSource(workbook, orderMonth) {
+function readSource(workbook, orderMonth, rule = brandRule("angiopharm")) {
   const periodInfo = validateSourcePeriods(workbook, orderMonth);
   const detection = detectColumns(workbook, "source");
   const items = [];
@@ -416,7 +424,7 @@ function readSource(workbook, orderMonth) {
     items.push({
       rowIndex: row,
       articleRaw,
-      article: normalizeArticle(articleRaw),
+      article: normalizeArticle(articleRaw, articleNormalizeOptions(rule)),
       name,
       recommended,
       rounded: roundHalfUp(recommended),
@@ -427,11 +435,15 @@ function readSource(workbook, orderMonth) {
       inTransit: sheetCellValue(detection.sheet, row, detection.columns.inTransit),
     });
   }
-  return { detection, items, periodInfo };
+  return { workbook, detection, items, periodInfo };
 }
 
 function brandRule(brand) {
   return BRAND_RULES[brand] || BRAND_RULES.angiopharm;
+}
+
+function articleNormalizeOptions(rule) {
+  return { preserveHyphen: Boolean(rule.preserveArticleHyphen) };
 }
 
 function blankDetectionOptions(rule) {
@@ -463,10 +475,38 @@ function uniqueBySourceRow(items) {
   });
 }
 
+function buildSourceContext(source, rule) {
+  const sourceIndex = new Map();
+  const noArticleItems = [];
+  for (const item of source.items) {
+    if (item.article) {
+      for (const key of articleKeys(item.article, rule)) {
+        if (!sourceIndex.has(key)) sourceIndex.set(key, []);
+        sourceIndex.get(key).push(item);
+      }
+    } else {
+      noArticleItems.push(item);
+    }
+  }
+  return {
+    sourceIndex,
+    noArticleItems,
+    sourceArticleCount: new Set(source.items.map((item) => item.article).filter(Boolean)).size,
+  };
+}
+
+function candidatesForArticle(sourceContext, article, rule) {
+  return uniqueBySourceRow(articleKeys(article, rule).flatMap((key) => sourceContext.sourceIndex.get(key) || []));
+}
+
 function calculateAdjustedQuantity(recommended, rule, boxSizeValue) {
   const rounded = roundHalfUp(recommended);
   if (recommended < 1.5) return { rounded, inserted: null, autoComment: "", boxAdjusted: false };
   if (rounded <= 0) return { rounded, inserted: null, autoComment: "", boxAdjusted: false };
+
+  if (rule.adjustment === "none") {
+    return { rounded, inserted: rounded, autoComment: "", boxAdjusted: false };
+  }
 
   if (rule.adjustment === "multiple") {
     return calculateMultipleAdjustedQuantity(rounded, rule.multiple, rule.adjustmentComment);
@@ -524,20 +564,93 @@ function chooseNameFallback(candidates, blankName) {
   return scored[0];
 }
 
+function chooseSothysNameFallback(candidates, blankName, blankUnit) {
+  const unitText = normalizeHeader(blankUnit);
+  const scored = candidates
+    .filter((item) => !item.article && (!unitText || normalizeHeader(item.name).includes(unitText)))
+    .map((item) => ({ item, score: similarity(blankName, item.name) }))
+    .sort((left, right) => right.score - left.score);
+  if (!scored.length || scored[0].score < 0.72) return { item: null, score: scored[0]?.score || 0 };
+  if (scored.length > 1 && scored[0].score - scored[1].score < 0.08) return { item: null, score: scored[0].score };
+  return scored[0];
+}
+
+function detectSothysVariantBlank(workbook) {
+  let best = null;
+  for (const sheet of workbook.sheets) {
+    const { maxRow, maxColumn } = sheetBounds(sheet);
+    for (let row = 1; row <= Math.min(maxRow, 220); row += 1) {
+      const blocks = [];
+      for (let col = 1; col <= maxColumn - 4; col += 1) {
+        const articleHeader = normalizeHeader(sheetCellValue(sheet, row, col));
+        const volumeHeader = normalizeHeader(sheetCellValue(sheet, row, col + 1));
+        const quantityHeader = normalizeHeader(sheetCellValue(sheet, row, col + 4));
+        if ((articleHeader.includes("арт") || articleHeader.includes("артикул")) && (volumeHeader.includes("объем") || volumeHeader.includes("объм") || volumeHeader.includes("обьм")) && quantityHeader === "заказ") {
+          blocks.push({
+            article: col,
+            volume: col + 1,
+            unit: col + 2,
+            quantity: col + 4,
+          });
+        }
+      }
+      if (blocks.length > (best?.blocks.length || 0)) {
+        best = { sheet, sheetName: sheet.name, headerRow: row, blocks };
+      }
+      if (blocks.length >= 2) return { sheet, sheetName: sheet.name, headerRow: row, blocks };
+    }
+  }
+  if (best?.blocks.length) return best;
+  throw new Error("Не удалось найти блоки SOTHYS: Артикул, Объем, Заказ.");
+}
+
+function sothysPositions(blank, blankId, blankLabel, rule) {
+  const rows = [];
+  const { maxRow } = sheetBounds(blank.sheet);
+  let lastEnglishName = "";
+  let lastRussianName = "";
+  for (let row = blank.headerRow + 1; row <= maxRow; row += 1) {
+    const rowHasHeader = blank.blocks.some((block) => normalizeHeader(sheetCellValue(blank.sheet, row, block.article)).includes("арт"));
+    if (rowHasHeader) continue;
+
+    const englishName = asText(sheetCellValue(blank.sheet, row, 2));
+    const russianName = asText(sheetCellValue(blank.sheet, row, 3));
+    const hasAnyArticle = blank.blocks.some((block) => asText(sheetCellValue(blank.sheet, row, block.article)));
+    if (hasAnyArticle && (englishName || russianName)) {
+      lastEnglishName = englishName || lastEnglishName;
+      lastRussianName = russianName || lastRussianName;
+    }
+
+    for (const block of blank.blocks) {
+      const blankArticleRaw = asText(sheetCellValue(blank.sheet, row, block.article));
+      const blankArticle = normalizeArticle(blankArticleRaw, articleNormalizeOptions(rule));
+      if (!blankArticle) continue;
+      const nameParts = [englishName || lastEnglishName, russianName || lastRussianName].filter(Boolean);
+      const blankName = nameParts.join(" / ");
+      const blankUnit = [asText(sheetCellValue(blank.sheet, row, block.volume)), asText(sheetCellValue(blank.sheet, row, block.unit))].filter(Boolean).join(" ");
+      rows.push({
+        key: `${blankId}:${row}:${block.quantity}`,
+        blankId,
+        blankLabel,
+        blankRow: row,
+        blankQuantityCol: block.quantity,
+        blankArticleRaw,
+        blankArticle,
+        blankName,
+        blankUnit,
+        blankBoxSize: "",
+      });
+    }
+  }
+  return rows;
+}
+
 export function fillWorkbook({ sourceWorkbook, blankWorkbook, orderMonth, brand = "angiopharm", blankId = "blank", blankLabel = "" }) {
   const rule = brandRule(brand);
-  const source = readSource(sourceWorkbook, orderMonth);
-  const sourceIndex = new Map();
-  const noArticleItems = [];
-  for (const item of source.items) {
-    if (item.article) {
-      for (const key of articleKeys(item.article, rule)) {
-        if (!sourceIndex.has(key)) sourceIndex.set(key, []);
-        sourceIndex.get(key).push(item);
-      }
-    } else {
-      noArticleItems.push(item);
-    }
+  const source = readSource(sourceWorkbook, orderMonth, rule);
+  const sourceContext = buildSourceContext(source, rule);
+  if (rule.blankLayout === "splitVariants") {
+    return fillSplitVariantWorkbook({ source, sourceContext, blankWorkbook, rule, blankId, blankLabel });
   }
   const blank = detectColumns(blankWorkbook, "blank", blankDetectionOptions(rule));
   const reportRows = [];
@@ -549,18 +662,30 @@ export function fillWorkbook({ sourceWorkbook, blankWorkbook, orderMonth, brand 
   const { maxRow } = sheetBounds(blank.sheet);
   for (let row = blank.headerRow + 1; row <= maxRow; row += 1) {
     const blankArticleRaw = asText(sheetCellValue(blank.sheet, row, blank.columns.article));
-    const blankArticle = normalizeArticle(blankArticleRaw);
+    const blankArticle = normalizeArticle(blankArticleRaw, articleNormalizeOptions(rule));
     const blankName = asText(sheetCellValue(blank.sheet, row, blank.columns.name));
     const blankUnit = asText(sheetCellValue(blank.sheet, row, blank.columns.unit));
     const blankBoxSize = rule.adjustment === "box" ? sheetCellValue(blank.sheet, row, blank.columns.boxSize) : rule.multiple;
+    const rowInfo = {
+      key: `${blankId}:${row}`,
+      blankId,
+      blankLabel,
+      blankRow: row,
+      blankQuantityCol: blank.columns.quantity,
+      blankArticleRaw,
+      blankArticle,
+      blankName,
+      blankUnit,
+      blankBoxSize,
+    };
     if (!blankArticle) continue;
     let selected;
     let score;
     let status;
     let order;
-    const candidates = uniqueBySourceRow(articleKeys(blankArticle, rule).flatMap((key) => sourceIndex.get(key) || []));
+    const candidates = candidatesForArticle(sourceContext, blankArticle, rule);
     if (!candidates.length) {
-      const fallback = chooseNameFallback(noArticleItems, blankName);
+      const fallback = chooseNameFallback(sourceContext.noArticleItems, blankName);
       if (!fallback.item) {
         unmatched += 1;
         continue;
@@ -570,7 +695,7 @@ export function fillWorkbook({ sourceWorkbook, blankWorkbook, orderMonth, brand 
       if (selected.rounded > 0) {
         suspicious += 1;
         order = orderForItem(selected, rule, blankBoxSize);
-        reportRows.push(makeReportRow("warning_name_only", row, blankArticleRaw, blankName, blankUnit, blankBoxSize, selected, score, { ...order, inserted: null, autoComment: "" }, { blankId, blankLabel, adjustmentLabel: rule.adjustmentLabel }));
+        reportRows.push(makeReportRow("warning_name_only", rowInfo, selected, score, { ...order, inserted: null, autoComment: "" }, { blankId, blankLabel, adjustmentLabel: rule.adjustmentLabel }));
         continue;
       }
       status = "matched_by_name";
@@ -594,7 +719,7 @@ export function fillWorkbook({ sourceWorkbook, blankWorkbook, orderMonth, brand 
       setNumericCell(blank.sheet, row, blank.columns.quantity, order.inserted);
       filled += 1;
     }
-    reportRows.push(makeReportRow(status, row, blankArticleRaw, blankName, blankUnit, blankBoxSize, selected, score, order, { blankId, blankLabel, adjustmentLabel: rule.adjustmentLabel }));
+    reportRows.push(makeReportRow(status, rowInfo, selected, score, order, { blankId, blankLabel, adjustmentLabel: rule.adjustmentLabel }));
   }
   return {
     blankId,
@@ -610,7 +735,7 @@ export function fillWorkbook({ sourceWorkbook, blankWorkbook, orderMonth, brand 
       unmatched,
       duplicates,
       sourceItems: source.items.length,
-      sourceArticles: new Set(source.items.map((item) => item.article).filter(Boolean)).size,
+      sourceArticles: sourceContext.sourceArticleCount,
       sourceSheet: source.detection.sheetName,
       sourceHeaderRow: source.detection.headerRow,
       blankSheet: blank.sheetName,
@@ -623,17 +748,100 @@ export function fillWorkbook({ sourceWorkbook, blankWorkbook, orderMonth, brand 
   };
 }
 
-function makeReportRow(status, row, blankArticle, blankName, blankUnit, blankBoxSize, selected, score, order, context) {
+function fillSplitVariantWorkbook({ source, sourceContext, blankWorkbook, rule, blankId, blankLabel }) {
+  const blank = detectSothysVariantBlank(blankWorkbook);
+  const reportRows = [];
+  let filled = 0;
+  let leftBlank = 0;
+  let suspicious = 0;
+  let unmatched = 0;
+  let duplicates = 0;
+
+  for (const position of sothysPositions(blank, blankId, blankLabel, rule)) {
+    let selected;
+    let score;
+    let status;
+    let order;
+    const candidates = candidatesForArticle(sourceContext, position.blankArticle, rule);
+    if (!candidates.length) {
+      const fallback = chooseSothysNameFallback(sourceContext.noArticleItems, position.blankName, position.blankUnit);
+      if (!fallback.item) {
+        unmatched += 1;
+        continue;
+      }
+      selected = fallback.item;
+      score = fallback.score;
+      if (selected.rounded > 0) {
+        suspicious += 1;
+        order = orderForItem(selected, rule, position.blankBoxSize);
+        reportRows.push(makeReportRow("warning_name_only", position, selected, score, { ...order, inserted: null, autoComment: "" }, { blankId, blankLabel, adjustmentLabel: rule.adjustmentLabel }));
+        continue;
+      }
+      status = "matched_by_name";
+    } else {
+      if (candidates.length > 1) duplicates += 1;
+      const candidate = chooseCandidate(candidates, position.blankName);
+      selected = candidate.item;
+      score = candidate.score;
+      status = "matched";
+      if (score < 0.32) {
+        status = "warning_name_differs";
+        suspicious += 1;
+      }
+    }
+
+    order = orderForItem(selected, rule, position.blankBoxSize);
+    if (order.inserted == null) {
+      setNumericCell(blank.sheet, position.blankRow, position.blankQuantityCol, null);
+      leftBlank += 1;
+      status = "left_blank_nonpositive";
+    } else {
+      setNumericCell(blank.sheet, position.blankRow, position.blankQuantityCol, order.inserted);
+      filled += 1;
+    }
+    reportRows.push(makeReportRow(status, position, selected, score, order, { blankId, blankLabel, adjustmentLabel: rule.adjustmentLabel }));
+  }
+
+  return {
+    blankId,
+    blankLabel,
+    sourceWorkbook: source.workbook,
+    sourceDetection: source.detection,
+    blankWorkbook,
+    blankDetection: blank,
+    summary: {
+      filled,
+      leftBlank,
+      suspicious,
+      unmatched,
+      duplicates,
+      sourceItems: source.items.length,
+      sourceArticles: sourceContext.sourceArticleCount,
+      sourceSheet: source.detection.sheetName,
+      sourceHeaderRow: source.detection.headerRow,
+      blankSheet: blank.sheetName,
+      blankHeaderRow: blank.headerRow,
+      brand: rule.label,
+      adjustmentLabel: rule.adjustmentLabel,
+      ...source.periodInfo,
+    },
+    reportRows,
+  };
+}
+
+function makeReportRow(status, rowInfo, selected, score, order, context) {
   return {
     status,
     blankId: context.blankId,
     blankLabel: context.blankLabel,
     adjustmentLabel: context.adjustmentLabel,
-    blankRow: row,
-    blankArticle,
-    blankName,
-    blankUnit,
-    blankBoxSize,
+    key: rowInfo.key || `${context.blankId}:${rowInfo.blankRow}`,
+    blankRow: rowInfo.blankRow,
+    blankQuantityCol: rowInfo.blankQuantityCol,
+    blankArticle: rowInfo.blankArticleRaw,
+    blankName: rowInfo.blankName,
+    blankUnit: rowInfo.blankUnit,
+    blankBoxSize: rowInfo.blankBoxSize,
     sourceRow: selected.rowIndex,
     sourceArticle: selected.articleRaw,
     sourceName: selected.name,
@@ -738,7 +946,7 @@ export function normalizeOrderValue(value) {
 
 export function applyFinalEdits({ blankWorkbook, sourceWorkbook, reportRows, edits, brand = "angiopharm" }) {
   const rule = brandRule(brand);
-  const blank = detectColumns(blankWorkbook, "blank", blankDetectionOptions(rule));
+  const blank = rule.blankLayout === "splitVariants" ? detectSothysVariantBlank(blankWorkbook) : detectColumns(blankWorkbook, "blank", blankDetectionOptions(rule));
   const source = detectColumns(sourceWorkbook, "source");
   const editsByRow = new Map(edits.map((edit) => [edit.key || String(Number(edit.blankRow)), edit]));
   const prepared = [];
@@ -760,15 +968,16 @@ export function applyFinalEdits({ blankWorkbook, sourceWorkbook, reportRows, edi
     }
 
     const blankRow = Number(rowInfo.blankRow);
+    const blankQuantityCol = Number(rowInfo.blankQuantityCol || blank.columns?.quantity);
     const sourceRow = Number(rowInfo.sourceRow);
     const shouldRecordSourceFact = quantity !== normalizedBaselineQuantity(rowInfo);
     const sourceFactValue = shouldRecordSourceFact ? (quantity ?? 0) : null;
-    prepared.push({ blankRow, sourceRow, quantity, comment, shouldRecordSourceFact, sourceFactValue });
+    prepared.push({ blankRow, blankQuantityCol, sourceRow, quantity, comment, shouldRecordSourceFact, sourceFactValue });
   }
 
   for (const edit of prepared) {
-    if (Number.isInteger(edit.blankRow) && edit.blankRow > blank.headerRow) {
-      setNumericCell(blank.sheet, edit.blankRow, blank.columns.quantity, edit.quantity);
+    if (Number.isInteger(edit.blankRow) && edit.blankRow > blank.headerRow && Number.isInteger(edit.blankQuantityCol)) {
+      setNumericCell(blank.sheet, edit.blankRow, edit.blankQuantityCol, edit.quantity);
     }
     if (Number.isInteger(edit.sourceRow) && edit.sourceRow > source.headerRow) {
       setNumericCell(source.sheet, edit.sourceRow, source.columns.orderedFact, edit.sourceFactValue);
