@@ -688,6 +688,7 @@ export function fillWorkbook({ sourceWorkbook, blankWorkbook, orderMonth, brand 
       const fallback = chooseNameFallback(sourceContext.noArticleItems, blankName);
       if (!fallback.item) {
         unmatched += 1;
+        reportRows.push(makeUnmatchedReportRow(rowInfo, { blankId, blankLabel, adjustmentLabel: rule.adjustmentLabel }));
         continue;
       }
       selected = fallback.item;
@@ -700,7 +701,8 @@ export function fillWorkbook({ sourceWorkbook, blankWorkbook, orderMonth, brand 
       }
       status = "matched_by_name";
     } else {
-      if (candidates.length > 1) duplicates += 1;
+      const isDuplicate = candidates.length > 1;
+      if (isDuplicate) duplicates += 1;
       const candidate = chooseCandidate(candidates, blankName);
       selected = candidate.item;
       score = candidate.score;
@@ -711,6 +713,7 @@ export function fillWorkbook({ sourceWorkbook, blankWorkbook, orderMonth, brand 
       }
     }
     order = orderForItem(selected, rule, blankBoxSize);
+    rowInfo.duplicate = candidates.length > 1;
     if (order.inserted == null) {
       setNumericCell(blank.sheet, row, blank.columns.quantity, null);
       leftBlank += 1;
@@ -767,6 +770,7 @@ function fillSplitVariantWorkbook({ source, sourceContext, blankWorkbook, rule, 
       const fallback = chooseSothysNameFallback(sourceContext.noArticleItems, position.blankName, position.blankUnit);
       if (!fallback.item) {
         unmatched += 1;
+        reportRows.push(makeUnmatchedReportRow(position, { blankId, blankLabel, adjustmentLabel: rule.adjustmentLabel }));
         continue;
       }
       selected = fallback.item;
@@ -779,7 +783,8 @@ function fillSplitVariantWorkbook({ source, sourceContext, blankWorkbook, rule, 
       }
       status = "matched_by_name";
     } else {
-      if (candidates.length > 1) duplicates += 1;
+      const isDuplicate = candidates.length > 1;
+      if (isDuplicate) duplicates += 1;
       const candidate = chooseCandidate(candidates, position.blankName);
       selected = candidate.item;
       score = candidate.score;
@@ -791,6 +796,7 @@ function fillSplitVariantWorkbook({ source, sourceContext, blankWorkbook, rule, 
     }
 
     order = orderForItem(selected, rule, position.blankBoxSize);
+    position.duplicate = candidates.length > 1;
     if (order.inserted == null) {
       setNumericCell(blank.sheet, position.blankRow, position.blankQuantityCol, null);
       leftBlank += 1;
@@ -829,6 +835,39 @@ function fillSplitVariantWorkbook({ source, sourceContext, blankWorkbook, rule, 
   };
 }
 
+function makeUnmatchedReportRow(rowInfo, context) {
+  return {
+    status: "unmatched",
+    blankId: context.blankId,
+    blankLabel: context.blankLabel,
+    adjustmentLabel: context.adjustmentLabel,
+    key: rowInfo.key || `${context.blankId}:${rowInfo.blankRow}`,
+    blankRow: rowInfo.blankRow,
+    blankQuantityCol: rowInfo.blankQuantityCol,
+    blankArticle: rowInfo.blankArticleRaw,
+    blankName: rowInfo.blankName,
+    blankUnit: rowInfo.blankUnit,
+    blankBoxSize: rowInfo.blankBoxSize,
+    sourceRow: null,
+    sourceArticle: "",
+    sourceName: "",
+    hasOrderedFact: false,
+    orderedFact: null,
+    sourceComment: "",
+    stock: "",
+    inTransit: "",
+    recommended: null,
+    rounded: null,
+    baseRounded: null,
+    inserted: null,
+    autoComment: "",
+    boxAdjusted: false,
+    duplicate: Boolean(rowInfo.duplicate),
+    editable: false,
+    similarity: 0,
+  };
+}
+
 function makeReportRow(status, rowInfo, selected, score, order, context) {
   return {
     status,
@@ -856,6 +895,8 @@ function makeReportRow(status, rowInfo, selected, score, order, context) {
     inserted: order.inserted,
     autoComment: order.autoComment,
     boxAdjusted: order.boxAdjusted,
+    duplicate: Boolean(rowInfo.duplicate),
+    editable: true,
     similarity: Number(score.toFixed(4)),
   };
 }

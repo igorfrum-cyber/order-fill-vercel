@@ -76,6 +76,56 @@
           <div class="metrics" id="metrics"></div>
           <div class="download-links hidden" id="downloadLinks"></div>
 
+          <div class="report-tools">
+            <label class="search-field" for="reportSearch">
+              <span class="label">Поиск</span>
+              <input id="reportSearch" type="search" placeholder="Артикул или название" autocomplete="off" />
+            </label>
+            <button class="filter-reset hidden" id="clearFilterButton" type="button">Сбросить фильтр</button>
+          </div>
+
+          <section class="priority-section hidden" id="prioritySection">
+            <div class="table-title">Нужно проверить</div>
+            <div class="table-wrap priority-wrap">
+              <table>
+                <colgroup>
+                  <col class="col-status" />
+                  <col class="col-blank" />
+                  <col class="col-article" />
+                  <col class="col-name" />
+                  <col class="col-unit" />
+                  <col class="col-stock" />
+                  <col class="col-transit" />
+                  <col class="col-recommended" />
+                  <col class="col-source-fact" />
+                  <col class="col-box" />
+                  <col class="col-inserted" />
+                  <col class="col-comment" />
+                  <col class="col-match" />
+                </colgroup>
+                <thead>
+                  <tr>
+                    <th>Статус</th>
+                    <th>Бланк</th>
+                    <th>Артикул</th>
+                    <th>Товар в бланке</th>
+                    <th>Объем мл/гр</th>
+                    <th>Остаток</th>
+                    <th>В пути</th>
+                    <th>Рекоменд.</th>
+                    <th>Заказано по факту</th>
+                    <th id="priorityAdjustmentHeader">Шт. в коробке</th>
+                    <th>Вставлено</th>
+                    <th>Комментарий</th>
+                    <th>Совпадение</th>
+                  </tr>
+                </thead>
+                <tbody id="priorityBody"></tbody>
+              </table>
+            </div>
+          </section>
+
+          <div class="table-title" id="reportTitle">Все позиции</div>
           <div class="table-wrap">
             <table>
               <colgroup>
