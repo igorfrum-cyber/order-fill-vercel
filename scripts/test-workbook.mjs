@@ -12,6 +12,7 @@ const proffBlankPath = "/Users/igorfrumes/Downloads/Актуальный_бл�
 const levissimeBlankPath = "/private/tmp/03.07.2026 LeviSsime БЛАНК ЗАКАЗА.xlsx";
 const levissimeLegacyBlankPath = "/Users/igorfrumes/Downloads/03.07.2026 LeviSsime БЛАНК ЗАКАЗА.XLS";
 const sothysLegacyBlankPath = "/Users/igorfrumes/Downloads/Сотис бланк (1).xls";
+const urengoySourcePath = "/Users/igorfrumes/Downloads/уренгой ангио.xlsx";
 const blankOutputPath = path.resolve("test-output/browser-filled-blank.xlsx");
 const sourceOutputPath = path.resolve("test-output/browser-filled-source.xlsx");
 
@@ -143,6 +144,35 @@ try {
 } catch (error) {
   if (error.code !== "ENOENT") throw error;
   console.warn("SOTHYS fixture is not available; skipping SOTHYS workbook test.");
+}
+
+try {
+  await fs.access(urengoySourcePath);
+  const [urengoySourceWorkbook, urengoyBlankWorkbook] = await Promise.all([
+    fs.readFile(urengoySourcePath).then((buffer) => loadXlsx(buffer)),
+    fs.readFile(blankPath).then((buffer) => loadXlsx(buffer)),
+  ]);
+  const urengoyResult = fillWorkbook({
+    sourceWorkbook: urengoySourceWorkbook,
+    blankWorkbook: urengoyBlankWorkbook,
+    orderMonth: "2026-07",
+    brand: "angiopharm",
+  });
+  if (urengoyResult.summary.cityRule !== "Новый Уренгой") throw new Error("Urengoy source should be detected by parameters.");
+  if (urengoyResult.summary.deliveryWeeks !== 2 || urengoyResult.summary.deliveryCoefficient !== 1.5) {
+    throw new Error("Urengoy delivery coefficient should be detected from source parameters.");
+  }
+  const urengoySheet = urengoyResult.sourceWorkbook.sheets.find((item) => item.name === "Лист_1");
+  if (urengoySheet.cells.get("16:23")?.value !== 136.5) {
+    throw new Error(`Urengoy recommendation for CL23 should be recalculated to 136.5, got ${urengoySheet.cells.get("16:23")?.value}`);
+  }
+  const urengoyRow = urengoyResult.reportRows.find((row) => row.sourceArticle === "CL23");
+  if (!urengoyRow || urengoyRow.recommended !== 136.5 || urengoyRow.rounded !== 137) {
+    throw new Error("Urengoy recalculated recommendation should be used in the report.");
+  }
+} catch (error) {
+  if (error.code !== "ENOENT") throw error;
+  console.warn("Urengoy source fixture is not available; skipping Urengoy recalculation test.");
 }
 
 const result = fillWorkbook({ sourceWorkbook, blankWorkbook, orderMonth: "2026-07" });

@@ -204,7 +204,7 @@ function refreshCellValue(sheet, row, col) {
 
 export function asText(value) {
   if (value == null) return "";
-  return String(value).replace(/\n/g, " ").trim();
+  return String(value).normalize("NFC").replace(/\n/g, " ").trim();
 }
 
 export function normalizeHeader(value) {
@@ -334,6 +334,96 @@ function sourceMatchers() {
   };
 }
 
+function isUrengoySource(workbook) {
+  for (const sheet of workbook.sheets) {
+    const { maxRow, maxColumn } = sheetBounds(sheet);
+    for (let row = 1; row <= Math.min(maxRow, 40); row += 1) {
+      for (let col = 1; col <= maxColumn; col += 1) {
+        const text = normalizeHeader(sheetCellValue(sheet, row, col));
+        if (text.includes("уренгой") || text.includes("новый уренгой")) return true;
+      }
+    }
+  }
+  return false;
+}
+
+function detectDeliveryWeeks(workbook) {
+  for (const sheet of workbook.sheets) {
+    const { maxRow, maxColumn } = sheetBounds(sheet);
+    for (let row = 1; row <= Math.min(maxRow, 40); row += 1) {
+      for (let col = 1; col <= maxColumn; col += 1) {
+        const text = asText(sheetCellValue(sheet, row, col));
+        const normalized = normalizeHeader(text);
+        if (!normalized.includes("срок") || !normalized.includes("постав")) continue;
+        const weeks = parseNumber(text);
+        if (weeks != null && weeks > 0) return weeks;
+      }
+    }
+  }
+  return null;
+}
+
+function isMonthHeader(value) {
+  const normalized = normalizeHeader(value);
+  if (!/\b20\d{2}\b/.test(normalized)) return false;
+  return MONTHS_RU.slice(1).some((month) => normalized.includes(month));
+}
+
+function detectUrengoyColumns(detection) {
+  const { sheet, headerRow, columns } = detection;
+  const { maxColumn } = sheetBounds(sheet);
+  let category = null;
+  const salesColumns = [];
+  for (let col = 1; col <= maxColumn; col += 1) {
+    const currentHeader = normalizeHeader(sheetCellValue(sheet, headerRow, col));
+    const upperHeader = sheetCellValue(sheet, headerRow - 1, col);
+    if (!category && currentHeader === "категория") category = col;
+    if (col < columns.recommended && currentHeader === "количество" && isMonthHeader(upperHeader)) {
+      salesColumns.push(col);
+    }
+  }
+  if (!category) throw new Error("Для Уренгоя не нашел колонку «Категория» в таблице заказа.");
+  if (!salesColumns.length) throw new Error("Для Уренгоя не нашел месячные колонки продаж с заголовком «Количество».");
+  return { category, salesColumns };
+}
+
+function normalizeCategory(value) {
+  return asText(value)
+    .replace(/[АВСавс]/g, (ch) => ARTICLE_TRANSLATION.get(ch) || ch)
+    .toUpperCase()
+    .replace(/\s+/g, "");
+}
+
+function categoryCoefficient(value) {
+  const category = normalizeCategory(value);
+  if (category === "A+") return 2;
+  if (category === "A") return 1.75;
+  if (category === "B") return 1.5;
+  if (category === "C") return 1;
+  return 1;
+}
+
+function maxMonthlySales(sheet, row, salesColumns) {
+  let max = 0;
+  for (const col of salesColumns) {
+    const value = parseNumber(sheetCellValue(sheet, row, col));
+    if (value != null) max = Math.max(max, value);
+  }
+  return max;
+}
+
+function calculateUrengoyRecommended(sheet, row, urengoyInfo) {
+  const maxSales = maxMonthlySales(sheet, row, urengoyInfo.salesColumns);
+  const category = sheetCellValue(sheet, row, urengoyInfo.categoryColumn);
+  const categoryPart = maxSales * categoryCoefficient(category);
+  const deliveryPart = maxSales * urengoyInfo.deliveryCoefficient;
+  return {
+    value: Number((categoryPart + deliveryPart).toFixed(2)),
+    maxSales,
+    category: normalizeCategory(category),
+  };
+}
+
 function blankMatchers(options = {}) {
   const quantityMatcher = options.quantityHeader === "order"
     ? (h) => h === "заказ" || h.includes("коробка заказ")
@@ -409,11 +499,28 @@ export function similarity(left, right) {
 function readSource(workbook, orderMonth, rule = brandRule("angiopharm")) {
   const periodInfo = validateSourcePeriods(workbook, orderMonth);
   const detection = detectColumns(workbook, "source");
+  const isUrengoy = isUrengoySource(workbook);
+  const deliveryWeeks = isUrengoy ? detectDeliveryWeeks(workbook) : null;
+  if (isUrengoy && !deliveryWeeks) throw new Error("Для Уренгоя не нашел параметр «Срок поставки». Проверьте выгрузку из 1С.");
+  const urengoyColumns = isUrengoy ? detectUrengoyColumns(detection) : null;
+  const urengoyInfo = isUrengoy
+    ? {
+        deliveryWeeks,
+        deliveryCoefficient: 1 + 0.25 * deliveryWeeks,
+        categoryColumn: urengoyColumns.category,
+        salesColumns: urengoyColumns.salesColumns,
+      }
+    : null;
   const items = [];
   const { maxRow } = sheetBounds(detection.sheet);
   for (let row = detection.headerRow + 1; row <= maxRow; row += 1) {
     const articleRaw = asText(sheetCellValue(detection.sheet, row, detection.columns.article));
     const name = asText(sheetCellValue(detection.sheet, row, detection.columns.name));
+    const recommendedRaw = sheetCellValue(detection.sheet, row, detection.columns.recommended);
+    const urengoyRecommended = urengoyInfo && (articleRaw || name || asText(recommendedRaw))
+      ? calculateUrengoyRecommended(detection.sheet, row, urengoyInfo)
+      : null;
+    if (urengoyRecommended) setNumericCell(detection.sheet, row, detection.columns.recommended, urengoyRecommended.value);
     const recommended = parseNumber(sheetCellValue(detection.sheet, row, detection.columns.recommended));
     const orderedFactRaw = sheetCellValue(detection.sheet, row, detection.columns.orderedFact);
     const orderedFact = parseNumber(orderedFactRaw);
@@ -433,9 +540,22 @@ function readSource(workbook, orderMonth, rule = brandRule("angiopharm")) {
       sourceComment: asText(sheetCellValue(detection.sheet, row, detection.columns.comment)),
       stock: sheetCellValue(detection.sheet, row, detection.columns.stock),
       inTransit: sheetCellValue(detection.sheet, row, detection.columns.inTransit),
+      urengoyRecommended: Boolean(urengoyRecommended),
+      urengoyMaxSales: urengoyRecommended?.maxSales ?? null,
+      urengoyCategory: urengoyRecommended?.category ?? "",
     });
   }
-  return { workbook, detection, items, periodInfo };
+  return {
+    workbook,
+    detection,
+    items,
+    periodInfo: {
+      ...periodInfo,
+      cityRule: isUrengoy ? "Новый Уренгой" : "",
+      deliveryWeeks: deliveryWeeks ?? null,
+      deliveryCoefficient: urengoyInfo?.deliveryCoefficient ?? null,
+    },
+  };
 }
 
 function brandRule(brand) {
