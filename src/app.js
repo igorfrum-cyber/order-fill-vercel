@@ -35,6 +35,7 @@ const reportSearch = document.querySelector("#reportSearch");
 const clearFilterButton = document.querySelector("#clearFilterButton");
 const adjustmentHeader = document.querySelector("#adjustmentHeader");
 const priorityAdjustmentHeader = document.querySelector("#priorityAdjustmentHeader");
+const issueReportButton = document.querySelector("#issueReportButton");
 const downloadButton = document.querySelector("#downloadButton");
 const downloadLinks = document.querySelector("#downloadLinks");
 const submitButton = form.querySelector("button");
@@ -141,6 +142,7 @@ function resetFillState() {
   reportSearch.value = "";
   resultEl.classList.add("hidden");
   downloadButton.disabled = true;
+  issueReportButton.disabled = true;
   clearDownloadLinks();
   statusEl.textContent = "Готов к загрузке";
   setSubmitButtonState("ready");
@@ -176,6 +178,8 @@ function combinedSummary(results) {
     suspicious: results.reduce((sum, result) => sum + result.summary.suspicious, 0),
     unmatched: results.reduce((sum, result) => sum + result.summary.unmatched, 0),
     duplicates: results.reduce((sum, result) => sum + result.summary.duplicates, 0),
+    blankDuplicateArticles: results.reduce((sum, result) => sum + (result.summary.blankDuplicateArticles || 0), 0),
+    blankWarnings: results.flatMap((result) => result.summary.blankWarnings || []),
   };
 }
 
@@ -197,7 +201,10 @@ function renderMetrics(summary) {
   const cityNote = summary.cityRule
     ? ` ${summary.cityRule}: рекомендации пересчитаны, срок поставки ${summary.deliveryWeeks} нед.`
     : "";
-  periodNote.textContent = `${summary.brand}. Заказ на ${summary.orderMonthLabel}. Период: ${summary.actualMainPeriod}. Прошлый период: ${summary.actualPreviousPeriod}.${cityNote}`;
+  const blankNote = summary.blankDuplicateArticles
+    ? ` Проверка бланка: найдено дублей артикулов ${summary.blankDuplicateArticles}.`
+    : "";
+  periodNote.textContent = `${summary.brand}. Заказ на ${summary.orderMonthLabel}. Период: ${summary.actualMainPeriod}. Прошлый период: ${summary.actualPreviousPeriod}.${cityNote}${blankNote}`;
 }
 
 function initialComment(row) {
@@ -214,6 +221,10 @@ function rowEdit(row) {
 
 function isIssueRow(row) {
   return row.status === "warning_name_differs" || row.status === "warning_name_only";
+}
+
+function isPriorityRow(row) {
+  return isIssueRow(row) || Boolean(row.duplicate);
 }
 
 function rowMatchesFilter(row, filter) {
@@ -254,10 +265,22 @@ function filterTitle(filter) {
   return labels[filter] || "Все позиции";
 }
 
+function suggestionHtml(suggestions) {
+  if (!suggestions.length) return "";
+  const items = suggestions
+    .map((item) => {
+      const article = item.article ? `${escapeHtml(item.article)} - ` : "";
+      const score = Math.round(Number(item.score || 0) * 100);
+      return `<li>${article}${escapeHtml(item.name)} <span>${score}%</span></li>`;
+    })
+    .join("");
+  return `<div class="suggestions"><strong>Похожие:</strong><ul>${items}</ul></div>`;
+}
+
 function renderRows(targetBody, rows) {
   targetBody.innerHTML = rows
     .map((row) => {
-      const cls = row.status === "warning_name_differs" || row.status === "warning_name_only" ? "warn" : row.status === "matched" || row.status === "matched_by_name" ? "ok" : "muted";
+      const cls = isPriorityRow(row) ? "warn" : row.status === "matched" || row.status === "matched_by_name" ? "ok" : "muted";
       const edit = rowEdit(row);
       const inserted = edit.value;
       const comment = edit.comment;
@@ -265,6 +288,8 @@ function renderRows(targetBody, rows) {
       const rowKey = row.key || `${row.blankId}:${row.blankRow}`;
       const recommended = row.recommended == null ? "" : Number(row.recommended).toFixed(2);
       const match = row.status === "unmatched" ? "" : `${Math.round(Number(row.similarity || 0) * 100)}%`;
+      const suggestions = suggestionHtml(row.suggestions || []);
+      const statusMeta = row.duplicate ? `<div class="row-meta">Дубль</div>` : "";
       const orderCell = row.editable === false ? "" : `
         <input
           class="qty-input"
@@ -295,10 +320,10 @@ function renderRows(targetBody, rows) {
       `;
       return `
         <tr>
-          <td class="${cls}">${statusLabel(row.status)}</td>
+          <td class="${cls}">${statusLabel(row.status)}${statusMeta}</td>
           <td>${escapeHtml(row.blankLabel)}</td>
           <td>${escapeHtml(row.blankArticle)}</td>
-          <td>${escapeHtml(row.blankName)}</td>
+          <td>${escapeHtml(row.blankName)}${suggestions}</td>
           <td>${escapeHtml(row.blankUnit)}</td>
           <td>${escapeHtml(row.stock ?? "")}</td>
           <td>${escapeHtml(row.inTransit ?? "")}</td>
@@ -330,8 +355,8 @@ function renderReportView() {
     return;
   }
 
-  const issueRows = currentReportRows.filter(isIssueRow);
-  const normalRows = currentReportRows.filter((row) => !isIssueRow(row));
+  const issueRows = currentReportRows.filter(isPriorityRow);
+  const normalRows = currentReportRows.filter((row) => !isPriorityRow(row));
   prioritySection.classList.toggle("hidden", issueRows.length === 0);
   renderRows(priorityBody, issueRows);
   reportTitle.textContent = `Все остальные позиции: ${normalRows.length}`;
@@ -380,6 +405,7 @@ form.addEventListener("submit", async (event) => {
   statusEl.textContent = "Обработка...";
   setSubmitButtonState("processing");
   downloadButton.disabled = true;
+  issueReportButton.disabled = true;
   resultEl.classList.add("hidden");
   clearDownloadLinks();
   isFormFilled = false;
@@ -419,6 +445,7 @@ form.addEventListener("submit", async (event) => {
     renderReportView();
     resultEl.classList.remove("hidden");
     downloadButton.disabled = false;
+    issueReportButton.disabled = !issueReportRows().length;
     statusEl.textContent = "Готово";
     isFormFilled = true;
     setSubmitButtonState("completed");
@@ -445,6 +472,59 @@ function collectEdits() {
         comment: edit.comment,
       };
     });
+}
+
+function issueReportRows() {
+  return currentReportRows.filter((row) => row.status === "warning_name_differs" || row.status === "warning_name_only" || row.status === "unmatched" || row.duplicate);
+}
+
+function issueReason(row) {
+  const reasons = [];
+  if (row.status === "warning_name_only") reasons.push("В таблице заказа нет артикула, найдено только по названию");
+  if (row.status === "warning_name_differs") reasons.push("Артикул найден, но название сильно отличается");
+  if (row.status === "unmatched") reasons.push("Артикул из бланка не найден в таблице заказа");
+  if (row.duplicate) reasons.push("Есть дублирующиеся кандидаты по артикулу");
+  return reasons.join("; ");
+}
+
+function csvCell(value) {
+  return `"${String(value ?? "").replaceAll('"', '""')}"`;
+}
+
+function issueReportCsv() {
+  const header = [
+    "Статус",
+    "Бланк",
+    "Артикул в бланке",
+    "Товар в бланке",
+    "Объем",
+    "Строка в таблице заказа",
+    "Артикул в 1С",
+    "Товар в 1С",
+    "Проблема",
+    "Похожие варианты",
+    "Комментарий менеджера",
+  ];
+  const rows = issueReportRows().map((row) => {
+    const edit = rowEdit(row);
+    const suggestions = (row.suggestions || [])
+      .map((item) => `${item.article ? `${item.article} - ` : ""}${item.name} (${Math.round(Number(item.score || 0) * 100)}%)`)
+      .join(" | ");
+    return [
+      statusLabel(row.status),
+      row.blankLabel,
+      row.blankArticle,
+      row.blankName,
+      row.blankUnit,
+      row.sourceRow || "",
+      row.sourceArticle,
+      row.sourceName,
+      issueReason(row),
+      suggestions,
+      edit.comment,
+    ];
+  });
+  return [header, ...rows].map((row) => row.map(csvCell).join(";")).join("\n");
 }
 
 function clearDownloadLinks() {
@@ -493,6 +573,41 @@ function validateEdits() {
   return true;
 }
 
+function isManualDeviation(rowInfo) {
+  if (rowInfo.editable === false) return false;
+  const edit = rowEdit(rowInfo);
+  let value;
+  try {
+    value = normalizeOrderValue(edit.value);
+  } catch {
+    return true;
+  }
+  const baseline = Number(rowInfo.recommended) < 1.5 || Number(rowInfo.rounded) <= 0 ? null : Number(rowInfo.rounded);
+  return value !== baseline;
+}
+
+function confirmQualityWarnings() {
+  const issueCount = currentReportRows.filter((row) => row.status === "warning_name_differs" || row.status === "warning_name_only").length;
+  const duplicateCount = currentReportRows.filter((row) => row.duplicate).length;
+  const unmatchedCount = currentReportRows.filter((row) => row.status === "unmatched").length;
+  const manualCount = currentReportRows.filter(isManualDeviation).length;
+  const blankDuplicateCount = currentResults.reduce((sum, result) => sum + (result.summary.blankDuplicateArticles || 0), 0);
+  const total = issueCount + duplicateCount + unmatchedCount + manualCount + blankDuplicateCount;
+  if (!total) return true;
+
+  const lines = [
+    `Проверьте ${total} спорных строк/ситуаций перед скачиванием.`,
+    issueCount ? `Проверить: ${issueCount}` : "",
+    duplicateCount ? `Дубли: ${duplicateCount}` : "",
+    unmatchedCount ? `Не найдено: ${unmatchedCount}` : "",
+    manualCount ? `Ручные отклонения: ${manualCount}` : "",
+    blankDuplicateCount ? `Дубли артикулов в бланке: ${blankDuplicateCount}` : "",
+    "",
+    "Продолжить скачивание?",
+  ].filter((line) => line !== "").join("\n");
+  return window.confirm(lines);
+}
+
 function rowNeedsComment(row) {
   const qtyInput = row.querySelector(".qty-input");
   const commentInput = row.querySelector(".comment-input");
@@ -529,6 +644,18 @@ function triggerDownload(url, fileName) {
   anchor.remove();
 }
 
+function downloadIssueReport() {
+  const rows = issueReportRows();
+  if (!rows.length) {
+    alert("Нет спорных строк для отчета.");
+    return;
+  }
+  const blob = new Blob([`\ufeff${issueReportCsv()}`], { type: "text/csv;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  triggerDownload(url, "отчет для исправления в 1С.csv");
+  window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
 function prepareDownloadLinks(files) {
   clearDownloadLinks();
   currentDownloadUrls = files.map((file) => URL.createObjectURL(file.blob));
@@ -549,6 +676,7 @@ downloadButton.addEventListener("click", async () => {
     return;
   }
   if (!validateEdits()) return;
+  if (!confirmQualityWarnings()) return;
 
   downloadButton.disabled = true;
   statusEl.textContent = "Сохраняю правки...";
@@ -591,6 +719,8 @@ downloadButton.addEventListener("click", async () => {
     downloadButton.disabled = false;
   }
 });
+
+issueReportButton.addEventListener("click", downloadIssueReport);
 
 function handleReportInput(event) {
   if (event.target.matches(".qty-input, .comment-input")) {

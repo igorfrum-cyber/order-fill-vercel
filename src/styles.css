@@ -166,7 +166,8 @@ p {
 }
 
 .primary,
-.download {
+.download,
+.secondary {
   border: 0;
   border-radius: 8px;
   background: var(--accent);
@@ -183,13 +184,34 @@ p {
   white-space: nowrap;
 }
 
+.result-actions {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+}
+
+.secondary {
+  min-height: 42px;
+  border: 1px solid var(--line);
+  background: #fff;
+  color: var(--accent-strong);
+}
+
 .primary:hover,
 .download:hover {
   background: var(--accent-strong);
 }
 
+.secondary:hover {
+  border-color: var(--accent);
+  background: #eef6f8;
+}
+
 .primary:disabled,
-.download:disabled {
+.download:disabled,
+.secondary:disabled {
   cursor: progress;
   opacity: 0.7;
 }
@@ -465,6 +487,37 @@ tr.invalid .comment-input {
 
 .warn {
   color: var(--warn);
+  font-weight: 720;
+}
+
+.row-meta {
+  margin-top: 4px;
+  color: var(--warn);
+  font-size: 12px;
+  font-weight: 720;
+}
+
+.suggestions {
+  margin-top: 8px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.suggestions strong {
+  color: #475467;
+}
+
+.suggestions ul {
+  margin: 4px 0 0;
+  padding-left: 16px;
+}
+
+.suggestions li + li {
+  margin-top: 2px;
+}
+
+.suggestions span {
+  color: var(--accent-strong);
   font-weight: 720;
 }
 
