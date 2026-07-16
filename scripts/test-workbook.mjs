@@ -128,6 +128,18 @@ try {
   if (!rescueRow || rescueRow.status !== "not_in_source") {
     throw new Error("LeviSsime item 4734 should still be marked missing when it is absent from the source table.");
   }
+  levissimeBlankWorkbook.sheets[0].cells.get("69:1").value = "MTLS8017";
+  levissimeBlankWorkbook.sheets[0].cells.get("69:2").value = "Lift total row glitch";
+  const totalGlitchResult = fillWorkbook({
+    sourceWorkbook: levissimeSourceWorkbook,
+    blankWorkbook: levissimeBlankWorkbook,
+    orderMonth: "2026-07",
+    brand: "levissime",
+  });
+  const totalGlitchRow = totalGlitchResult.reportRows.find((row) => row.blankArticle === "MTLS8017");
+  if (!totalGlitchRow || totalGlitchRow.sourceRow === 15 || totalGlitchRow.duplicateCandidates.some((item) => item.sourceRow === 15)) {
+    throw new Error("Source total rows should be ignored even when the right-side product block is accidentally filled.");
+  }
 } catch (error) {
   if (error.code !== "ENOENT") throw error;
   console.warn("Current LeviSsime fixture is not available; skipping current LeviSsime matching test.");
@@ -146,7 +158,7 @@ try {
     ["350532-1", "Mask-Scrub Black tea 180 мл", 1.4],
   ];
   for (const [index, [article, name, recommended]] of sothysFixtures.entries()) {
-    const sourceRow = sothysSourceDetection.headerRow + 1 + index;
+    const sourceRow = sothysSourceDetection.headerRow + 2 + index;
     sothysSourceDetection.sheet.cells.get(`${sourceRow}:${sothysSourceDetection.columns.article}`).value = article;
     sothysSourceDetection.sheet.cells.get(`${sourceRow}:${sothysSourceDetection.columns.name}`).value = name;
     sothysSourceDetection.sheet.cells.get(`${sourceRow}:${sothysSourceDetection.columns.recommended}`).value = recommended;
@@ -204,8 +216,23 @@ try {
 
 const result = fillWorkbook({ sourceWorkbook, blankWorkbook, orderMonth: "2026-07" });
 console.log(result.summary);
-const duplicateRow = result.reportRows.find((row) => row.duplicate);
-if (!duplicateRow || duplicateRow.duplicateCandidates.length < 2 || !duplicateRow.duplicateCandidates.every((item) => Number.isInteger(item.sourceRow))) {
+
+const [duplicateSourceWorkbook, duplicateBlankWorkbook] = await Promise.all([
+  fs.readFile(sourcePath).then((buffer) => loadXlsx(buffer)),
+  fs.readFile(blankPath).then((buffer) => loadXlsx(buffer)),
+]);
+const duplicateSourceDetection = detectColumns(duplicateSourceWorkbook, "source");
+for (const [index, recommended] of [20, 21].entries()) {
+  const sourceRow = duplicateSourceDetection.headerRow + 2 + index;
+  duplicateSourceDetection.sheet.cells.get(`${sourceRow}:${duplicateSourceDetection.columns.article}`).value = "AG17";
+  duplicateSourceDetection.sheet.cells.get(`${sourceRow}:${duplicateSourceDetection.columns.name}`).value = `Synthetic duplicate AG17 ${index + 1}`;
+  duplicateSourceDetection.sheet.cells.get(`${sourceRow}:${duplicateSourceDetection.columns.recommended}`).value = recommended;
+  duplicateSourceDetection.sheet.cells.get(`${sourceRow}:${duplicateSourceDetection.columns.orderedFact}`).value = "";
+  duplicateSourceDetection.sheet.cells.get(`${sourceRow}:${duplicateSourceDetection.columns.comment}`).value = "";
+}
+const duplicateResult = fillWorkbook({ sourceWorkbook: duplicateSourceWorkbook, blankWorkbook: duplicateBlankWorkbook, orderMonth: "2026-07" });
+const duplicateRow = duplicateResult.reportRows.find((row) => row.blankArticle === "AG17");
+if (!duplicateRow?.duplicate || duplicateRow.duplicateCandidates.length < 2 || !duplicateRow.duplicateCandidates.every((item) => Number.isInteger(item.sourceRow))) {
   throw new Error("Duplicate rows should include all duplicate source candidates with source row numbers.");
 }
 

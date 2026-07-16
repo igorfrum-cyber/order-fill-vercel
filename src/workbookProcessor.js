@@ -424,6 +424,15 @@ function calculateUrengoyRecommended(sheet, row, urengoyInfo) {
   };
 }
 
+function isSourceTotalRow(detection, row, maxColumn) {
+  const summaryAreaEnd = Math.min(maxColumn, Math.max(1, detection.columns.name - 1));
+  for (let col = 1; col <= summaryAreaEnd; col += 1) {
+    const text = normalizeHeader(sheetCellValue(detection.sheet, row, col));
+    if (text === "итого" || text === "total") return true;
+  }
+  return false;
+}
+
 function blankMatchers(options = {}) {
   const quantityMatcher = options.quantityHeader === "order"
     ? (h) => h === "заказ" || h.includes("коробка заказ")
@@ -512,8 +521,9 @@ function readSource(workbook, orderMonth, rule = brandRule("angiopharm")) {
       }
     : null;
   const items = [];
-  const { maxRow } = sheetBounds(detection.sheet);
+  const { maxRow, maxColumn } = sheetBounds(detection.sheet);
   for (let row = detection.headerRow + 1; row <= maxRow; row += 1) {
+    if (isSourceTotalRow(detection, row, maxColumn)) continue;
     const articleRaw = asText(sheetCellValue(detection.sheet, row, detection.columns.article));
     const name = asText(sheetCellValue(detection.sheet, row, detection.columns.name));
     const recommendedRaw = sheetCellValue(detection.sheet, row, detection.columns.recommended);
