@@ -275,14 +275,22 @@ function duplicateDescription(row) {
   const candidates = row.duplicateCandidates || [];
   if (!candidates.length) return "";
   return candidates
-    .map((item) => `строка ${item.sourceRow}: ${item.sourceArticle || "без артикула"} — ${item.sourceName || ""}, рекоменд. ${item.recommended ?? ""}`)
+    .map((item) => `Строка ${item.sourceRow}: ${item.sourceName || ""}`)
     .join("; ");
 }
 
 function duplicateDetailsHtml(row) {
-  const text = duplicateDescription(row);
-  if (!text) return "";
-  return `<div class="duplicate-details">Дубли в таблице: ${escapeHtml(text)}</div>`;
+  const candidates = row.duplicateCandidates || [];
+  if (!candidates.length) return "";
+  const rows = candidates
+    .map((item) => `
+      <div class="duplicate-row">
+        <span>Строка ${escapeHtml(item.sourceRow)}</span>
+        <span>${escapeHtml(item.sourceName || "")}</span>
+      </div>
+    `)
+    .join("");
+  return `<div class="duplicate-details"><div>Дубли в таблице:</div>${rows}</div>`;
 }
 
 function renderRows(targetBody, rows) {

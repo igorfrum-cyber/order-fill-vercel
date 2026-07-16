@@ -517,6 +517,13 @@ tr.invalid .comment-input {
   line-height: 1.35;
 }
 
+.duplicate-row {
+  display: grid;
+  grid-template-columns: 74px 1fr;
+  gap: 8px;
+  margin-top: 2px;
+}
+
 .muted {
   color: var(--muted);
 }
