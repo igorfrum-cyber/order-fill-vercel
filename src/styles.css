@@ -387,42 +387,55 @@ table {
 }
 
 .col-status {
-  width: 6%;
+  width: 5.5%;
 }
 
 .col-blank {
-  width: 5.5%;
+  width: 5%;
 }
 
 .col-article {
-  width: 5.5%;
+  width: 5%;
 }
 
 .col-name {
-  width: 17%;
+  width: 18%;
 }
 
-.col-unit,
-.col-stock,
-.col-transit,
-.col-recommended,
-.col-source-fact,
-.col-box,
-.col-match {
+.col-unit {
   width: 6%;
 }
 
+.col-stock,
+.col-transit {
+  width: 5%;
+}
+
+.col-recommended {
+  width: 6%;
+}
+
+.col-source-fact,
+.col-match {
+  width: 6.5%;
+}
+
+.col-box {
+  width: 5.5%;
+}
+
 .col-inserted {
-  width: 8.5%;
+  width: 8%;
 }
 
 .col-comment {
-  width: 15%;
+  width: 14%;
 }
 
 th,
 td {
-  padding: 9px 10px;
+  box-sizing: border-box;
+  padding: 9px 8px;
   border-bottom: 1px solid var(--line);
   text-align: left;
   vertical-align: top;
