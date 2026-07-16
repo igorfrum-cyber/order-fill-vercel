@@ -276,7 +276,7 @@ p {
 
 .metrics {
   display: grid;
-  grid-template-columns: repeat(5, minmax(120px, 1fr));
+  grid-template-columns: repeat(6, minmax(120px, 1fr));
   border-bottom: 1px solid var(--line);
 }
 
@@ -494,30 +494,6 @@ tr.invalid .comment-input {
   margin-top: 4px;
   color: var(--warn);
   font-size: 12px;
-  font-weight: 720;
-}
-
-.suggestions {
-  margin-top: 8px;
-  color: var(--muted);
-  font-size: 12px;
-}
-
-.suggestions strong {
-  color: #475467;
-}
-
-.suggestions ul {
-  margin: 4px 0 0;
-  padding-left: 16px;
-}
-
-.suggestions li + li {
-  margin-top: 2px;
-}
-
-.suggestions span {
-  color: var(--accent-strong);
   font-weight: 720;
 }
 

@@ -155,7 +155,8 @@ function statusLabel(status) {
     warning_name_differs: "Проверить название",
     warning_name_only: "Проверить без артикула",
     left_blank_nonpositive: "Пусто",
-    unmatched: "Не найдено",
+    not_in_source: "Нет в таблице",
+    not_in_blank: "Нет в бланке",
   };
   return labels[status] || status;
 }
@@ -176,7 +177,8 @@ function combinedSummary(results) {
     filled: results.reduce((sum, result) => sum + result.summary.filled, 0),
     leftBlank: results.reduce((sum, result) => sum + result.summary.leftBlank, 0),
     suspicious: results.reduce((sum, result) => sum + result.summary.suspicious, 0),
-    unmatched: results.reduce((sum, result) => sum + result.summary.unmatched, 0),
+    notInSource: results.reduce((sum, result) => sum + result.summary.unmatched, 0),
+    notInBlank: currentReportRows.filter((row) => row.status === "not_in_blank").length,
     duplicates: results.reduce((sum, result) => sum + result.summary.duplicates, 0),
     blankDuplicateArticles: results.reduce((sum, result) => sum + (result.summary.blankDuplicateArticles || 0), 0),
     blankWarnings: results.flatMap((result) => result.summary.blankWarnings || []),
@@ -188,7 +190,8 @@ function renderMetrics(summary) {
     ["filled", "Заполнено", summary.filled],
     ["leftBlank", "Оставлено пустым", summary.leftBlank],
     ["suspicious", "Проверить", summary.suspicious],
-    ["unmatched", "Не найдено", summary.unmatched],
+    ["notInSource", "Нет в таблице", summary.notInSource],
+    ["notInBlank", "Нет в бланке", summary.notInBlank],
     ["duplicates", "Дублей", summary.duplicates],
   ];
   metricsEl.innerHTML = rows
@@ -232,7 +235,8 @@ function rowMatchesFilter(row, filter) {
   if (filter === "filled") return (row.status === "matched" || row.status === "matched_by_name") && row.inserted != null;
   if (filter === "leftBlank") return row.status === "left_blank_nonpositive";
   if (filter === "suspicious") return isIssueRow(row);
-  if (filter === "unmatched") return row.status === "unmatched";
+  if (filter === "notInSource") return row.status === "not_in_source";
+  if (filter === "notInBlank") return row.status === "not_in_blank";
   if (filter === "duplicates") return Boolean(row.duplicate);
   return true;
 }
@@ -259,22 +263,11 @@ function filterTitle(filter) {
     filled: "Заполнено",
     leftBlank: "Оставлено пустым",
     suspicious: "Проверить",
-    unmatched: "Не найдено",
+    notInSource: "Нет в таблице",
+    notInBlank: "Нет в бланке",
     duplicates: "Дубли",
   };
   return labels[filter] || "Все позиции";
-}
-
-function suggestionHtml(suggestions) {
-  if (!suggestions.length) return "";
-  const items = suggestions
-    .map((item) => {
-      const article = item.article ? `${escapeHtml(item.article)} - ` : "";
-      const score = Math.round(Number(item.score || 0) * 100);
-      return `<li>${article}${escapeHtml(item.name)} <span>${score}%</span></li>`;
-    })
-    .join("");
-  return `<div class="suggestions"><strong>Похожие:</strong><ul>${items}</ul></div>`;
 }
 
 function renderRows(targetBody, rows) {
@@ -287,8 +280,7 @@ function renderRows(targetBody, rows) {
       const baseline = Number(row.recommended) < 1.5 || Number(row.rounded) <= 0 ? "" : row.rounded;
       const rowKey = row.key || `${row.blankId}:${row.blankRow}`;
       const recommended = row.recommended == null ? "" : Number(row.recommended).toFixed(2);
-      const match = row.status === "unmatched" ? "" : `${Math.round(Number(row.similarity || 0) * 100)}%`;
-      const suggestions = suggestionHtml(row.suggestions || []);
+      const match = row.status === "not_in_source" || row.status === "not_in_blank" ? "" : `${Math.round(Number(row.similarity || 0) * 100)}%`;
       const statusMeta = row.duplicate ? `<div class="row-meta">Дубль</div>` : "";
       const orderCell = row.editable === false ? "" : `
         <input
@@ -323,7 +315,7 @@ function renderRows(targetBody, rows) {
           <td class="${cls}">${statusLabel(row.status)}${statusMeta}</td>
           <td>${escapeHtml(row.blankLabel)}</td>
           <td>${escapeHtml(row.blankArticle)}</td>
-          <td>${escapeHtml(row.blankName)}${suggestions}</td>
+          <td>${escapeHtml(row.blankName)}</td>
           <td>${escapeHtml(row.blankUnit)}</td>
           <td>${escapeHtml(row.stock ?? "")}</td>
           <td>${escapeHtml(row.inTransit ?? "")}</td>
@@ -361,6 +353,51 @@ function renderReportView() {
   renderRows(priorityBody, issueRows);
   reportTitle.textContent = `Все остальные позиции: ${normalRows.length}`;
   renderRows(reportBody, normalRows);
+}
+
+function missingInBlankRows(results) {
+  const candidates = new Map();
+  const matchedSourceRows = new Set();
+  for (const result of results) {
+    for (const item of result.sourceItemsForMissingBlank || []) {
+      if (!candidates.has(item.sourceRow)) candidates.set(item.sourceRow, item);
+    }
+    for (const row of result.reportRows || []) {
+      if (row.sourceRow) matchedSourceRows.add(row.sourceRow);
+    }
+  }
+  return Array.from(candidates.values())
+    .filter((item) => !matchedSourceRows.has(item.sourceRow))
+    .map((item) => ({
+      status: "not_in_blank",
+      blankId: "source",
+      blankLabel: "1С",
+      adjustmentLabel: "",
+      key: `source:${item.sourceRow}`,
+      blankRow: item.sourceRow,
+      blankQuantityCol: null,
+      blankArticle: item.sourceArticle,
+      blankName: item.sourceName,
+      blankUnit: "",
+      blankBoxSize: "",
+      sourceRow: item.sourceRow,
+      sourceArticle: item.sourceArticle,
+      sourceName: item.sourceName,
+      hasOrderedFact: item.hasOrderedFact,
+      orderedFact: item.orderedFact,
+      sourceComment: item.sourceComment,
+      stock: item.stock,
+      inTransit: item.inTransit,
+      recommended: item.recommended,
+      rounded: item.rounded,
+      baseRounded: null,
+      inserted: null,
+      autoComment: "",
+      boxAdjusted: false,
+      duplicate: false,
+      editable: false,
+      similarity: 0,
+    }));
 }
 
 async function loadWorkbook(file) {
@@ -438,7 +475,7 @@ form.addEventListener("submit", async (event) => {
     }
     currentSourceOutputName = sourceOutputFileName(sourceFile.files[0].name);
 
-    const rows = results.flatMap((result) => result.reportRows);
+    const rows = [...results.flatMap((result) => result.reportRows), ...missingInBlankRows(results)];
     currentReportRows = rows;
     editState = new Map(rows.map((row) => [row.key || `${row.blankId}:${row.blankRow}`, { value: row.inserted ?? "", comment: initialComment(row) }]));
     renderMetrics(combinedSummary(results));
@@ -475,14 +512,14 @@ function collectEdits() {
 }
 
 function issueReportRows() {
-  return currentReportRows.filter((row) => row.status === "warning_name_differs" || row.status === "warning_name_only" || row.status === "unmatched" || row.duplicate);
+  return currentReportRows.filter((row) => row.status === "warning_name_differs" || row.status === "warning_name_only" || row.status === "not_in_source" || row.duplicate);
 }
 
 function issueReason(row) {
   const reasons = [];
   if (row.status === "warning_name_only") reasons.push("В таблице заказа нет артикула, найдено только по названию");
   if (row.status === "warning_name_differs") reasons.push("Артикул найден, но название сильно отличается");
-  if (row.status === "unmatched") reasons.push("Артикул из бланка не найден в таблице заказа");
+  if (row.status === "not_in_source") reasons.push("Позиция есть в бланке, но не найдена в таблице заказа");
   if (row.duplicate) reasons.push("Есть дублирующиеся кандидаты по артикулу");
   return reasons.join("; ");
 }
@@ -502,14 +539,10 @@ function issueReportCsv() {
     "Артикул в 1С",
     "Товар в 1С",
     "Проблема",
-    "Похожие варианты",
     "Комментарий менеджера",
   ];
   const rows = issueReportRows().map((row) => {
     const edit = rowEdit(row);
-    const suggestions = (row.suggestions || [])
-      .map((item) => `${item.article ? `${item.article} - ` : ""}${item.name} (${Math.round(Number(item.score || 0) * 100)}%)`)
-      .join(" | ");
     return [
       statusLabel(row.status),
       row.blankLabel,
@@ -520,7 +553,6 @@ function issueReportCsv() {
       row.sourceArticle,
       row.sourceName,
       issueReason(row),
-      suggestions,
       edit.comment,
     ];
   });
@@ -589,17 +621,19 @@ function isManualDeviation(rowInfo) {
 function confirmQualityWarnings() {
   const issueCount = currentReportRows.filter((row) => row.status === "warning_name_differs" || row.status === "warning_name_only").length;
   const duplicateCount = currentReportRows.filter((row) => row.duplicate).length;
-  const unmatchedCount = currentReportRows.filter((row) => row.status === "unmatched").length;
+  const notInSourceCount = currentReportRows.filter((row) => row.status === "not_in_source").length;
+  const notInBlankCount = currentReportRows.filter((row) => row.status === "not_in_blank").length;
   const manualCount = currentReportRows.filter(isManualDeviation).length;
   const blankDuplicateCount = currentResults.reduce((sum, result) => sum + (result.summary.blankDuplicateArticles || 0), 0);
-  const total = issueCount + duplicateCount + unmatchedCount + manualCount + blankDuplicateCount;
+  const total = issueCount + duplicateCount + notInSourceCount + notInBlankCount + manualCount + blankDuplicateCount;
   if (!total) return true;
 
   const lines = [
     `Проверьте ${total} спорных строк/ситуаций перед скачиванием.`,
     issueCount ? `Проверить: ${issueCount}` : "",
     duplicateCount ? `Дубли: ${duplicateCount}` : "",
-    unmatchedCount ? `Не найдено: ${unmatchedCount}` : "",
+    notInSourceCount ? `Нет в таблице: ${notInSourceCount}` : "",
+    notInBlankCount ? `Нет в бланке: ${notInBlankCount}` : "",
     manualCount ? `Ручные отклонения: ${manualCount}` : "",
     blankDuplicateCount ? `Дубли артикулов в бланке: ${blankDuplicateCount}` : "",
     "",

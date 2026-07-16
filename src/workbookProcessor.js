@@ -611,7 +611,6 @@ function buildSourceContext(source, rule) {
   return {
     sourceIndex,
     noArticleItems,
-    allItems: source.items,
     sourceArticleCount: new Set(source.items.map((item) => item.article).filter(Boolean)).size,
   };
 }
@@ -696,21 +695,6 @@ function volumeAwareSimilarity(blankName, sourceName, blankUnit = "") {
   return Math.max(0, base - 0.35);
 }
 
-function similarSourceSuggestions(items, blankName, blankUnit = "", excludeRowIndex = null) {
-  return items
-    .filter((item) => item.rowIndex !== excludeRowIndex)
-    .map((item) => ({
-      article: item.articleRaw,
-      name: item.name,
-      recommended: item.recommended,
-      score: volumeAwareSimilarity(blankName, item.name, blankUnit),
-    }))
-    .filter((item) => item.score >= 0.32)
-    .sort((left, right) => right.score - left.score)
-    .slice(0, 3)
-    .map((item) => ({ ...item, score: Number(item.score.toFixed(4)) }));
-}
-
 function chooseCandidate(candidates, blankName, blankUnit = "") {
   return candidates.map((item) => ({ item, score: volumeAwareSimilarity(blankName, item.name, blankUnit) })).sort((left, right) => right.score - left.score)[0];
 }
@@ -769,6 +753,23 @@ function duplicateArticleWarnings(positions) {
   return Array.from(groups.entries())
     .filter(([, rows]) => rows.length > 1)
     .map(([article, rows]) => ({ type: "blank_duplicate_article", article, rows }));
+}
+
+function sourceItemsForMissingBlank(source) {
+  return source.items
+    .filter((item) => item.recommended > 0)
+    .map((item) => ({
+      sourceRow: item.rowIndex,
+      sourceArticle: item.articleRaw,
+      sourceName: item.name,
+      recommended: item.recommended,
+      rounded: item.rounded,
+      stock: item.stock,
+      inTransit: item.inTransit,
+      hasOrderedFact: item.hasOrderedFact,
+      orderedFact: item.hasOrderedFact ? item.orderedFact : null,
+      sourceComment: item.sourceComment,
+    }));
 }
 
 function detectSothysVariantBlank(workbook) {
@@ -865,12 +866,11 @@ export function fillWorkbook({ sourceWorkbook, blankWorkbook, orderMonth, brand 
     let status;
     let order;
     const candidates = candidatesForArticle(sourceContext, blankArticle, rule);
-    const suggestions = similarSourceSuggestions(sourceContext.allItems, blankName, blankUnit);
     if (!candidates.length) {
       const fallback = chooseNameFallback(sourceContext.noArticleItems, blankName, blankUnit);
       if (!fallback.item) {
         unmatched += 1;
-        reportRows.push(makeUnmatchedReportRow(rowInfo, { blankId, blankLabel, adjustmentLabel: rule.adjustmentLabel, suggestions }));
+        reportRows.push(makeUnmatchedReportRow(rowInfo, { blankId, blankLabel, adjustmentLabel: rule.adjustmentLabel }));
         continue;
       }
       selected = fallback.item;
@@ -878,7 +878,7 @@ export function fillWorkbook({ sourceWorkbook, blankWorkbook, orderMonth, brand 
       if (selected.rounded > 0) {
         suspicious += 1;
         order = orderForItem(selected, rule, blankBoxSize);
-        reportRows.push(makeReportRow("warning_name_only", rowInfo, selected, score, { ...order, inserted: null, autoComment: "" }, { blankId, blankLabel, adjustmentLabel: rule.adjustmentLabel, suggestions }));
+        reportRows.push(makeReportRow("warning_name_only", rowInfo, selected, score, { ...order, inserted: null, autoComment: "" }, { blankId, blankLabel, adjustmentLabel: rule.adjustmentLabel }));
         continue;
       }
       status = "matched_by_name";
@@ -904,7 +904,7 @@ export function fillWorkbook({ sourceWorkbook, blankWorkbook, orderMonth, brand 
       setNumericCell(blank.sheet, row, blank.columns.quantity, order.inserted);
       filled += 1;
     }
-    reportRows.push(makeReportRow(status, rowInfo, selected, score, order, { blankId, blankLabel, adjustmentLabel: rule.adjustmentLabel, suggestions: similarSourceSuggestions(sourceContext.allItems, blankName, blankUnit, selected.rowIndex) }));
+    reportRows.push(makeReportRow(status, rowInfo, selected, score, order, { blankId, blankLabel, adjustmentLabel: rule.adjustmentLabel }));
   }
   return {
     blankId,
@@ -913,6 +913,7 @@ export function fillWorkbook({ sourceWorkbook, blankWorkbook, orderMonth, brand 
     sourceDetection: source.detection,
     blankWorkbook,
     blankDetection: blank,
+    sourceItemsForMissingBlank: sourceItemsForMissingBlank(source),
     summary: {
       filled,
       leftBlank,
@@ -952,12 +953,11 @@ function fillSplitVariantWorkbook({ source, sourceContext, blankWorkbook, rule, 
     let status;
     let order;
     const candidates = candidatesForArticle(sourceContext, position.blankArticle, rule);
-    const suggestions = similarSourceSuggestions(sourceContext.allItems, position.blankName, position.blankUnit);
     if (!candidates.length) {
       const fallback = chooseSothysNameFallback(sourceContext.noArticleItems, position.blankName, position.blankUnit);
       if (!fallback.item) {
         unmatched += 1;
-        reportRows.push(makeUnmatchedReportRow(position, { blankId, blankLabel, adjustmentLabel: rule.adjustmentLabel, suggestions }));
+        reportRows.push(makeUnmatchedReportRow(position, { blankId, blankLabel, adjustmentLabel: rule.adjustmentLabel }));
         continue;
       }
       selected = fallback.item;
@@ -965,7 +965,7 @@ function fillSplitVariantWorkbook({ source, sourceContext, blankWorkbook, rule, 
       if (selected.rounded > 0) {
         suspicious += 1;
         order = orderForItem(selected, rule, position.blankBoxSize);
-        reportRows.push(makeReportRow("warning_name_only", position, selected, score, { ...order, inserted: null, autoComment: "" }, { blankId, blankLabel, adjustmentLabel: rule.adjustmentLabel, suggestions }));
+        reportRows.push(makeReportRow("warning_name_only", position, selected, score, { ...order, inserted: null, autoComment: "" }, { blankId, blankLabel, adjustmentLabel: rule.adjustmentLabel }));
         continue;
       }
       status = "matched_by_name";
@@ -992,7 +992,7 @@ function fillSplitVariantWorkbook({ source, sourceContext, blankWorkbook, rule, 
       setNumericCell(blank.sheet, position.blankRow, position.blankQuantityCol, order.inserted);
       filled += 1;
     }
-    reportRows.push(makeReportRow(status, position, selected, score, order, { blankId, blankLabel, adjustmentLabel: rule.adjustmentLabel, suggestions: similarSourceSuggestions(sourceContext.allItems, position.blankName, position.blankUnit, selected.rowIndex) }));
+    reportRows.push(makeReportRow(status, position, selected, score, order, { blankId, blankLabel, adjustmentLabel: rule.adjustmentLabel }));
   }
 
   return {
@@ -1002,6 +1002,7 @@ function fillSplitVariantWorkbook({ source, sourceContext, blankWorkbook, rule, 
     sourceDetection: source.detection,
     blankWorkbook,
     blankDetection: blank,
+    sourceItemsForMissingBlank: sourceItemsForMissingBlank(source),
     summary: {
       filled,
       leftBlank,
@@ -1026,7 +1027,7 @@ function fillSplitVariantWorkbook({ source, sourceContext, blankWorkbook, rule, 
 
 function makeUnmatchedReportRow(rowInfo, context) {
   return {
-    status: "unmatched",
+    status: "not_in_source",
     blankId: context.blankId,
     blankLabel: context.blankLabel,
     adjustmentLabel: context.adjustmentLabel,
@@ -1053,7 +1054,6 @@ function makeUnmatchedReportRow(rowInfo, context) {
     boxAdjusted: false,
     duplicate: Boolean(rowInfo.duplicate),
     editable: false,
-    suggestions: context.suggestions || [],
     similarity: 0,
   };
 }
@@ -1087,7 +1087,6 @@ function makeReportRow(status, rowInfo, selected, score, order, context) {
     boxAdjusted: order.boxAdjusted,
     duplicate: Boolean(rowInfo.duplicate),
     editable: true,
-    suggestions: context.suggestions || [],
     similarity: Number(score.toFixed(4)),
   };
 }
