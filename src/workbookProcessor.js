@@ -521,13 +521,13 @@ function readSource(workbook, orderMonth, rule = brandRule("angiopharm")) {
       ? calculateUrengoyRecommended(detection.sheet, row, urengoyInfo)
       : null;
     if (urengoyRecommended) setNumericCell(detection.sheet, row, detection.columns.recommended, urengoyRecommended.value);
-    const recommended = parseNumber(sheetCellValue(detection.sheet, row, detection.columns.recommended));
+    const recommendedValue = parseNumber(sheetCellValue(detection.sheet, row, detection.columns.recommended));
     const orderedFactRaw = sheetCellValue(detection.sheet, row, detection.columns.orderedFact);
     const orderedFact = parseNumber(orderedFactRaw);
     const hasOrderedFact = asText(orderedFactRaw) !== "";
-    if (!articleRaw && !name && recommended == null) continue;
-    if (recommended == null) continue;
+    if (!articleRaw && !name && recommendedValue == null) continue;
     if (hasOrderedFact && orderedFact == null) throw new Error(`В строке ${row} таблицы заказа некорректно заполнено «Заказано по факту».`);
+    const recommended = recommendedValue ?? 0;
     items.push({
       rowIndex: row,
       articleRaw,

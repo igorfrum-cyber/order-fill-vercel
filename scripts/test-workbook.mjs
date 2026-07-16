@@ -11,6 +11,8 @@ const homeBlankPath = "/Users/igorfrumes/Downloads/Актуальный бла
 const proffBlankPath = "/Users/igorfrumes/Downloads/Актуальный_бланк_PROFF_1 от 17.06.26.xlsx";
 const levissimeBlankPath = "/private/tmp/03.07.2026 LeviSsime БЛАНК ЗАКАЗА.xlsx";
 const levissimeLegacyBlankPath = "/Users/igorfrumes/Downloads/03.07.2026 LeviSsime БЛАНК ЗАКАЗА.XLS";
+const levissimeCurrentSourcePath = "/Users/igorfrumes/Downloads/lev.xlsx";
+const levissimeCurrentBlankPath = "/Users/igorfrumes/Downloads/03.07.2026 LeviSsime БЛАНК ЗАКАЗА (2).XLS";
 const sothysLegacyBlankPath = "/Users/igorfrumes/Downloads/Сотис бланк (1).xls";
 const urengoySourcePath = "/Users/igorfrumes/Downloads/уренгой ангио.xlsx";
 const blankOutputPath = path.resolve("test-output/browser-filled-blank.xlsx");
@@ -104,6 +106,31 @@ try {
 } catch (error) {
   if (error.code !== "ENOENT") throw error;
   console.warn("LeviSsime fixture is not available; skipping LeviSsime workbook test.");
+}
+
+try {
+  await Promise.all([fs.access(levissimeCurrentSourcePath), fs.access(levissimeCurrentBlankPath)]);
+  const [levissimeSourceWorkbook, levissimeBlankWorkbook] = await Promise.all([
+    fs.readFile(levissimeCurrentSourcePath).then((buffer) => loadXlsx(buffer)),
+    fs.readFile(levissimeCurrentBlankPath).then((buffer) => loadXlsx(convertLegacyXlsToXlsx(buffer))),
+  ]);
+  const levissimeResult = fillWorkbook({
+    sourceWorkbook: levissimeSourceWorkbook,
+    blankWorkbook: levissimeBlankWorkbook,
+    orderMonth: "2026-07",
+    brand: "levissime",
+  });
+  const serumRow = levissimeResult.reportRows.find((row) => row.blankArticle === "4543");
+  if (!serumRow || serumRow.status === "not_in_source" || serumRow.sourceArticle !== "4543" || serumRow.inserted !== null) {
+    throw new Error("LeviSsime item 4543 should be found in the source table and left blank when recommendation is empty.");
+  }
+  const rescueRow = levissimeResult.reportRows.find((row) => row.blankArticle === "4734");
+  if (!rescueRow || rescueRow.status !== "not_in_source") {
+    throw new Error("LeviSsime item 4734 should still be marked missing when it is absent from the source table.");
+  }
+} catch (error) {
+  if (error.code !== "ENOENT") throw error;
+  console.warn("Current LeviSsime fixture is not available; skipping current LeviSsime matching test.");
 }
 
 try {
