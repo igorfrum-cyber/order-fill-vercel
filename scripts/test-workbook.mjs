@@ -204,6 +204,10 @@ try {
 
 const result = fillWorkbook({ sourceWorkbook, blankWorkbook, orderMonth: "2026-07" });
 console.log(result.summary);
+const duplicateRow = result.reportRows.find((row) => row.duplicate);
+if (!duplicateRow || duplicateRow.duplicateCandidates.length < 2 || !duplicateRow.duplicateCandidates.every((item) => Number.isInteger(item.sourceRow))) {
+  throw new Error("Duplicate rows should include all duplicate source candidates with source row numbers.");
+}
 
 const [sourceWithFact, blankWithFact] = await Promise.all([
   fs.readFile(sourcePath).then((buffer) => loadXlsx(buffer)),

@@ -250,6 +250,7 @@ function rowSearchText(row) {
     row.blankUnit,
     row.sourceArticle,
     row.sourceName,
+    duplicateDescription(row),
   ].join(" ").toLowerCase();
 }
 
@@ -270,6 +271,20 @@ function filterTitle(filter) {
   return labels[filter] || "Все позиции";
 }
 
+function duplicateDescription(row) {
+  const candidates = row.duplicateCandidates || [];
+  if (!candidates.length) return "";
+  return candidates
+    .map((item) => `строка ${item.sourceRow}: ${item.sourceArticle || "без артикула"} — ${item.sourceName || ""}, рекоменд. ${item.recommended ?? ""}`)
+    .join("; ");
+}
+
+function duplicateDetailsHtml(row) {
+  const text = duplicateDescription(row);
+  if (!text) return "";
+  return `<div class="duplicate-details">Дубли в таблице: ${escapeHtml(text)}</div>`;
+}
+
 function renderRows(targetBody, rows) {
   targetBody.innerHTML = rows
     .map((row) => {
@@ -282,6 +297,7 @@ function renderRows(targetBody, rows) {
       const recommended = row.recommended == null ? "" : Number(row.recommended).toFixed(2);
       const match = row.status === "not_in_source" || row.status === "not_in_blank" ? "" : `${Math.round(Number(row.similarity || 0) * 100)}%`;
       const statusMeta = row.duplicate ? `<div class="row-meta">Дубль</div>` : "";
+      const duplicateDetails = duplicateDetailsHtml(row);
       const orderCell = row.editable === false ? "" : `
         <input
           class="qty-input"
@@ -315,7 +331,7 @@ function renderRows(targetBody, rows) {
           <td class="${cls}">${statusLabel(row.status)}${statusMeta}</td>
           <td>${escapeHtml(row.blankLabel)}</td>
           <td>${escapeHtml(row.blankArticle)}</td>
-          <td>${escapeHtml(row.blankName)}</td>
+          <td>${escapeHtml(row.blankName)}${duplicateDetails}</td>
           <td>${escapeHtml(row.blankUnit)}</td>
           <td>${escapeHtml(row.stock ?? "")}</td>
           <td>${escapeHtml(row.inTransit ?? "")}</td>
@@ -521,6 +537,8 @@ function issueReason(row) {
   if (row.status === "warning_name_differs") reasons.push("Артикул найден, но название сильно отличается");
   if (row.status === "not_in_source") reasons.push("Позиция есть в бланке, но не найдена в таблице заказа");
   if (row.duplicate) reasons.push("Есть дублирующиеся кандидаты по артикулу");
+  const duplicateText = duplicateDescription(row);
+  if (duplicateText) reasons.push(`Дубли в таблице: ${duplicateText}`);
   return reasons.join("; ");
 }
 

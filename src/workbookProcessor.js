@@ -619,6 +619,18 @@ function candidatesForArticle(sourceContext, article, rule) {
   return uniqueBySourceRow(articleKeys(article, rule).flatMap((key) => sourceContext.sourceIndex.get(key) || []));
 }
 
+function duplicateCandidatesForReport(candidates) {
+  return candidates.map((item) => ({
+    sourceRow: item.rowIndex,
+    sourceArticle: item.articleRaw,
+    sourceName: item.name,
+    recommended: item.recommended,
+    rounded: item.rounded,
+    stock: item.stock,
+    inTransit: item.inTransit,
+  }));
+}
+
 function calculateAdjustedQuantity(recommended, rule, boxSizeValue) {
   const rounded = roundHalfUp(recommended);
   if (recommended < 1.5) return { rounded, inserted: null, autoComment: "", boxAdjusted: false };
@@ -885,6 +897,7 @@ export function fillWorkbook({ sourceWorkbook, blankWorkbook, orderMonth, brand 
     } else {
       const isDuplicate = candidates.length > 1;
       if (isDuplicate) duplicates += 1;
+      rowInfo.duplicateCandidates = isDuplicate ? duplicateCandidatesForReport(candidates) : [];
       const candidate = chooseCandidate(candidates, blankName, blankUnit);
       selected = candidate.item;
       score = candidate.score;
@@ -972,6 +985,7 @@ function fillSplitVariantWorkbook({ source, sourceContext, blankWorkbook, rule, 
     } else {
       const isDuplicate = candidates.length > 1;
       if (isDuplicate) duplicates += 1;
+      position.duplicateCandidates = isDuplicate ? duplicateCandidatesForReport(candidates) : [];
       const candidate = chooseCandidate(candidates, position.blankName, position.blankUnit);
       selected = candidate.item;
       score = candidate.score;
@@ -1053,6 +1067,7 @@ function makeUnmatchedReportRow(rowInfo, context) {
     autoComment: "",
     boxAdjusted: false,
     duplicate: Boolean(rowInfo.duplicate),
+    duplicateCandidates: rowInfo.duplicateCandidates || [],
     editable: false,
     similarity: 0,
   };
@@ -1086,6 +1101,7 @@ function makeReportRow(status, rowInfo, selected, score, order, context) {
     autoComment: order.autoComment,
     boxAdjusted: order.boxAdjusted,
     duplicate: Boolean(rowInfo.duplicate),
+    duplicateCandidates: rowInfo.duplicateCandidates || [],
     editable: true,
     similarity: Number(score.toFixed(4)),
   };

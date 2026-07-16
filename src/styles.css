@@ -497,6 +497,13 @@ tr.invalid .comment-input {
   font-weight: 720;
 }
 
+.duplicate-details {
+  margin-top: 6px;
+  color: var(--warn);
+  font-size: 12px;
+  line-height: 1.35;
+}
+
 .muted {
   color: var(--muted);
 }
