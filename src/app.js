@@ -157,6 +157,7 @@ function statusLabel(status) {
     left_blank_nonpositive: "Пусто",
     not_in_source: "Нет в таблице",
     not_in_blank: "Нет в бланке",
+    source_duplicate: "Дубль в таблице",
   };
   return labels[status] || status;
 }
@@ -179,7 +180,7 @@ function combinedSummary(results) {
     suspicious: results.reduce((sum, result) => sum + result.summary.suspicious, 0),
     notInSource: results.reduce((sum, result) => sum + result.summary.unmatched, 0),
     notInBlank: currentReportRows.filter((row) => row.status === "not_in_blank").length,
-    duplicates: results.reduce((sum, result) => sum + result.summary.duplicates, 0),
+    duplicates: currentReportRows.filter((row) => row.duplicate).length,
     blankDuplicateArticles: results.reduce((sum, result) => sum + (result.summary.blankDuplicateArticles || 0), 0),
     blankWarnings: results.flatMap((result) => result.summary.blankWarnings || []),
   };
@@ -424,6 +425,66 @@ function missingInBlankRows(results) {
     }));
 }
 
+function duplicateSignature(candidates) {
+  return (candidates || [])
+    .map((item) => Number(item.sourceRow))
+    .filter((row) => Number.isInteger(row))
+    .sort((left, right) => left - right)
+    .join(":");
+}
+
+function sourceDuplicateRows(results) {
+  const represented = new Set();
+  for (const result of results) {
+    for (const row of result.reportRows || []) {
+      if (row.duplicate) represented.add(duplicateSignature(row.duplicateCandidates));
+    }
+  }
+
+  const rows = [];
+  const seen = new Set();
+  for (const result of results) {
+    for (const group of result.sourceDuplicateGroups || []) {
+      const signature = duplicateSignature(group.candidates);
+      if (!signature || seen.has(signature) || represented.has(signature)) continue;
+      seen.add(signature);
+      const first = group.candidates[0] || {};
+      rows.push({
+        status: "source_duplicate",
+        blankId: "source",
+        blankLabel: "1С",
+        adjustmentLabel: "",
+        key: `source-duplicate:${signature}`,
+        blankRow: first.sourceRow || "",
+        blankQuantityCol: null,
+        blankArticle: first.sourceArticle || group.article,
+        blankName: first.sourceName || "",
+        blankUnit: "",
+        blankBoxSize: "",
+        sourceRow: first.sourceRow || null,
+        sourceArticle: first.sourceArticle || group.article,
+        sourceName: first.sourceName || "",
+        hasOrderedFact: false,
+        orderedFact: null,
+        sourceComment: "",
+        stock: first.stock ?? "",
+        inTransit: first.inTransit ?? "",
+        recommended: first.recommended ?? null,
+        rounded: first.rounded ?? null,
+        baseRounded: null,
+        inserted: null,
+        autoComment: "",
+        boxAdjusted: false,
+        duplicate: true,
+        duplicateCandidates: group.candidates || [],
+        editable: false,
+        similarity: 0,
+      });
+    }
+  }
+  return rows;
+}
+
 async function loadWorkbook(file) {
   const buffer = await file.arrayBuffer();
   return loadXlsx(await normalizeWorkbookBytes(buffer, file.name));
@@ -499,7 +560,7 @@ form.addEventListener("submit", async (event) => {
     }
     currentSourceOutputName = sourceOutputFileName(sourceFile.files[0].name);
 
-    const rows = [...results.flatMap((result) => result.reportRows), ...missingInBlankRows(results)];
+    const rows = [...results.flatMap((result) => result.reportRows), ...sourceDuplicateRows(results), ...missingInBlankRows(results)];
     currentReportRows = rows;
     editState = new Map(rows.map((row) => [row.key || `${row.blankId}:${row.blankRow}`, { value: row.inserted ?? "", comment: initialComment(row) }]));
     renderMetrics(combinedSummary(results));
@@ -544,6 +605,7 @@ function issueReason(row) {
   if (row.status === "warning_name_only") reasons.push("В таблице заказа нет артикула, найдено только по названию");
   if (row.status === "warning_name_differs") reasons.push("Артикул найден, но название сильно отличается");
   if (row.status === "not_in_source") reasons.push("Позиция есть в бланке, но не найдена в таблице заказа");
+  if (row.status === "source_duplicate") reasons.push("В таблице заказа есть несколько строк с одним артикулом");
   if (row.duplicate) reasons.push("Есть дублирующиеся кандидаты по артикулу");
   const duplicateText = duplicateDescription(row);
   if (duplicateText) reasons.push(`Дубли в таблице: ${duplicateText}`);

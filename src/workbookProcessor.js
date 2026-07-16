@@ -621,8 +621,26 @@ function buildSourceContext(source, rule) {
   return {
     sourceIndex,
     noArticleItems,
+    sourceDuplicateGroups: sourceDuplicateGroups(sourceIndex),
     sourceArticleCount: new Set(source.items.map((item) => item.article).filter(Boolean)).size,
   };
+}
+
+function sourceDuplicateGroups(sourceIndex) {
+  const seenGroups = new Set();
+  const groups = [];
+  for (const [article, items] of sourceIndex.entries()) {
+    const uniqueItems = uniqueBySourceRow(items);
+    if (uniqueItems.length < 2) continue;
+    const signature = uniqueItems.map((item) => item.rowIndex).sort((left, right) => left - right).join(":");
+    if (seenGroups.has(signature)) continue;
+    seenGroups.add(signature);
+    groups.push({
+      article,
+      candidates: duplicateCandidatesForReport(uniqueItems),
+    });
+  }
+  return groups;
 }
 
 function candidatesForArticle(sourceContext, article, rule) {
@@ -937,6 +955,7 @@ export function fillWorkbook({ sourceWorkbook, blankWorkbook, orderMonth, brand 
     blankWorkbook,
     blankDetection: blank,
     sourceItemsForMissingBlank: sourceItemsForMissingBlank(source),
+    sourceDuplicateGroups: sourceContext.sourceDuplicateGroups,
     summary: {
       filled,
       leftBlank,
@@ -1027,6 +1046,7 @@ function fillSplitVariantWorkbook({ source, sourceContext, blankWorkbook, rule, 
     blankWorkbook,
     blankDetection: blank,
     sourceItemsForMissingBlank: sourceItemsForMissingBlank(source),
+    sourceDuplicateGroups: sourceContext.sourceDuplicateGroups,
     summary: {
       filled,
       leftBlank,

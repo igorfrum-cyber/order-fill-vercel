@@ -128,6 +128,16 @@ try {
   if (!rescueRow || rescueRow.status !== "not_in_source") {
     throw new Error("LeviSsime item 4734 should still be marked missing when it is absent from the source table.");
   }
+  const currentDuplicateSignatures = new Map((levissimeResult.sourceDuplicateGroups || []).map((group) => [
+    group.article,
+    group.candidates.map((item) => item.sourceRow).sort((left, right) => left - right).join(":"),
+  ]));
+  if (currentDuplicateSignatures.get("5614") !== "51:83") {
+    throw new Error("LeviSsime source duplicate 5614 should include source rows 51 and 83.");
+  }
+  if (currentDuplicateSignatures.get("5410") !== "129:160") {
+    throw new Error("LeviSsime source duplicate 5410 should include source rows 129 and 160.");
+  }
   levissimeBlankWorkbook.sheets[0].cells.get("69:1").value = "MTLS8017";
   levissimeBlankWorkbook.sheets[0].cells.get("69:2").value = "Lift total row glitch";
   const totalGlitchResult = fillWorkbook({
