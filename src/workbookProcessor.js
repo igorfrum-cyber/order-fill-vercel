@@ -910,6 +910,7 @@ export function fillWorkbook({ sourceWorkbook, blankWorkbook, orderMonth, brand 
       const fallback = chooseNameFallback(sourceContext.noArticleItems, blankName, blankUnit);
       if (!fallback.item) {
         unmatched += 1;
+        setNumericCell(blank.sheet, row, blank.columns.quantity, null);
         reportRows.push(makeUnmatchedReportRow(rowInfo, { blankId, blankLabel, adjustmentLabel: rule.adjustmentLabel }));
         continue;
       }
@@ -918,6 +919,7 @@ export function fillWorkbook({ sourceWorkbook, blankWorkbook, orderMonth, brand 
       if (selected.rounded > 0) {
         suspicious += 1;
         order = orderForItem(selected, rule, blankBoxSize);
+        setNumericCell(blank.sheet, row, blank.columns.quantity, null);
         reportRows.push(makeReportRow("warning_name_only", rowInfo, selected, score, { ...order, inserted: null, autoComment: "" }, { blankId, blankLabel, adjustmentLabel: rule.adjustmentLabel }));
         continue;
       }
@@ -999,6 +1001,7 @@ function fillSplitVariantWorkbook({ source, sourceContext, blankWorkbook, rule, 
       const fallback = chooseSothysNameFallback(sourceContext.noArticleItems, position.blankName, position.blankUnit);
       if (!fallback.item) {
         unmatched += 1;
+        setNumericCell(blank.sheet, position.blankRow, position.blankQuantityCol, null);
         reportRows.push(makeUnmatchedReportRow(position, { blankId, blankLabel, adjustmentLabel: rule.adjustmentLabel }));
         continue;
       }
@@ -1007,6 +1010,7 @@ function fillSplitVariantWorkbook({ source, sourceContext, blankWorkbook, rule, 
       if (selected.rounded > 0) {
         suspicious += 1;
         order = orderForItem(selected, rule, position.blankBoxSize);
+        setNumericCell(blank.sheet, position.blankRow, position.blankQuantityCol, null);
         reportRows.push(makeReportRow("warning_name_only", position, selected, score, { ...order, inserted: null, autoComment: "" }, { blankId, blankLabel, adjustmentLabel: rule.adjustmentLabel }));
         continue;
       }

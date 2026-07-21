@@ -3,7 +3,7 @@ import path from "node:path";
 import { strFromU8, unzipSync } from "fflate";
 import { read as readSpreadsheet, write as writeSpreadsheet } from "xlsx";
 
-import { adjustQuantityForBrand, applyFinalEdits, detectColumns, fillWorkbook, loadXlsx, saveXlsx } from "../src/workbookProcessor.js";
+import { adjustQuantityForBrand, applyFinalEdits, detectColumns, fillWorkbook, loadXlsx, normalizeArticle, saveXlsx } from "../src/workbookProcessor.js";
 
 const sourcePath = "/Users/igorfrumes/Downloads/агио артикул.xlsx";
 const blankPath = "/Users/igorfrumes/Downloads/2026 06 23 Бланк заказа ANGIOPHARM (1).xlsx";
@@ -15,6 +15,8 @@ const levissimeCurrentSourcePath = "/Users/igorfrumes/Downloads/lev.xlsx";
 const levissimeCurrentBlankPath = "/Users/igorfrumes/Downloads/03.07.2026 LeviSsime БЛАНК ЗАКАЗА (2).XLS";
 const sothysLegacyBlankPath = "/Users/igorfrumes/Downloads/Сотис бланк (1).xls";
 const urengoySourcePath = "/Users/igorfrumes/Downloads/уренгой ангио.xlsx";
+const currentAngioSourcePath = "/Users/igorfrumes/Downloads/ангио заполненная таблица.xlsx";
+const currentAngioFilledBlankPath = "/Users/igorfrumes/Downloads/2026 07 07 Бланк заказа ANGIOPHARM 6 заполненный (1).xlsx";
 const blankOutputPath = path.resolve("test-output/browser-filled-blank.xlsx");
 const sourceOutputPath = path.resolve("test-output/browser-filled-source.xlsx");
 
@@ -222,6 +224,35 @@ try {
 } catch (error) {
   if (error.code !== "ENOENT") throw error;
   console.warn("Urengoy source fixture is not available; skipping Urengoy recalculation test.");
+}
+
+try {
+  await Promise.all([fs.access(currentAngioSourcePath), fs.access(currentAngioFilledBlankPath)]);
+  const [currentAngioSourceWorkbook, currentAngioBlankWorkbook] = await Promise.all([
+    fs.readFile(currentAngioSourcePath).then((buffer) => loadXlsx(buffer)),
+    fs.readFile(currentAngioFilledBlankPath).then((buffer) => loadXlsx(buffer)),
+  ]);
+  if (normalizeArticle("LС01") !== "LC01") {
+    throw new Error("Mixed Latin/Cyrillic article LС01 should normalize to LC01.");
+  }
+  const currentAngioResult = fillWorkbook({
+    sourceWorkbook: currentAngioSourceWorkbook,
+    blankWorkbook: currentAngioBlankWorkbook,
+    orderMonth: "2026-07",
+    brand: "angiopharm",
+  });
+  const currentAngioSheet = currentAngioResult.blankWorkbook.sheets.find((item) => item.name === "Бланк");
+  const lc01Row = currentAngioResult.reportRows.find((row) => row.blankArticle === "LC01");
+  if (!lc01Row || lc01Row.sourceArticle !== "LС01" || lc01Row.inserted !== 98 || currentAngioSheet.cells.get("144:5")?.value !== 98) {
+    throw new Error("Current ANGIOPHARM LC01 should match mixed Cyrillic article and be filled with 98.");
+  }
+  const mv07Row = currentAngioResult.reportRows.find((row) => row.blankArticle === "MV07");
+  if (!mv07Row || mv07Row.status !== "warning_name_only" || currentAngioSheet.cells.get("196:5")?.value !== "") {
+    throw new Error("Name-only ANGIOPHARM matches should clear stale blank quantities until reviewed.");
+  }
+} catch (error) {
+  if (error.code !== "ENOENT") throw error;
+  console.warn("Current ANGIOPHARM fixture is not available; skipping current ANGIOPHARM matching test.");
 }
 
 const result = fillWorkbook({ sourceWorkbook, blankWorkbook, orderMonth: "2026-07" });
