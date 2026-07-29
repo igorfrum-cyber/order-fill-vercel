@@ -387,6 +387,47 @@ function detectUrengoyColumns(detection) {
   return { category, salesColumns };
 }
 
+function detectAngiopharmCalculationColumns(detection) {
+  const { sheet, headerRow, columns } = detection;
+  const { maxColumn } = sheetBounds(sheet);
+  const found = {
+    salesColumns: [],
+    totalQuantity: null,
+    revenue: null,
+    revenuePercent: null,
+    cumulativePercent: null,
+    category: null,
+    averageMonthly: null,
+    previousQuantity: null,
+    targetStock: null,
+  };
+
+  for (let col = 1; col <= maxColumn; col += 1) {
+    const currentHeader = normalizeHeader(sheetCellValue(sheet, headerRow, col));
+    const upperHeader = sheetCellValue(sheet, headerRow - 1, col);
+    const upperNormalized = normalizeHeader(upperHeader);
+    if (!currentHeader) continue;
+
+    if (col < columns.recommended && currentHeader === "количество" && isMonthHeader(upperHeader)) found.salesColumns.push(col);
+    else if (!found.totalQuantity && col < columns.recommended && currentHeader === "количество" && upperNormalized.includes("итого")) found.totalQuantity = col;
+    else if (!found.revenue && currentHeader.includes("сумма") && currentHeader.includes("выруч")) found.revenue = col;
+    else if (!found.revenuePercent && currentHeader.includes("%") && currentHeader.includes("выруч")) found.revenuePercent = col;
+    else if (!found.cumulativePercent && currentHeader.includes("кумулятив")) found.cumulativePercent = col;
+    else if (!found.category && currentHeader === "категория") found.category = col;
+    else if (!found.averageMonthly && currentHeader.includes("среднее") && currentHeader.includes("месяц")) found.averageMonthly = col;
+    else if (!found.previousQuantity && currentHeader.includes("количество") && currentHeader.includes("прошлый")) found.previousQuantity = col;
+    else if (!found.targetStock && currentHeader.includes("целевой") && currentHeader.includes("запас")) found.targetStock = col;
+  }
+
+  const missing = [];
+  if (!found.salesColumns.length) missing.push("месячные продажи");
+  for (const key of ["totalQuantity", "revenue", "revenuePercent", "cumulativePercent", "category", "averageMonthly", "previousQuantity", "targetStock"]) {
+    if (!found[key]) missing.push(key);
+  }
+  if (missing.length) throw new Error(`Для ANGIOPHARM не нашел расчетные колонки: ${missing.join(", ")}.`);
+  return found;
+}
+
 function normalizeCategory(value) {
   return asText(value)
     .replace(/[АВСавс]/g, (ch) => ARTICLE_TRANSLATION.get(ch) || ch)
@@ -401,6 +442,13 @@ function categoryCoefficient(value) {
   if (category === "B") return 1.5;
   if (category === "C") return 1;
   return 1;
+}
+
+function categoryFromCumulative(percent) {
+  if (percent <= 50) return "A+";
+  if (percent <= 80) return "A";
+  if (percent <= 95) return "B";
+  return "C";
 }
 
 function maxMonthlySales(sheet, row, salesColumns) {
@@ -424,6 +472,45 @@ function calculateUrengoyRecommended(sheet, row, urengoyInfo) {
   };
 }
 
+function isCombinedChzName(value) {
+  return /^\s*чз\s*\+/iu.test(asText(value));
+}
+
+function isChzCloneName(value) {
+  return normalizeHeader(value).startsWith("чз ") && !isCombinedChzName(value);
+}
+
+function comparableChzName(value) {
+  return normalizeHeader(value)
+    .replace(/^чз\s+/u, "")
+    .replace(/\bчз\b/gu, " ")
+    .replace(/\bан\b/gu, " ")
+    .replace(/\bangiopharm\b/gu, " ")
+    .replace(/\s+/gu, " ")
+    .trim();
+}
+
+function chzNameSimilarity(left, right) {
+  return similarity(comparableChzName(left), comparableChzName(right));
+}
+
+function calculateTargetNew(values) {
+  const numeric = values.map((value) => (value == null ? null : Number(value)));
+  const total = numeric.reduce((sum, value) => sum + (Number.isFinite(value) ? value : 0), 0);
+  const threshold = total / 24;
+  const stable = numeric.every((value) => Number.isFinite(value) && value > 0) && Math.min(...numeric) > threshold;
+  if (stable) {
+    const average = total / numeric.length;
+    const secondMonth = numeric[1] ?? 0;
+    const firstThreeAverage = numeric.slice(0, 3).reduce((sum, value) => sum + value, 0) / 3;
+    return (average + secondMonth + firstThreeAverage) / 3;
+  }
+
+  const filtered = numeric.filter((value) => Number.isFinite(value) && value > 0 && value > threshold);
+  if (!filtered.length) return 0;
+  return filtered.reduce((sum, value) => sum + value, 0) / filtered.length;
+}
+
 function isSourceTotalRow(detection, row, maxColumn) {
   const summaryAreaEnd = Math.min(maxColumn, Math.max(1, detection.columns.name - 1));
   for (let col = 1; col <= summaryAreaEnd; col += 1) {
@@ -431,6 +518,164 @@ function isSourceTotalRow(detection, row, maxColumn) {
     if (text === "итого" || text === "total") return true;
   }
   return false;
+}
+
+function readSourceRows(detection, maxRow, maxColumn, rule) {
+  const rows = [];
+  for (let row = detection.headerRow + 1; row <= maxRow; row += 1) {
+    if (isSourceTotalRow(detection, row, maxColumn)) continue;
+    const articleRaw = asText(sheetCellValue(detection.sheet, row, detection.columns.article));
+    const article = normalizeArticle(articleRaw, articleNormalizeOptions(rule));
+    const name = asText(sheetCellValue(detection.sheet, row, detection.columns.name));
+    if (!article && !name) continue;
+    rows.push({ row, articleRaw, article, name, isChz: isChzCloneName(name) });
+  }
+  return rows;
+}
+
+function sumColumns(sheet, targetRow, sourceRowsList, columns) {
+  for (const col of columns.filter(Boolean)) {
+    const total = sourceRowsList.reduce((sum, row) => sum + (parseNumber(sheetCellValue(sheet, row, col)) ?? 0), 0);
+    setNumericCell(sheet, targetRow, col, Number(total.toFixed(2)));
+  }
+}
+
+function mergeFactAndComment(sheet, sourceRowsList, columns) {
+  const facts = sourceRowsList.map((row) => parseNumber(sheetCellValue(sheet, row, columns.orderedFact))).filter((value) => value != null);
+  const comments = sourceRowsList.map((row) => asText(sheetCellValue(sheet, row, columns.comment))).filter(Boolean);
+  return {
+    fact: facts.length ? Number(facts.reduce((sum, value) => sum + value, 0).toFixed(2)) : null,
+    comment: Array.from(new Set(comments)).join("; "),
+  };
+}
+
+function removeWorksheetRows(sheet, rowNumbers) {
+  const rowsToDelete = Array.from(new Set(rowNumbers)).sort((left, right) => left - right);
+  if (!rowsToDelete.length) return;
+  const rowsToDeleteSet = new Set(rowsToDelete);
+  const sheetData = firstElement(sheet.xml, "sheetData");
+
+  for (const rowNode of Array.from(sheetData.getElementsByTagName("row"))) {
+    const rowNumber = Number(rowNode.getAttribute("r"));
+    if (rowsToDeleteSet.has(rowNumber)) rowNode.parentNode?.removeChild(rowNode);
+  }
+
+  for (const rowNode of Array.from(sheetData.getElementsByTagName("row"))) {
+    const originalRow = Number(rowNode.getAttribute("r"));
+    const deletedBefore = rowsToDelete.filter((row) => row < originalRow).length;
+    if (deletedBefore) rowNode.setAttribute("r", String(originalRow - deletedBefore));
+  }
+
+  const nextCells = new Map();
+  for (const cell of sheet.cells.values()) {
+    if (rowsToDeleteSet.has(cell.row)) continue;
+    const deletedBefore = rowsToDelete.filter((row) => row < cell.row).length;
+    if (deletedBefore) {
+      cell.row -= deletedBefore;
+      cell.ref = `${columnNumberToName(cell.col)}${cell.row}`;
+      cell.node.setAttribute("r", cell.ref);
+    }
+    nextCells.set(cellKey(cell.row, cell.col), cell);
+  }
+  sheet.cells = nextCells;
+}
+
+function monthlyValues(sheet, row, salesColumns) {
+  return salesColumns.map((col) => parseNumber(sheetCellValue(sheet, row, col)));
+}
+
+function recalculateAngiopharmSource(detection, deliveryWeeks, rule, calculationColumns = detectAngiopharmCalculationColumns(detection)) {
+  const { sheet, columns } = detection;
+  const { maxRow, maxColumn } = sheetBounds(sheet);
+  const rows = readSourceRows(detection, maxRow, maxColumn, rule);
+  const deliveryCoefficient = 0.25 * deliveryWeeks;
+  let totalRevenue = 0;
+
+  const calculated = rows.map((item) => {
+    const values = monthlyValues(sheet, item.row, calculationColumns.salesColumns);
+    const totalQuantity = values.reduce((sum, value) => sum + (value ?? 0), 0);
+    const revenue = parseNumber(sheetCellValue(sheet, item.row, calculationColumns.revenue)) ?? 0;
+    totalRevenue += revenue;
+    return { ...item, values, totalQuantity, revenue };
+  });
+
+  const sorted = [...calculated].sort((left, right) => right.revenue - left.revenue);
+  let cumulativeRevenue = 0;
+  const rankMetrics = new Map();
+  for (const item of sorted) {
+    cumulativeRevenue += item.revenue;
+    const revenuePercent = totalRevenue > 0 ? (item.revenue / totalRevenue) * 100 : 0;
+    const cumulativePercent = totalRevenue > 0 ? (cumulativeRevenue / totalRevenue) * 100 : 100;
+    rankMetrics.set(item.row, {
+      revenuePercent,
+      cumulativePercent,
+      category: categoryFromCumulative(cumulativePercent),
+    });
+  }
+
+  for (const item of calculated) {
+    const metrics = rankMetrics.get(item.row) || { revenuePercent: 0, cumulativePercent: 100, category: "C" };
+    const targetNew = calculateTargetNew(item.values);
+    const categoryNeed = targetNew * categoryCoefficient(metrics.category);
+    const deliveryNeed = targetNew * deliveryCoefficient;
+    const targetStock = categoryNeed + deliveryNeed;
+    const stock = parseNumber(sheetCellValue(sheet, item.row, columns.stock)) ?? 0;
+    const inTransit = parseNumber(sheetCellValue(sheet, item.row, columns.inTransit)) ?? 0;
+    const recommended = Math.max(0, targetStock - stock - inTransit);
+
+    setNumericCell(sheet, item.row, calculationColumns.totalQuantity, Number(item.totalQuantity.toFixed(2)));
+    setNumericCell(sheet, item.row, calculationColumns.revenuePercent, Number(metrics.revenuePercent.toFixed(2)));
+    setNumericCell(sheet, item.row, calculationColumns.cumulativePercent, Number(metrics.cumulativePercent.toFixed(2)));
+    setTextCell(sheet, item.row, calculationColumns.category, metrics.category);
+    setNumericCell(sheet, item.row, calculationColumns.averageMonthly, Number((item.totalQuantity / calculationColumns.salesColumns.length).toFixed(2)));
+    setNumericCell(sheet, item.row, calculationColumns.targetStock, Number(targetStock.toFixed(2)));
+    setNumericCell(sheet, item.row, columns.recommended, Number(recommended.toFixed(2)));
+  }
+}
+
+function rebuildAngiopharmSource(detection, deliveryWeeks, rule) {
+  if (!deliveryWeeks) throw new Error("Для ANGIOPHARM не нашел параметр «Срок поставки». Проверьте выгрузку из 1С.");
+  const calculationColumns = detectAngiopharmCalculationColumns(detection);
+  const { sheet, columns } = detection;
+  const { maxRow, maxColumn } = sheetBounds(sheet);
+  const rows = readSourceRows(detection, maxRow, maxColumn, rule);
+  const rowsByArticle = new Map();
+  for (const row of rows) {
+    if (!row.article) continue;
+    if (!rowsByArticle.has(row.article)) rowsByArticle.set(row.article, []);
+    rowsByArticle.get(row.article).push(row);
+  }
+
+  const rowsToDelete = [];
+  for (const group of rowsByArticle.values()) {
+    const normalRows = group.filter((row) => !row.isChz);
+    const chzRows = group.filter((row) => row.isChz);
+    if (!normalRows.length || !chzRows.length) continue;
+
+    const target = normalRows[0];
+    const matchingChzRows = chzRows.filter((row) => chzNameSimilarity(target.name, row.name) >= 0.9);
+    if (!matchingChzRows.length) continue;
+
+    const sourceRowsList = [target, ...matchingChzRows].map((row) => row.row);
+    const mergedName = `ЧЗ + ${target.name}`;
+    setTextCell(sheet, target.row, columns.name, mergedName);
+    if (columns.name !== 1) setTextCell(sheet, target.row, 1, mergedName);
+    sumColumns(sheet, target.row, sourceRowsList, [
+      ...calculationColumns.salesColumns,
+      calculationColumns.totalQuantity,
+      calculationColumns.revenue,
+      calculationColumns.previousQuantity,
+      columns.stock,
+      columns.inTransit,
+    ]);
+    const fact = mergeFactAndComment(sheet, sourceRowsList, columns);
+    setNumericCell(sheet, target.row, columns.orderedFact, fact.fact);
+    setTextCell(sheet, target.row, columns.comment, fact.comment);
+    rowsToDelete.push(...matchingChzRows.map((row) => row.row));
+  }
+
+  removeWorksheetRows(sheet, rowsToDelete);
+  recalculateAngiopharmSource(detection, deliveryWeeks, rule, calculationColumns);
 }
 
 function blankMatchers(options = {}) {
@@ -508,11 +753,15 @@ export function similarity(left, right) {
 function readSource(workbook, orderMonth, rule = brandRule("angiopharm")) {
   const periodInfo = validateSourcePeriods(workbook, orderMonth);
   const detection = detectColumns(workbook, "source");
+  const isAngiopharm = rule.label === "ANGIOPHARM";
   const isUrengoy = isUrengoySource(workbook);
-  const deliveryWeeks = isUrengoy ? detectDeliveryWeeks(workbook) : null;
-  if (isUrengoy && !deliveryWeeks) throw new Error("Для Уренгоя не нашел параметр «Срок поставки». Проверьте выгрузку из 1С.");
-  const urengoyColumns = isUrengoy ? detectUrengoyColumns(detection) : null;
-  const urengoyInfo = isUrengoy
+  const deliveryWeeks = isAngiopharm || isUrengoy ? detectDeliveryWeeks(workbook) : null;
+  if ((isAngiopharm || isUrengoy) && !deliveryWeeks) throw new Error("Не нашел параметр «Срок поставки». Проверьте выгрузку из 1С.");
+
+  if (isAngiopharm) rebuildAngiopharmSource(detection, deliveryWeeks, rule);
+
+  const urengoyColumns = !isAngiopharm && isUrengoy ? detectUrengoyColumns(detection) : null;
+  const urengoyInfo = !isAngiopharm && isUrengoy
     ? {
         deliveryWeeks,
         deliveryCoefficient: 1 + 0.25 * deliveryWeeks,
@@ -563,7 +812,7 @@ function readSource(workbook, orderMonth, rule = brandRule("angiopharm")) {
       ...periodInfo,
       cityRule: isUrengoy ? "Новый Уренгой" : "",
       deliveryWeeks: deliveryWeeks ?? null,
-      deliveryCoefficient: urengoyInfo?.deliveryCoefficient ?? null,
+      deliveryCoefficient: isAngiopharm ? 0.25 * deliveryWeeks : urengoyInfo?.deliveryCoefficient ?? null,
     },
   };
 }

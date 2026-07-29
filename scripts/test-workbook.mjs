@@ -17,6 +17,7 @@ const sothysLegacyBlankPath = "/Users/igorfrumes/Downloads/Сотис бланк
 const urengoySourcePath = "/Users/igorfrumes/Downloads/уренгой ангио.xlsx";
 const currentAngioSourcePath = "/Users/igorfrumes/Downloads/ангио заполненная таблица.xlsx";
 const currentAngioFilledBlankPath = "/Users/igorfrumes/Downloads/2026 07 07 Бланк заказа ANGIOPHARM 6 заполненный (1).xlsx";
+const angiopharmChzSourcePath = "/Users/igorfrumes/Downloads/Ангио ЧЗ сверка .xlsx";
 const blankOutputPath = path.resolve("test-output/browser-filled-blank.xlsx");
 const sourceOutputPath = path.resolve("test-output/browser-filled-source.xlsx");
 
@@ -253,6 +254,35 @@ try {
 } catch (error) {
   if (error.code !== "ENOENT") throw error;
   console.warn("Current ANGIOPHARM fixture is not available; skipping current ANGIOPHARM matching test.");
+}
+
+try {
+  await fs.access(angiopharmChzSourcePath);
+  const [chzSourceWorkbook, chzBlankWorkbook] = await Promise.all([
+    fs.readFile(angiopharmChzSourcePath).then((buffer) => loadXlsx(buffer)),
+    fs.readFile(blankPath).then((buffer) => loadXlsx(buffer)),
+  ]);
+  const chzResult = fillWorkbook({
+    sourceWorkbook: chzSourceWorkbook,
+    blankWorkbook: chzBlankWorkbook,
+    orderMonth: "2026-08",
+    brand: "angiopharm",
+  });
+  const aa04 = chzResult.reportRows.find((row) => row.blankArticle === "AA04");
+  if (!aa04 || aa04.duplicate || !aa04.sourceName.startsWith("ЧЗ + АН") || aa04.stock !== 244) {
+    throw new Error("ANGIOPHARM ЧЗ duplicate should be merged into the ordinary row with combined stock.");
+  }
+  if (aa04.recommended !== 417 || aa04.rounded !== 417) {
+    throw new Error(`ANGIOPHARM AA04 recommendation should use target NEW minus stock/transit, got ${aa04.recommended}.`);
+  }
+  const chzSheet = chzResult.sourceWorkbook.sheets.find((item) => item.name === "Лист_1");
+  const sourceAa04Rows = Array.from(chzSheet.cells.values()).filter((cell) => cell.col === 4 && normalizeArticle(cell.value) === "AA04");
+  if (sourceAa04Rows.length !== 1) {
+    throw new Error("Downloaded ANGIOPHARM source table should keep one merged AA04 row after deleting ЧЗ clone rows.");
+  }
+} catch (error) {
+  if (error.code !== "ENOENT") throw error;
+  console.warn("ANGIOPHARM ЧЗ fixture is not available; skipping ЧЗ merge test.");
 }
 
 const result = fillWorkbook({ sourceWorkbook, blankWorkbook, orderMonth: "2026-07" });
