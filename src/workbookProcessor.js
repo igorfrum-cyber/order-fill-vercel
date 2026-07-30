@@ -667,12 +667,7 @@ function recalculateSourceTable(detection, deliveryWeeks, rule, calculationColum
   }
 }
 
-function recalculateAngiopharmSource(detection, deliveryWeeks, rule, calculationColumns = detectCalculationColumns(detection)) {
-  recalculateSourceTable(detection, deliveryWeeks, rule, calculationColumns);
-}
-
-function rebuildAngiopharmSource(detection, deliveryWeeks, rule, calculationColumns = detectCalculationColumns(detection)) {
-  if (!deliveryWeeks) throw new Error("Для ANGIOPHARM не нашел параметр «Срок поставки». Проверьте выгрузку из 1С.");
+function rebuildSourceWithChz(detection, deliveryWeeks, rule, calculationColumns = detectCalculationColumns(detection)) {
   const { sheet, columns } = detection;
   const { maxRow, maxColumn } = sheetBounds(sheet);
   const rows = readSourceRows(detection, maxRow, maxColumn, rule);
@@ -712,7 +707,7 @@ function rebuildAngiopharmSource(detection, deliveryWeeks, rule, calculationColu
   }
 
   removeWorksheetRows(sheet, rowsToDelete);
-  recalculateAngiopharmSource(detection, deliveryWeeks, rule, calculationColumns);
+  recalculateSourceTable(detection, deliveryWeeks, rule, calculationColumns);
 }
 
 function blankMatchers(options = {}) {
@@ -796,8 +791,7 @@ function readSource(workbook, orderMonth, rule = brandRule("angiopharm")) {
   const calculationColumns = detectCalculationColumns(detection, { required: false });
 
   if (calculationColumns) {
-    if (isAngiopharm) rebuildAngiopharmSource(detection, deliveryWeeks, rule, calculationColumns);
-    else recalculateSourceTable(detection, deliveryWeeks, rule, calculationColumns);
+    rebuildSourceWithChz(detection, deliveryWeeks, rule, calculationColumns);
   }
 
   const urengoyColumns = !calculationColumns && !isAngiopharm && isUrengoy ? detectUrengoyColumns(detection) : null;
