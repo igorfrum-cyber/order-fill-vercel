@@ -387,7 +387,7 @@ function detectUrengoyColumns(detection) {
   return { category, salesColumns };
 }
 
-function detectAngiopharmCalculationColumns(detection) {
+function detectCalculationColumns(detection, options = {}) {
   const { sheet, headerRow, columns } = detection;
   const { maxColumn } = sheetBounds(sheet);
   const found = {
@@ -424,7 +424,8 @@ function detectAngiopharmCalculationColumns(detection) {
   for (const key of ["totalQuantity", "revenue", "revenuePercent", "cumulativePercent", "category", "averageMonthly", "previousQuantity", "targetStock"]) {
     if (!found[key]) missing.push(key);
   }
-  if (missing.length) throw new Error(`Для ANGIOPHARM не нашел расчетные колонки: ${missing.join(", ")}.`);
+  if (missing.length && options.required !== false) throw new Error(`Не нашел расчетные колонки: ${missing.join(", ")}.`);
+  if (missing.length) return null;
   return found;
 }
 
@@ -511,6 +512,36 @@ function calculateTargetNew(values) {
   return filtered.reduce((sum, value) => sum + value, 0) / filtered.length;
 }
 
+function positiveSale(value) {
+  return Number.isFinite(value) && value > 0;
+}
+
+function newProductCalculation(values, deliveryWeeks) {
+  const numeric = values.map((value) => (value == null ? null : Number(value)));
+  let suffixLength = 0;
+  for (let index = numeric.length - 1; index >= 0; index -= 1) {
+    if (!positiveSale(numeric[index])) break;
+    suffixLength += 1;
+  }
+  if (suffixLength < 1 || suffixLength > 3) return null;
+
+  const firstNoveltyIndex = numeric.length - suffixLength;
+  const hadPreviousSales = numeric.slice(0, firstNoveltyIndex).some((value) => positiveSale(value));
+  if (hadPreviousSales) return null;
+
+  const noveltyValues = numeric.slice(firstNoveltyIndex).filter(positiveSale);
+  const maxMonth = Math.max(...noveltyValues);
+  if (!Number.isFinite(maxMonth) || maxMonth <= 0) return null;
+
+  const deliveryCoefficient = 0.25 * Math.max(1, deliveryWeeks || 1);
+  return {
+    months: suffixLength,
+    maxMonth,
+    monthlyNeed: maxMonth * 1.5,
+    targetStock: maxMonth * 1.5 + maxMonth * deliveryCoefficient,
+  };
+}
+
 function isSourceTotalRow(detection, row, maxColumn) {
   const summaryAreaEnd = Math.min(maxColumn, Math.max(1, detection.columns.name - 1));
   for (let col = 1; col <= summaryAreaEnd; col += 1) {
@@ -584,11 +615,12 @@ function monthlyValues(sheet, row, salesColumns) {
   return salesColumns.map((col) => parseNumber(sheetCellValue(sheet, row, col)));
 }
 
-function recalculateAngiopharmSource(detection, deliveryWeeks, rule, calculationColumns = detectAngiopharmCalculationColumns(detection)) {
+function recalculateSourceTable(detection, deliveryWeeks, rule, calculationColumns = detectCalculationColumns(detection)) {
   const { sheet, columns } = detection;
   const { maxRow, maxColumn } = sheetBounds(sheet);
   const rows = readSourceRows(detection, maxRow, maxColumn, rule);
-  const deliveryCoefficient = 0.25 * deliveryWeeks;
+  const safeDeliveryWeeks = Math.max(1, deliveryWeeks || 1);
+  const deliveryCoefficient = 0.25 * safeDeliveryWeeks;
   let totalRevenue = 0;
 
   const calculated = rows.map((item) => {
@@ -615,10 +647,12 @@ function recalculateAngiopharmSource(detection, deliveryWeeks, rule, calculation
 
   for (const item of calculated) {
     const metrics = rankMetrics.get(item.row) || { revenuePercent: 0, cumulativePercent: 100, category: "C" };
-    const targetNew = calculateTargetNew(item.values);
-    const categoryNeed = targetNew * categoryCoefficient(metrics.category);
-    const deliveryNeed = targetNew * deliveryCoefficient;
-    const targetStock = categoryNeed + deliveryNeed;
+    const novelty = newProductCalculation(item.values, safeDeliveryWeeks);
+    const monthlyNeed = novelty?.monthlyNeed ?? calculateTargetNew(item.values);
+    const category = novelty ? `${metrics.category}/New` : metrics.category;
+    const targetStock = novelty
+      ? novelty.targetStock
+      : monthlyNeed * categoryCoefficient(metrics.category) + monthlyNeed * deliveryCoefficient;
     const stock = parseNumber(sheetCellValue(sheet, item.row, columns.stock)) ?? 0;
     const inTransit = parseNumber(sheetCellValue(sheet, item.row, columns.inTransit)) ?? 0;
     const recommended = Math.max(0, targetStock - stock - inTransit);
@@ -626,16 +660,19 @@ function recalculateAngiopharmSource(detection, deliveryWeeks, rule, calculation
     setNumericCell(sheet, item.row, calculationColumns.totalQuantity, Number(item.totalQuantity.toFixed(2)));
     setNumericCell(sheet, item.row, calculationColumns.revenuePercent, Number(metrics.revenuePercent.toFixed(2)));
     setNumericCell(sheet, item.row, calculationColumns.cumulativePercent, Number(metrics.cumulativePercent.toFixed(2)));
-    setTextCell(sheet, item.row, calculationColumns.category, metrics.category);
+    setTextCell(sheet, item.row, calculationColumns.category, category);
     setNumericCell(sheet, item.row, calculationColumns.averageMonthly, Number((item.totalQuantity / calculationColumns.salesColumns.length).toFixed(2)));
     setNumericCell(sheet, item.row, calculationColumns.targetStock, Number(targetStock.toFixed(2)));
     setNumericCell(sheet, item.row, columns.recommended, Number(recommended.toFixed(2)));
   }
 }
 
-function rebuildAngiopharmSource(detection, deliveryWeeks, rule) {
+function recalculateAngiopharmSource(detection, deliveryWeeks, rule, calculationColumns = detectCalculationColumns(detection)) {
+  recalculateSourceTable(detection, deliveryWeeks, rule, calculationColumns);
+}
+
+function rebuildAngiopharmSource(detection, deliveryWeeks, rule, calculationColumns = detectCalculationColumns(detection)) {
   if (!deliveryWeeks) throw new Error("Для ANGIOPHARM не нашел параметр «Срок поставки». Проверьте выгрузку из 1С.");
-  const calculationColumns = detectAngiopharmCalculationColumns(detection);
   const { sheet, columns } = detection;
   const { maxRow, maxColumn } = sheetBounds(sheet);
   const rows = readSourceRows(detection, maxRow, maxColumn, rule);
@@ -755,13 +792,16 @@ function readSource(workbook, orderMonth, rule = brandRule("angiopharm")) {
   const detection = detectColumns(workbook, "source");
   const isAngiopharm = rule.label === "ANGIOPHARM";
   const isUrengoy = isUrengoySource(workbook);
-  const deliveryWeeks = isAngiopharm || isUrengoy ? detectDeliveryWeeks(workbook) : null;
-  if ((isAngiopharm || isUrengoy) && !deliveryWeeks) throw new Error("Не нашел параметр «Срок поставки». Проверьте выгрузку из 1С.");
+  const deliveryWeeks = Math.max(1, detectDeliveryWeeks(workbook) ?? 1);
+  const calculationColumns = detectCalculationColumns(detection, { required: false });
 
-  if (isAngiopharm) rebuildAngiopharmSource(detection, deliveryWeeks, rule);
+  if (calculationColumns) {
+    if (isAngiopharm) rebuildAngiopharmSource(detection, deliveryWeeks, rule, calculationColumns);
+    else recalculateSourceTable(detection, deliveryWeeks, rule, calculationColumns);
+  }
 
-  const urengoyColumns = !isAngiopharm && isUrengoy ? detectUrengoyColumns(detection) : null;
-  const urengoyInfo = !isAngiopharm && isUrengoy
+  const urengoyColumns = !calculationColumns && !isAngiopharm && isUrengoy ? detectUrengoyColumns(detection) : null;
+  const urengoyInfo = !calculationColumns && !isAngiopharm && isUrengoy
     ? {
         deliveryWeeks,
         deliveryCoefficient: 1 + 0.25 * deliveryWeeks,
@@ -811,8 +851,8 @@ function readSource(workbook, orderMonth, rule = brandRule("angiopharm")) {
     periodInfo: {
       ...periodInfo,
       cityRule: isUrengoy ? "Новый Уренгой" : "",
-      deliveryWeeks: deliveryWeeks ?? null,
-      deliveryCoefficient: isAngiopharm ? 0.25 * deliveryWeeks : urengoyInfo?.deliveryCoefficient ?? null,
+      deliveryWeeks,
+      deliveryCoefficient: calculationColumns ? 0.25 * deliveryWeeks : urengoyInfo?.deliveryCoefficient ?? null,
     },
   };
 }
