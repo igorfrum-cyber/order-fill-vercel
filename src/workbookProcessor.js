@@ -1557,13 +1557,17 @@ export function applyFinalEdits({ blankWorkbook, sourceWorkbook, reportRows, edi
 }
 
 export function outputFileName(originalName) {
-  const stem = asText(originalName).replace(/\.(xlsx|xlsm|xls)$/i, "").replace(/[^\p{L}\p{N}_ .-]+/gu, "").trim() || "blank";
-  return `${stem} заполненный.xlsx`;
+  const text = asText(originalName);
+  const extension = /\.xlsm$/i.test(text) ? "xlsm" : "xlsx";
+  const stem = text.replace(/\.(xlsx|xlsm|xls)$/i, "").replace(/[^\p{L}\p{N}_ .-]+/gu, "").trim() || "blank";
+  return `${stem} заполненный.${extension}`;
 }
 
 export function sourceOutputFileName(originalName) {
-  const stem = asText(originalName).replace(/\.(xlsx|xlsm|xls)$/i, "").replace(/[^\p{L}\p{N}_ .-]+/gu, "").trim() || "order";
-  return `${stem} заполненная таблица.xlsx`;
+  const text = asText(originalName);
+  const extension = /\.xlsm$/i.test(text) ? "xlsm" : "xlsx";
+  const stem = text.replace(/\.(xlsx|xlsm|xls)$/i, "").replace(/[^\p{L}\p{N}_ .-]+/gu, "").trim() || "order";
+  return `${stem} заполненная таблица.${extension}`;
 }
 
 const NORTH_CITIES = [
