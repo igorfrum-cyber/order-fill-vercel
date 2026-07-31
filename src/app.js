@@ -89,21 +89,21 @@ northModeButton.addEventListener("click", () => setActiveMode("north"));
 northBackButton.addEventListener("click", () => setActiveMode("order"));
 setActiveMode("order");
 
-function bindFileName(input, output) {
+function bindFileName(input, output, placeholder = ".xlsx, .xlsm или .xls") {
   input.addEventListener("change", () => {
-    output.textContent = input.files[0]?.name || ".xlsx, .xlsm или .xls";
+    output.textContent = input.files[0]?.name || placeholder;
     resetFillState();
   });
 }
 
 bindFileName(sourceFile, sourceName);
-bindFileName(blankFile, blankName);
-bindFileName(homeFile, homeName);
-bindFileName(proffFile, proffName);
+bindFileName(blankFile, blankName, ".xlsx или .xlsm");
+bindFileName(homeFile, homeName, ".xlsx или .xlsm");
+bindFileName(proffFile, proffName, ".xlsx или .xlsm");
 
 northFiles.addEventListener("change", () => {
   const files = Array.from(northFiles.files || []);
-  northNames.textContent = files.length ? files.map((file) => file.name).join(", ") : "Городские заполненные бланки";
+  northNames.textContent = files.length ? files.map((file) => file.name).join(", ") : "Городские заполненные бланки .xlsx";
   clearNorthDownloadLinks();
   northResult.classList.add("hidden");
   northStatus.textContent = "Готов к загрузке";
@@ -523,17 +523,20 @@ function sourceDuplicateRows(results) {
   return rows;
 }
 
-async function loadWorkbook(file) {
+async function loadWorkbook(file, options = {}) {
   const buffer = await file.arrayBuffer();
-  return loadXlsx(await normalizeWorkbookBytes(buffer, file.name));
+  return loadXlsx(await normalizeWorkbookBytes(buffer, file.name, options));
 }
 
 function isLegacyXls(fileName) {
   return /\.xls$/i.test(fileName) && !/\.xlsx$/i.test(fileName) && !/\.xlsm$/i.test(fileName);
 }
 
-async function normalizeWorkbookBytes(buffer, fileName) {
+async function normalizeWorkbookBytes(buffer, fileName, options = {}) {
   if (!isLegacyXls(fileName)) return buffer;
+  if (options.allowLegacyXls === false) {
+    throw new Error(`Файл «${fileName}» в старом формате .xls нельзя использовать как бланк: при такой конвертации теряется оформление. Откройте этот бланк в Excel и сохраните как .xlsx, затем загрузите .xlsx.`);
+  }
   try {
     const { read: readSpreadsheet, write: writeSpreadsheet } = await import("xlsx");
     const workbook = readSpreadsheet(buffer, {
@@ -579,7 +582,7 @@ form.addEventListener("submit", async (event) => {
 
   try {
     const sourceWorkbook = await loadWorkbook(sourceFile.files[0]);
-    const blankWorkbooks = await Promise.all(blankInputs.map((item) => loadWorkbook(item.file)));
+    const blankWorkbooks = await Promise.all(blankInputs.map((item) => loadWorkbook(item.file, { allowLegacyXls: false })));
     const results = blankInputs.map((item, index) => fillWorkbook({
       sourceWorkbook,
       blankWorkbook: blankWorkbooks[index],
@@ -953,7 +956,7 @@ northForm.addEventListener("submit", async (event) => {
   try {
     const blanks = await Promise.all(files.map(async (file) => ({
       fileName: file.name,
-      workbook: await loadWorkbook(file),
+      workbook: await loadWorkbook(file, { allowLegacyXls: false }),
     })));
     const result = buildNorthOrderFiles(blanks);
     const outputFiles = [
