@@ -11,85 +11,132 @@
       <section class="workspace">
         <div class="topbar">
           <div>
-            <h1>Заполнение бланка заказа</h1>
+            <div class="title-row">
+              <h1>Заполнение бланка заказа</h1>
+              <div class="mode-switch" aria-label="Разделы">
+                <button class="mode-button active" id="orderModeButton" type="button">Бланк</button>
+                <button class="mode-button" id="northModeButton" type="button">Север</button>
+              </div>
+            </div>
           </div>
           <div class="status" id="status">Готов к загрузке</div>
         </div>
 
-        <form class="upload-grid" id="uploadForm">
-          <label class="brand-field" for="brandSelect">
-            <span class="label">Бренд</span>
-            <select id="brandSelect" name="brand" required>
-              <option value="angiopharm">ANGIOPHARM</option>
-              <option value="christina">CHRISTINA</option>
-              <option value="levissime">LeviSsime</option>
-              <option value="sothys">SOTHYS</option>
-            </select>
-          </label>
-
-          <label class="month-field" for="orderMonth">
-            <span class="label">Месяц заказа</span>
-            <input id="orderMonth" name="orderMonth" type="month" required />
-          </label>
-
-          <label class="dropzone" for="sourceFile">
-            <span class="icon">↑</span>
-            <span class="label">Таблица заказа товара</span>
-            <span class="filename" id="sourceName">.xlsx, .xlsm или .xls</span>
-            <input id="sourceFile" name="source" type="file" accept=".xlsx,.xlsm,.xls" required />
-          </label>
-
-          <label class="dropzone" id="blankField" for="blankFile">
-            <span class="icon">↑</span>
-            <span class="label">Актуальный бланк</span>
-            <span class="filename" id="blankName">.xlsx, .xlsm или .xls</span>
-            <input id="blankFile" name="blank" type="file" accept=".xlsx,.xlsm,.xls" required />
-          </label>
-
-          <label class="dropzone christina-only hidden" id="homeField" for="homeFile">
-            <span class="icon">↑</span>
-            <span class="label">Бланк HOME</span>
-            <span class="filename" id="homeName">.xlsx, .xlsm или .xls</span>
-            <input id="homeFile" name="home" type="file" accept=".xlsx,.xlsm,.xls" />
-          </label>
-
-          <label class="dropzone christina-only hidden" id="proffField" for="proffFile">
-            <span class="icon">↑</span>
-            <span class="label">Бланк PROFF</span>
-            <span class="filename" id="proffName">.xlsx, .xlsm или .xls</span>
-            <input id="proffFile" name="proff" type="file" accept=".xlsx,.xlsm,.xls" />
-          </label>
-
-          <button class="primary" type="submit">
-            <span>✓</span>
-            Заполнить бланк
-          </button>
-        </form>
-
-        <section class="result hidden" id="result">
-          <div class="result-head">
-            <h2>Отчет</h2>
-            <div class="result-actions">
-              <button class="secondary" id="issueReportButton" type="button">Скачать отчет для 1С</button>
-              <button class="download" id="downloadButton" type="button">Скачать заполненные файлы</button>
-            </div>
-          </div>
-
-          <div class="period-note" id="periodNote"></div>
-          <div class="metrics" id="metrics"></div>
-          <div class="download-links hidden" id="downloadLinks"></div>
-
-          <div class="report-tools">
-            <label class="search-field" for="reportSearch">
-              <span class="label">Поиск</span>
-              <input id="reportSearch" type="search" placeholder="Артикул или название" autocomplete="off" />
+        <section id="orderSection">
+          <form class="upload-grid" id="uploadForm">
+            <label class="brand-field" for="brandSelect">
+              <span class="label">Бренд</span>
+              <select id="brandSelect" name="brand" required>
+                <option value="angiopharm">ANGIOPHARM</option>
+                <option value="christina">CHRISTINA</option>
+                <option value="levissime">LeviSsime</option>
+                <option value="sothys">SOTHYS</option>
+              </select>
             </label>
-            <button class="filter-reset hidden" id="clearFilterButton" type="button">Сбросить фильтр</button>
-          </div>
 
-          <section class="priority-section hidden" id="prioritySection">
-            <div class="table-title">Нужно проверить</div>
-            <div class="table-wrap priority-wrap">
+            <label class="month-field" for="orderMonth">
+              <span class="label">Месяц заказа</span>
+              <input id="orderMonth" name="orderMonth" type="month" required />
+            </label>
+
+            <label class="dropzone" for="sourceFile">
+              <span class="icon">↑</span>
+              <span class="label">Таблица заказа товара</span>
+              <span class="filename" id="sourceName">.xlsx, .xlsm или .xls</span>
+              <input id="sourceFile" name="source" type="file" accept=".xlsx,.xlsm,.xls" required />
+            </label>
+
+            <label class="dropzone" id="blankField" for="blankFile">
+              <span class="icon">↑</span>
+              <span class="label">Актуальный бланк</span>
+              <span class="filename" id="blankName">.xlsx, .xlsm или .xls</span>
+              <input id="blankFile" name="blank" type="file" accept=".xlsx,.xlsm,.xls" required />
+            </label>
+
+            <label class="dropzone christina-only hidden" id="homeField" for="homeFile">
+              <span class="icon">↑</span>
+              <span class="label">Бланк HOME</span>
+              <span class="filename" id="homeName">.xlsx, .xlsm или .xls</span>
+              <input id="homeFile" name="home" type="file" accept=".xlsx,.xlsm,.xls" />
+            </label>
+
+            <label class="dropzone christina-only hidden" id="proffField" for="proffFile">
+              <span class="icon">↑</span>
+              <span class="label">Бланк PROFF</span>
+              <span class="filename" id="proffName">.xlsx, .xlsm или .xls</span>
+              <input id="proffFile" name="proff" type="file" accept=".xlsx,.xlsm,.xls" />
+            </label>
+
+            <button class="primary" type="submit">
+              <span>✓</span>
+              Заполнить бланк
+            </button>
+          </form>
+
+          <section class="result hidden" id="result">
+            <div class="result-head">
+              <h2>Отчет</h2>
+              <div class="result-actions">
+                <button class="secondary" id="issueReportButton" type="button">Скачать отчет для 1С</button>
+                <button class="download" id="downloadButton" type="button">Скачать заполненные файлы</button>
+              </div>
+            </div>
+
+            <div class="period-note" id="periodNote"></div>
+            <div class="metrics" id="metrics"></div>
+            <div class="download-links hidden" id="downloadLinks"></div>
+
+            <div class="report-tools">
+              <label class="search-field" for="reportSearch">
+                <span class="label">Поиск</span>
+                <input id="reportSearch" type="search" placeholder="Артикул или название" autocomplete="off" />
+              </label>
+              <button class="filter-reset hidden" id="clearFilterButton" type="button">Сбросить фильтр</button>
+            </div>
+
+            <section class="priority-section hidden" id="prioritySection">
+              <div class="table-title">Нужно проверить</div>
+              <div class="table-wrap priority-wrap">
+                <table>
+                  <colgroup>
+                    <col class="col-status" />
+                    <col class="col-blank" />
+                    <col class="col-article" />
+                    <col class="col-name" />
+                    <col class="col-unit" />
+                    <col class="col-stock" />
+                    <col class="col-transit" />
+                    <col class="col-recommended" />
+                    <col class="col-source-fact" />
+                    <col class="col-box" />
+                    <col class="col-inserted" />
+                    <col class="col-comment" />
+                    <col class="col-match" />
+                  </colgroup>
+                  <thead>
+                    <tr>
+                      <th>Статус</th>
+                      <th>Бланк</th>
+                      <th>Артикул</th>
+                      <th>Товар в бланке</th>
+                      <th>Объем мл/гр</th>
+                      <th>Остаток</th>
+                      <th>В пути</th>
+                      <th>Рекоменд.</th>
+                      <th>Заказано по факту</th>
+                      <th id="priorityAdjustmentHeader">Шт. в коробке</th>
+                      <th>Вставлено</th>
+                      <th>Комментарий</th>
+                      <th>Совпадение</th>
+                    </tr>
+                  </thead>
+                  <tbody id="priorityBody"></tbody>
+                </table>
+              </div>
+            </section>
+
+            <div class="table-title" id="reportTitle">Все позиции</div>
+            <div class="table-wrap">
               <table>
                 <colgroup>
                   <col class="col-status" />
@@ -117,63 +164,27 @@
                     <th>В пути</th>
                     <th>Рекоменд.</th>
                     <th>Заказано по факту</th>
-                    <th id="priorityAdjustmentHeader">Шт. в коробке</th>
+                    <th id="adjustmentHeader">Шт. в коробке</th>
                     <th>Вставлено</th>
                     <th>Комментарий</th>
                     <th>Совпадение</th>
                   </tr>
                 </thead>
-                <tbody id="priorityBody"></tbody>
+                <tbody id="reportBody"></tbody>
               </table>
             </div>
           </section>
-
-          <div class="table-title" id="reportTitle">Все позиции</div>
-          <div class="table-wrap">
-            <table>
-              <colgroup>
-                <col class="col-status" />
-                <col class="col-blank" />
-                <col class="col-article" />
-                <col class="col-name" />
-                <col class="col-unit" />
-                <col class="col-stock" />
-                <col class="col-transit" />
-                <col class="col-recommended" />
-                <col class="col-source-fact" />
-                <col class="col-box" />
-                <col class="col-inserted" />
-                <col class="col-comment" />
-                <col class="col-match" />
-              </colgroup>
-              <thead>
-                <tr>
-                  <th>Статус</th>
-                  <th>Бланк</th>
-                  <th>Артикул</th>
-                  <th>Товар в бланке</th>
-                  <th>Объем мл/гр</th>
-                  <th>Остаток</th>
-                  <th>В пути</th>
-                  <th>Рекоменд.</th>
-                  <th>Заказано по факту</th>
-                  <th id="adjustmentHeader">Шт. в коробке</th>
-                  <th>Вставлено</th>
-                  <th>Комментарий</th>
-                  <th>Совпадение</th>
-                </tr>
-              </thead>
-              <tbody id="reportBody"></tbody>
-            </table>
-          </div>
         </section>
 
-        <section class="north-panel">
+        <section class="north-panel hidden" id="northSection">
           <div class="north-head">
             <div>
               <h2>Север</h2>
             </div>
-            <div class="status" id="northStatus">Готов к загрузке</div>
+            <div class="north-actions">
+              <button class="secondary" id="northBackButton" type="button">Вернуться к бланку</button>
+              <div class="status" id="northStatus">Готов к загрузке</div>
+            </div>
           </div>
 
           <form class="upload-grid north-grid" id="northForm">

@@ -40,6 +40,10 @@ const issueReportButton = document.querySelector("#issueReportButton");
 const downloadButton = document.querySelector("#downloadButton");
 const downloadLinks = document.querySelector("#downloadLinks");
 const submitButton = form.querySelector("button");
+const orderSection = document.querySelector("#orderSection");
+const northSection = document.querySelector("#northSection");
+const orderModeButton = document.querySelector("#orderModeButton");
+const northModeButton = document.querySelector("#northModeButton");
 const northForm = document.querySelector("#northForm");
 const northFiles = document.querySelector("#northFiles");
 const northNames = document.querySelector("#northNames");
@@ -48,6 +52,7 @@ const northResult = document.querySelector("#northResult");
 const northSummary = document.querySelector("#northSummary");
 const northDownloadLinks = document.querySelector("#northDownloadLinks");
 const northSubmitButton = northForm.querySelector("button");
+const northBackButton = document.querySelector("#northBackButton");
 
 let currentResults = [];
 let currentReportRows = [];
@@ -68,6 +73,21 @@ function setDefaultOrderMonth() {
 }
 
 setDefaultOrderMonth();
+
+function setActiveMode(mode) {
+  const isNorth = mode === "north";
+  orderSection.classList.toggle("hidden", isNorth);
+  northSection.classList.toggle("hidden", !isNorth);
+  orderModeButton.classList.toggle("active", !isNorth);
+  northModeButton.classList.toggle("active", isNorth);
+  orderModeButton.setAttribute("aria-pressed", String(!isNorth));
+  northModeButton.setAttribute("aria-pressed", String(isNorth));
+}
+
+orderModeButton.addEventListener("click", () => setActiveMode("order"));
+northModeButton.addEventListener("click", () => setActiveMode("north"));
+northBackButton.addEventListener("click", () => setActiveMode("order"));
+setActiveMode("order");
 
 function bindFileName(input, output) {
   input.addEventListener("change", () => {

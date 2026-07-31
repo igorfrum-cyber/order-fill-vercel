@@ -45,6 +45,40 @@ body {
   margin-bottom: 22px;
 }
 
+.title-row {
+  display: flex;
+  gap: 14px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.mode-switch {
+  display: inline-flex;
+  gap: 6px;
+  padding: 4px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fff;
+}
+
+.mode-button {
+  min-height: 34px;
+  border: 0;
+  border-radius: 6px;
+  padding: 0 12px;
+  background: transparent;
+  color: var(--muted);
+  font: inherit;
+  font-weight: 720;
+  cursor: pointer;
+}
+
+.mode-button:hover,
+.mode-button.active {
+  background: #e7f0f3;
+  color: var(--accent-strong);
+}
+
 h1,
 h2,
 p {
@@ -244,6 +278,14 @@ p {
   gap: 16px;
   align-items: start;
   margin-bottom: 16px;
+}
+
+.north-actions {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
 }
 
 .north-grid {
