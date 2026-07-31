@@ -1558,16 +1558,20 @@ export function applyFinalEdits({ blankWorkbook, sourceWorkbook, reportRows, edi
 
 export function outputFileName(originalName) {
   const text = asText(originalName);
-  const extension = /\.xlsm$/i.test(text) ? "xlsm" : "xlsx";
+  const extension = outputExtension(text);
   const stem = text.replace(/\.(xlsx|xlsm|xls)$/i, "").replace(/[^\p{L}\p{N}_ .-]+/gu, "").trim() || "blank";
   return `${stem} заполненный.${extension}`;
 }
 
 export function sourceOutputFileName(originalName) {
   const text = asText(originalName);
-  const extension = /\.xlsm$/i.test(text) ? "xlsm" : "xlsx";
+  const extension = outputExtension(text);
   const stem = text.replace(/\.(xlsx|xlsm|xls)$/i, "").replace(/[^\p{L}\p{N}_ .-]+/gu, "").trim() || "order";
   return `${stem} заполненная таблица.${extension}`;
+}
+
+function outputExtension(fileName) {
+  return /\.xlsm$/i.test(asText(fileName)) ? "xlsm" : "xlsx";
 }
 
 const NORTH_CITIES = [
@@ -1760,7 +1764,7 @@ export function buildNorthOrderFiles(blanks) {
 
   return {
     summaryWorkbook: summary.workbook,
-    summaryFileName: "Север общий бланк.xlsx",
+    summaryFileName: `Север общий бланк.${outputExtension(summary.fileName)}`,
     uploadedCities: prepared.map((file) => file.city.label),
     appendedToSummary,
     totalsCount: Array.from(totals.values()).filter((item) => item.totalQuantity > 0).length,
