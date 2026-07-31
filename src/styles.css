@@ -230,6 +230,37 @@ p {
   overflow: hidden;
 }
 
+.north-panel {
+  margin-top: 24px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--panel);
+  padding: 18px;
+}
+
+.north-head {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 16px;
+  align-items: start;
+  margin-bottom: 16px;
+}
+
+.north-grid {
+  margin-bottom: 0;
+}
+
+.north-dropzone {
+  grid-column: span 2;
+}
+
+.north-result {
+  margin-top: 16px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
 .result.hidden {
   display: none;
 }
@@ -544,8 +575,13 @@ tr.invalid .comment-input {
   }
 
   .topbar,
-  .result-head {
+  .result-head,
+  .north-head {
     grid-template-columns: 1fr;
+  }
+
+  .north-dropzone {
+    grid-column: auto;
   }
 
   .metrics {

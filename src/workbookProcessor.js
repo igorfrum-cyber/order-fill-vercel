@@ -711,9 +711,13 @@ function rebuildSourceWithChz(detection, deliveryWeeks, rule, calculationColumns
 }
 
 function blankMatchers(options = {}) {
+  const isQuantityHeader = (h) => h.includes("кол во") || h.includes("количество") || h.includes("кол-во") || h.includes("к во") || h.includes("qty");
+  const isPackageHeader = (h) => h.includes("короб") || h.includes("упак") || h.split(" ").includes("уп");
   const quantityMatcher = options.quantityHeader === "order"
     ? (h) => h === "заказ" || h.includes("коробка заказ")
-    : (h) => h.includes("кол во") || h.includes("количество") || h.includes("кол-во") || h.includes("к во") || h.includes("qty");
+    : options.quantityHeader === "anyOrder"
+      ? (h) => h === "заказ" || h.includes("коробка заказ") || (isQuantityHeader(h) && !isPackageHeader(h))
+      : isQuantityHeader;
   const boxMatcher = options.boxHeader === "packageQuantity"
     ? (h) => h.includes("кол во в уп") || h === "кол во" || h === "количество"
     : (h) => h.includes("короб") || (h.includes("шт") && h.includes("упак"));
@@ -1560,4 +1564,202 @@ export function outputFileName(originalName) {
 export function sourceOutputFileName(originalName) {
   const stem = asText(originalName).replace(/\.(xlsx|xlsm|xls)$/i, "").replace(/[^\p{L}\p{N}_ .-]+/gu, "").trim() || "order";
   return `${stem} заполненная таблица.xlsx`;
+}
+
+const NORTH_CITIES = [
+  { key: "nizhnevartovsk", label: "Нижневартовск", warehouse: "Склад Нижневартовск", aliases: ["нижневартовск", "вартовск"] },
+  { key: "urengoy", label: "Уренгой", warehouse: "Склад Уренгой", aliases: ["новый уренгой", "уренгой"] },
+  { key: "surgut", label: "Сургут", warehouse: "Склад Сургут", aliases: ["сургут"] },
+  { key: "tyumen", label: "Тюмень", warehouse: "Склад Тюмень", aliases: ["тюмень"] },
+];
+
+function northCityFromText(value) {
+  const text = normalizeHeader(value);
+  if (!text) return null;
+  return NORTH_CITIES.find((city) => city.aliases.some((alias) => text.includes(alias))) || null;
+}
+
+function detectNorthCity(workbook, fileName) {
+  for (const sheet of workbook.sheets) {
+    const city = northCityFromText(sheet.name);
+    if (city) return city;
+    const { maxRow, maxColumn } = sheetBounds(sheet);
+    for (let row = 1; row <= Math.min(maxRow, 50); row += 1) {
+      for (let col = 1; col <= maxColumn; col += 1) {
+        const cityInCell = northCityFromText(sheetCellValue(sheet, row, col));
+        if (cityInCell) return cityInCell;
+      }
+    }
+  }
+  const cityInName = northCityFromText(fileName);
+  if (cityInName) return cityInName;
+  throw new Error(`Не понял город в файле «${fileName}». В параметрах или названии файла должен быть Сургут, Нижневартовск/Вартовск, Уренгой или Тюмень.`);
+}
+
+function northBlankDetection(workbook) {
+  try {
+    return { kind: "generic", detection: detectColumns(workbook, "blank", { requireBox: false, quantityHeader: "anyOrder" }) };
+  } catch {
+    return { kind: "splitVariants", detection: detectSothysVariantBlank(workbook) };
+  }
+}
+
+function northGenericPositions(detection, blankId, blankLabel) {
+  const rows = [];
+  const { maxRow } = sheetBounds(detection.sheet);
+  for (let row = detection.headerRow + 1; row <= maxRow; row += 1) {
+    const articleRaw = asText(sheetCellValue(detection.sheet, row, detection.columns.article));
+    const article = normalizeArticle(articleRaw, { preserveHyphen: true });
+    if (!article) continue;
+    rows.push({
+      key: article,
+      blankId,
+      blankLabel,
+      row,
+      quantityCol: detection.columns.quantity,
+      articleCol: detection.columns.article,
+      nameCol: detection.columns.name,
+      unitCol: detection.columns.unit,
+      articleRaw,
+      name: asText(sheetCellValue(detection.sheet, row, detection.columns.name)),
+      unit: asText(sheetCellValue(detection.sheet, row, detection.columns.unit)),
+      quantity: parseNumber(sheetCellValue(detection.sheet, row, detection.columns.quantity)) ?? 0,
+    });
+  }
+  return rows;
+}
+
+function northSplitVariantPositions(detection, blankId, blankLabel) {
+  const rows = [];
+  const rule = { preserveArticleHyphen: true, adjustment: "none" };
+  for (const position of sothysPositions(detection, blankId, blankLabel, rule)) {
+    const quantity = parseNumber(sheetCellValue(detection.sheet, position.blankRow, position.blankQuantityCol)) ?? 0;
+    rows.push({
+      key: position.blankArticle,
+      blankId,
+      blankLabel,
+      row: position.blankRow,
+      quantityCol: position.blankQuantityCol,
+      articleCol: null,
+      nameCol: null,
+      unitCol: null,
+      articleRaw: position.blankArticleRaw,
+      name: position.blankName,
+      unit: position.blankUnit,
+      quantity,
+    });
+  }
+  return rows;
+}
+
+function northPositions(workbook, blankId, blankLabel) {
+  const detected = northBlankDetection(workbook);
+  const positions = detected.kind === "splitVariants"
+    ? northSplitVariantPositions(detected.detection, blankId, blankLabel)
+    : northGenericPositions(detected.detection, blankId, blankLabel);
+  return { ...detected, positions };
+}
+
+function addNorthTotal(totals, item, city) {
+  if (!item.key || item.quantity <= 0) return;
+  if (!totals.has(item.key)) {
+    totals.set(item.key, {
+      key: item.key,
+      articleRaw: item.articleRaw,
+      name: item.name,
+      unit: item.unit,
+      totalQuantity: 0,
+      cities: new Map(),
+    });
+  }
+  const current = totals.get(item.key);
+  current.totalQuantity += item.quantity;
+  if (!current.name && item.name) current.name = item.name;
+  if (!current.unit && item.unit) current.unit = item.unit;
+  if (!current.articleRaw && item.articleRaw) current.articleRaw = item.articleRaw;
+  current.cities.set(city.key, (current.cities.get(city.key) || 0) + item.quantity);
+}
+
+function writeNorthSummaryWorkbook(summary, totals) {
+  if (summary.kind === "splitVariants") {
+    for (const position of summary.positions) {
+      const total = totals.get(position.key)?.totalQuantity || 0;
+      setNumericCell(summary.detection.sheet, position.row, position.quantityCol, total > 0 ? total : null);
+    }
+    return [];
+  }
+
+  const sheet = summary.detection.sheet;
+  const columns = summary.detection.columns;
+  const written = new Set();
+  for (const position of summary.positions) {
+    const total = totals.get(position.key)?.totalQuantity || 0;
+    setNumericCell(sheet, position.row, position.quantityCol, total > 0 ? total : null);
+    written.add(position.key);
+  }
+
+  const missing = Array.from(totals.values()).filter((item) => !written.has(item.key) && item.totalQuantity > 0);
+  if (!missing.length) return [];
+
+  const { maxRow } = sheetBounds(sheet);
+  for (const [index, item] of missing.entries()) {
+    const row = maxRow + index + 1;
+    setTextCell(sheet, row, columns.article, item.articleRaw || item.key);
+    setTextCell(sheet, row, columns.name, item.name);
+    if (columns.unit) setTextCell(sheet, row, columns.unit, item.unit);
+    setNumericCell(sheet, row, columns.quantity, Number(item.totalQuantity.toFixed(2)));
+  }
+  return missing.map((item) => ({
+    article: item.articleRaw || item.key,
+    name: item.name,
+    quantity: Number(item.totalQuantity.toFixed(2)),
+  }));
+}
+
+function transferItemsForCity(totals, city) {
+  return Array.from(totals.values())
+    .map((item) => ({
+      article: item.articleRaw || item.key,
+      name: item.name,
+      unit: "шт",
+      quantity: item.cities.get(city.key) || 0,
+    }))
+    .filter((item) => item.quantity > 0);
+}
+
+export function buildNorthOrderFiles(blanks) {
+  if (!Array.isArray(blanks) || !blanks.length) throw new Error("Загрузите хотя бы один бланк для раздела «Север».");
+
+  const cityKeys = new Set();
+  const prepared = blanks.map((blank, index) => {
+    const city = detectNorthCity(blank.workbook, blank.fileName);
+    if (cityKeys.has(city.key)) throw new Error(`Загружено несколько бланков для города ${city.label}. Оставьте один файл на город.`);
+    cityKeys.add(city.key);
+    const extracted = northPositions(blank.workbook, `north-${index}`, city.label);
+    return { ...blank, city, ...extracted };
+  });
+
+  const totals = new Map();
+  for (const file of prepared) {
+    for (const item of file.positions) addNorthTotal(totals, item, file.city);
+  }
+
+  const summary = prepared[0];
+  const appendedToSummary = writeNorthSummaryWorkbook(summary, totals);
+  const transfers = prepared
+    .filter((file) => file.city.key !== "tyumen")
+    .map((file) => ({
+      city: file.city,
+      fileName: `Заказ на перемещение ${file.city.label}.xlsx`,
+      items: transferItemsForCity(totals, file.city),
+    }));
+
+  return {
+    summaryWorkbook: summary.workbook,
+    summaryFileName: "Север общий бланк.xlsx",
+    uploadedCities: prepared.map((file) => file.city.label),
+    appendedToSummary,
+    totalsCount: Array.from(totals.values()).filter((item) => item.totalQuantity > 0).length,
+    transfers,
+  };
 }

@@ -1,6 +1,7 @@
 import "./styles.css";
 import {
   applyFinalEdits,
+  buildNorthOrderFiles,
   fillWorkbook,
   loadXlsx,
   normalizeOrderValue,
@@ -39,6 +40,14 @@ const issueReportButton = document.querySelector("#issueReportButton");
 const downloadButton = document.querySelector("#downloadButton");
 const downloadLinks = document.querySelector("#downloadLinks");
 const submitButton = form.querySelector("button");
+const northForm = document.querySelector("#northForm");
+const northFiles = document.querySelector("#northFiles");
+const northNames = document.querySelector("#northNames");
+const northStatus = document.querySelector("#northStatus");
+const northResult = document.querySelector("#northResult");
+const northSummary = document.querySelector("#northSummary");
+const northDownloadLinks = document.querySelector("#northDownloadLinks");
+const northSubmitButton = northForm.querySelector("button");
 
 let currentResults = [];
 let currentReportRows = [];
@@ -47,6 +56,7 @@ let currentSourceWorkbook = null;
 let currentBlankOutputNames = new Map();
 let currentSourceOutputName = "order заполненная таблица.xlsx";
 let currentDownloadUrls = [];
+let currentNorthDownloadUrls = [];
 let isFormFilled = false;
 let activeFilter = null;
 let editState = new Map();
@@ -70,6 +80,14 @@ bindFileName(sourceFile, sourceName);
 bindFileName(blankFile, blankName);
 bindFileName(homeFile, homeName);
 bindFileName(proffFile, proffName);
+
+northFiles.addEventListener("change", () => {
+  const files = Array.from(northFiles.files || []);
+  northNames.textContent = files.length ? files.map((file) => file.name).join(", ") : "Городские заполненные бланки";
+  clearNorthDownloadLinks();
+  northResult.classList.add("hidden");
+  northStatus.textContent = "Готов к загрузке";
+});
 
 function selectedBrand() {
   return brandSelect.value || "angiopharm";
@@ -654,6 +672,13 @@ function clearDownloadLinks() {
   downloadLinks.innerHTML = "";
 }
 
+function clearNorthDownloadLinks() {
+  for (const url of currentNorthDownloadUrls) URL.revokeObjectURL(url);
+  currentNorthDownloadUrls = [];
+  northDownloadLinks.classList.add("hidden");
+  northDownloadLinks.innerHTML = "";
+}
+
 function validateEdits() {
   let invalidCount = 0;
   for (const row of reportBody.querySelectorAll("tr")) row.classList.remove("invalid");
@@ -792,6 +817,57 @@ function prepareDownloadLinks(files) {
   });
 }
 
+function todayRu() {
+  const date = new Date();
+  return `${String(date.getDate()).padStart(2, "0")}.${String(date.getMonth() + 1).padStart(2, "0")}.${date.getFullYear()}`;
+}
+
+function transferWorkbookBytes(transfer) {
+  return import("xlsx").then(({ utils, write }) => {
+    const rows = [
+      ["", "", "", "", "", "", "", ""],
+      ["", "", "", "", "", "", "", ""],
+      ["", "", `Заказ на перемещение от ${todayRu()}`, "", "", "", "", ""],
+      ["", "", "", "", "", "", "", ""],
+      ["", "", "", "", "", "", "", ""],
+      ["", "", "", "", "", "", "", ""],
+      ["", "", "Отправитель:", "Склад Тюмень", "Получатель:", transfer.city.warehouse, "", ""],
+      ["", "", "", "", "", "", "", ""],
+      ["", "", "", "", "", "", "", ""],
+      ["", "№", "Товар", "Количество", "", "", "", ""],
+      ...transfer.items.map((item, index) => ["", index + 1, item.name, item.quantity, item.unit || "шт", "", "", ""]),
+      ["", "", "", "", "", "", "", ""],
+      ["Менеджер", "", "", "", "", "", "", ""],
+    ];
+    const workbook = utils.book_new();
+    const sheet = utils.aoa_to_sheet(rows);
+    sheet["!cols"] = [
+      { wch: 8 },
+      { wch: 8 },
+      { wch: 72 },
+      { wch: 14 },
+      { wch: 10 },
+      { wch: 22 },
+      { wch: 12 },
+      { wch: 12 },
+    ];
+    utils.book_append_sheet(workbook, sheet, "Лист_1");
+    return write(workbook, { bookType: "xlsx", type: "array" });
+  });
+}
+
+function prepareNorthDownloadLinks(files) {
+  clearNorthDownloadLinks();
+  currentNorthDownloadUrls = files.map((file) => URL.createObjectURL(file.blob));
+  northDownloadLinks.innerHTML = files
+    .map((file, index) => `<a class="file-link" href="${currentNorthDownloadUrls[index]}" download="${escapeHtml(file.name)}">${escapeHtml(file.label)}</a>`)
+    .join("");
+  northDownloadLinks.classList.remove("hidden");
+  currentNorthDownloadUrls.forEach((url, index) => {
+    window.setTimeout(() => triggerDownload(url, files[index].name), index * 250);
+  });
+}
+
 downloadButton.addEventListener("click", async () => {
   if (!currentResults.length || !currentBlankWorkbooks.size || !currentSourceWorkbook) {
     alert("Сначала заполните бланк.");
@@ -843,6 +919,53 @@ downloadButton.addEventListener("click", async () => {
 });
 
 issueReportButton.addEventListener("click", downloadIssueReport);
+
+northForm.addEventListener("submit", async (event) => {
+  event.preventDefault();
+  const files = Array.from(northFiles.files || []);
+  if (!files.length) return;
+
+  northSubmitButton.disabled = true;
+  northStatus.textContent = "Соединяю...";
+  clearNorthDownloadLinks();
+  northResult.classList.add("hidden");
+
+  try {
+    const blanks = await Promise.all(files.map(async (file) => ({
+      fileName: file.name,
+      workbook: await loadWorkbook(file),
+    })));
+    const result = buildNorthOrderFiles(blanks);
+    const outputFiles = [
+      {
+        label: "Скачать общий бланк",
+        name: result.summaryFileName,
+        blob: new Blob([saveXlsx(result.summaryWorkbook)], {
+          type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        }),
+      },
+    ];
+    for (const transfer of result.transfers) {
+      outputFiles.push({
+        label: `Скачать перемещение ${transfer.city.label}`,
+        name: transfer.fileName,
+        blob: new Blob([await transferWorkbookBytes(transfer)], {
+          type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        }),
+      });
+    }
+
+    northSummary.textContent = `Города: ${result.uploadedCities.join(", ")}. В общем бланке позиций с заказом: ${result.totalsCount}. Перемещений: ${result.transfers.length}.${result.appendedToSummary.length ? ` Добавлено в конец общего бланка: ${result.appendedToSummary.length}.` : ""}`;
+    prepareNorthDownloadLinks(outputFiles);
+    northResult.classList.remove("hidden");
+    northStatus.textContent = "Файлы готовы";
+  } catch (error) {
+    northStatus.textContent = "Ошибка";
+    alert(error.message || "Не удалось соединить бланки.");
+  } finally {
+    northSubmitButton.disabled = false;
+  }
+});
 
 function handleReportInput(event) {
   if (event.target.matches(".qty-input, .comment-input")) {

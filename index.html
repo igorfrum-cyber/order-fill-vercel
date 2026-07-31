@@ -167,6 +167,34 @@
             </table>
           </div>
         </section>
+
+        <section class="north-panel">
+          <div class="north-head">
+            <div>
+              <h2>Север</h2>
+            </div>
+            <div class="status" id="northStatus">Готов к загрузке</div>
+          </div>
+
+          <form class="upload-grid north-grid" id="northForm">
+            <label class="dropzone north-dropzone" for="northFiles">
+              <span class="icon">↑</span>
+              <span class="label">Бланки городов</span>
+              <span class="filename" id="northNames">Городские заполненные бланки</span>
+              <input id="northFiles" name="northFiles" type="file" accept=".xlsx,.xlsm,.xls" multiple required />
+            </label>
+
+            <button class="primary" type="submit">
+              <span>✓</span>
+              Соединить бланки
+            </button>
+          </form>
+
+          <section class="north-result hidden" id="northResult">
+            <div class="period-note" id="northSummary"></div>
+            <div class="download-links hidden" id="northDownloadLinks"></div>
+          </section>
+        </section>
       </section>
     </main>
   </body>
