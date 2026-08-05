@@ -89,6 +89,21 @@ northModeButton.addEventListener("click", () => setActiveMode("north"));
 northBackButton.addEventListener("click", () => setActiveMode("order"));
 setActiveMode("order");
 
+function scrollTargetForKeyboard(element) {
+  return element?.closest?.(".table-wrap, .priority-wrap") || document.scrollingElement || document.documentElement;
+}
+
+document.addEventListener("keydown", (event) => {
+  if (event.key !== "ArrowDown" && event.key !== "ArrowUp") return;
+  if (event.altKey || event.ctrlKey || event.metaKey) return;
+  if (event.target?.matches?.("select")) return;
+
+  const target = scrollTargetForKeyboard(event.target);
+  const delta = event.key === "ArrowDown" ? 72 : -72;
+  event.preventDefault();
+  target.scrollBy({ top: delta, behavior: "auto" });
+});
+
 function bindFileName(input, output, placeholder = ".xlsx, .xlsm или .xls") {
   input.addEventListener("change", () => {
     output.textContent = input.files[0]?.name || placeholder;
