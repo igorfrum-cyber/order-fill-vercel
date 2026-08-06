@@ -112,7 +112,7 @@ function bindFileName(input, output, placeholder = ".xlsx, .xlsm или .xls") {
 }
 
 bindFileName(sourceFile, sourceName);
-bindFileName(blankFile, blankName, ".xlsx или .xlsm");
+bindFileName(blankFile, blankName, ".xlsx, .xlsm или .xls");
 bindFileName(homeFile, homeName, ".xlsx или .xlsm");
 bindFileName(proffFile, proffName, ".xlsx или .xlsm");
 
@@ -599,7 +599,7 @@ form.addEventListener("submit", async (event) => {
 
   try {
     const sourceWorkbook = await loadWorkbook(sourceFile.files[0]);
-    const blankWorkbooks = await Promise.all(blankInputs.map((item) => loadWorkbook(item.file, { allowLegacyXls: false })));
+    const blankWorkbooks = await Promise.all(blankInputs.map((item) => loadWorkbook(item.file, { allowLegacyXls: brand === "novacutan" })));
     const results = blankInputs.map((item, index) => fillWorkbook({
       sourceWorkbook,
       blankWorkbook: blankWorkbooks[index],

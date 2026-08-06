@@ -1191,6 +1191,7 @@ function novacutanBlankPositions(blank, blankId, blankLabel) {
     const blankName = asText(sheetCellValue(blank.sheet, row, blank.columns.name));
     const normalized = normalizeHeader(blankName);
     if (!blankName || normalized === "описание" || normalized === "novacutan") continue;
+    const minimumFromBlank = blank.columns.minimum ? parseNumber(sheetCellValue(blank.sheet, row, blank.columns.minimum)) : null;
     rows.push({
       key: `${blankId}:${row}`,
       blankId,
@@ -1201,10 +1202,61 @@ function novacutanBlankPositions(blank, blankId, blankLabel) {
       blankArticle: "",
       blankName,
       blankUnit: "шт",
-      blankBoxSize: novacutanMinimumQuantity(blankName),
+      blankBoxSize: minimumFromBlank ?? novacutanMinimumQuantity(blankName),
     });
   }
   return rows;
+}
+
+function novacutanMatchKey(value) {
+  const text = normalizeHeader(value)
+    .replace(/\bbiopro\b/g, "bio pro")
+    .replace(/\bbio\s*pro\b/g, "bio pro");
+  if (!text || text.includes("термопакет") || text.includes("хладоэлемент")) return "";
+  const hasFillerMask = text.includes("filler") || text.includes("филлер") || text.includes("маск") || text.includes("mask");
+  if (hasFillerMask && (text.includes("глаз") || text.includes("eye"))) return "mask-eye";
+  if (hasFillerMask && (text.includes("лица") || text.includes("face"))) return "mask-face";
+  if (text.includes("sbio")) return "sbio";
+  if (text.includes("ybio")) return "ybio";
+  if (text.includes("bio pro")) return "bio-pro";
+  if (text.includes("prima")) return "prima";
+  if (text.includes("master")) return "master";
+  if (text.includes("bright") || text.includes("брайт")) return "bright";
+  if (text.includes("gentle") || text.includes("джентл") || text.includes("джентел")) return "gentle";
+  if (text.includes("fbio") && text.includes("dvs") && text.includes("light")) return "dvs-fbio-light";
+  if (text.includes("fbio") && text.includes("dvs") && text.includes("medium")) return "dvs-fbio-medium";
+  if (text.includes("fbio") && text.includes("dvs") && text.includes("volume")) return "dvs-fbio-volume";
+  if (text.includes("fbio") && text.includes("light")) return "fbio-light";
+  if (text.includes("fbio") && text.includes("medium")) return "fbio-medium";
+  if (text.includes("fbio") && text.includes("volume")) return "fbio-volume";
+  if (text.includes("eye")) return "eye";
+  return "";
+}
+
+function chooseNovacutanCandidate(sourceItems, blankName, blankUnit = "") {
+  const key = novacutanMatchKey(blankName);
+  if (key) {
+    const keyed = sourceItems.filter((item) => novacutanMatchKey(item.name) === key);
+    const blankText = normalizeHeader(blankName);
+    const beautyBoxAligned = keyed.filter((item) => {
+      const sourceText = normalizeHeader(item.name);
+      const blankIsBeautyBox = blankText.includes("бьюти") || blankText.includes("beauty");
+      const sourceIsBeautyBox = sourceText.includes("бьюти") || sourceText.includes("beauty");
+      return blankIsBeautyBox === sourceIsBeautyBox;
+    });
+    const nonBonus = (beautyBoxAligned.length ? beautyBoxAligned : keyed).filter((item) => !normalizeHeader(item.name).includes("бонус"));
+    const pool = nonBonus.length ? nonBonus : beautyBoxAligned.length ? beautyBoxAligned : keyed;
+    if (pool.length) {
+      return pool
+        .map((item) => ({ item, score: Math.max(0.92, volumeAwareSimilarity(blankName, item.name, blankUnit)) }))
+        .sort((left, right) => {
+          const positiveDiff = Number(right.item.recommended > 0) - Number(left.item.recommended > 0);
+          if (positiveDiff) return positiveDiff;
+          return right.score - left.score;
+        })[0];
+    }
+  }
+  return chooseCandidate(sourceItems, blankName, blankUnit);
 }
 
 export function fillWorkbook({ sourceWorkbook, blankWorkbook, orderMonth, brand = "angiopharm", blankId = "blank", blankLabel = "" }) {
@@ -1212,7 +1264,7 @@ export function fillWorkbook({ sourceWorkbook, blankWorkbook, orderMonth, brand 
   const source = readSource(sourceWorkbook, orderMonth, rule);
   const sourceContext = buildSourceContext(source, rule);
   if (rule.blankLayout === "novacutan") {
-    return fillNovacutanWorkbook({ source, sourceContext, blankWorkbook, rule, blankId, blankLabel });
+    return fillNovacutanWorkbook({ source, sourceContext, sourceWorkbook, blankWorkbook, rule, blankId, blankLabel });
   }
   if (rule.blankLayout === "splitVariants") {
     return fillSplitVariantWorkbook({ source, sourceContext, blankWorkbook, rule, blankId, blankLabel });
@@ -1308,9 +1360,10 @@ export function fillWorkbook({ sourceWorkbook, blankWorkbook, orderMonth, brand 
   };
 }
 
-function fillNovacutanWorkbook({ source, sourceContext, blankWorkbook, rule, blankId, blankLabel }) {
+function fillNovacutanWorkbook({ source, sourceContext, sourceWorkbook, blankWorkbook, rule, blankId, blankLabel }) {
   const blank = detectNovacutanBlank(blankWorkbook);
-  if (!blank) throw new Error("Не удалось распознать бланк NOVACUTAN: не нашел название товара и колонку количества.");
+  if (!blank) throw new Error("Не удалось распознать бланк NOVACUTAN: не нашел описание товара и колонку «кол-во» или «Заказ от».");
+  ensureNovacutanQuantityColumn(blank);
   const blankPositions = novacutanBlankPositions(blank, blankId, blankLabel);
   const reportRows = [];
   let filled = 0;
@@ -1320,9 +1373,10 @@ function fillNovacutanWorkbook({ source, sourceContext, blankWorkbook, rule, bla
   let duplicates = 0;
 
   for (const rowInfo of blankPositions) {
-    const candidate = chooseCandidate(source.items, rowInfo.blankName, rowInfo.blankUnit);
+    const candidate = chooseNovacutanCandidate(source.items, rowInfo.blankName, rowInfo.blankUnit);
     if (!candidate?.item || candidate.score < 0.72) {
       unmatched += 1;
+      prepareNovacutanQuantityCell(blank, rowInfo.blankRow);
       setNumericCell(blank.sheet, rowInfo.blankRow, blank.columns.quantity, null);
       reportRows.push(makeUnmatchedReportRow(rowInfo, { blankId, blankLabel, adjustmentLabel: rule.adjustmentLabel }));
       continue;
@@ -1336,10 +1390,12 @@ function fillNovacutanWorkbook({ source, sourceContext, blankWorkbook, rule, bla
     }
 
     if (order.inserted == null) {
+      prepareNovacutanQuantityCell(blank, rowInfo.blankRow);
       setNumericCell(blank.sheet, rowInfo.blankRow, blank.columns.quantity, null);
       leftBlank += 1;
       status = "left_blank_nonpositive";
     } else {
+      prepareNovacutanQuantityCell(blank, rowInfo.blankRow);
       setNumericCell(blank.sheet, rowInfo.blankRow, blank.columns.quantity, order.inserted);
       filled += 1;
     }
@@ -1566,6 +1622,14 @@ function clearCellChildren(cell) {
   cell.removeAttribute("t");
 }
 
+function copyCellStyle(sheet, row, fromCol, toCol) {
+  const source = sheet.cells.get(cellKey(row, fromCol))?.node;
+  if (!source) return;
+  const target = findOrCreateCell(sheet, row, toCol);
+  const style = source.getAttribute("s");
+  if (style != null) target.setAttribute("s", style);
+}
+
 function setNumericCell(sheet, row, col, value) {
   const cell = findOrCreateCell(sheet, row, col);
   clearCellChildren(cell);
@@ -1750,25 +1814,44 @@ function detectNovacutanBlank(workbook) {
     for (let row = 1; row <= Math.min(maxRow, 120); row += 1) {
       let name = null;
       let price = null;
+      let minimum = null;
       let quantity = null;
       for (let col = 1; col <= maxColumn; col += 1) {
         const header = normalizeHeader(sheetCellValue(sheet, row, col));
         if (header.includes("описание") || header.includes("товар") || header.includes("название")) name = col;
         else if (header.includes("цена")) price = col;
-        else if (header.includes("кол во") || header.includes("количество") || header.includes("qty")) quantity = col;
+        else if (header.includes("заказ") && header.includes("от")) minimum = col;
+        else if (header === "заказ" || header.includes("кол во") || header.includes("количество") || header.includes("qty")) quantity = col;
       }
-      if (name && quantity) {
+      if (name && (quantity || minimum)) {
         return {
           sheet,
           sheetName: sheet.name,
           headerRow: row,
-          columns: { name, price, quantity },
+          columns: {
+            name,
+            price,
+            minimum,
+            quantity: quantity || Math.max(name, minimum || name) + 1,
+          },
+          quantityColumnCreated: !quantity,
         };
       }
     }
   }
 
   return null;
+}
+
+function ensureNovacutanQuantityColumn(blank) {
+  if (!blank.quantityColumnCreated) return;
+  copyCellStyle(blank.sheet, blank.headerRow, blank.columns.minimum || blank.columns.name, blank.columns.quantity);
+  setTextCell(blank.sheet, blank.headerRow, blank.columns.quantity, "Заказ");
+}
+
+function prepareNovacutanQuantityCell(blank, row) {
+  if (!blank.quantityColumnCreated) return;
+  copyCellStyle(blank.sheet, row, blank.columns.minimum || blank.columns.name, blank.columns.quantity);
 }
 
 function northGenericPositions(detection, blankId, blankLabel) {
@@ -1801,9 +1884,9 @@ function northNovacutanPositions(detection, blankId, blankLabel) {
   const { maxRow } = sheetBounds(detection.sheet);
   for (let row = detection.headerRow + 1; row <= maxRow; row += 1) {
     const name = asText(sheetCellValue(detection.sheet, row, detection.columns.name));
-    const price = detection.columns.price ? parseNumber(sheetCellValue(detection.sheet, row, detection.columns.price)) : null;
+    const minimum = detection.columns.minimum ? parseNumber(sheetCellValue(detection.sheet, row, detection.columns.minimum)) : null;
     const quantity = parseNumber(sheetCellValue(detection.sheet, row, detection.columns.quantity)) ?? 0;
-    if (!name || price == null) continue;
+    if (!name) continue;
     rows.push({
       key: novacutanPositionKey(name),
       blankId,
@@ -1817,7 +1900,7 @@ function northNovacutanPositions(detection, blankId, blankLabel) {
       name,
       unit: "шт",
       quantity,
-      novacutanMinimum: novacutanMinimumQuantity(name),
+      novacutanMinimum: minimum ?? novacutanMinimumQuantity(name),
     });
   }
   return rows;
@@ -1906,11 +1989,13 @@ function addNorthTotal(totals, item, city) {
 
 function writeNorthSummaryWorkbook(summary, totals) {
   if (summary.kind === "novacutan") {
+    ensureNovacutanQuantityColumn(summary.detection);
     let adjustedCount = 0;
     for (const position of summary.positions) {
       const total = totals.get(position.key)?.totalQuantity || 0;
       const quantity = novacutanSummaryQuantity(position, total);
       if (quantity != null && quantity !== total) adjustedCount += 1;
+      prepareNovacutanQuantityCell(summary.detection, position.row);
       setNumericCell(summary.detection.sheet, position.row, position.quantityCol, quantity);
     }
     return { appended: [], adjustedCount };
