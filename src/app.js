@@ -956,15 +956,14 @@ function northPartsText(parts) {
     .join(", ");
 }
 
-function northCityGenitive(label) {
-  const forms = {
-    "Тюмень": "Тюмени",
-    "Сургут": "Сургута",
-    "Вартовск": "Вартовска",
-    "Нижневартовск": "Нижневартовска",
-    "Уренгой": "Уренгоя",
-  };
-  return forms[label] || label;
+function northTransferParts(row) {
+  const quantities = new Map((row.cities || []).map((city) => [city.key, Number(city.quantity || 0)]));
+  return NORTH_ALLOCATION_ORDER
+    .map((cityKey) => {
+      const city = NORTH_CITIES.find((item) => item.key === cityKey);
+      return city ? { ...city, quantity: quantities.get(city.key) || 0 } : null;
+    })
+    .filter(Boolean);
 }
 
 function supplierPartsForNorthActual(row, actualValue = row.actualSupplierOrder) {
@@ -983,17 +982,13 @@ function northPlanComment(row, actualValue = row.actualSupplierOrder) {
   const actual = Number(actualValue || 0);
   const supplierParts = supplierPartsForNorthActual(row, actualValue);
   const tyumenSupplier = supplierParts.find((part) => part.key === "tyumen");
-  const northSupplierParts = supplierParts.filter((part) => part.key !== "tyumen" && Number(part.quantity || 0) > 0);
-  const fromTyumen = northPartsText(row.tyumenParts);
+  const transfer = northPartsText(northTransferParts(row));
 
   if (actual > 0) lines.push(`Заказать у поставщика: ${formatNorthQuantity(actual)}`);
-  for (const part of northSupplierParts) {
-    lines.push(`Для ${northCityGenitive(part.label)}: ${formatNorthQuantity(part.quantity)}`);
-  }
   if (Number(tyumenSupplier?.quantity || 0) > 0) {
     lines.push(`Останется в Тюмени: ${formatNorthQuantity(tyumenSupplier.quantity)}`);
   }
-  if (fromTyumen) lines.push(`Переместить из Тюмени: ${fromTyumen}`);
+  if (transfer) lines.push(`Переместить из Тюмени: ${transfer}`);
   if (!lines.length && row.northNeed > 0) lines.push("Закрывается остатком Тюмени");
   return lines.join("\n");
 }
@@ -1069,6 +1064,9 @@ function recalculateNorthRow(row, quantities) {
   let northNeed = 0;
   let supplierNorthNeed = 0;
   let fromTyumen = 0;
+  const cities = NORTH_CITIES
+    .map((city) => ({ key: city.key, label: city.label, quantity: Number((cityMap.get(city.key) || 0).toFixed(2)) }))
+    .filter((city) => city.quantity > 0);
 
   if (tyumenUploadedOrder > 0) supplierParts.push({ key: "tyumen", label: "Тюмень", quantity: Number(tyumenUploadedOrder.toFixed(2)) });
 
@@ -1091,6 +1089,7 @@ function recalculateNorthRow(row, quantities) {
   return {
     ...row,
     northNeed: Number(northNeed.toFixed(2)),
+    cities,
     tyumenFree: Number(Math.max(0, Number(row.tyumenStock || 0) + Number(row.tyumenInTransit || 0) + tyumenPlannedOrder - Number(row.tyumenTarget || 0)).toFixed(2)),
     fromTyumen: Number(fromTyumen.toFixed(2)),
     supplierNorthNeed: Number(supplierNorthNeed.toFixed(2)),

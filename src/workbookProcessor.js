@@ -2110,17 +2110,6 @@ function northCommentFromParts(parts) {
   return cityParts.join(", ");
 }
 
-function northCityGenitive(label) {
-  const forms = {
-    "Тюмень": "Тюмени",
-    "Сургут": "Сургута",
-    "Нижневартовск": "Нижневартовска",
-    "Вартовск": "Вартовска",
-    "Уренгой": "Уренгоя",
-  };
-  return forms[label] || label;
-}
-
 function supplierPartsForActual(row, actualValue) {
   const actual = Number(actualValue || 0);
   const northParts = (row.supplierParts || []).filter((part) => part.key !== "tyumen");
@@ -2132,22 +2121,25 @@ function supplierPartsForActual(row, actualValue) {
   ];
 }
 
+function northTransferParts(row) {
+  const quantities = new Map((row.cities || []).map((city) => [city.key, Number(city.quantity || 0)]));
+  return NORTH_CITIES
+    .filter((city) => city.key !== "tyumen")
+    .map((city) => ({ key: city.key, label: city.label, quantity: quantities.get(city.key) || 0 }));
+}
+
 function northPlanCommentForOrderTable(row, actualValue) {
   const lines = [];
   const actual = Number(actualValue || 0);
   const supplierParts = supplierPartsForActual(row, actualValue);
   const tyumenSupplier = supplierParts.find((part) => part.key === "tyumen");
-  const northSupplierParts = supplierParts.filter((part) => part.key !== "tyumen" && Number(part.quantity || 0) > 0);
-  const fromTyumen = northCommentFromParts(row.tyumenParts || []);
+  const transfer = northCommentFromParts(northTransferParts(row));
 
   if (actual > 0) lines.push(`Заказать у поставщика: ${formatNorthQuantity(actual)}`);
-  for (const part of northSupplierParts) {
-    lines.push(`Для ${northCityGenitive(part.label)}: ${formatNorthQuantity(part.quantity)}`);
-  }
   if (Number(tyumenSupplier?.quantity || 0) > 0) {
     lines.push(`Останется в Тюмени: ${formatNorthQuantity(tyumenSupplier.quantity)}`);
   }
-  if (fromTyumen) lines.push(`Переместить из Тюмени: ${fromTyumen}`);
+  if (transfer) lines.push(`Переместить из Тюмени: ${transfer}`);
   if (!lines.length && Number(row.northNeed || 0) > 0) lines.push("Закрывается остатком Тюмени");
   return lines.join("\n");
 }
