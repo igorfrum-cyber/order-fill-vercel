@@ -44,9 +44,8 @@ const BRAND_RULES = {
   },
   novacutan: {
     label: "NOVACUTAN",
-    adjustment: "minimum",
+    adjustment: "none",
     adjustmentLabel: "Мин. заказ",
-    adjustmentComment: "до минимальной партии",
     blankLayout: "novacutan",
   },
 };
