@@ -1714,10 +1714,11 @@ function novacutanPositionKey(name) {
 
 function novacutanMinimumQuantity(name) {
   const text = normalizeHeader(name);
+  if ((text.includes("mask") || text.includes("маск")) && (text.includes("filler") || text.includes("филлер"))) {
+    return 10;
+  }
   if (
-    text.includes("filler")
-    || text.includes("филлер")
-    || text.includes("fbio")
+    text.includes("fbio")
     || text.includes("bright")
     || text.includes("брайт")
     || text.includes("gentle")

@@ -50,6 +50,7 @@ function novacutanNorthWorkbook(city, quantities) {
     ["Novacutan SBIO, 2 мл", 7200, quantities.sbio ?? ""],
     ["Novacutan FBIO, light", 6500, quantities.fbio ?? ""],
     ["Bright,", 7400, quantities.bright ?? ""],
+    ["Набор маска филлер для лица Full Face Filler Mask NOVACUTAN 5*25", 2000, quantities.mask ?? ""],
   ]);
 }
 
@@ -76,19 +77,21 @@ const christinaSmall = adjustQuantityForBrand(1, "christina");
 if (christinaSmall.inserted !== null) throw new Error("Christina should skip recommendations below 1.5.");
 
 const novacutanNorth = buildNorthOrderFiles([
-  { fileName: "Novacutan Тюмень.xlsx", workbook: novacutanNorthWorkbook("Тюмень", { sbio: 20, fbio: 10, bright: 4 }) },
-  { fileName: "Novacutan Сургут.xlsx", workbook: novacutanNorthWorkbook("Сургут", { sbio: 5, fbio: 15, bright: 6 }) },
+  { fileName: "Novacutan Тюмень.xlsx", workbook: novacutanNorthWorkbook("Тюмень", { sbio: 20, fbio: 10, bright: 4, mask: 2 }) },
+  { fileName: "Novacutan Сургут.xlsx", workbook: novacutanNorthWorkbook("Сургут", { sbio: 5, fbio: 15, bright: 6, mask: 3 }) },
 ]);
 const novacutanSummarySheet = novacutanNorth.summaryWorkbook.sheets.find((sheet) => sheet.name === "бланк заказа");
 if (novacutanSummarySheet.cells.get("5:3")?.value !== 100) throw new Error("Novacutan ordinary products should be ordered from 100 in the Tyumen summary blank.");
 if (novacutanSummarySheet.cells.get("6:3")?.value !== 50) throw new Error("Novacutan fillers should be ordered from 50 in the Tyumen summary blank.");
 if (novacutanSummarySheet.cells.get("7:3")?.value !== 50) throw new Error("Novacutan Bright/Gentle products should be ordered from 50 in the Tyumen summary blank.");
+if (novacutanSummarySheet.cells.get("8:3")?.value !== 10) throw new Error("Novacutan filler masks should be ordered from 10 in the Tyumen summary blank.");
 const novacutanSurgutTransfer = novacutanNorth.transfers.find((transfer) => transfer.city.key === "surgut");
 if (!novacutanSurgutTransfer) throw new Error("Novacutan north should create a Surgut transfer.");
 const novacutanTransferQuantities = new Map(novacutanSurgutTransfer.items.map((item) => [item.name, item.quantity]));
 if (novacutanTransferQuantities.get("Novacutan SBIO, 2 мл") !== 5) throw new Error("Novacutan transfer should keep the exact city need for ordinary products.");
 if (novacutanTransferQuantities.get("Novacutan FBIO, light") !== 15) throw new Error("Novacutan transfer should keep the exact city need for fillers.");
-if (novacutanNorth.adjustedToMinimum !== 3) throw new Error("Novacutan summary should report rows adjusted to minimum batches.");
+if (novacutanTransferQuantities.get("Набор маска филлер для лица Full Face Filler Mask NOVACUTAN 5*25") !== 3) throw new Error("Novacutan transfer should keep the exact city need for filler masks.");
+if (novacutanNorth.adjustedToMinimum !== 4) throw new Error("Novacutan summary should report rows adjusted to minimum batches.");
 
 try {
   await fs.access(levissimeLegacyBlankPath);
