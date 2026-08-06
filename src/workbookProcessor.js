@@ -1264,7 +1264,7 @@ export function fillWorkbook({ sourceWorkbook, blankWorkbook, orderMonth, brand 
   const source = readSource(sourceWorkbook, orderMonth, rule);
   const sourceContext = buildSourceContext(source, rule);
   if (rule.blankLayout === "novacutan") {
-    return fillNovacutanWorkbook({ source, sourceContext, sourceWorkbook, blankWorkbook, rule, blankId, blankLabel });
+    return fillNovacutanWorkbook({ source, sourceContext, blankWorkbook, rule, blankId, blankLabel });
   }
   if (rule.blankLayout === "splitVariants") {
     return fillSplitVariantWorkbook({ source, sourceContext, blankWorkbook, rule, blankId, blankLabel });
@@ -1360,7 +1360,7 @@ export function fillWorkbook({ sourceWorkbook, blankWorkbook, orderMonth, brand 
   };
 }
 
-function fillNovacutanWorkbook({ source, sourceContext, sourceWorkbook, blankWorkbook, rule, blankId, blankLabel }) {
+function fillNovacutanWorkbook({ source, sourceContext, blankWorkbook, rule, blankId, blankLabel }) {
   const blank = detectNovacutanBlank(blankWorkbook);
   if (!blank) throw new Error("Не удалось распознать бланк NOVACUTAN: не нашел описание товара и колонку «кол-во» или «Заказ от».");
   ensureNovacutanQuantityColumn(blank);
@@ -1406,7 +1406,7 @@ function fillNovacutanWorkbook({ source, sourceContext, sourceWorkbook, blankWor
   return {
     blankId,
     blankLabel,
-    sourceWorkbook,
+    sourceWorkbook: source.workbook,
     sourceDetection: source.detection,
     blankWorkbook,
     blankDetection: blank,
