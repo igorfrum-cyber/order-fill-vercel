@@ -132,12 +132,14 @@ function adjustmentLabelForBrand(brand) {
   if (brand === "christina") return "Кратность";
   if (brand === "levissime") return "Кол-во в уп.";
   if (brand === "sothys") return "Округление";
+  if (brand === "novacutan") return "Мин. заказ";
   return "Шт. в коробке";
 }
 
 function mainBlankLabelForBrand(brand) {
   if (brand === "levissime") return "LeviSsime";
   if (brand === "sothys") return "SOTHYS";
+  if (brand === "novacutan") return "NOVACUTAN";
   return "ANGIO";
 }
 

@@ -42,6 +42,13 @@ const BRAND_RULES = {
     preserveArticleHyphen: true,
     blankLayout: "splitVariants",
   },
+  novacutan: {
+    label: "NOVACUTAN",
+    adjustment: "minimum",
+    adjustmentLabel: "Мин. заказ",
+    adjustmentComment: "до минимальной партии",
+    blankLayout: "novacutan",
+  },
 };
 
 export function loadXlsx(buffer) {
@@ -959,6 +966,14 @@ function calculateAdjustedQuantity(recommended, rule, boxSizeValue) {
     return calculateMultipleAdjustedQuantity(rounded, rule.multiple, rule.adjustmentComment);
   }
 
+  if (rule.adjustment === "minimum") {
+    const minimum = Math.round(parseNumber(boxSizeValue) || 0);
+    if (minimum > 0 && rounded < minimum) {
+      return { rounded, inserted: minimum, autoComment: rule.adjustmentComment, boxAdjusted: true };
+    }
+    return { rounded, inserted: rounded, autoComment: "", boxAdjusted: false };
+  }
+
   const boxSize = parseNumber(boxSizeValue);
   if (!boxSize || boxSize <= 0) return { rounded, inserted: rounded, autoComment: "", boxAdjusted: false };
   const box = Math.round(boxSize);
@@ -1169,10 +1184,36 @@ function sothysPositions(blank, blankId, blankLabel, rule) {
   return rows;
 }
 
+function novacutanBlankPositions(blank, blankId, blankLabel) {
+  const rows = [];
+  const { maxRow } = sheetBounds(blank.sheet);
+  for (let row = blank.headerRow + 1; row <= maxRow; row += 1) {
+    const blankName = asText(sheetCellValue(blank.sheet, row, blank.columns.name));
+    const normalized = normalizeHeader(blankName);
+    if (!blankName || normalized === "описание" || normalized === "novacutan") continue;
+    rows.push({
+      key: `${blankId}:${row}`,
+      blankId,
+      blankLabel,
+      blankRow: row,
+      blankQuantityCol: blank.columns.quantity,
+      blankArticleRaw: "",
+      blankArticle: "",
+      blankName,
+      blankUnit: "шт",
+      blankBoxSize: novacutanMinimumQuantity(blankName),
+    });
+  }
+  return rows;
+}
+
 export function fillWorkbook({ sourceWorkbook, blankWorkbook, orderMonth, brand = "angiopharm", blankId = "blank", blankLabel = "" }) {
   const rule = brandRule(brand);
   const source = readSource(sourceWorkbook, orderMonth, rule);
   const sourceContext = buildSourceContext(source, rule);
+  if (rule.blankLayout === "novacutan") {
+    return fillNovacutanWorkbook({ source, sourceContext, blankWorkbook, rule, blankId, blankLabel });
+  }
   if (rule.blankLayout === "splitVariants") {
     return fillSplitVariantWorkbook({ source, sourceContext, blankWorkbook, rule, blankId, blankLabel });
   }
@@ -1259,6 +1300,76 @@ export function fillWorkbook({ sourceWorkbook, blankWorkbook, orderMonth, brand 
       blankHeaderRow: blank.headerRow,
       blankWarnings,
       blankDuplicateArticles: blankWarnings.length,
+      brand: rule.label,
+      adjustmentLabel: rule.adjustmentLabel,
+      ...source.periodInfo,
+    },
+    reportRows,
+  };
+}
+
+function fillNovacutanWorkbook({ source, sourceContext, blankWorkbook, rule, blankId, blankLabel }) {
+  const blank = detectNovacutanBlank(blankWorkbook);
+  if (!blank) throw new Error("Не удалось распознать бланк NOVACUTAN: не нашел название товара и колонку количества.");
+  const blankPositions = novacutanBlankPositions(blank, blankId, blankLabel);
+  const reportRows = [];
+  let filled = 0;
+  let leftBlank = 0;
+  let suspicious = 0;
+  let unmatched = 0;
+  let duplicates = 0;
+
+  for (const rowInfo of blankPositions) {
+    const candidate = chooseCandidate(source.items, rowInfo.blankName, rowInfo.blankUnit);
+    if (!candidate?.item || candidate.score < 0.72) {
+      unmatched += 1;
+      setNumericCell(blank.sheet, rowInfo.blankRow, blank.columns.quantity, null);
+      reportRows.push(makeUnmatchedReportRow(rowInfo, { blankId, blankLabel, adjustmentLabel: rule.adjustmentLabel }));
+      continue;
+    }
+
+    const order = orderForItem(candidate.item, rule, rowInfo.blankBoxSize);
+    let status = "matched_by_name";
+    if (candidate.score < 0.85) {
+      status = "warning_name_differs";
+      suspicious += 1;
+    }
+
+    if (order.inserted == null) {
+      setNumericCell(blank.sheet, rowInfo.blankRow, blank.columns.quantity, null);
+      leftBlank += 1;
+      status = "left_blank_nonpositive";
+    } else {
+      setNumericCell(blank.sheet, rowInfo.blankRow, blank.columns.quantity, order.inserted);
+      filled += 1;
+    }
+
+    reportRows.push(makeReportRow(status, rowInfo, candidate.item, candidate.score, order, { blankId, blankLabel, adjustmentLabel: rule.adjustmentLabel }));
+  }
+
+  return {
+    blankId,
+    blankLabel,
+    sourceWorkbook,
+    sourceDetection: source.detection,
+    blankWorkbook,
+    blankDetection: blank,
+    sourceItemsForMissingBlank: sourceItemsForMissingBlank(source),
+    sourceDuplicateGroups: sourceContext.sourceDuplicateGroups,
+    summary: {
+      filled,
+      leftBlank,
+      suspicious,
+      unmatched,
+      duplicates,
+      sourceItems: source.items.length,
+      sourceArticles: sourceContext.sourceArticleCount,
+      sourceSheet: source.detection.sheetName,
+      sourceHeaderRow: source.detection.headerRow,
+      blankSheet: blank.sheetName,
+      blankHeaderRow: blank.headerRow,
+      blankWarnings: [],
+      blankDuplicateArticles: 0,
       brand: rule.label,
       adjustmentLabel: rule.adjustmentLabel,
       ...source.periodInfo,
@@ -1514,7 +1625,11 @@ export function normalizeOrderValue(value) {
 
 export function applyFinalEdits({ blankWorkbook, sourceWorkbook, reportRows, edits, brand = "angiopharm" }) {
   const rule = brandRule(brand);
-  const blank = rule.blankLayout === "splitVariants" ? detectSothysVariantBlank(blankWorkbook) : detectColumns(blankWorkbook, "blank", blankDetectionOptions(rule));
+  const blank = rule.blankLayout === "splitVariants"
+    ? detectSothysVariantBlank(blankWorkbook)
+    : rule.blankLayout === "novacutan"
+      ? detectNovacutanBlank(blankWorkbook)
+      : detectColumns(blankWorkbook, "blank", blankDetectionOptions(rule));
   const source = detectColumns(sourceWorkbook, "source");
   const editsByRow = new Map(edits.map((edit) => [edit.key || String(Number(edit.blankRow)), edit]));
   const prepared = [];
