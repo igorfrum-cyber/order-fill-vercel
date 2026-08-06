@@ -1953,6 +1953,18 @@ function novacutanSummaryQuantity(position, total) {
   return total < minimum ? minimum : Number(total.toFixed(2));
 }
 
+function roundSupplierPack10(value) {
+  if (value <= 0) return null;
+  return Math.round(value / 10) * 10;
+}
+
+function novacutanSupplierOrderQuantity(position, supplierNeed) {
+  if (supplierNeed <= 0) return null;
+  const minimum = Number(position.novacutanMinimum || 100);
+  const base = Math.max(Number(supplierNeed), minimum);
+  return roundSupplierPack10(base);
+}
+
 function northSplitVariantPositions(detection, blankId, blankLabel) {
   const rows = [];
   const rule = { preserveArticleHyphen: true, adjustment: "none" };
@@ -2006,14 +2018,18 @@ function addNorthTotal(totals, item, city) {
   current.cities.set(city.key, (current.cities.get(city.key) || 0) + item.quantity);
 }
 
-function writeNorthSummaryWorkbook(summary, totals) {
+function writeNorthSummaryWorkbook(summary, totals, quantityByKey = null) {
+  const quantityForKey = (key) => {
+    if (quantityByKey) return Number(quantityByKey.get(key) || 0);
+    return Number(totals.get(key)?.totalQuantity || 0);
+  };
+
   if (summary.kind === "novacutan") {
     ensureNovacutanQuantityColumn(summary.detection);
     let adjustedCount = 0;
     for (const position of summary.positions) {
-      const total = totals.get(position.key)?.totalQuantity || 0;
-      const quantity = novacutanSummaryQuantity(position, total);
-      if (quantity != null && quantity !== total) adjustedCount += 1;
+      const total = quantityForKey(position.key);
+      const quantity = total > 0 ? total : null;
       prepareNovacutanQuantityCell(summary.detection, position.row);
       setNumericCell(summary.detection.sheet, position.row, position.quantityCol, quantity);
     }
@@ -2022,7 +2038,7 @@ function writeNorthSummaryWorkbook(summary, totals) {
 
   if (summary.kind === "splitVariants") {
     for (const position of summary.positions) {
-      const total = totals.get(position.key)?.totalQuantity || 0;
+      const total = quantityForKey(position.key);
       setNumericCell(summary.detection.sheet, position.row, position.quantityCol, total > 0 ? total : null);
     }
     return { appended: [], adjustedCount: 0 };
@@ -2032,27 +2048,28 @@ function writeNorthSummaryWorkbook(summary, totals) {
   const columns = summary.detection.columns;
   const written = new Set();
   for (const position of summary.positions) {
-    const total = totals.get(position.key)?.totalQuantity || 0;
+    const total = quantityForKey(position.key);
     setNumericCell(sheet, position.row, position.quantityCol, total > 0 ? total : null);
     written.add(position.key);
   }
 
-  const missing = Array.from(totals.values()).filter((item) => !written.has(item.key) && item.totalQuantity > 0);
+  const missing = Array.from(totals.values()).filter((item) => !written.has(item.key) && quantityForKey(item.key) > 0);
   if (!missing.length) return { appended: [], adjustedCount: 0 };
 
   const { maxRow } = sheetBounds(sheet);
   for (const [index, item] of missing.entries()) {
     const row = maxRow + index + 1;
+    const quantity = Number(quantityForKey(item.key).toFixed(2));
     setTextCell(sheet, row, columns.article, item.articleRaw || item.key);
     setTextCell(sheet, row, columns.name, item.name);
     if (columns.unit) setTextCell(sheet, row, columns.unit, item.unit);
-    setNumericCell(sheet, row, columns.quantity, Number(item.totalQuantity.toFixed(2)));
+    setNumericCell(sheet, row, columns.quantity, quantity);
   }
   return {
     appended: missing.map((item) => ({
       article: item.articleRaw || item.key,
       name: item.name,
-      quantity: Number(item.totalQuantity.toFixed(2)),
+      quantity: Number(quantityForKey(item.key).toFixed(2)),
     })),
     adjustedCount: 0,
   };
@@ -2075,27 +2092,29 @@ function formatNorthQuantity(value) {
   return String(Number(number.toFixed(2)));
 }
 
-function novacutanNorthOrderTable(summary, totals) {
+function northCommentFromParts(parts, extraValue = 0, extraText = "для минимальной партии") {
+  const cityParts = parts
+    .filter((part) => Number(part.quantity || 0) > 0)
+    .map((part) => `${formatNorthQuantity(part.quantity)} ${part.label}`);
+  if (extraValue > 0) cityParts.push(`${formatNorthQuantity(extraValue)} ${extraText}`);
+  return cityParts.join(", ");
+}
+
+function novacutanNorthOrderTable(summary, planRows, actualByKey) {
   if (summary.kind !== "novacutan") return null;
   const rows = [];
-  const cityByKey = new Map(NORTH_CITIES.map((city) => [city.key, city]));
 
-  for (const position of summary.positions) {
-    const total = totals.get(position.key);
-    const totalQuantity = total?.totalQuantity || 0;
-    const orderedQuantity = novacutanSummaryQuantity(position, totalQuantity);
+  for (const row of planRows) {
+    const orderedQuantity = Number(actualByKey.get(row.key) || 0);
     if (orderedQuantity == null) continue;
+    if (orderedQuantity <= 0) continue;
 
-    const cityParts = Array.from(total.cities.entries())
-      .filter(([, quantity]) => quantity > 0)
-      .map(([cityKey, quantity]) => `${formatNorthQuantity(quantity)} ${cityByKey.get(cityKey)?.label || cityKey}`);
-    const minimumExtra = Number(orderedQuantity) - Number(totalQuantity);
-    if (minimumExtra > 0) cityParts.push(`${formatNorthQuantity(minimumExtra)} для минимальной партии`);
+    const extra = Math.max(0, orderedQuantity - row.supplierNeed);
 
     rows.push({
-      name: position.name,
+      name: row.name,
       quantity: orderedQuantity,
-      comment: cityParts.join(", "),
+      comment: northCommentFromParts(row.supplierParts, extra),
     });
   }
 
@@ -2105,7 +2124,213 @@ function novacutanNorthOrderTable(summary, totals) {
   };
 }
 
-export function buildNorthOrderFiles(blanks) {
+function sourceKeyCandidatesForNorth(item, kind) {
+  const keys = new Set();
+  if (kind === "novacutan" || !item.articleRaw) keys.add(novacutanPositionKey(item.name));
+  const preserved = normalizeArticle(item.articleRaw, { preserveHyphen: true });
+  const regular = normalizeArticle(item.articleRaw, { preserveHyphen: false });
+  if (preserved) keys.add(preserved);
+  if (regular) keys.add(regular);
+  return Array.from(keys).filter(Boolean);
+}
+
+function readNorthTyumenAvailability(workbook, kind) {
+  if (!workbook) return new Map();
+  const detection = detectColumns(workbook, "source");
+  const calculationColumns = detectCalculationColumns(detection, { required: false });
+  const { maxRow, maxColumn } = sheetBounds(detection.sheet);
+  const availability = new Map();
+
+  for (let row = detection.headerRow + 1; row <= maxRow; row += 1) {
+    if (isSourceTotalRow(detection, row, maxColumn)) continue;
+    const articleRaw = asText(sheetCellValue(detection.sheet, row, detection.columns.article));
+    const name = asText(sheetCellValue(detection.sheet, row, detection.columns.name));
+    if (!articleRaw && !name) continue;
+
+    const stock = parseNumber(sheetCellValue(detection.sheet, row, detection.columns.stock)) ?? 0;
+    const inTransit = parseNumber(sheetCellValue(detection.sheet, row, detection.columns.inTransit)) ?? 0;
+    const recommended = parseNumber(sheetCellValue(detection.sheet, row, detection.columns.recommended)) ?? 0;
+    const orderedFactRaw = sheetCellValue(detection.sheet, row, detection.columns.orderedFact);
+    const orderedFact = parseNumber(orderedFactRaw);
+    const hasOrderedFact = asText(orderedFactRaw) !== "";
+    const targetStock = calculationColumns?.targetStock
+      ? parseNumber(sheetCellValue(detection.sheet, row, calculationColumns.targetStock))
+      : null;
+    const item = {
+      row,
+      articleRaw,
+      name,
+      stock,
+      inTransit,
+      recommended,
+      hasOrderedFact,
+      orderedFact: orderedFact ?? null,
+      targetStock: targetStock ?? Math.max(0, stock + inTransit + recommended),
+    };
+
+    for (const key of sourceKeyCandidatesForNorth(item, kind)) {
+      if (!availability.has(key)) availability.set(key, item);
+    }
+  }
+
+  return availability;
+}
+
+function allocateNorthNeedByCity(total, tyumenFree) {
+  const supplierParts = [];
+  const tyumenParts = [];
+  let freeLeft = Math.max(0, tyumenFree || 0);
+
+  for (const city of NORTH_CITIES.filter((item) => item.key !== "tyumen")) {
+    const quantity = Number(total.cities.get(city.key) || 0);
+    if (quantity <= 0) continue;
+    const fromTyumen = Math.min(quantity, freeLeft);
+    const fromSupplier = quantity - fromTyumen;
+    freeLeft -= fromTyumen;
+    if (fromTyumen > 0) tyumenParts.push({ key: city.key, label: city.label, quantity: Number(fromTyumen.toFixed(2)) });
+    if (fromSupplier > 0) supplierParts.push({ key: city.key, label: city.label, quantity: Number(fromSupplier.toFixed(2)) });
+  }
+
+  return {
+    fromTyumen: tyumenParts.reduce((sum, part) => sum + part.quantity, 0),
+    supplierNorthNeed: supplierParts.reduce((sum, part) => sum + part.quantity, 0),
+    supplierParts,
+    tyumenParts,
+  };
+}
+
+function northAvailabilityForTotal(availability, total, kind) {
+  const exact = availability.get(total.key);
+  if (exact) return exact;
+  if (kind !== "novacutan") return null;
+
+  const scored = Array.from(new Set(availability.values()))
+    .map((item) => ({ item, score: novacutanNameScore(total.name, item.name, total.unit) }))
+    .sort((left, right) => right.score - left.score);
+  if (!scored.length || scored[0].score < 0.72) return null;
+  if (scored[0].score >= 0.9) return scored[0].item;
+  if (scored.length > 1 && scored[0].score - scored[1].score < 0.08) return null;
+  return scored[0].item;
+}
+
+function novacutanNameTokens(value) {
+  return normalizeHeader(value)
+    .split(/\s+/u)
+    .map((token) => token.trim())
+    .filter((token) => token && token !== "novacutan" && token !== "мл" && token !== "гр");
+}
+
+function novacutanNameScore(left, right, unit = "") {
+  const base = volumeAwareSimilarity(left, right, unit);
+  const leftTokens = new Set(novacutanNameTokens(left));
+  const rightTokens = new Set(novacutanNameTokens(right));
+  if (!leftTokens.size || !rightTokens.size) return base;
+  const intersection = Array.from(leftTokens).filter((token) => rightTokens.has(token)).length;
+  const coverage = intersection / Math.min(leftTokens.size, rightTokens.size);
+  if (coverage >= 0.75) return Math.max(base, 0.9);
+  return base;
+}
+
+function defaultNorthActualSupplierOrder(summary, position, supplierNeed) {
+  if (supplierNeed <= 0) return null;
+  if (summary.kind === "novacutan") return novacutanSupplierOrderQuantity(position, supplierNeed);
+  return Number(supplierNeed.toFixed(2));
+}
+
+function buildNorthPlan(summary, totals, tyumenSourceWorkbook = null) {
+  const availability = readNorthTyumenAvailability(tyumenSourceWorkbook, summary.kind);
+  const positionByKey = new Map(summary.positions.map((position) => [position.key, position]));
+  const planRows = [];
+
+  for (const total of totals.values()) {
+    const position = positionByKey.get(total.key) || {
+      key: total.key,
+      name: total.name,
+      articleRaw: total.articleRaw,
+      unit: total.unit,
+    };
+    const tyumen = northAvailabilityForTotal(availability, total, summary.kind);
+    const tyumenTableOrder = tyumen
+      ? (tyumen.hasOrderedFact ? (tyumen.orderedFact ?? 0) : roundHalfUp(Math.max(0, tyumen.recommended || 0)))
+      : 0;
+    const tyumenUploadedOrder = Number(total.cities.get("tyumen") || 0);
+    const tyumenPlannedOrder = Number(total.cities.has("tyumen") ? tyumenUploadedOrder : tyumenTableOrder);
+    const tyumenStock = Number(tyumen?.stock || 0);
+    const tyumenInTransit = Number(tyumen?.inTransit || 0);
+    const tyumenTarget = Number(tyumen?.targetStock || 0);
+    const tyumenFree = Math.max(0, tyumenStock + tyumenInTransit + tyumenPlannedOrder - tyumenTarget);
+    const allocation = allocateNorthNeedByCity(total, tyumenFree);
+    const supplierParts = [];
+    if (tyumenUploadedOrder > 0) supplierParts.push({ key: "tyumen", label: "Тюмень", quantity: Number(tyumenUploadedOrder.toFixed(2)) });
+    supplierParts.push(...allocation.supplierParts);
+    const northNeed = Array.from(total.cities.entries())
+      .filter(([cityKey]) => cityKey !== "tyumen")
+      .reduce((sum, [, quantity]) => sum + quantity, 0);
+    const supplierNeed = Number((tyumenUploadedOrder + allocation.supplierNorthNeed).toFixed(2));
+    const actualSupplierOrder = defaultNorthActualSupplierOrder(summary, position, supplierNeed);
+
+    planRows.push({
+      key: total.key,
+      articleRaw: total.articleRaw || position.articleRaw || "",
+      name: total.name || position.name,
+      unit: total.unit || position.unit || "шт",
+      totalQuantity: Number(total.totalQuantity.toFixed(2)),
+      northNeed: Number(northNeed.toFixed(2)),
+      tyumenOrder: tyumenUploadedOrder,
+      tyumenPlannedOrder: Number(tyumenPlannedOrder.toFixed(2)),
+      tyumenStock,
+      tyumenInTransit,
+      tyumenTarget,
+      tyumenFree: Number(tyumenFree.toFixed(2)),
+      fromTyumen: Number(allocation.fromTyumen.toFixed(2)),
+      supplierNeed,
+      actualSupplierOrder,
+      minimumExtra: actualSupplierOrder != null ? Number(Math.max(0, actualSupplierOrder - supplierNeed).toFixed(2)) : 0,
+      supplierParts,
+      tyumenParts: allocation.tyumenParts,
+      hasTyumenSource: Boolean(tyumen),
+    });
+  }
+
+  return planRows.sort((left, right) => {
+    const supplierDiff = Number(right.supplierNeed > 0) - Number(left.supplierNeed > 0);
+    if (supplierDiff) return supplierDiff;
+    return left.name.localeCompare(right.name, "ru");
+  });
+}
+
+function actualQuantityByKey(planRows, edits = []) {
+  const editsByKey = new Map(edits.map((edit) => [edit.key, parseNumber(edit.actualSupplierOrder)]));
+  const quantities = new Map();
+  for (const row of planRows) {
+    const edited = editsByKey.has(row.key) ? editsByKey.get(row.key) : null;
+    const value = edited ?? row.actualSupplierOrder ?? 0;
+    quantities.set(row.key, Number(value || 0));
+  }
+  return quantities;
+}
+
+export function finalizeNorthOrderFiles(result, edits = []) {
+  const actualByKey = actualQuantityByKey(result.planRows, edits);
+  const summaryWrite = writeNorthSummaryWorkbook(result.summary, result.totals, actualByKey);
+  const adjustedCount = result.planRows.filter((row) => {
+    const actual = Number(actualByKey.get(row.key) || 0);
+    return actual > 0 && actual !== row.supplierNeed;
+  }).length;
+
+  return {
+    summaryWorkbook: result.summary.workbook,
+    summaryFileName: result.summaryFileName,
+    uploadedCities: result.uploadedCities,
+    appendedToSummary: summaryWrite.appended,
+    adjustedToMinimum: adjustedCount,
+    totalsCount: Array.from(actualByKey.values()).filter((quantity) => quantity > 0).length,
+    orderTable: novacutanNorthOrderTable(result.summary, result.planRows, actualByKey),
+    transfers: result.transfers,
+  };
+}
+
+export function buildNorthOrderFiles(blanks, options = {}) {
   if (!Array.isArray(blanks) || !blanks.length) throw new Error("Загрузите хотя бы один бланк для раздела «Север».");
 
   const cityKeys = new Set();
@@ -2123,8 +2348,7 @@ export function buildNorthOrderFiles(blanks) {
   }
 
   const summary = prepared.find((file) => file.city.key === "tyumen") || prepared[0];
-  const summaryWrite = writeNorthSummaryWorkbook(summary, totals);
-  const orderTable = novacutanNorthOrderTable(summary, totals);
+  const planRows = buildNorthPlan(summary, totals, options.tyumenSourceWorkbook || null);
   const transfers = prepared
     .filter((file) => file.city.key !== "tyumen")
     .map((file) => ({
@@ -2134,13 +2358,12 @@ export function buildNorthOrderFiles(blanks) {
     }));
 
   return {
-    summaryWorkbook: summary.workbook,
+    summary,
+    totals,
     summaryFileName: `Север общий бланк.${outputExtension(summary.fileName)}`,
     uploadedCities: prepared.map((file) => file.city.label),
-    appendedToSummary: summaryWrite.appended,
-    adjustedToMinimum: summaryWrite.adjustedCount,
-    totalsCount: Array.from(totals.values()).filter((item) => item.totalQuantity > 0).length,
-    orderTable,
+    planRows,
+    hasTyumenSource: Boolean(options.tyumenSourceWorkbook),
     transfers,
   };
 }

@@ -303,6 +303,50 @@ p {
   overflow: hidden;
 }
 
+.north-plan-wrap {
+  max-height: 520px;
+}
+
+.north-col-name {
+  width: 28%;
+}
+
+.north-col-qty {
+  width: 9%;
+}
+
+.north-col-input {
+  width: 12%;
+}
+
+.north-col-comment {
+  width: 24%;
+}
+
+.north-actual-input {
+  width: 100%;
+  max-width: 120px;
+  height: 34px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 0 8px;
+  font: inherit;
+  color: var(--ink);
+  background: #fff;
+}
+
+.north-actual-input:focus {
+  border-color: var(--accent);
+  outline: 2px solid #d8edf3;
+}
+
+.north-warning {
+  margin-top: 4px;
+  color: var(--warn);
+  font-size: 12px;
+  font-weight: 720;
+}
+
 .result.hidden {
   display: none;
 }

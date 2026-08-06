@@ -2,6 +2,7 @@ import "./styles.css";
 import {
   applyFinalEdits,
   buildNorthOrderFiles,
+  finalizeNorthOrderFiles,
   fillWorkbook,
   loadXlsx,
   normalizeOrderValue,
@@ -46,11 +47,15 @@ const orderModeButton = document.querySelector("#orderModeButton");
 const northModeButton = document.querySelector("#northModeButton");
 const northForm = document.querySelector("#northForm");
 const northFiles = document.querySelector("#northFiles");
+const northSourceFile = document.querySelector("#northSourceFile");
 const northNames = document.querySelector("#northNames");
+const northSourceName = document.querySelector("#northSourceName");
 const northStatus = document.querySelector("#northStatus");
 const northResult = document.querySelector("#northResult");
 const northSummary = document.querySelector("#northSummary");
 const northDownloadLinks = document.querySelector("#northDownloadLinks");
+const northPlanBody = document.querySelector("#northPlanBody");
+const northDownloadButton = document.querySelector("#northDownloadButton");
 const northSubmitButton = northForm.querySelector("button");
 const northBackButton = document.querySelector("#northBackButton");
 
@@ -62,6 +67,8 @@ let currentBlankOutputNames = new Map();
 let currentSourceOutputName = "order заполненная таблица.xlsx";
 let currentDownloadUrls = [];
 let currentNorthDownloadUrls = [];
+let currentNorthResult = null;
+let northPlanEdits = new Map();
 let isFormFilled = false;
 let activeFilter = null;
 let editState = new Map();
@@ -119,6 +126,17 @@ bindFileName(proffFile, proffName, ".xlsx или .xlsm");
 northFiles.addEventListener("change", () => {
   const files = Array.from(northFiles.files || []);
   northNames.textContent = files.length ? files.map((file) => file.name).join(", ") : "Городские заполненные бланки .xlsx, .xlsm или .xls";
+  currentNorthResult = null;
+  northPlanEdits = new Map();
+  clearNorthDownloadLinks();
+  northResult.classList.add("hidden");
+  northStatus.textContent = "Готов к загрузке";
+});
+
+northSourceFile.addEventListener("change", () => {
+  northSourceName.textContent = northSourceFile.files[0]?.name || "Для учета остатков и в пути .xlsx, .xlsm или .xls";
+  currentNorthResult = null;
+  northPlanEdits = new Map();
   clearNorthDownloadLinks();
   northResult.classList.add("hidden");
   northStatus.textContent = "Готов к загрузке";
@@ -915,6 +933,69 @@ function northOrderTableBytes(table) {
   });
 }
 
+function formatNorthQuantity(value) {
+  const number = Number(value || 0);
+  if (!Number.isFinite(number) || number <= 0) return "";
+  if (Number.isInteger(number)) return String(number);
+  return String(Number(number.toFixed(2)));
+}
+
+function northPartsText(parts) {
+  return (parts || [])
+    .filter((part) => Number(part.quantity || 0) > 0)
+    .map((part) => `${formatNorthQuantity(part.quantity)} ${part.label}`)
+    .join(", ");
+}
+
+function northPlanComment(row, actualValue = row.actualSupplierOrder) {
+  const parts = [];
+  const supplier = northPartsText(row.supplierParts);
+  const fromTyumen = northPartsText(row.tyumenParts);
+  if (supplier) parts.push(`поставщик: ${supplier}`);
+  if (fromTyumen) parts.push(`из Тюмени: ${fromTyumen}`);
+  const extra = Number(actualValue || 0) - Number(row.supplierNeed || 0);
+  if (extra > 0) parts.push(`${formatNorthQuantity(extra)} для минимальной партии/кратности`);
+  if (!parts.length && row.northNeed > 0) parts.push("закрывается остатком Тюмени");
+  return parts.join("; ");
+}
+
+function renderNorthPlan(result) {
+  northPlanEdits = new Map();
+  northPlanBody.innerHTML = result.planRows
+    .map((row) => {
+      const value = row.actualSupplierOrder == null ? "" : row.actualSupplierOrder;
+      northPlanEdits.set(row.key, value);
+      const sourceMark = result.hasTyumenSource && !row.hasTyumenSource ? `<div class="north-warning">нет строки в таблице Тюмени</div>` : "";
+      return `
+        <tr data-key="${escapeHtml(row.key)}">
+          <td>${escapeHtml(row.name)}${sourceMark}</td>
+          <td>${escapeHtml(formatNorthQuantity(row.northNeed))}</td>
+          <td>${escapeHtml(formatNorthQuantity(row.tyumenFree))}</td>
+          <td>${escapeHtml(formatNorthQuantity(row.fromTyumen))}</td>
+          <td>${escapeHtml(formatNorthQuantity(row.supplierNeed))}</td>
+          <td>
+            <input class="north-actual-input" type="number" min="0" step="1" data-key="${escapeHtml(row.key)}" value="${escapeHtml(String(value))}" />
+          </td>
+          <td class="north-comment">${escapeHtml(northPlanComment(row, value))}</td>
+        </tr>
+      `;
+    })
+    .join("");
+}
+
+function collectNorthPlanEdits() {
+  const edits = [];
+  for (const input of northPlanBody.querySelectorAll(".north-actual-input")) {
+    const value = input.value.trim();
+    if (value && Number(value) < 0) throw new Error("Фактический заказ у поставщика не может быть отрицательным.");
+    edits.push({
+      key: input.dataset.key,
+      actualSupplierOrder: value === "" ? null : Number(value),
+    });
+  }
+  return edits;
+}
+
 function prepareNorthDownloadLinks(files) {
   clearNorthDownloadLinks();
   currentNorthDownloadUrls = files.map((file) => URL.createObjectURL(file.blob));
@@ -985,26 +1066,69 @@ northForm.addEventListener("submit", async (event) => {
   if (!files.length) return;
 
   northSubmitButton.disabled = true;
-  northStatus.textContent = "Соединяю...";
+  northStatus.textContent = "Считаю...";
   clearNorthDownloadLinks();
   northResult.classList.add("hidden");
+  currentNorthResult = null;
 
   try {
     const blanks = await Promise.all(files.map(async (file) => ({
       fileName: file.name,
       workbook: await loadWorkbook(file),
     })));
-    const result = buildNorthOrderFiles(blanks);
+    const tyumenSourceFile = northSourceFile.files[0] || null;
+    const tyumenSourceWorkbook = tyumenSourceFile ? await loadWorkbook(tyumenSourceFile) : null;
+    const result = buildNorthOrderFiles(blanks, {
+      tyumenSourceWorkbook,
+      tyumenSourceFileName: tyumenSourceFile?.name || "",
+    });
+    currentNorthResult = result;
+    renderNorthPlan(result);
+    const supplierRows = result.planRows.filter((row) => Number(row.supplierNeed || 0) > 0).length;
+    const tyumenCovered = result.planRows.filter((row) => Number(row.fromTyumen || 0) > 0).length;
+    northSummary.textContent = `Города: ${result.uploadedCities.join(", ")}. Позиций к заказу у поставщика: ${supplierRows}. Позиций закрыто остатком Тюмени: ${tyumenCovered}. Перемещений: ${result.transfers.length}.${result.hasTyumenSource ? "" : " Таблица Тюмени не загружена, остаток Тюмени не учитывался."}`;
+    northResult.classList.remove("hidden");
+    northDownloadButton.disabled = false;
+    northStatus.textContent = "Проверьте расчет";
+  } catch (error) {
+    northStatus.textContent = "Ошибка";
+    alert(error.message || "Не удалось соединить бланки.");
+  } finally {
+    northSubmitButton.disabled = false;
+  }
+});
+
+northPlanBody.addEventListener("input", (event) => {
+  if (!event.target.matches(".north-actual-input")) return;
+  const row = currentNorthResult?.planRows.find((item) => item.key === event.target.dataset.key);
+  if (!row) return;
+  northPlanEdits.set(row.key, event.target.value);
+  const comment = event.target.closest("tr")?.querySelector(".north-comment");
+  if (comment) comment.textContent = northPlanComment(row, event.target.value === "" ? null : Number(event.target.value));
+});
+
+northDownloadButton.addEventListener("click", async () => {
+  if (!currentNorthResult) {
+    alert("Сначала соедините бланки.");
+    return;
+  }
+
+  northDownloadButton.disabled = true;
+  northStatus.textContent = "Готовлю файлы...";
+  clearNorthDownloadLinks();
+
+  try {
+    const finalized = finalizeNorthOrderFiles(currentNorthResult, collectNorthPlanEdits());
     const outputFiles = [
       {
         label: "Скачать общий бланк",
-        name: result.summaryFileName,
-        blob: new Blob([saveXlsx(result.summaryWorkbook)], {
+        name: finalized.summaryFileName,
+        blob: new Blob([saveXlsx(finalized.summaryWorkbook)], {
           type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
         }),
       },
     ];
-    for (const transfer of result.transfers) {
+    for (const transfer of finalized.transfers) {
       outputFiles.push({
         label: `Скачать перемещение ${transfer.city.label}`,
         name: transfer.fileName,
@@ -1013,25 +1137,24 @@ northForm.addEventListener("submit", async (event) => {
         }),
       });
     }
-    if (result.orderTable?.rows?.length) {
+    if (finalized.orderTable?.rows?.length) {
       outputFiles.push({
         label: "Скачать таблицу заказа",
-        name: result.orderTable.fileName,
-        blob: new Blob([await northOrderTableBytes(result.orderTable)], {
+        name: finalized.orderTable.fileName,
+        blob: new Blob([await northOrderTableBytes(finalized.orderTable)], {
           type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
         }),
       });
     }
 
-    northSummary.textContent = `Города: ${result.uploadedCities.join(", ")}. В общем бланке позиций с заказом: ${result.totalsCount}. Перемещений: ${result.transfers.length}.${result.appendedToSummary.length ? ` Добавлено в конец общего бланка: ${result.appendedToSummary.length}.` : ""}${result.adjustedToMinimum ? ` До минимальной партии подтянуто: ${result.adjustedToMinimum}.` : ""}`;
+    northSummary.textContent = `Города: ${finalized.uploadedCities.join(", ")}. В общем бланке позиций с заказом: ${finalized.totalsCount}. Перемещений: ${finalized.transfers.length}.${finalized.appendedToSummary.length ? ` Добавлено в конец общего бланка: ${finalized.appendedToSummary.length}.` : ""}${finalized.adjustedToMinimum ? ` Факт отличается от потребности: ${finalized.adjustedToMinimum}.` : ""}`;
     prepareNorthDownloadLinks(outputFiles);
-    northResult.classList.remove("hidden");
     northStatus.textContent = "Файлы готовы";
   } catch (error) {
     northStatus.textContent = "Ошибка";
-    alert(error.message || "Не удалось соединить бланки.");
+    alert(error.message || "Не удалось подготовить файлы.");
   } finally {
-    northSubmitButton.disabled = false;
+    northDownloadButton.disabled = false;
   }
 });
 

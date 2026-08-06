@@ -196,6 +196,13 @@
               <input id="northFiles" name="northFiles" type="file" accept=".xlsx,.xlsm,.xls" multiple required />
             </label>
 
+            <label class="dropzone north-dropzone" for="northSourceFile">
+              <span class="icon">↑</span>
+              <span class="label">Заполненная таблица Тюмени</span>
+              <span class="filename" id="northSourceName">Для учета остатков и в пути .xlsx, .xlsm или .xls</span>
+              <input id="northSourceFile" name="northSourceFile" type="file" accept=".xlsx,.xlsm,.xls" />
+            </label>
+
             <button class="primary" type="submit">
               <span>✓</span>
               Соединить бланки
@@ -203,7 +210,36 @@
           </form>
 
           <section class="north-result hidden" id="northResult">
+            <div class="result-head">
+              <h2>Расчет заказа</h2>
+              <button class="download" id="northDownloadButton" type="button">Скачать файлы</button>
+            </div>
             <div class="period-note" id="northSummary"></div>
+            <div class="table-wrap north-plan-wrap">
+              <table>
+                <colgroup>
+                  <col class="north-col-name" />
+                  <col class="north-col-qty" />
+                  <col class="north-col-qty" />
+                  <col class="north-col-qty" />
+                  <col class="north-col-qty" />
+                  <col class="north-col-input" />
+                  <col class="north-col-comment" />
+                </colgroup>
+                <thead>
+                  <tr>
+                    <th>Позиция</th>
+                    <th>Нужно северу</th>
+                    <th>Свободно в Тюмени</th>
+                    <th>Из Тюмени</th>
+                    <th>Нужно заказать</th>
+                    <th>Факт. у поставщика</th>
+                    <th>Комментарий</th>
+                  </tr>
+                </thead>
+                <tbody id="northPlanBody"></tbody>
+              </table>
+            </div>
             <div class="download-links hidden" id="northDownloadLinks"></div>
           </section>
         </section>
