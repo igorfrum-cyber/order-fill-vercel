@@ -1605,11 +1605,55 @@ function detectNorthCity(workbook, fileName) {
 }
 
 function northBlankDetection(workbook) {
+  const novacutan = detectNovacutanBlank(workbook);
+  if (novacutan) return { kind: "novacutan", detection: novacutan };
+
   try {
     return { kind: "generic", detection: detectColumns(workbook, "blank", { requireBox: false, quantityHeader: "anyOrder" }) };
   } catch {
     return { kind: "splitVariants", detection: detectSothysVariantBlank(workbook) };
   }
+}
+
+function detectNovacutanBlank(workbook) {
+  let hasNovacutanSignal = false;
+  for (const sheet of workbook.sheets) {
+    const { maxRow, maxColumn } = sheetBounds(sheet);
+    if (normalizeHeader(sheet.name).includes("novacutan")) hasNovacutanSignal = true;
+    for (let row = 1; row <= Math.min(maxRow, 80); row += 1) {
+      for (let col = 1; col <= maxColumn; col += 1) {
+        if (normalizeHeader(sheetCellValue(sheet, row, col)).includes("novacutan")) {
+          hasNovacutanSignal = true;
+        }
+      }
+    }
+  }
+  if (!hasNovacutanSignal) return null;
+
+  for (const sheet of workbook.sheets) {
+    const { maxRow, maxColumn } = sheetBounds(sheet);
+    for (let row = 1; row <= Math.min(maxRow, 120); row += 1) {
+      let name = null;
+      let price = null;
+      let quantity = null;
+      for (let col = 1; col <= maxColumn; col += 1) {
+        const header = normalizeHeader(sheetCellValue(sheet, row, col));
+        if (header.includes("описание") || header.includes("товар") || header.includes("название")) name = col;
+        else if (header.includes("цена")) price = col;
+        else if (header.includes("кол во") || header.includes("количество") || header.includes("qty")) quantity = col;
+      }
+      if (name && quantity) {
+        return {
+          sheet,
+          sheetName: sheet.name,
+          headerRow: row,
+          columns: { name, price, quantity },
+        };
+      }
+    }
+  }
+
+  return null;
 }
 
 function northGenericPositions(detection, blankId, blankLabel) {
@@ -1637,6 +1681,60 @@ function northGenericPositions(detection, blankId, blankLabel) {
   return rows;
 }
 
+function northNovacutanPositions(detection, blankId, blankLabel) {
+  const rows = [];
+  const { maxRow } = sheetBounds(detection.sheet);
+  for (let row = detection.headerRow + 1; row <= maxRow; row += 1) {
+    const name = asText(sheetCellValue(detection.sheet, row, detection.columns.name));
+    const price = detection.columns.price ? parseNumber(sheetCellValue(detection.sheet, row, detection.columns.price)) : null;
+    const quantity = parseNumber(sheetCellValue(detection.sheet, row, detection.columns.quantity)) ?? 0;
+    if (!name || price == null) continue;
+    rows.push({
+      key: novacutanPositionKey(name),
+      blankId,
+      blankLabel,
+      row,
+      quantityCol: detection.columns.quantity,
+      articleCol: null,
+      nameCol: detection.columns.name,
+      unitCol: null,
+      articleRaw: "",
+      name,
+      unit: "шт",
+      quantity,
+      novacutanMinimum: novacutanMinimumQuantity(name),
+    });
+  }
+  return rows;
+}
+
+function novacutanPositionKey(name) {
+  return `novacutan:${normalizeName(name).replace(/\bновакутан\b/g, "novacutan")}`;
+}
+
+function novacutanMinimumQuantity(name) {
+  const text = normalizeHeader(name);
+  if (
+    text.includes("filler")
+    || text.includes("филлер")
+    || text.includes("fbio")
+    || text.includes("bright")
+    || text.includes("брайт")
+    || text.includes("gentle")
+    || text.includes("джентл")
+    || text.includes("джентел")
+  ) {
+    return 50;
+  }
+  return 100;
+}
+
+function novacutanSummaryQuantity(position, total) {
+  if (total <= 0) return null;
+  const minimum = Number(position.novacutanMinimum || 100);
+  return total < minimum ? minimum : Number(total.toFixed(2));
+}
+
 function northSplitVariantPositions(detection, blankId, blankLabel) {
   const rows = [];
   const rule = { preserveArticleHyphen: true, adjustment: "none" };
@@ -1662,9 +1760,11 @@ function northSplitVariantPositions(detection, blankId, blankLabel) {
 
 function northPositions(workbook, blankId, blankLabel) {
   const detected = northBlankDetection(workbook);
-  const positions = detected.kind === "splitVariants"
-    ? northSplitVariantPositions(detected.detection, blankId, blankLabel)
-    : northGenericPositions(detected.detection, blankId, blankLabel);
+  const positions = detected.kind === "novacutan"
+    ? northNovacutanPositions(detected.detection, blankId, blankLabel)
+    : detected.kind === "splitVariants"
+      ? northSplitVariantPositions(detected.detection, blankId, blankLabel)
+      : northGenericPositions(detected.detection, blankId, blankLabel);
   return { ...detected, positions };
 }
 
@@ -1689,12 +1789,23 @@ function addNorthTotal(totals, item, city) {
 }
 
 function writeNorthSummaryWorkbook(summary, totals) {
+  if (summary.kind === "novacutan") {
+    let adjustedCount = 0;
+    for (const position of summary.positions) {
+      const total = totals.get(position.key)?.totalQuantity || 0;
+      const quantity = novacutanSummaryQuantity(position, total);
+      if (quantity != null && quantity !== total) adjustedCount += 1;
+      setNumericCell(summary.detection.sheet, position.row, position.quantityCol, quantity);
+    }
+    return { appended: [], adjustedCount };
+  }
+
   if (summary.kind === "splitVariants") {
     for (const position of summary.positions) {
       const total = totals.get(position.key)?.totalQuantity || 0;
       setNumericCell(summary.detection.sheet, position.row, position.quantityCol, total > 0 ? total : null);
     }
-    return [];
+    return { appended: [], adjustedCount: 0 };
   }
 
   const sheet = summary.detection.sheet;
@@ -1707,7 +1818,7 @@ function writeNorthSummaryWorkbook(summary, totals) {
   }
 
   const missing = Array.from(totals.values()).filter((item) => !written.has(item.key) && item.totalQuantity > 0);
-  if (!missing.length) return [];
+  if (!missing.length) return { appended: [], adjustedCount: 0 };
 
   const { maxRow } = sheetBounds(sheet);
   for (const [index, item] of missing.entries()) {
@@ -1717,17 +1828,20 @@ function writeNorthSummaryWorkbook(summary, totals) {
     if (columns.unit) setTextCell(sheet, row, columns.unit, item.unit);
     setNumericCell(sheet, row, columns.quantity, Number(item.totalQuantity.toFixed(2)));
   }
-  return missing.map((item) => ({
-    article: item.articleRaw || item.key,
-    name: item.name,
-    quantity: Number(item.totalQuantity.toFixed(2)),
-  }));
+  return {
+    appended: missing.map((item) => ({
+      article: item.articleRaw || item.key,
+      name: item.name,
+      quantity: Number(item.totalQuantity.toFixed(2)),
+    })),
+    adjustedCount: 0,
+  };
 }
 
 function transferItemsForCity(totals, city) {
   return Array.from(totals.values())
     .map((item) => ({
-      article: item.articleRaw || item.key,
+      article: item.articleRaw || "",
       name: item.name,
       unit: "шт",
       quantity: item.cities.get(city.key) || 0,
@@ -1752,8 +1866,8 @@ export function buildNorthOrderFiles(blanks) {
     for (const item of file.positions) addNorthTotal(totals, item, file.city);
   }
 
-  const summary = prepared[0];
-  const appendedToSummary = writeNorthSummaryWorkbook(summary, totals);
+  const summary = prepared.find((file) => file.city.key === "tyumen") || prepared[0];
+  const summaryWrite = writeNorthSummaryWorkbook(summary, totals);
   const transfers = prepared
     .filter((file) => file.city.key !== "tyumen")
     .map((file) => ({
@@ -1766,7 +1880,8 @@ export function buildNorthOrderFiles(blanks) {
     summaryWorkbook: summary.workbook,
     summaryFileName: `Север общий бланк.${outputExtension(summary.fileName)}`,
     uploadedCities: prepared.map((file) => file.city.label),
-    appendedToSummary,
+    appendedToSummary: summaryWrite.appended,
+    adjustedToMinimum: summaryWrite.adjustedCount,
     totalsCount: Array.from(totals.values()).filter((item) => item.totalQuantity > 0).length,
     transfers,
   };

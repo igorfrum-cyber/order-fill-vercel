@@ -1,9 +1,9 @@
 import fs from "node:fs/promises";
 import path from "node:path";
 import { strFromU8, unzipSync } from "fflate";
-import { read as readSpreadsheet, write as writeSpreadsheet } from "xlsx";
+import { read as readSpreadsheet, utils, write as writeSpreadsheet } from "xlsx";
 
-import { adjustQuantityForBrand, applyFinalEdits, detectColumns, fillWorkbook, loadXlsx, normalizeArticle, saveXlsx } from "../src/workbookProcessor.js";
+import { adjustQuantityForBrand, applyFinalEdits, buildNorthOrderFiles, detectColumns, fillWorkbook, loadXlsx, normalizeArticle, saveXlsx } from "../src/workbookProcessor.js";
 
 const sourcePath = "/Users/igorfrumes/Downloads/агио артикул.xlsx";
 const blankPath = "/Users/igorfrumes/Downloads/2026 06 23 Бланк заказа ANGIOPHARM (1).xlsx";
@@ -34,6 +34,25 @@ function convertLegacyXlsToXlsx(buffer) {
   });
 }
 
+function workbookFromRows(rows, sheetName = "бланк заказа") {
+  const workbook = utils.book_new();
+  const sheet = utils.aoa_to_sheet(rows);
+  utils.book_append_sheet(workbook, sheet, sheetName);
+  return loadXlsx(writeSpreadsheet(workbook, { bookType: "xlsx", type: "buffer" }));
+}
+
+function novacutanNorthWorkbook(city, quantities) {
+  return workbookFromRows([
+    ["Параметры", `Склад ${city}`],
+    [],
+    ["NOVACUTAN"],
+    ["описание", "цена", "кол-во"],
+    ["Novacutan SBIO, 2 мл", 7200, quantities.sbio ?? ""],
+    ["Novacutan FBIO, light", 6500, quantities.fbio ?? ""],
+    ["Bright,", 7400, quantities.bright ?? ""],
+  ]);
+}
+
 const [sourceWorkbook, blankWorkbook] = await Promise.all([
   fs.readFile(sourcePath).then((buffer) => loadXlsx(buffer)),
   fs.readFile(blankPath).then((buffer) => loadXlsx(buffer)),
@@ -55,6 +74,21 @@ const christinaNoAdjust = adjustQuantityForBrand(13, "christina");
 if (christinaNoAdjust.inserted !== 13 || christinaNoAdjust.autoComment !== "") throw new Error("Christina should keep the value when neither multiple direction fits thresholds.");
 const christinaSmall = adjustQuantityForBrand(1, "christina");
 if (christinaSmall.inserted !== null) throw new Error("Christina should skip recommendations below 1.5.");
+
+const novacutanNorth = buildNorthOrderFiles([
+  { fileName: "Novacutan Тюмень.xlsx", workbook: novacutanNorthWorkbook("Тюмень", { sbio: 20, fbio: 10, bright: 4 }) },
+  { fileName: "Novacutan Сургут.xlsx", workbook: novacutanNorthWorkbook("Сургут", { sbio: 5, fbio: 15, bright: 6 }) },
+]);
+const novacutanSummarySheet = novacutanNorth.summaryWorkbook.sheets.find((sheet) => sheet.name === "бланк заказа");
+if (novacutanSummarySheet.cells.get("5:3")?.value !== 100) throw new Error("Novacutan ordinary products should be ordered from 100 in the Tyumen summary blank.");
+if (novacutanSummarySheet.cells.get("6:3")?.value !== 50) throw new Error("Novacutan fillers should be ordered from 50 in the Tyumen summary blank.");
+if (novacutanSummarySheet.cells.get("7:3")?.value !== 50) throw new Error("Novacutan Bright/Gentle products should be ordered from 50 in the Tyumen summary blank.");
+const novacutanSurgutTransfer = novacutanNorth.transfers.find((transfer) => transfer.city.key === "surgut");
+if (!novacutanSurgutTransfer) throw new Error("Novacutan north should create a Surgut transfer.");
+const novacutanTransferQuantities = new Map(novacutanSurgutTransfer.items.map((item) => [item.name, item.quantity]));
+if (novacutanTransferQuantities.get("Novacutan SBIO, 2 мл") !== 5) throw new Error("Novacutan transfer should keep the exact city need for ordinary products.");
+if (novacutanTransferQuantities.get("Novacutan FBIO, light") !== 15) throw new Error("Novacutan transfer should keep the exact city need for fillers.");
+if (novacutanNorth.adjustedToMinimum !== 3) throw new Error("Novacutan summary should report rows adjusted to minimum batches.");
 
 try {
   await fs.access(levissimeLegacyBlankPath);

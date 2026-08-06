@@ -118,7 +118,7 @@ bindFileName(proffFile, proffName, ".xlsx или .xlsm");
 
 northFiles.addEventListener("change", () => {
   const files = Array.from(northFiles.files || []);
-  northNames.textContent = files.length ? files.map((file) => file.name).join(", ") : "Городские заполненные бланки .xlsx";
+  northNames.textContent = files.length ? files.map((file) => file.name).join(", ") : "Городские заполненные бланки .xlsx, .xlsm или .xls";
   clearNorthDownloadLinks();
   northResult.classList.add("hidden");
   northStatus.textContent = "Готов к загрузке";
@@ -971,7 +971,7 @@ northForm.addEventListener("submit", async (event) => {
   try {
     const blanks = await Promise.all(files.map(async (file) => ({
       fileName: file.name,
-      workbook: await loadWorkbook(file, { allowLegacyXls: false }),
+      workbook: await loadWorkbook(file),
     })));
     const result = buildNorthOrderFiles(blanks);
     const outputFiles = [
@@ -993,7 +993,7 @@ northForm.addEventListener("submit", async (event) => {
       });
     }
 
-    northSummary.textContent = `Города: ${result.uploadedCities.join(", ")}. В общем бланке позиций с заказом: ${result.totalsCount}. Перемещений: ${result.transfers.length}.${result.appendedToSummary.length ? ` Добавлено в конец общего бланка: ${result.appendedToSummary.length}.` : ""}`;
+    northSummary.textContent = `Города: ${result.uploadedCities.join(", ")}. В общем бланке позиций с заказом: ${result.totalsCount}. Перемещений: ${result.transfers.length}.${result.appendedToSummary.length ? ` Добавлено в конец общего бланка: ${result.appendedToSummary.length}.` : ""}${result.adjustedToMinimum ? ` До минимальной партии подтянуто: ${result.adjustedToMinimum}.` : ""}`;
     prepareNorthDownloadLinks(outputFiles);
     northResult.classList.remove("hidden");
     northStatus.textContent = "Файлы готовы";
