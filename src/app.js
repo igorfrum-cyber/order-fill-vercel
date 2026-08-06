@@ -1069,6 +1069,7 @@ function recalculateNorthRow(row, quantities) {
   const cityMap = new Map(Object.entries(quantities).map(([key, value]) => [key, Number(value || 0)]));
   const tyumenUploadedOrder = Number(cityMap.get("tyumen") || 0);
   const tyumenPlannedOrder = cityMap.has("tyumen") ? tyumenUploadedOrder : Number(row.tyumenPlannedOrder || 0);
+  const tyumenSupplierNeed = Math.max(0, tyumenPlannedOrder);
   let freeLeft = Math.max(0, Number(row.tyumenStock || 0) + Number(row.tyumenInTransit || 0) + tyumenPlannedOrder - Number(row.tyumenTarget || 0));
   const supplierParts = [];
   const tyumenParts = [];
@@ -1079,7 +1080,7 @@ function recalculateNorthRow(row, quantities) {
     .map((city) => ({ key: city.key, label: city.label, quantity: Number((cityMap.get(city.key) || 0).toFixed(2)) }))
     .filter((city) => city.quantity > 0);
 
-  if (tyumenUploadedOrder > 0) supplierParts.push({ key: "tyumen", label: "Тюмень", quantity: Number(tyumenUploadedOrder.toFixed(2)) });
+  if (tyumenSupplierNeed > 0) supplierParts.push({ key: "tyumen", label: "Тюмень", quantity: Number(tyumenSupplierNeed.toFixed(2)) });
 
   for (const cityKey of NORTH_ALLOCATION_ORDER) {
     const city = NORTH_CITIES.find((item) => item.key === cityKey);
@@ -1096,7 +1097,7 @@ function recalculateNorthRow(row, quantities) {
     if (fromSupplierPart > 0) supplierParts.push({ key: city.key, label: city.label, quantity: Number(fromSupplierPart.toFixed(2)) });
   }
 
-  const supplierNeed = Number((tyumenUploadedOrder + supplierNorthNeed).toFixed(2));
+  const supplierNeed = Number((tyumenSupplierNeed + supplierNorthNeed).toFixed(2));
   return {
     ...row,
     northNeed: Number(northNeed.toFixed(2)),
@@ -1133,8 +1134,8 @@ function collectNorthPlanEdits() {
     if (value && Number(value) < 0) throw new Error("Фактический заказ у поставщика не может быть отрицательным.");
     const source = currentNorthResult?.planRows.find((item) => item.key === rowEl.dataset.key);
     const calculated = source ? recalculateNorthRow(source, northCityQuantities(rowEl)) : null;
-    if (calculated && value && Number(value) < Number(calculated.supplierNorthNeed || 0)) {
-      throw new Error(`По позиции «${calculated.name}» факт у поставщика меньше нехватки северных городов. Сначала уменьшите городские количества.`);
+    if (calculated && value && Number(value) < Number(calculated.supplierNeed || 0)) {
+      throw new Error(`По позиции «${calculated.name}» факт у поставщика меньше общей нехватки Тюмени и северных городов.`);
     }
     edits.push({
       key: rowEl.dataset.key,

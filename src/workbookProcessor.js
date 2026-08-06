@@ -2306,18 +2306,19 @@ function northTotalCityParts(total) {
 function northPlanRowFromTotal(summary, total, position, tyumen = null, tyumenFallbackOrder = 0) {
   const tyumenUploadedOrder = Number(total.cities.get("tyumen") || 0);
   const tyumenPlannedOrder = Number(total.cities.has("tyumen") ? tyumenUploadedOrder : tyumenFallbackOrder);
+  const tyumenSupplierNeed = Math.max(0, tyumenPlannedOrder);
   const tyumenStock = Number(tyumen?.stock || 0);
   const tyumenInTransit = Number(tyumen?.inTransit || 0);
   const tyumenTarget = Number(tyumen?.targetStock || 0);
   const tyumenFree = Math.max(0, tyumenStock + tyumenInTransit + tyumenPlannedOrder - tyumenTarget);
   const allocation = allocateNorthNeedByCity(total, tyumenFree);
   const supplierParts = [];
-  if (tyumenUploadedOrder > 0) supplierParts.push({ key: "tyumen", label: "Тюмень", quantity: Number(tyumenUploadedOrder.toFixed(2)) });
-    supplierParts.push(...allocation.supplierParts);
+  if (tyumenSupplierNeed > 0) supplierParts.push({ key: "tyumen", label: "Тюмень", quantity: Number(tyumenSupplierNeed.toFixed(2)) });
+  supplierParts.push(...allocation.supplierParts);
   const northNeed = Array.from(total.cities.entries())
     .filter(([cityKey]) => cityKey !== "tyumen")
     .reduce((sum, [, quantity]) => sum + quantity, 0);
-  const supplierNeed = Number((tyumenUploadedOrder + allocation.supplierNorthNeed).toFixed(2));
+  const supplierNeed = Number((tyumenSupplierNeed + allocation.supplierNorthNeed).toFixed(2));
   const actualSupplierOrder = defaultNorthActualSupplierOrder(summary, position, supplierNeed);
 
   return {
@@ -2423,8 +2424,8 @@ function actualQuantityByKey(planRows, editsByKey) {
   for (const row of planRows) {
     const edited = editsByKey.has(row.key) ? parseNumber(editsByKey.get(row.key).actualSupplierOrder) : null;
     const value = edited ?? row.actualSupplierOrder ?? 0;
-    if (Number(value || 0) < Number(row.supplierNorthNeed || 0)) {
-      throw new Error(`По позиции «${row.name}» факт у поставщика меньше нехватки северных городов. Сначала уменьшите городские количества.`);
+    if (Number(value || 0) < Number(row.supplierNeed || 0)) {
+      throw new Error(`По позиции «${row.name}» факт у поставщика меньше общей нехватки Тюмени и северных городов.`);
     }
     quantities.set(row.key, Number(value || 0));
   }
