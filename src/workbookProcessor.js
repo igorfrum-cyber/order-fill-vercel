@@ -1763,6 +1763,7 @@ const NORTH_CITIES = [
   { key: "surgut", label: "Сургут", warehouse: "Склад Сургут", aliases: ["сургут"] },
   { key: "tyumen", label: "Тюмень", warehouse: "Склад Тюмень", aliases: ["тюмень"] },
 ];
+const NORTH_TRANSFER_DISPLAY_ORDER = ["surgut", "nizhnevartovsk", "urengoy"];
 
 function northCityFromText(value) {
   const text = normalizeHeader(value);
@@ -2103,11 +2104,9 @@ function formatNorthQuantity(value) {
   return String(Number(number.toFixed(2)));
 }
 
-function northCommentFromParts(parts) {
-  const cityParts = parts
-    .filter((part) => Number(part.quantity || 0) > 0)
-    .map((part) => `${formatNorthQuantity(part.quantity)} ${part.label}`);
-  return cityParts.join(", ");
+function formatNorthCommentQuantity(value) {
+  const number = Math.round(Number(value || 0));
+  return Number.isFinite(number) && number > 0 ? String(number) : "";
 }
 
 function supplierPartsForActual(row, actualValue) {
@@ -2123,9 +2122,22 @@ function supplierPartsForActual(row, actualValue) {
 
 function northTransferParts(row) {
   const quantities = new Map((row.cities || []).map((city) => [city.key, Number(city.quantity || 0)]));
-  return NORTH_CITIES
-    .filter((city) => city.key !== "tyumen")
-    .map((city) => ({ key: city.key, label: city.label, quantity: quantities.get(city.key) || 0 }));
+  return NORTH_TRANSFER_DISPLAY_ORDER
+    .map((cityKey) => {
+      const city = NORTH_CITIES.find((item) => item.key === cityKey);
+      return city ? { key: city.key, label: city.label, quantity: quantities.get(city.key) || 0 } : null;
+    })
+    .filter(Boolean);
+}
+
+function northSupplierOrderText(row, actual) {
+  const actualRounded = Math.round(Number(actual || 0));
+  const neededRounded = Math.round(Number(row.supplierNeed || 0));
+  const extraRounded = Math.max(0, actualRounded - neededRounded);
+  if (extraRounded > 0) {
+    return `${neededRounded} + ${extraRounded} (до минимального) = ${actualRounded}`;
+  }
+  return formatNorthQuantity(actual);
 }
 
 function northPlanCommentForOrderTable(row, actualValue) {
@@ -2133,13 +2145,15 @@ function northPlanCommentForOrderTable(row, actualValue) {
   const actual = Number(actualValue || 0);
   const supplierParts = supplierPartsForActual(row, actualValue);
   const tyumenSupplier = supplierParts.find((part) => part.key === "tyumen");
-  const transfer = northCommentFromParts(northTransferParts(row));
+  const transferParts = northTransferParts(row);
 
-  if (actual > 0) lines.push(`Заказать у поставщика: ${formatNorthQuantity(actual)}`);
-  if (Number(tyumenSupplier?.quantity || 0) > 0) {
-    lines.push(`Останется в Тюмени: ${formatNorthQuantity(tyumenSupplier.quantity)}`);
+  if (actual > 0) lines.push(`Заказать у поставщика: ${northSupplierOrderText(row, actual)}`);
+  for (const part of transferParts) {
+    if (Number(part.quantity || 0) > 0) lines.push(`Отправить в ${part.label}: ${formatNorthQuantity(part.quantity)}`);
   }
-  if (transfer) lines.push(`Переместить из Тюмени: ${transfer}`);
+  if (Number(tyumenSupplier?.quantity || 0) > 0) {
+    lines.push(`Дополнительно останется в Тюмени: ${formatNorthCommentQuantity(tyumenSupplier.quantity)} (сверх текущего остатка ${formatNorthQuantity(row.tyumenStock) || "0"})`);
+  }
   if (!lines.length && Number(row.northNeed || 0) > 0) lines.push("Закрывается остатком Тюмени");
   return lines.join("\n");
 }
