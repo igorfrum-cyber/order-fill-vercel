@@ -602,6 +602,7 @@ form.addEventListener("submit", async (event) => {
     const blankWorkbooks = await Promise.all(blankInputs.map((item) => loadWorkbook(item.file, { allowLegacyXls: brand === "novacutan" })));
     const results = blankInputs.map((item, index) => fillWorkbook({
       sourceWorkbook,
+      sourceFileName: sourceFile.files[0].name,
       blankWorkbook: blankWorkbooks[index],
       orderMonth: orderMonth.value,
       brand,
@@ -614,7 +615,7 @@ form.addEventListener("submit", async (event) => {
     currentBlankWorkbooks = new Map(results.map((result) => [result.blankId, result.blankWorkbook]));
     for (const [index, item] of blankInputs.entries()) {
       currentBlankWorkbooks.set(item.id, results[index].blankWorkbook);
-      currentBlankOutputNames.set(item.id, outputFileName(item.file.name));
+      currentBlankOutputNames.set(item.id, outputFileName(item.file.name, results[index].summary.sourceCity));
     }
     currentSourceOutputName = sourceOutputFileName(sourceFile.files[0].name);
 

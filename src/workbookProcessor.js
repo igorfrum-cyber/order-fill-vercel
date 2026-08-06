@@ -793,8 +793,9 @@ export function similarity(left, right) {
   return (2 * rows[b.length]) / (a.length + b.length);
 }
 
-function readSource(workbook, orderMonth, rule = brandRule("angiopharm")) {
+function readSource(workbook, orderMonth, rule = brandRule("angiopharm"), sourceFileName = "") {
   const periodInfo = validateSourcePeriods(workbook, orderMonth);
+  const sourceCity = detectSourceCity(workbook, sourceFileName);
   const detection = detectColumns(workbook, "source");
   const isAngiopharm = rule.label === "ANGIOPHARM";
   const isUrengoy = isUrengoySource(workbook);
@@ -855,6 +856,7 @@ function readSource(workbook, orderMonth, rule = brandRule("angiopharm")) {
     items,
     periodInfo: {
       ...periodInfo,
+      sourceCity: sourceCity?.label || "",
       cityRule: isUrengoy ? "Новый Уренгой" : "",
       deliveryWeeks,
       deliveryCoefficient: calculationColumns ? 0.25 * deliveryWeeks : urengoyInfo?.deliveryCoefficient ?? null,
@@ -1259,9 +1261,9 @@ function chooseNovacutanCandidate(sourceItems, blankName, blankUnit = "") {
   return chooseCandidate(sourceItems, blankName, blankUnit);
 }
 
-export function fillWorkbook({ sourceWorkbook, blankWorkbook, orderMonth, brand = "angiopharm", blankId = "blank", blankLabel = "" }) {
+export function fillWorkbook({ sourceWorkbook, sourceFileName = "", blankWorkbook, orderMonth, brand = "angiopharm", blankId = "blank", blankLabel = "" }) {
   const rule = brandRule(brand);
-  const source = readSource(sourceWorkbook, orderMonth, rule);
+  const source = readSource(sourceWorkbook, orderMonth, rule, sourceFileName);
   const sourceContext = buildSourceContext(source, rule);
   if (rule.blankLayout === "novacutan") {
     return fillNovacutanWorkbook({ source, sourceContext, blankWorkbook, rule, blankId, blankLabel });
@@ -1735,11 +1737,14 @@ export function applyFinalEdits({ blankWorkbook, sourceWorkbook, reportRows, edi
   return { blankWorkbook, sourceWorkbook };
 }
 
-export function outputFileName(originalName) {
+export function outputFileName(originalName, cityName = "") {
   const text = asText(originalName);
   const extension = outputExtension(text);
   const stem = text.replace(/\.(xlsx|xlsm|xls)$/i, "").replace(/[^\p{L}\p{N}_ .-]+/gu, "").trim() || "blank";
-  return `${stem} заполненный.${extension}`;
+  const city = asText(cityName).replace(/[^\p{L}\p{N}_ .-]+/gu, "").trim();
+  const cityAlreadyInName = city && normalizeHeader(stem).includes(normalizeHeader(city));
+  const namedStem = city && !cityAlreadyInName ? `${stem} ${city}` : stem;
+  return `${namedStem} заполненный.${extension}`;
 }
 
 export function sourceOutputFileName(originalName) {
@@ -1764,6 +1769,21 @@ function northCityFromText(value) {
   const text = normalizeHeader(value);
   if (!text) return null;
   return NORTH_CITIES.find((city) => city.aliases.some((alias) => text.includes(alias))) || null;
+}
+
+function detectSourceCity(workbook, fileName = "") {
+  for (const sheet of workbook.sheets) {
+    const city = northCityFromText(sheet.name);
+    if (city) return city;
+    const { maxRow, maxColumn } = sheetBounds(sheet);
+    for (let row = 1; row <= Math.min(maxRow, 60); row += 1) {
+      for (let col = 1; col <= maxColumn; col += 1) {
+        const cityInCell = northCityFromText(sheetCellValue(sheet, row, col));
+        if (cityInCell) return cityInCell;
+      }
+    }
+  }
+  return northCityFromText(fileName);
 }
 
 function detectNorthCity(workbook, fileName) {
