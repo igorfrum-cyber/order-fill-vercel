@@ -308,22 +308,47 @@ p {
 }
 
 .north-col-name {
-  width: 28%;
+  width: 20%;
+}
+
+.north-col-cities {
+  width: 18%;
 }
 
 .north-col-qty {
-  width: 9%;
+  width: 7%;
 }
 
 .north-col-input {
-  width: 12%;
+  width: 9%;
 }
 
 .north-col-comment {
-  width: 24%;
+  width: 18%;
 }
 
-.north-actual-input {
+.north-city-cell {
+  display: grid;
+  gap: 6px;
+}
+
+.north-city-field {
+  display: grid;
+  grid-template-columns: 74px minmax(54px, 1fr);
+  gap: 6px;
+  align-items: center;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.north-city-field span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.north-actual-input,
+.north-city-input {
   width: 100%;
   max-width: 120px;
   height: 34px;
@@ -335,7 +360,12 @@ p {
   background: #fff;
 }
 
-.north-actual-input:focus {
+.north-city-input {
+  height: 30px;
+}
+
+.north-actual-input:focus,
+.north-city-input:focus {
   border-color: var(--accent);
   outline: 2px solid #d8edf3;
 }
