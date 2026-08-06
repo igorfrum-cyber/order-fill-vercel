@@ -2152,7 +2152,7 @@ function northPlanCommentForOrderTable(row, actualValue) {
     if (Number(part.quantity || 0) > 0) lines.push(`Отправить в ${part.label}: ${formatNorthQuantity(part.quantity)}`);
   }
   if (Number(tyumenSupplier?.quantity || 0) > 0) {
-    lines.push(`Дополнительно останется в Тюмени: ${formatNorthCommentQuantity(tyumenSupplier.quantity)} (сверх текущего остатка ${formatNorthQuantity(row.tyumenStock) || "0"})`);
+    lines.push(`Оставить в Тюмени: ${formatNorthCommentQuantity(tyumenSupplier.quantity)}`);
   }
   if (!lines.length && Number(row.northNeed || 0) > 0) lines.push("Закрывается остатком Тюмени");
   return lines.join("\n");
