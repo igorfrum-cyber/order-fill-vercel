@@ -80,6 +80,8 @@ const NORTH_CITIES = [
   { key: "urengoy", label: "Уренгой" },
 ];
 
+const NORTH_ALLOCATION_ORDER = ["nizhnevartovsk", "urengoy", "surgut"];
+
 function setDefaultOrderMonth() {
   const date = new Date();
   date.setMonth(date.getMonth() + 1);
@@ -954,6 +956,17 @@ function northPartsText(parts) {
     .join(", ");
 }
 
+function northCityGenitive(label) {
+  const forms = {
+    "Тюмень": "Тюмени",
+    "Сургут": "Сургута",
+    "Вартовск": "Вартовска",
+    "Нижневартовск": "Нижневартовска",
+    "Уренгой": "Уренгоя",
+  };
+  return forms[label] || label;
+}
+
 function supplierPartsForNorthActual(row, actualValue = row.actualSupplierOrder) {
   const actual = Number(actualValue || 0);
   const northParts = (row.supplierParts || []).filter((part) => part.key !== "tyumen");
@@ -966,13 +979,23 @@ function supplierPartsForNorthActual(row, actualValue = row.actualSupplierOrder)
 }
 
 function northPlanComment(row, actualValue = row.actualSupplierOrder) {
-  const parts = [];
-  const supplier = northPartsText(supplierPartsForNorthActual(row, actualValue));
+  const lines = [];
+  const actual = Number(actualValue || 0);
+  const supplierParts = supplierPartsForNorthActual(row, actualValue);
+  const tyumenSupplier = supplierParts.find((part) => part.key === "tyumen");
+  const northSupplierParts = supplierParts.filter((part) => part.key !== "tyumen" && Number(part.quantity || 0) > 0);
   const fromTyumen = northPartsText(row.tyumenParts);
-  if (supplier) parts.push(`поставщик: ${supplier}`);
-  if (fromTyumen) parts.push(`из Тюмени: ${fromTyumen}`);
-  if (!parts.length && row.northNeed > 0) parts.push("закрывается остатком Тюмени");
-  return parts.join("; ");
+
+  if (actual > 0) lines.push(`Заказать у поставщика: ${formatNorthQuantity(actual)}`);
+  for (const part of northSupplierParts) {
+    lines.push(`Для ${northCityGenitive(part.label)}: ${formatNorthQuantity(part.quantity)}`);
+  }
+  if (Number(tyumenSupplier?.quantity || 0) > 0) {
+    lines.push(`Останется в Тюмени: ${formatNorthQuantity(tyumenSupplier.quantity)}`);
+  }
+  if (fromTyumen) lines.push(`Переместить из Тюмени: ${fromTyumen}`);
+  if (!lines.length && row.northNeed > 0) lines.push("Закрывается остатком Тюмени");
+  return lines.join("\n");
 }
 
 function northCityInputs(row) {
@@ -1049,7 +1072,9 @@ function recalculateNorthRow(row, quantities) {
 
   if (tyumenUploadedOrder > 0) supplierParts.push({ key: "tyumen", label: "Тюмень", quantity: Number(tyumenUploadedOrder.toFixed(2)) });
 
-  for (const city of NORTH_CITIES.filter((item) => item.key !== "tyumen")) {
+  for (const cityKey of NORTH_ALLOCATION_ORDER) {
+    const city = NORTH_CITIES.find((item) => item.key === cityKey);
+    if (!city) continue;
     const quantity = Number(cityMap.get(city.key) || 0);
     if (quantity <= 0) continue;
     northNeed += quantity;

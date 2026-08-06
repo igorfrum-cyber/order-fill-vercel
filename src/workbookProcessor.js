@@ -2110,6 +2110,17 @@ function northCommentFromParts(parts) {
   return cityParts.join(", ");
 }
 
+function northCityGenitive(label) {
+  const forms = {
+    "Тюмень": "Тюмени",
+    "Сургут": "Сургута",
+    "Нижневартовск": "Нижневартовска",
+    "Вартовск": "Вартовска",
+    "Уренгой": "Уренгоя",
+  };
+  return forms[label] || label;
+}
+
 function supplierPartsForActual(row, actualValue) {
   const actual = Number(actualValue || 0);
   const northParts = (row.supplierParts || []).filter((part) => part.key !== "tyumen");
@@ -2119,6 +2130,26 @@ function supplierPartsForActual(row, actualValue) {
     ...(tyumenQuantity > 0 ? [{ key: "tyumen", label: "Тюмень", quantity: tyumenQuantity }] : []),
     ...northParts,
   ];
+}
+
+function northPlanCommentForOrderTable(row, actualValue) {
+  const lines = [];
+  const actual = Number(actualValue || 0);
+  const supplierParts = supplierPartsForActual(row, actualValue);
+  const tyumenSupplier = supplierParts.find((part) => part.key === "tyumen");
+  const northSupplierParts = supplierParts.filter((part) => part.key !== "tyumen" && Number(part.quantity || 0) > 0);
+  const fromTyumen = northCommentFromParts(row.tyumenParts || []);
+
+  if (actual > 0) lines.push(`Заказать у поставщика: ${formatNorthQuantity(actual)}`);
+  for (const part of northSupplierParts) {
+    lines.push(`Для ${northCityGenitive(part.label)}: ${formatNorthQuantity(part.quantity)}`);
+  }
+  if (Number(tyumenSupplier?.quantity || 0) > 0) {
+    lines.push(`Останется в Тюмени: ${formatNorthQuantity(tyumenSupplier.quantity)}`);
+  }
+  if (fromTyumen) lines.push(`Переместить из Тюмени: ${fromTyumen}`);
+  if (!lines.length && Number(row.northNeed || 0) > 0) lines.push("Закрывается остатком Тюмени");
+  return lines.join("\n");
 }
 
 function novacutanNorthOrderTable(summary, planRows, actualByKey) {
@@ -2133,7 +2164,7 @@ function novacutanNorthOrderTable(summary, planRows, actualByKey) {
     rows.push({
       name: row.name,
       quantity: orderedQuantity,
-      comment: northCommentFromParts(supplierPartsForActual(row, orderedQuantity)),
+      comment: northPlanCommentForOrderTable(row, orderedQuantity),
     });
   }
 

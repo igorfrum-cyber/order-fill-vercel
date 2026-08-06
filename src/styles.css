@@ -327,6 +327,10 @@ p {
   width: 18%;
 }
 
+.north-comment {
+  white-space: pre-line;
+}
+
 .north-city-cell {
   display: grid;
   gap: 6px;
