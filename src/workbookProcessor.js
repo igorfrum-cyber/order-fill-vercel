@@ -2069,6 +2069,42 @@ function transferItemsForCity(totals, city) {
     .filter((item) => item.quantity > 0);
 }
 
+function formatNorthQuantity(value) {
+  const number = Number(value || 0);
+  if (Number.isInteger(number)) return String(number);
+  return String(Number(number.toFixed(2)));
+}
+
+function novacutanNorthOrderTable(summary, totals) {
+  if (summary.kind !== "novacutan") return null;
+  const rows = [];
+  const cityByKey = new Map(NORTH_CITIES.map((city) => [city.key, city]));
+
+  for (const position of summary.positions) {
+    const total = totals.get(position.key);
+    const totalQuantity = total?.totalQuantity || 0;
+    const orderedQuantity = novacutanSummaryQuantity(position, totalQuantity);
+    if (orderedQuantity == null) continue;
+
+    const cityParts = Array.from(total.cities.entries())
+      .filter(([, quantity]) => quantity > 0)
+      .map(([cityKey, quantity]) => `${formatNorthQuantity(quantity)} ${cityByKey.get(cityKey)?.label || cityKey}`);
+    const minimumExtra = Number(orderedQuantity) - Number(totalQuantity);
+    if (minimumExtra > 0) cityParts.push(`${formatNorthQuantity(minimumExtra)} для минимальной партии`);
+
+    rows.push({
+      name: position.name,
+      quantity: orderedQuantity,
+      comment: cityParts.join(", "),
+    });
+  }
+
+  return {
+    fileName: "NOVACUTAN север заполненная таблица.xlsx",
+    rows,
+  };
+}
+
 export function buildNorthOrderFiles(blanks) {
   if (!Array.isArray(blanks) || !blanks.length) throw new Error("Загрузите хотя бы один бланк для раздела «Север».");
 
@@ -2088,6 +2124,7 @@ export function buildNorthOrderFiles(blanks) {
 
   const summary = prepared.find((file) => file.city.key === "tyumen") || prepared[0];
   const summaryWrite = writeNorthSummaryWorkbook(summary, totals);
+  const orderTable = novacutanNorthOrderTable(summary, totals);
   const transfers = prepared
     .filter((file) => file.city.key !== "tyumen")
     .map((file) => ({
@@ -2103,6 +2140,7 @@ export function buildNorthOrderFiles(blanks) {
     appendedToSummary: summaryWrite.appended,
     adjustedToMinimum: summaryWrite.adjustedCount,
     totalsCount: Array.from(totals.values()).filter((item) => item.totalQuantity > 0).length,
+    orderTable,
     transfers,
   };
 }

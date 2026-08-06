@@ -897,6 +897,24 @@ function transferWorkbookBytes(transfer) {
   });
 }
 
+function northOrderTableBytes(table) {
+  return import("xlsx").then(({ utils, write }) => {
+    const rows = [
+      ["Позиция", "Заказано", "Комментарий"],
+      ...table.rows.map((item) => [item.name, item.quantity, item.comment]),
+    ];
+    const workbook = utils.book_new();
+    const sheet = utils.aoa_to_sheet(rows);
+    sheet["!cols"] = [
+      { wch: 72 },
+      { wch: 14 },
+      { wch: 80 },
+    ];
+    utils.book_append_sheet(workbook, sheet, "Заказ");
+    return write(workbook, { bookType: "xlsx", type: "array" });
+  });
+}
+
 function prepareNorthDownloadLinks(files) {
   clearNorthDownloadLinks();
   currentNorthDownloadUrls = files.map((file) => URL.createObjectURL(file.blob));
@@ -991,6 +1009,15 @@ northForm.addEventListener("submit", async (event) => {
         label: `Скачать перемещение ${transfer.city.label}`,
         name: transfer.fileName,
         blob: new Blob([await transferWorkbookBytes(transfer)], {
+          type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        }),
+      });
+    }
+    if (result.orderTable?.rows?.length) {
+      outputFiles.push({
+        label: "Скачать таблицу заказа",
+        name: result.orderTable.fileName,
+        blob: new Blob([await northOrderTableBytes(result.orderTable)], {
           type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
         }),
       });
