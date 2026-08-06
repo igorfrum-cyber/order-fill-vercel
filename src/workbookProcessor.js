@@ -1926,7 +1926,8 @@ function northNovacutanPositions(detection, blankId, blankLabel) {
 }
 
 function novacutanPositionKey(name) {
-  return `novacutan:${normalizeName(name).replace(/\bновакутан\b/g, "novacutan")}`;
+  const matched = novacutanMatchKey(name);
+  return `novacutan:${matched || normalizeName(name).replace(/\bновакутан\b/g, "novacutan")}`;
 }
 
 function novacutanMinimumQuantity(name) {
