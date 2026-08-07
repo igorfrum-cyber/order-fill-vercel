@@ -995,6 +995,39 @@ function orderForItem(item, rule, adjustmentValue) {
   };
 }
 
+function supplierUnitsFromPieces(quantity, unitSize = 1) {
+  const number = Number(quantity || 0);
+  const size = Number(unitSize || 1);
+  if (!Number.isFinite(number) || number <= 0) return null;
+  if (!Number.isFinite(size) || size <= 1) return Number(number.toFixed(2));
+  return Math.ceil(number / size);
+}
+
+function demandPiecesFromSupplierUnits(quantity, unitSize = 1) {
+  const number = Number(quantity || 0);
+  const size = Number(unitSize || 1);
+  if (!Number.isFinite(number) || number <= 0) return 0;
+  return Number((number * (Number.isFinite(size) && size > 0 ? size : 1)).toFixed(2));
+}
+
+function convertOrderToSupplierUnits(order, unitSize = 1) {
+  const size = Number(unitSize || 1);
+  if (!Number.isFinite(size) || size <= 1) return order;
+  const rounded = supplierUnitsFromPieces(order.rounded, size);
+  const inserted = supplierUnitsFromPieces(order.inserted, size);
+  return {
+    ...order,
+    rounded,
+    inserted,
+    autoComment: inserted != null ? "коробки по 5 шт." : order.autoComment,
+    supplierUnitSize: size,
+  };
+}
+
+function novacutanOrderForItem(item, rowInfo, rule) {
+  return convertOrderToSupplierUnits(orderForItem(item, rule, rowInfo.blankBoxSize), rowInfo.supplierUnitSize);
+}
+
 function calculateMultipleAdjustedQuantity(rounded, multiple, comment) {
   const step = Math.round(Number(multiple));
   if (step <= 0 || rounded % step === 0) return { rounded, inserted: rounded, autoComment: "", boxAdjusted: false };
@@ -1204,6 +1237,7 @@ function novacutanBlankPositions(blank, blankId, blankLabel) {
       blankName,
       blankUnit: "шт",
       blankBoxSize: minimumFromBlank ?? novacutanMinimumQuantity(blankName),
+      supplierUnitSize: novacutanSupplierUnitSize(blankName),
     });
   }
   return rows;
@@ -1383,7 +1417,7 @@ function fillNovacutanWorkbook({ source, sourceContext, blankWorkbook, rule, bla
       continue;
     }
 
-    const order = orderForItem(candidate.item, rule, rowInfo.blankBoxSize);
+    const order = novacutanOrderForItem(candidate.item, rowInfo, rule);
     let status = "matched_by_name";
     if (candidate.score < 0.85) {
       status = "warning_name_differs";
@@ -1905,7 +1939,8 @@ function northNovacutanPositions(detection, blankId, blankLabel) {
   for (let row = detection.headerRow + 1; row <= maxRow; row += 1) {
     const name = asText(sheetCellValue(detection.sheet, row, detection.columns.name));
     const minimum = detection.columns.minimum ? parseNumber(sheetCellValue(detection.sheet, row, detection.columns.minimum)) : null;
-    const quantity = parseNumber(sheetCellValue(detection.sheet, row, detection.columns.quantity)) ?? 0;
+    const supplierUnitSize = novacutanSupplierUnitSize(name);
+    const quantity = demandPiecesFromSupplierUnits(parseNumber(sheetCellValue(detection.sheet, row, detection.columns.quantity)) ?? 0, supplierUnitSize);
     if (!name) continue;
     rows.push({
       key: novacutanPositionKey(name),
@@ -1921,6 +1956,7 @@ function northNovacutanPositions(detection, blankId, blankLabel) {
       unit: "шт",
       quantity,
       novacutanMinimum: minimum ?? novacutanMinimumQuantity(name),
+      supplierUnitSize,
     });
   }
   return rows;
@@ -1949,6 +1985,11 @@ function novacutanMinimumQuantity(name) {
   return 100;
 }
 
+function novacutanSupplierUnitSize(name) {
+  const key = novacutanMatchKey(name);
+  return key === "mask-eye" || key === "mask-face" ? 5 : 1;
+}
+
 function novacutanSummaryQuantity(position, total) {
   if (total <= 0) return null;
   const minimum = Number(position.novacutanMinimum || 100);
@@ -1964,6 +2005,7 @@ function novacutanSupplierOrderQuantity(position, supplierNeed) {
   if (supplierNeed <= 0) return null;
   const minimum = Number(position.novacutanMinimum || 100);
   const base = Math.max(Number(supplierNeed), minimum);
+  if (Number(position.supplierUnitSize || 1) > 1) return Number(base.toFixed(2));
   return roundSupplierPack10(base);
 }
 
@@ -2110,7 +2152,7 @@ function formatNorthCommentQuantity(value) {
 }
 
 function supplierPartsForActual(row, actualValue) {
-  const actual = Number(actualValue || 0);
+  const actual = demandPiecesFromSupplierUnits(actualValue, row.supplierUnitSize);
   const northParts = (row.supplierParts || []).filter((part) => part.key !== "tyumen");
   const northNeed = northParts.reduce((sum, part) => sum + Number(part.quantity || 0), 0);
   const tyumenQuantity = Number(Math.max(0, actual - northNeed).toFixed(2));
@@ -2134,10 +2176,11 @@ function northSupplierOrderText(row, actual) {
   const actualRounded = Math.round(Number(actual || 0));
   const neededRounded = Math.round(Number(row.supplierNeed || 0));
   const extraRounded = Math.max(0, actualRounded - neededRounded);
+  const unitNote = Number(row.supplierUnitSize || 1) > 1 ? ` коробок по ${Number(row.supplierUnitSize)}` : "";
   if (extraRounded > 0) {
-    return `${neededRounded} + ${extraRounded} (до минимального) = ${actualRounded}`;
+    return `${neededRounded} + ${extraRounded} (до минимального) = ${actualRounded}${unitNote}`;
   }
-  return formatNorthQuantity(actual);
+  return `${formatNorthQuantity(actual)}${unitNote}`;
 }
 
 function northPlanCommentForOrderTable(row, actualValue) {
@@ -2312,13 +2355,15 @@ function northPlanRowFromTotal(summary, total, position, tyumen = null, tyumenFa
   const tyumenTarget = Number(tyumen?.targetStock || 0);
   const tyumenFree = Math.max(0, tyumenStock + tyumenInTransit + tyumenPlannedOrder - tyumenTarget);
   const allocation = allocateNorthNeedByCity(total, tyumenFree);
+  const supplierUnitSize = Number(position.supplierUnitSize || 1);
   const supplierParts = [];
   if (tyumenSupplierNeed > 0) supplierParts.push({ key: "tyumen", label: "Тюмень", quantity: Number(tyumenSupplierNeed.toFixed(2)) });
   supplierParts.push(...allocation.supplierParts);
   const northNeed = Array.from(total.cities.entries())
     .filter(([cityKey]) => cityKey !== "tyumen")
     .reduce((sum, [, quantity]) => sum + quantity, 0);
-  const supplierNeed = Number((tyumenSupplierNeed + allocation.supplierNorthNeed).toFixed(2));
+  const supplierDemandNeed = Number((tyumenSupplierNeed + allocation.supplierNorthNeed).toFixed(2));
+  const supplierNeed = supplierUnitsFromPieces(supplierDemandNeed, supplierUnitSize) || 0;
   const actualSupplierOrder = defaultNorthActualSupplierOrder(summary, position, supplierNeed);
 
   return {
@@ -2326,6 +2371,7 @@ function northPlanRowFromTotal(summary, total, position, tyumen = null, tyumenFa
     articleRaw: total.articleRaw || position.articleRaw || "",
     name: total.name || position.name,
     unit: total.unit || position.unit || "шт",
+    supplierUnitSize,
     totalQuantity: Number(total.totalQuantity.toFixed(2)),
     cities: northTotalCityParts(total),
     northNeed: Number(northNeed.toFixed(2)),
@@ -2337,6 +2383,7 @@ function northPlanRowFromTotal(summary, total, position, tyumen = null, tyumenFa
     tyumenFree: Number(tyumenFree.toFixed(2)),
       fromTyumen: Number(allocation.fromTyumen.toFixed(2)),
       supplierNorthNeed: Number(allocation.supplierNorthNeed.toFixed(2)),
+      supplierDemandNeed,
       supplierNeed,
     actualSupplierOrder,
     minimumExtra: actualSupplierOrder != null ? Number(Math.max(0, actualSupplierOrder - supplierNeed).toFixed(2)) : 0,

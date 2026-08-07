@@ -959,6 +959,21 @@ function formatNorthCommentQuantity(value) {
   return Number.isFinite(number) && number > 0 ? String(number) : "";
 }
 
+function supplierUnitsFromPieces(quantity, unitSize = 1) {
+  const number = Number(quantity || 0);
+  const size = Number(unitSize || 1);
+  if (!Number.isFinite(number) || number <= 0) return null;
+  if (!Number.isFinite(size) || size <= 1) return Number(number.toFixed(2));
+  return Math.ceil(number / size);
+}
+
+function demandPiecesFromSupplierUnits(quantity, unitSize = 1) {
+  const number = Number(quantity || 0);
+  const size = Number(unitSize || 1);
+  if (!Number.isFinite(number) || number <= 0) return 0;
+  return Number((number * (Number.isFinite(size) && size > 0 ? size : 1)).toFixed(2));
+}
+
 function northTransferParts(row) {
   const quantities = new Map((row.cities || []).map((city) => [city.key, Number(city.quantity || 0)]));
   return NORTH_TRANSFER_DISPLAY_ORDER
@@ -973,14 +988,15 @@ function northSupplierOrderText(row, actual) {
   const actualRounded = Math.round(Number(actual || 0));
   const neededRounded = Math.round(Number(row.supplierNeed || 0));
   const extraRounded = Math.max(0, actualRounded - neededRounded);
+  const unitNote = Number(row.supplierUnitSize || 1) > 1 ? ` коробок по ${Number(row.supplierUnitSize)}` : "";
   if (extraRounded > 0) {
-    return `${neededRounded} + ${extraRounded} (до минимального) = ${actualRounded}`;
+    return `${neededRounded} + ${extraRounded} (до минимального) = ${actualRounded}${unitNote}`;
   }
-  return formatNorthQuantity(actual);
+  return `${formatNorthQuantity(actual)}${unitNote}`;
 }
 
 function supplierPartsForNorthActual(row, actualValue = row.actualSupplierOrder) {
-  const actual = Number(actualValue || 0);
+  const actual = demandPiecesFromSupplierUnits(actualValue, row.supplierUnitSize);
   const northParts = (row.supplierParts || []).filter((part) => part.key !== "tyumen");
   const northNeed = northParts.reduce((sum, part) => sum + Number(part.quantity || 0), 0);
   const tyumenQuantity = Math.max(0, actual - northNeed);
@@ -1074,6 +1090,7 @@ function recalculateNorthRow(row, quantities) {
   const tyumenUploadedOrder = Number(cityMap.get("tyumen") || 0);
   const tyumenPlannedOrder = cityMap.has("tyumen") ? tyumenUploadedOrder : Number(row.tyumenPlannedOrder || 0);
   const tyumenSupplierNeed = Math.max(0, tyumenPlannedOrder);
+  const supplierUnitSize = Number(row.supplierUnitSize || 1);
   let freeLeft = Math.max(0, Number(row.tyumenStock || 0) + Number(row.tyumenInTransit || 0) + tyumenPlannedOrder - Number(row.tyumenTarget || 0));
   const supplierParts = [];
   const tyumenParts = [];
@@ -1101,7 +1118,8 @@ function recalculateNorthRow(row, quantities) {
     if (fromSupplierPart > 0) supplierParts.push({ key: city.key, label: city.label, quantity: Number(fromSupplierPart.toFixed(2)) });
   }
 
-  const supplierNeed = Number((tyumenSupplierNeed + supplierNorthNeed).toFixed(2));
+  const supplierDemandNeed = Number((tyumenSupplierNeed + supplierNorthNeed).toFixed(2));
+  const supplierNeed = supplierUnitsFromPieces(supplierDemandNeed, supplierUnitSize) || 0;
   return {
     ...row,
     northNeed: Number(northNeed.toFixed(2)),
@@ -1109,6 +1127,7 @@ function recalculateNorthRow(row, quantities) {
     tyumenFree: Number(Math.max(0, Number(row.tyumenStock || 0) + Number(row.tyumenInTransit || 0) + tyumenPlannedOrder - Number(row.tyumenTarget || 0)).toFixed(2)),
     fromTyumen: Number(fromTyumen.toFixed(2)),
     supplierNorthNeed: Number(supplierNorthNeed.toFixed(2)),
+    supplierDemandNeed,
     supplierNeed,
     supplierParts,
     tyumenParts,
