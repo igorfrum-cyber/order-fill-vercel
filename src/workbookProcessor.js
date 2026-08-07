@@ -2419,12 +2419,12 @@ function recalculateEditedNorthPlan(result, totals) {
   });
 }
 
-function actualQuantityByKey(planRows, editsByKey) {
+function actualQuantityByKey(planRows, editsByKey, options = {}) {
   const quantities = new Map();
   for (const row of planRows) {
     const edited = editsByKey.has(row.key) ? parseNumber(editsByKey.get(row.key).actualSupplierOrder) : null;
     const value = edited ?? row.actualSupplierOrder ?? 0;
-    if (Number(value || 0) < Number(row.supplierNeed || 0)) {
+    if (!options.allowShortSupplierOrder && Number(value || 0) < Number(row.supplierNeed || 0)) {
       throw new Error(`По позиции «${row.name}» факт у поставщика меньше общей нехватки Тюмени и северных городов.`);
     }
     quantities.set(row.key, Number(value || 0));
@@ -2432,11 +2432,11 @@ function actualQuantityByKey(planRows, editsByKey) {
   return quantities;
 }
 
-export function finalizeNorthOrderFiles(result, edits = []) {
+export function finalizeNorthOrderFiles(result, edits = [], options = {}) {
   const editsByKey = new Map(edits.map((edit) => [edit.key, edit]));
   const totals = editedNorthTotals(result, editsByKey);
   const planRows = recalculateEditedNorthPlan(result, totals);
-  const actualByKey = actualQuantityByKey(planRows, editsByKey);
+  const actualByKey = actualQuantityByKey(planRows, editsByKey, options);
   const summaryWrite = writeNorthSummaryWorkbook(result.summary, totals, actualByKey);
   const adjustedCount = planRows.filter((row) => {
     const actual = Number(actualByKey.get(row.key) || 0);

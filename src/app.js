@@ -58,6 +58,10 @@ const northPlanBody = document.querySelector("#northPlanBody");
 const northDownloadButton = document.querySelector("#northDownloadButton");
 const northSubmitButton = northForm.querySelector("button");
 const northBackButton = document.querySelector("#northBackButton");
+const northShortOrderModal = document.querySelector("#northShortOrderModal");
+const northShortOrderText = document.querySelector("#northShortOrderText");
+const northShortOrderBack = document.querySelector("#northShortOrderBack");
+const northShortOrderContinue = document.querySelector("#northShortOrderContinue");
 
 let currentResults = [];
 let currentReportRows = [];
@@ -1132,11 +1136,6 @@ function collectNorthPlanEdits() {
     const input = rowEl.querySelector(".north-actual-input");
     const value = input.value.trim();
     if (value && Number(value) < 0) throw new Error("Фактический заказ у поставщика не может быть отрицательным.");
-    const source = currentNorthResult?.planRows.find((item) => item.key === rowEl.dataset.key);
-    const calculated = source ? recalculateNorthRow(source, northCityQuantities(rowEl)) : null;
-    if (calculated && value && Number(value) < Number(calculated.supplierNeed || 0)) {
-      throw new Error(`По позиции «${calculated.name}» факт у поставщика меньше общей нехватки Тюмени и северных городов.`);
-    }
     edits.push({
       key: rowEl.dataset.key,
       cities: northCityQuantities(rowEl),
@@ -1144,6 +1143,62 @@ function collectNorthPlanEdits() {
     });
   }
   return edits;
+}
+
+function northShortOrderWarnings() {
+  const warnings = [];
+  for (const rowEl of northPlanBody.querySelectorAll("tr[data-key]")) {
+    const source = currentNorthResult?.planRows.find((item) => item.key === rowEl.dataset.key);
+    if (!source) continue;
+    const calculated = recalculateNorthRow(source, northCityQuantities(rowEl));
+    const input = rowEl.querySelector(".north-actual-input");
+    const actual = input?.value.trim() === "" ? 0 : Number(input.value);
+    const need = Number(calculated.supplierNeed || 0);
+    if (Number.isFinite(actual) && actual < need) {
+      warnings.push({
+        name: calculated.name,
+        actual,
+        need,
+      });
+    }
+  }
+  return warnings;
+}
+
+function confirmNorthShortOrders(warnings) {
+  if (!warnings.length) return Promise.resolve(true);
+  const preview = warnings
+    .slice(0, 8)
+    .map((item) => `• ${item.name}: факт ${formatNorthQuantity(item.actual) || "0"}, нужно ${formatNorthQuantity(item.need)}`)
+    .join("\n");
+  const extra = warnings.length > 8 ? `\nЕще позиций: ${warnings.length - 8}` : "";
+  northShortOrderText.textContent = `По этим позициям факт у поставщика меньше общей нехватки Тюмени и северных городов.\n\n${preview}${extra}\n\nМожно вернуться и поправить цифры или продолжить скачивание как есть.`;
+  northShortOrderModal.classList.remove("hidden");
+
+  return new Promise((resolve) => {
+    const close = (value) => {
+      northShortOrderModal.classList.add("hidden");
+      northShortOrderBack.removeEventListener("click", onBack);
+      northShortOrderContinue.removeEventListener("click", onContinue);
+      northShortOrderModal.removeEventListener("click", onOverlay);
+      document.removeEventListener("keydown", onKeyDown);
+      resolve(value);
+    };
+    const onBack = () => close(false);
+    const onContinue = () => close(true);
+    const onOverlay = (event) => {
+      if (event.target === northShortOrderModal) close(false);
+    };
+    const onKeyDown = (event) => {
+      if (event.key === "Escape") close(false);
+    };
+
+    northShortOrderBack.addEventListener("click", onBack);
+    northShortOrderContinue.addEventListener("click", onContinue);
+    northShortOrderModal.addEventListener("click", onOverlay);
+    document.addEventListener("keydown", onKeyDown);
+    northShortOrderBack.focus();
+  });
 }
 
 function prepareNorthDownloadLinks(files) {
@@ -1272,7 +1327,13 @@ northDownloadButton.addEventListener("click", async () => {
   clearNorthDownloadLinks();
 
   try {
-    const finalized = finalizeNorthOrderFiles(currentNorthResult, collectNorthPlanEdits());
+    const edits = collectNorthPlanEdits();
+    const shortWarnings = northShortOrderWarnings();
+    if (shortWarnings.length && !(await confirmNorthShortOrders(shortWarnings))) {
+      northStatus.textContent = "Готово";
+      return;
+    }
+    const finalized = finalizeNorthOrderFiles(currentNorthResult, edits, { allowShortSupplierOrder: true });
     const outputFiles = [
       {
         label: "Скачать общий бланк",
