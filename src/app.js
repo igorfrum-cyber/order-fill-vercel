@@ -165,6 +165,7 @@ function adjustmentLabelForBrand(brand) {
   if (brand === "levissime") return "Кол-во в уп.";
   if (brand === "sothys") return "Округление";
   if (brand === "novacutan") return "Мин. заказ";
+  if (brand === "klapp") return "Кратность";
   return "Шт. в коробке";
 }
 
@@ -172,6 +173,7 @@ function mainBlankLabelForBrand(brand) {
   if (brand === "levissime") return "LeviSsime";
   if (brand === "sothys") return "SOTHYS";
   if (brand === "novacutan") return "NOVACUTAN";
+  if (brand === "klapp") return "KLAPP";
   return "ANGIO";
 }
 
@@ -381,6 +383,11 @@ function duplicateDetailsHtml(row) {
   return `<div class="duplicate-details"><div>Дубли в таблице:</div>${rows}</div>`;
 }
 
+function baselineForReportRow(row) {
+  if (Number(row.recommended) < 1.5 || Number(row.rounded) <= 0) return null;
+  return Number(row.rounded);
+}
+
 function renderRows(targetBody, rows) {
   targetBody.innerHTML = rows
     .map((row) => {
@@ -388,7 +395,7 @@ function renderRows(targetBody, rows) {
       const edit = rowEdit(row);
       const inserted = edit.value;
       const comment = edit.comment;
-      const baseline = Number(row.recommended) < 1.5 || Number(row.rounded) <= 0 ? "" : row.rounded;
+      const baseline = baselineForReportRow(row) ?? "";
       const rowKey = row.key || `${row.blankId}:${row.blankRow}`;
       const recommended = row.recommended == null ? "" : Number(row.recommended).toFixed(2);
       const match = row.status === "not_in_source" || row.status === "not_in_blank" ? "" : `${Math.round(Number(row.similarity || 0) * 100)}%`;
@@ -762,7 +769,7 @@ function validateEdits() {
     const key = rowInfo.key || `${rowInfo.blankId}:${rowInfo.blankRow}`;
     const edit = rowEdit(rowInfo);
     const initial = rowInfo.inserted == null ? null : Number(rowInfo.inserted);
-    const baseline = Number(rowInfo.recommended) < 1.5 || Number(rowInfo.rounded) <= 0 ? null : Number(rowInfo.rounded);
+    const baseline = baselineForReportRow(rowInfo);
     const autoComment = (rowInfo.autoComment || "").trim().toLowerCase();
     let value;
     try {
@@ -800,7 +807,7 @@ function isManualDeviation(rowInfo) {
   } catch {
     return true;
   }
-  const baseline = Number(rowInfo.recommended) < 1.5 || Number(rowInfo.rounded) <= 0 ? null : Number(rowInfo.rounded);
+  const baseline = baselineForReportRow(rowInfo);
   return value !== baseline;
 }
 
@@ -1024,6 +1031,17 @@ function northPlanComment(row, actualValue = row.actualSupplierOrder) {
   return lines.join("\n");
 }
 
+function nearestNorthMultiple(value, multiple) {
+  const number = Number(value || 0);
+  const step = Math.round(Number(multiple));
+  if (!Number.isFinite(number) || number <= 0) return "";
+  if (!Number.isFinite(step) || step <= 0) return Number(number.toFixed(2));
+  const lower = Math.floor(number / step) * step;
+  const upper = Math.ceil(number / step) * step;
+  if (lower <= 0) return upper;
+  return upper - number <= number - lower ? upper : lower;
+}
+
 function northCityInputs(row) {
   const quantities = new Map((row.cities || []).map((city) => [city.key, city.quantity]));
   return NORTH_CITIES
@@ -1072,6 +1090,7 @@ function renderNorthPlan(result) {
 
 function defaultNorthActual(row, supplierNeed) {
   if (supplierNeed <= 0) return "";
+  if (currentNorthResult?.summary?.kind === "klapp") return nearestNorthMultiple(supplierNeed, 3);
   if (currentNorthResult?.summary?.kind !== "novacutan") return Number(supplierNeed.toFixed(2));
   const minimum = Number(row.novacutanMinimum || 100);
   return Math.round(Math.max(supplierNeed, minimum) / 10) * 10;
@@ -1173,6 +1192,7 @@ function northShortOrderWarnings() {
     const input = rowEl.querySelector(".north-actual-input");
     const actual = input?.value.trim() === "" ? 0 : Number(input.value);
     const need = Number(calculated.supplierNeed || 0);
+    if (calculated.allowsRoundedShortSupplierOrder && actual === defaultNorthActual(calculated, need)) continue;
     if (Number.isFinite(actual) && actual < need) {
       warnings.push({
         name: calculated.name,

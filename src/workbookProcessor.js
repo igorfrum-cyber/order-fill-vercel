@@ -48,6 +48,14 @@ const BRAND_RULES = {
     adjustmentLabel: "Мин. заказ",
     blankLayout: "novacutan",
   },
+  klapp: {
+    label: "KLAPP",
+    adjustment: "nearestMultiple",
+    multiple: 3,
+    adjustmentLabel: "Кратность",
+    adjustmentComment: "до кратности 3",
+    blankQuantityHeader: "order",
+  },
 };
 
 export function loadXlsx(buffer) {
@@ -956,7 +964,7 @@ function duplicateCandidatesForReport(candidates) {
 
 function calculateAdjustedQuantity(recommended, rule, boxSizeValue) {
   const rounded = roundHalfUp(recommended);
-  if (recommended < 1.5) return { rounded, inserted: null, autoComment: "", boxAdjusted: false };
+  if (!rule.allowSmallPositiveOrder && recommended < 1.5) return { rounded, inserted: null, autoComment: "", boxAdjusted: false };
   if (rounded <= 0) return { rounded, inserted: null, autoComment: "", boxAdjusted: false };
 
   if (rule.adjustment === "none") {
@@ -965,6 +973,10 @@ function calculateAdjustedQuantity(recommended, rule, boxSizeValue) {
 
   if (rule.adjustment === "multiple") {
     return calculateMultipleAdjustedQuantity(rounded, rule.multiple, rule.adjustmentComment);
+  }
+
+  if (rule.adjustment === "nearestMultiple") {
+    return calculateNearestMultipleAdjustedQuantity(rounded, rule.multiple, rule.adjustmentComment);
   }
 
   if (rule.adjustment === "minimum") {
@@ -1044,6 +1056,30 @@ function calculateMultipleAdjustedQuantity(rounded, multiple, comment) {
     return { rounded, inserted: lower, autoComment: comment, boxAdjusted: true };
   }
   return { rounded, inserted: rounded, autoComment: "", boxAdjusted: false };
+}
+
+function nearestMultipleValue(value, multiple) {
+  const number = Number(value || 0);
+  const step = Math.round(Number(multiple));
+  if (!Number.isFinite(number) || number <= 0) return null;
+  if (!Number.isFinite(step) || step <= 0) return Number(number.toFixed(2));
+  const lower = Math.floor(number / step) * step;
+  const upper = Math.ceil(number / step) * step;
+  if (lower <= 0) return upper;
+  const lowerDiff = number - lower;
+  const upperDiff = upper - number;
+  return upperDiff <= lowerDiff ? upper : lower;
+}
+
+function calculateNearestMultipleAdjustedQuantity(rounded, multiple, comment) {
+  const inserted = nearestMultipleValue(rounded, multiple);
+  if (inserted == null) return { rounded, inserted: null, autoComment: "", boxAdjusted: false };
+  return {
+    rounded,
+    inserted,
+    autoComment: inserted !== rounded ? comment : "",
+    boxAdjusted: inserted !== rounded,
+  };
 }
 
 function extractVolumeKeys(...values) {
@@ -1304,7 +1340,10 @@ export function fillWorkbook({ sourceWorkbook, sourceFileName = "", blankWorkboo
   if (rule.blankLayout === "splitVariants") {
     return fillSplitVariantWorkbook({ source, sourceContext, blankWorkbook, rule, blankId, blankLabel });
   }
-  const blank = detectColumns(blankWorkbook, "blank", blankDetectionOptions(rule));
+  const blank = rule.label === "KLAPP"
+    ? detectKlappBlank(blankWorkbook)
+    : detectColumns(blankWorkbook, "blank", blankDetectionOptions(rule));
+  if (!blank) throw new Error("Не удалось распознать бланк KLAPP: не нашел основной лист с колонками Артикул, Наименование и Заказ.");
   const blankPositions = genericBlankPositions(blank, blankId, blankLabel, rule);
   const blankWarnings = duplicateArticleWarnings(blankPositions);
   const reportRows = [];
@@ -1695,8 +1734,8 @@ function setTextCell(sheet, row, col, value) {
   if (record) record.value = text;
 }
 
-function normalizedBaselineQuantity(rowInfo) {
-  if (Number(rowInfo.recommended) < 1.5) return null;
+function normalizedBaselineQuantity(rowInfo, rule = brandRule("angiopharm")) {
+  if (!rule.allowSmallPositiveOrder && Number(rowInfo.recommended) < 1.5) return null;
   return Number(rowInfo.rounded) > 0 ? Number(rowInfo.rounded) : null;
 }
 
@@ -1728,7 +1767,9 @@ export function applyFinalEdits({ blankWorkbook, sourceWorkbook, reportRows, edi
     ? detectSothysVariantBlank(blankWorkbook)
     : rule.blankLayout === "novacutan"
       ? detectNovacutanBlank(blankWorkbook)
-      : detectColumns(blankWorkbook, "blank", blankDetectionOptions(rule));
+      : rule.label === "KLAPP"
+        ? detectKlappBlank(blankWorkbook)
+        : detectColumns(blankWorkbook, "blank", blankDetectionOptions(rule));
   const source = detectColumns(sourceWorkbook, "source");
   const editsByRow = new Map(edits.map((edit) => [edit.key || String(Number(edit.blankRow)), edit]));
   const prepared = [];
@@ -1740,7 +1781,7 @@ export function applyFinalEdits({ blankWorkbook, sourceWorkbook, reportRows, edi
     const quantity = parseEditValue(edit.value);
     const comment = asText(edit.comment);
     const initial = rowInfo.inserted == null ? null : Number(rowInfo.inserted);
-    const baseline = normalizedBaselineQuantity(rowInfo);
+    const baseline = normalizedBaselineQuantity(rowInfo, rule);
     const requiresComment = quantity !== baseline;
     const stillAutoComment = rowInfo.autoComment && comment.toLowerCase() === rowInfo.autoComment.toLowerCase();
     const autoCommentAllowed = stillAutoComment && quantity === initial;
@@ -1752,7 +1793,7 @@ export function applyFinalEdits({ blankWorkbook, sourceWorkbook, reportRows, edi
     const blankRow = Number(rowInfo.blankRow);
     const blankQuantityCol = Number(rowInfo.blankQuantityCol || blank.columns?.quantity);
     const sourceRow = Number(rowInfo.sourceRow);
-    const shouldRecordSourceFact = quantity !== normalizedBaselineQuantity(rowInfo);
+    const shouldRecordSourceFact = quantity !== normalizedBaselineQuantity(rowInfo, rule);
     const sourceFactValue = shouldRecordSourceFact ? (quantity ?? 0) : null;
     prepared.push({ blankRow, blankQuantityCol, sourceRow, quantity, comment, shouldRecordSourceFact, sourceFactValue });
   }
@@ -1841,11 +1882,48 @@ function northBlankDetection(workbook) {
   const novacutan = detectNovacutanBlank(workbook);
   if (novacutan) return { kind: "novacutan", detection: novacutan };
 
+  const klapp = detectKlappBlank(workbook);
+  if (klapp) return { kind: "klapp", detection: klapp };
+
   try {
     return { kind: "generic", detection: detectColumns(workbook, "blank", { requireBox: false, quantityHeader: "anyOrder" }) };
   } catch {
     return { kind: "splitVariants", detection: detectSothysVariantBlank(workbook) };
   }
+}
+
+function detectKlappBlank(workbook) {
+  const hasKlappSignal = workbook.sheets.some((sheet) => {
+    if (normalizeHeader(sheet.name).includes("klapp")) return true;
+    const { maxRow, maxColumn } = sheetBounds(sheet);
+    for (let row = 1; row <= Math.min(maxRow, 40); row += 1) {
+      for (let col = 1; col <= maxColumn; col += 1) {
+        if (normalizeHeader(sheetCellValue(sheet, row, col)).includes("klapp")) return true;
+      }
+    }
+    return false;
+  });
+  if (!hasKlappSignal) return null;
+
+  const preferredSheets = [
+    ...workbook.sheets.filter((sheet) => normalizeHeader(sheet.name).includes("бланк") && !normalizeHeader(sheet.name).includes("промо")),
+    ...workbook.sheets.filter((sheet) => !normalizeHeader(sheet.name).includes("промо")),
+  ];
+  const seen = new Set();
+  for (const sheet of preferredSheets) {
+    if (seen.has(sheet.path)) continue;
+    seen.add(sheet.path);
+    try {
+      return detectColumns({ sheets: [sheet] }, "blank", { requireBox: true, quantityHeader: "order" });
+    } catch {
+      try {
+        return detectColumns({ sheets: [sheet] }, "blank", { requireBox: false, quantityHeader: "order" });
+      } catch {
+        // Проверяем следующий лист.
+      }
+    }
+  }
+  return null;
 }
 
 function detectNovacutanBlank(workbook) {
@@ -2333,6 +2411,7 @@ function novacutanNameScore(left, right, unit = "") {
 function defaultNorthActualSupplierOrder(summary, position, supplierNeed) {
   if (supplierNeed <= 0) return null;
   if (summary.kind === "novacutan") return novacutanSupplierOrderQuantity(position, supplierNeed);
+  if (summary.kind === "klapp") return nearestMultipleValue(supplierNeed, 3);
   return Number(supplierNeed.toFixed(2));
 }
 
@@ -2386,6 +2465,7 @@ function northPlanRowFromTotal(summary, total, position, tyumen = null, tyumenFa
       supplierDemandNeed,
       supplierNeed,
     actualSupplierOrder,
+    allowsRoundedShortSupplierOrder: summary.kind === "klapp",
     minimumExtra: actualSupplierOrder != null ? Number(Math.max(0, actualSupplierOrder - supplierNeed).toFixed(2)) : 0,
     supplierParts,
     tyumenParts: allocation.tyumenParts,
