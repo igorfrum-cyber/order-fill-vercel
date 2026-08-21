@@ -190,12 +190,19 @@
           </div>
 
           <form class="upload-grid north-grid" id="northForm">
-            <label class="dropzone north-dropzone" for="northFiles">
+            <label class="dropzone north-dropzone" for="northFileInput">
               <span class="icon">↑</span>
-              <span class="label">Бланки городов</span>
-              <span class="filename" id="northNames">Городские заполненные бланки .xlsx, .xlsm или .xls</span>
-              <input id="northFiles" name="northFiles" type="file" accept=".xlsx,.xlsm,.xls" multiple required />
+              <span class="label">Бланк города</span>
+              <span class="filename" id="northNames">Выберите один или несколько заполненных бланков</span>
+              <input id="northFileInput" name="northFileInput" type="file" accept=".xlsx,.xlsm,.xls" multiple />
             </label>
+
+            <button class="secondary north-add-button" id="northAddFileButton" type="button">
+              <span>+</span>
+              Добавить бланк
+            </button>
+
+            <div class="north-file-list" id="northFileList"></div>
 
             <label class="dropzone north-dropzone" for="northSourceFile">
               <span class="icon">↑</span>
@@ -258,6 +265,18 @@
         <div class="modal-actions">
           <button class="secondary" id="northShortOrderBack" type="button">Назад</button>
           <button class="download" id="northShortOrderContinue" type="button">Все равно продолжить</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="modal hidden" id="northMergeModal" role="dialog" aria-modal="true" aria-labelledby="northMergeTitle">
+      <div class="modal-card">
+        <h2 id="northMergeTitle">Соединить бланки городов</h2>
+        <p>Будут объединены эти бланки:</p>
+        <div class="modal-file-list" id="northMergeList"></div>
+        <div class="modal-actions">
+          <button class="secondary" id="northMergeBack" type="button">Назад</button>
+          <button class="download" id="northMergeContinue" type="button">Соединить</button>
         </div>
       </div>
     </div>

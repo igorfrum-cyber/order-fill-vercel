@@ -1861,6 +1861,17 @@ function detectSourceCity(workbook, fileName = "") {
   return northCityFromText(fileName);
 }
 
+export function validateNorthTyumenSourceWorkbook(workbook, fileName = "") {
+  const city = detectSourceCity(workbook, fileName);
+  if (!city) {
+    throw new Error("Не удалось понять город в заполненной таблице Тюмени. Загрузите именно тюменскую таблицу или добавьте «Тюмень» в название файла.");
+  }
+  if (city.key !== "tyumen") {
+    throw new Error(`В поле «Заполненная таблица Тюмени» загружена таблица города ${city.label}. Нужна именно Тюмень.`);
+  }
+  return city;
+}
+
 function detectNorthCity(workbook, fileName) {
   for (const sheet of workbook.sheets) {
     const city = northCityFromText(sheet.name);
@@ -2584,6 +2595,9 @@ export function finalizeNorthOrderFiles(result, edits = [], options = {}) {
 
 export function buildNorthOrderFiles(blanks, options = {}) {
   if (!Array.isArray(blanks) || !blanks.length) throw new Error("Загрузите хотя бы один бланк для раздела «Север».");
+  if (options.tyumenSourceWorkbook) {
+    validateNorthTyumenSourceWorkbook(options.tyumenSourceWorkbook, options.tyumenSourceFileName || "");
+  }
 
   const cityKeys = new Set();
   const prepared = blanks.map((blank, index) => {

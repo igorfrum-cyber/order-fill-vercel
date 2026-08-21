@@ -329,6 +329,62 @@ p {
   grid-column: span 2;
 }
 
+.north-add-button {
+  min-height: 86px;
+  align-self: stretch;
+}
+
+.north-add-button span {
+  font-size: 18px;
+  line-height: 1;
+}
+
+.north-file-list {
+  grid-column: 1 / -1;
+  display: grid;
+  gap: 8px;
+}
+
+.north-file-list:empty {
+  display: none;
+}
+
+.north-file-item,
+.modal-file-item {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 10px;
+  align-items: center;
+  min-height: 42px;
+  padding: 8px 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fff;
+  color: var(--ink);
+}
+
+.north-file-item button {
+  width: 34px;
+  height: 34px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fff;
+  color: var(--muted);
+  font: inherit;
+  cursor: pointer;
+}
+
+.north-file-item button:hover {
+  border-color: var(--warn);
+  color: var(--warn);
+}
+
+.modal-file-list {
+  display: grid;
+  gap: 8px;
+  margin: 12px 0 4px;
+}
+
 .north-result {
   margin-top: 16px;
   border: 1px solid var(--line);

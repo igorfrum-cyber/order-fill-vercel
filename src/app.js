@@ -9,6 +9,7 @@ import {
   outputFileName,
   saveXlsx,
   sourceOutputFileName,
+  validateNorthTyumenSourceWorkbook,
 } from "./workbookProcessor.js";
 
 const form = document.querySelector("#uploadForm");
@@ -46,7 +47,9 @@ const northSection = document.querySelector("#northSection");
 const orderModeButton = document.querySelector("#orderModeButton");
 const northModeButton = document.querySelector("#northModeButton");
 const northForm = document.querySelector("#northForm");
-const northFiles = document.querySelector("#northFiles");
+const northFileInput = document.querySelector("#northFileInput");
+const northAddFileButton = document.querySelector("#northAddFileButton");
+const northFileList = document.querySelector("#northFileList");
 const northSourceFile = document.querySelector("#northSourceFile");
 const northNames = document.querySelector("#northNames");
 const northSourceName = document.querySelector("#northSourceName");
@@ -62,6 +65,10 @@ const northShortOrderModal = document.querySelector("#northShortOrderModal");
 const northShortOrderText = document.querySelector("#northShortOrderText");
 const northShortOrderBack = document.querySelector("#northShortOrderBack");
 const northShortOrderContinue = document.querySelector("#northShortOrderContinue");
+const northMergeModal = document.querySelector("#northMergeModal");
+const northMergeList = document.querySelector("#northMergeList");
+const northMergeBack = document.querySelector("#northMergeBack");
+const northMergeContinue = document.querySelector("#northMergeContinue");
 
 let currentResults = [];
 let currentReportRows = [];
@@ -72,6 +79,7 @@ let currentSourceOutputName = "order заполненная таблица.xlsx"
 let currentDownloadUrls = [];
 let currentNorthDownloadUrls = [];
 let currentNorthResult = null;
+let addedNorthFiles = [];
 let northPlanEdits = new Map();
 let isFormFilled = false;
 let activeFilter = null;
@@ -137,23 +145,101 @@ bindFileName(blankFile, blankName, ".xlsx, .xlsm или .xls");
 bindFileName(homeFile, homeName, ".xlsx или .xlsm");
 bindFileName(proffFile, proffName, ".xlsx или .xlsm");
 
-northFiles.addEventListener("change", () => {
-  const files = Array.from(northFiles.files || []);
-  northNames.textContent = files.length ? files.map((file) => file.name).join(", ") : "Городские заполненные бланки .xlsx, .xlsm или .xls";
+function resetNorthCalculationState() {
   currentNorthResult = null;
   northPlanEdits = new Map();
   clearNorthDownloadLinks();
   northResult.classList.add("hidden");
   northStatus.textContent = "Готов к загрузке";
+}
+
+function renderNorthFileList() {
+  northFileList.innerHTML = addedNorthFiles
+    .map((file, index) => `
+      <div class="north-file-item">
+        <span>${escapeHtml(file.name)}</span>
+        <button type="button" data-remove-north-file="${index}" aria-label="Удалить ${escapeHtml(file.name)}">×</button>
+      </div>
+    `)
+    .join("");
+}
+
+function sameNorthFile(left, right) {
+  return left.name === right.name && left.size === right.size && left.lastModified === right.lastModified;
+}
+
+function pendingNorthFiles() {
+  return Array.from(northFileInput.files || []);
+}
+
+function uniqueNorthFiles(files) {
+  const unique = [];
+  for (const file of files) {
+    if (!unique.some((item) => sameNorthFile(item, file))) unique.push(file);
+  }
+  return unique;
+}
+
+function northFilesForMerge() {
+  return uniqueNorthFiles([...addedNorthFiles, ...pendingNorthFiles()]);
+}
+
+northFileInput.addEventListener("change", () => {
+  const files = pendingNorthFiles();
+  northNames.textContent = files.length
+    ? files.map((file) => file.name).join(", ")
+    : "Выберите один или несколько заполненных бланков";
+  resetNorthCalculationState();
 });
 
-northSourceFile.addEventListener("change", () => {
-  northSourceName.textContent = northSourceFile.files[0]?.name || "Для учета остатков и в пути .xlsx, .xlsm или .xls";
-  currentNorthResult = null;
-  northPlanEdits = new Map();
-  clearNorthDownloadLinks();
-  northResult.classList.add("hidden");
-  northStatus.textContent = "Готов к загрузке";
+northAddFileButton.addEventListener("click", () => {
+  const files = pendingNorthFiles();
+  if (!files.length) {
+    alert("Сначала выберите бланк города.");
+    return;
+  }
+  let addedCount = 0;
+  for (const file of files) {
+    const alreadyAdded = addedNorthFiles.some((item) => sameNorthFile(item, file));
+    if (alreadyAdded) continue;
+    addedNorthFiles.push(file);
+    addedCount += 1;
+  }
+  if (!addedCount) {
+    alert("Все выбранные бланки уже добавлены.");
+    return;
+  }
+  northFileInput.value = "";
+  northNames.textContent = "Выберите один или несколько заполненных бланков";
+  renderNorthFileList();
+  resetNorthCalculationState();
+});
+
+northFileList.addEventListener("click", (event) => {
+  const button = event.target.closest("[data-remove-north-file]");
+  if (!button) return;
+  addedNorthFiles.splice(Number(button.dataset.removeNorthFile), 1);
+  renderNorthFileList();
+  resetNorthCalculationState();
+});
+
+northSourceFile.addEventListener("change", async () => {
+  const file = northSourceFile.files[0] || null;
+  northSourceName.textContent = file?.name || "Для учета остатков и в пути .xlsx, .xlsm или .xls";
+  resetNorthCalculationState();
+  if (!file) return;
+
+  northStatus.textContent = "Проверяю таблицу Тюмени...";
+  try {
+    const workbook = await loadWorkbook(file);
+    validateNorthTyumenSourceWorkbook(workbook, file.name);
+    northStatus.textContent = "Таблица Тюмени загружена";
+  } catch (error) {
+    northSourceFile.value = "";
+    northSourceName.textContent = "Для учета остатков и в пути .xlsx, .xlsm или .xls";
+    northStatus.textContent = "Ошибка";
+    alert(error.message || "В это поле можно загрузить только заполненную таблицу Тюмени.");
+  }
 });
 
 function selectedBrand() {
@@ -1240,6 +1326,39 @@ function confirmNorthShortOrders(warnings) {
   });
 }
 
+function confirmNorthMerge(files) {
+  if (!files.length) return Promise.resolve(false);
+  northMergeList.innerHTML = files
+    .map((file) => `<div class="modal-file-item"><span>${escapeHtml(file.name)}</span></div>`)
+    .join("");
+  northMergeModal.classList.remove("hidden");
+
+  return new Promise((resolve) => {
+    const close = (value) => {
+      northMergeModal.classList.add("hidden");
+      northMergeBack.removeEventListener("click", onBack);
+      northMergeContinue.removeEventListener("click", onContinue);
+      northMergeModal.removeEventListener("click", onOverlay);
+      document.removeEventListener("keydown", onKeyDown);
+      resolve(value);
+    };
+    const onBack = () => close(false);
+    const onContinue = () => close(true);
+    const onOverlay = (event) => {
+      if (event.target === northMergeModal) close(false);
+    };
+    const onKeyDown = (event) => {
+      if (event.key === "Escape") close(false);
+    };
+
+    northMergeBack.addEventListener("click", onBack);
+    northMergeContinue.addEventListener("click", onContinue);
+    northMergeModal.addEventListener("click", onOverlay);
+    document.addEventListener("keydown", onKeyDown);
+    northMergeBack.focus();
+  });
+}
+
 function prepareNorthDownloadLinks(files) {
   clearNorthDownloadLinks();
   currentNorthDownloadUrls = files.map((file) => URL.createObjectURL(file.blob));
@@ -1306,8 +1425,12 @@ issueReportButton.addEventListener("click", downloadIssueReport);
 
 northForm.addEventListener("submit", async (event) => {
   event.preventDefault();
-  const files = Array.from(northFiles.files || []);
-  if (!files.length) return;
+  const files = northFilesForMerge();
+  if (!files.length) {
+    alert("Добавьте хотя бы один бланк города.");
+    return;
+  }
+  if (!(await confirmNorthMerge(files))) return;
 
   northSubmitButton.disabled = true;
   northStatus.textContent = "Считаю...";
