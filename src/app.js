@@ -48,7 +48,6 @@ const orderModeButton = document.querySelector("#orderModeButton");
 const northModeButton = document.querySelector("#northModeButton");
 const northForm = document.querySelector("#northForm");
 const northFileInput = document.querySelector("#northFileInput");
-const northAddFileButton = document.querySelector("#northAddFileButton");
 const northFileList = document.querySelector("#northFileList");
 const northSourceFile = document.querySelector("#northSourceFile");
 const northNames = document.querySelector("#northNames");
@@ -181,23 +180,12 @@ function uniqueNorthFiles(files) {
 }
 
 function northFilesForMerge() {
-  return uniqueNorthFiles([...addedNorthFiles, ...pendingNorthFiles()]);
+  return uniqueNorthFiles(addedNorthFiles);
 }
 
-northFileInput.addEventListener("change", () => {
+function addPendingNorthFiles() {
   const files = pendingNorthFiles();
-  northNames.textContent = files.length
-    ? files.map((file) => file.name).join(", ")
-    : "Выберите один или несколько заполненных бланков";
-  resetNorthCalculationState();
-});
-
-northAddFileButton.addEventListener("click", () => {
-  const files = pendingNorthFiles();
-  if (!files.length) {
-    alert("Сначала выберите бланк города.");
-    return;
-  }
+  if (!files.length) return;
   let addedCount = 0;
   for (const file of files) {
     const alreadyAdded = addedNorthFiles.some((item) => sameNorthFile(item, file));
@@ -207,12 +195,18 @@ northAddFileButton.addEventListener("click", () => {
   }
   if (!addedCount) {
     alert("Все выбранные бланки уже добавлены.");
+    northFileInput.value = "";
+    northNames.textContent = "Выберите один или несколько заполненных бланков";
     return;
   }
   northFileInput.value = "";
   northNames.textContent = "Выберите один или несколько заполненных бланков";
   renderNorthFileList();
   resetNorthCalculationState();
+}
+
+northFileInput.addEventListener("change", () => {
+  addPendingNorthFiles();
 });
 
 northFileList.addEventListener("click", (event) => {
