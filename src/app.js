@@ -46,6 +46,8 @@ const orderSection = document.querySelector("#orderSection");
 const northSection = document.querySelector("#northSection");
 const orderModeButton = document.querySelector("#orderModeButton");
 const northModeButton = document.querySelector("#northModeButton");
+const northDefaultBrandButton = document.querySelector("#northDefaultBrandButton");
+const northChristinaBrandButton = document.querySelector("#northChristinaBrandButton");
 const northForm = document.querySelector("#northForm");
 const northDefaultUpload = document.querySelector("#northDefaultUpload");
 const northChristinaUpload = document.querySelector("#northChristinaUpload");
@@ -90,6 +92,7 @@ let addedNorthFiles = [];
 let addedNorthHomeFiles = [];
 let addedNorthProffFiles = [];
 let northPlanEdits = new Map();
+let northBrandMode = "default";
 let isFormFilled = false;
 let activeFilter = null;
 let editState = new Map();
@@ -190,7 +193,7 @@ function uniqueNorthFiles(files) {
 }
 
 function northFilesForMerge() {
-  if (selectedBrand() === "christina") {
+  if (isNorthChristinaMode()) {
     return [
       ...uniqueNorthFiles(addedNorthHomeFiles).map((file) => ({ file, variant: "home", variantLabel: "HOME" })),
       ...uniqueNorthFiles(addedNorthProffFiles).map((file) => ({ file, variant: "proff", variantLabel: "PROFF" })),
@@ -318,8 +321,21 @@ function mainBlankLabelForBrand(brand) {
   return "ANGIO";
 }
 
+function isNorthChristinaMode() {
+  return northBrandMode === "christina";
+}
+
+function setNorthBrandMode(mode) {
+  northBrandMode = mode === "christina" ? "christina" : "default";
+  northDefaultBrandButton.classList.toggle("active", !isNorthChristinaMode());
+  northChristinaBrandButton.classList.toggle("active", isNorthChristinaMode());
+  northDefaultBrandButton.setAttribute("aria-pressed", String(!isNorthChristinaMode()));
+  northChristinaBrandButton.setAttribute("aria-pressed", String(isNorthChristinaMode()));
+  configureNorthBrandUploads();
+}
+
 function configureNorthBrandUploads() {
-  const isChristina = selectedBrand() === "christina";
+  const isChristina = isNorthChristinaMode();
   northDefaultUpload.classList.toggle("hidden", isChristina);
   northChristinaUpload.classList.toggle("hidden", !isChristina);
   resetNorthCalculationState();
@@ -341,6 +357,8 @@ function configureBrandFields() {
 }
 
 brandSelect.addEventListener("change", configureBrandFields);
+northDefaultBrandButton.addEventListener("click", () => setNorthBrandMode("default"));
+northChristinaBrandButton.addEventListener("click", () => setNorthBrandMode("christina"));
 orderMonth.addEventListener("change", resetFillState);
 configureBrandFields();
 

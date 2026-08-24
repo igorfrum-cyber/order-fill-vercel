@@ -313,6 +313,13 @@ p {
   margin-bottom: 16px;
 }
 
+.north-title {
+  display: flex;
+  gap: 14px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
 .north-actions {
   display: flex;
   gap: 10px;
