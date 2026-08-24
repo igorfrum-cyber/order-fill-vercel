@@ -325,6 +325,17 @@ p {
   margin-bottom: 0;
 }
 
+.north-upload-group {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+  gap: 16px;
+}
+
+.north-upload-group.hidden {
+  display: none;
+}
+
 .north-dropzone {
   grid-column: span 2;
 }

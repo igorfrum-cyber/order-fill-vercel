@@ -190,14 +190,36 @@
           </div>
 
           <form class="upload-grid north-grid" id="northForm">
-            <label class="dropzone north-dropzone" for="northFileInput">
-              <span class="icon">↑</span>
-              <span class="label">Бланк города</span>
-              <span class="filename" id="northNames">Выберите один или несколько заполненных бланков</span>
-              <input id="northFileInput" name="northFileInput" type="file" accept=".xlsx,.xlsm,.xls" multiple />
-            </label>
+            <div class="north-upload-group" id="northDefaultUpload">
+              <label class="dropzone north-dropzone" for="northFileInput">
+                <span class="icon">↑</span>
+                <span class="label">Бланк города</span>
+                <span class="filename" id="northNames">Выберите один или несколько заполненных бланков</span>
+                <input id="northFileInput" name="northFileInput" type="file" accept=".xlsx,.xlsm,.xls" multiple />
+              </label>
 
-            <div class="north-file-list" id="northFileList"></div>
+              <div class="north-file-list" id="northFileList"></div>
+            </div>
+
+            <div class="north-upload-group hidden" id="northChristinaUpload">
+              <label class="dropzone north-dropzone" for="northHomeInput">
+                <span class="icon">↑</span>
+                <span class="label">Бланки HOME</span>
+                <span class="filename" id="northHomeNames">Выберите HOME-бланки городов</span>
+                <input id="northHomeInput" name="northHomeInput" type="file" accept=".xlsx,.xlsm,.xls" multiple />
+              </label>
+
+              <div class="north-file-list" id="northHomeFileList"></div>
+
+              <label class="dropzone north-dropzone" for="northProffInput">
+                <span class="icon">↑</span>
+                <span class="label">Бланки PROFF</span>
+                <span class="filename" id="northProffNames">Выберите PROFF-бланки городов</span>
+                <input id="northProffInput" name="northProffInput" type="file" accept=".xlsx,.xlsm,.xls" multiple />
+              </label>
+
+              <div class="north-file-list" id="northProffFileList"></div>
+            </div>
 
             <label class="dropzone north-dropzone" for="northSourceFile">
               <span class="icon">↑</span>

@@ -47,8 +47,16 @@ const northSection = document.querySelector("#northSection");
 const orderModeButton = document.querySelector("#orderModeButton");
 const northModeButton = document.querySelector("#northModeButton");
 const northForm = document.querySelector("#northForm");
+const northDefaultUpload = document.querySelector("#northDefaultUpload");
+const northChristinaUpload = document.querySelector("#northChristinaUpload");
 const northFileInput = document.querySelector("#northFileInput");
 const northFileList = document.querySelector("#northFileList");
+const northHomeInput = document.querySelector("#northHomeInput");
+const northHomeNames = document.querySelector("#northHomeNames");
+const northHomeFileList = document.querySelector("#northHomeFileList");
+const northProffInput = document.querySelector("#northProffInput");
+const northProffNames = document.querySelector("#northProffNames");
+const northProffFileList = document.querySelector("#northProffFileList");
 const northSourceFile = document.querySelector("#northSourceFile");
 const northNames = document.querySelector("#northNames");
 const northSourceName = document.querySelector("#northSourceName");
@@ -79,6 +87,8 @@ let currentDownloadUrls = [];
 let currentNorthDownloadUrls = [];
 let currentNorthResult = null;
 let addedNorthFiles = [];
+let addedNorthHomeFiles = [];
+let addedNorthProffFiles = [];
 let northPlanEdits = new Map();
 let isFormFilled = false;
 let activeFilter = null;
@@ -152,12 +162,12 @@ function resetNorthCalculationState() {
   northStatus.textContent = "Готов к загрузке";
 }
 
-function renderNorthFileList() {
-  northFileList.innerHTML = addedNorthFiles
+function renderNorthFileList(target, files, group) {
+  target.innerHTML = files
     .map((file, index) => `
       <div class="north-file-item">
         <span>${escapeHtml(file.name)}</span>
-        <button type="button" data-remove-north-file="${index}" aria-label="Удалить ${escapeHtml(file.name)}">×</button>
+        <button type="button" data-remove-north-file="${index}" data-north-file-group="${escapeHtml(group)}" aria-label="Удалить ${escapeHtml(file.name)}">×</button>
       </div>
     `)
     .join("");
@@ -167,8 +177,8 @@ function sameNorthFile(left, right) {
   return left.name === right.name && left.size === right.size && left.lastModified === right.lastModified;
 }
 
-function pendingNorthFiles() {
-  return Array.from(northFileInput.files || []);
+function pendingNorthFiles(input) {
+  return Array.from(input.files || []);
 }
 
 function uniqueNorthFiles(files) {
@@ -180,42 +190,93 @@ function uniqueNorthFiles(files) {
 }
 
 function northFilesForMerge() {
-  return uniqueNorthFiles(addedNorthFiles);
+  if (selectedBrand() === "christina") {
+    return [
+      ...uniqueNorthFiles(addedNorthHomeFiles).map((file) => ({ file, variant: "home", variantLabel: "HOME" })),
+      ...uniqueNorthFiles(addedNorthProffFiles).map((file) => ({ file, variant: "proff", variantLabel: "PROFF" })),
+    ];
+  }
+  return uniqueNorthFiles(addedNorthFiles).map((file) => ({ file }));
 }
 
-function addPendingNorthFiles() {
-  const files = pendingNorthFiles();
-  if (!files.length) return;
+function addPendingNorthFiles({ input, names, placeholder, files, list, group }) {
+  const pending = pendingNorthFiles(input);
+  if (!pending.length) return;
   let addedCount = 0;
-  for (const file of files) {
-    const alreadyAdded = addedNorthFiles.some((item) => sameNorthFile(item, file));
+  for (const file of pending) {
+    const alreadyAdded = files.some((item) => sameNorthFile(item, file));
     if (alreadyAdded) continue;
-    addedNorthFiles.push(file);
+    files.push(file);
     addedCount += 1;
   }
   if (!addedCount) {
     alert("Все выбранные бланки уже добавлены.");
-    northFileInput.value = "";
-    northNames.textContent = "Выберите один или несколько заполненных бланков";
+    input.value = "";
+    names.textContent = placeholder;
     return;
   }
-  northFileInput.value = "";
-  northNames.textContent = "Выберите один или несколько заполненных бланков";
-  renderNorthFileList();
+  input.value = "";
+  names.textContent = placeholder;
+  renderNorthFileList(list, files, group);
   resetNorthCalculationState();
 }
 
 northFileInput.addEventListener("change", () => {
-  addPendingNorthFiles();
+  addPendingNorthFiles({
+    input: northFileInput,
+    names: northNames,
+    placeholder: "Выберите один или несколько заполненных бланков",
+    files: addedNorthFiles,
+    list: northFileList,
+    group: "default",
+  });
 });
 
-northFileList.addEventListener("click", (event) => {
+northHomeInput.addEventListener("change", () => {
+  addPendingNorthFiles({
+    input: northHomeInput,
+    names: northHomeNames,
+    placeholder: "Выберите HOME-бланки городов",
+    files: addedNorthHomeFiles,
+    list: northHomeFileList,
+    group: "home",
+  });
+});
+
+northProffInput.addEventListener("change", () => {
+  addPendingNorthFiles({
+    input: northProffInput,
+    names: northProffNames,
+    placeholder: "Выберите PROFF-бланки городов",
+    files: addedNorthProffFiles,
+    list: northProffFileList,
+    group: "proff",
+  });
+});
+
+function removeNorthFile(group, index) {
+  if (group === "home") {
+    addedNorthHomeFiles.splice(index, 1);
+    renderNorthFileList(northHomeFileList, addedNorthHomeFiles, "home");
+  } else if (group === "proff") {
+    addedNorthProffFiles.splice(index, 1);
+    renderNorthFileList(northProffFileList, addedNorthProffFiles, "proff");
+  } else {
+    addedNorthFiles.splice(index, 1);
+    renderNorthFileList(northFileList, addedNorthFiles, "default");
+  }
+  resetNorthCalculationState();
+}
+
+function handleNorthFileListClick(event) {
   const button = event.target.closest("[data-remove-north-file]");
   if (!button) return;
-  addedNorthFiles.splice(Number(button.dataset.removeNorthFile), 1);
-  renderNorthFileList();
-  resetNorthCalculationState();
-});
+  removeNorthFile(button.dataset.northFileGroup || "default", Number(button.dataset.removeNorthFile));
+}
+
+northFileList.addEventListener("click", handleNorthFileListClick);
+northHomeFileList.addEventListener("click", handleNorthFileListClick);
+northProffFileList.addEventListener("click", handleNorthFileListClick);
 
 northSourceFile.addEventListener("change", async () => {
   const file = northSourceFile.files[0] || null;
@@ -257,6 +318,13 @@ function mainBlankLabelForBrand(brand) {
   return "ANGIO";
 }
 
+function configureNorthBrandUploads() {
+  const isChristina = selectedBrand() === "christina";
+  northDefaultUpload.classList.toggle("hidden", isChristina);
+  northChristinaUpload.classList.toggle("hidden", !isChristina);
+  resetNorthCalculationState();
+}
+
 function configureBrandFields() {
   const brand = selectedBrand();
   const isChristina = brand === "christina";
@@ -268,6 +336,7 @@ function configureBrandFields() {
   proffFile.required = isChristina;
   adjustmentHeader.textContent = adjustmentLabelForBrand(brand);
   priorityAdjustmentHeader.textContent = adjustmentLabelForBrand(brand);
+  configureNorthBrandUploads();
   resetFillState();
 }
 
@@ -1320,10 +1389,13 @@ function confirmNorthShortOrders(warnings) {
   });
 }
 
-function confirmNorthMerge(files) {
-  if (!files.length) return Promise.resolve(false);
-  northMergeList.innerHTML = files
-    .map((file) => `<div class="modal-file-item"><span>${escapeHtml(file.name)}</span></div>`)
+function confirmNorthMerge(entries, result = null) {
+  if (!entries.length) return Promise.resolve(false);
+  const rows = result?.confirmationGroups?.length
+    ? result.confirmationGroups.map((group) => `${group.city.label}: ${group.variants.join(", ")}`)
+    : entries.map((entry) => entry.file.name);
+  northMergeList.innerHTML = rows
+    .map((text) => `<div class="modal-file-item"><span>${escapeHtml(text)}</span></div>`)
     .join("");
   northMergeModal.classList.remove("hidden");
 
@@ -1419,23 +1491,24 @@ issueReportButton.addEventListener("click", downloadIssueReport);
 
 northForm.addEventListener("submit", async (event) => {
   event.preventDefault();
-  const files = northFilesForMerge();
-  if (!files.length) {
+  const entries = northFilesForMerge();
+  if (!entries.length) {
     alert("Добавьте хотя бы один бланк города.");
     return;
   }
-  if (!(await confirmNorthMerge(files))) return;
 
   northSubmitButton.disabled = true;
-  northStatus.textContent = "Считаю...";
+  northStatus.textContent = "Проверяю бланки...";
   clearNorthDownloadLinks();
   northResult.classList.add("hidden");
   currentNorthResult = null;
 
   try {
-    const blanks = await Promise.all(files.map(async (file) => ({
-      fileName: file.name,
-      workbook: await loadWorkbook(file),
+    const blanks = await Promise.all(entries.map(async (entry) => ({
+      fileName: entry.file.name,
+      workbook: await loadWorkbook(entry.file),
+      variant: entry.variant || "",
+      variantLabel: entry.variantLabel || "",
     })));
     const tyumenSourceFile = northSourceFile.files[0] || null;
     const tyumenSourceWorkbook = tyumenSourceFile ? await loadWorkbook(tyumenSourceFile) : null;
@@ -1443,6 +1516,10 @@ northForm.addEventListener("submit", async (event) => {
       tyumenSourceWorkbook,
       tyumenSourceFileName: tyumenSourceFile?.name || "",
     });
+    if (!(await confirmNorthMerge(entries, result))) {
+      northStatus.textContent = "Готово";
+      return;
+    }
     currentNorthResult = result;
     renderNorthPlan(result);
     const supplierRows = result.planRows.filter((row) => Number(row.supplierNeed || 0) > 0).length;
@@ -1490,15 +1567,16 @@ northDownloadButton.addEventListener("click", async () => {
       return;
     }
     const finalized = finalizeNorthOrderFiles(currentNorthResult, edits, { allowShortSupplierOrder: true });
-    const outputFiles = [
-      {
-        label: "Скачать общий бланк",
-        name: finalized.summaryFileName,
-        blob: new Blob([saveXlsx(finalized.summaryWorkbook)], {
-          type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-        }),
-      },
-    ];
+    const summaryFiles = finalized.summaryFiles?.length
+      ? finalized.summaryFiles
+      : [{ label: "общий бланк", fileName: finalized.summaryFileName, workbook: finalized.summaryWorkbook }];
+    const outputFiles = summaryFiles.map((file) => ({
+      label: `Скачать ${file.label || "общий бланк"}`,
+      name: file.fileName,
+      blob: new Blob([saveXlsx(file.workbook)], {
+        type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      }),
+    }));
     for (const transfer of finalized.transfers) {
       outputFiles.push({
         label: `Скачать перемещение ${transfer.city.label}`,
