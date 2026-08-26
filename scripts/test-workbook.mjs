@@ -3,7 +3,7 @@ import path from "node:path";
 import { strFromU8, unzipSync } from "fflate";
 import { read as readSpreadsheet, utils, write as writeSpreadsheet } from "xlsx";
 
-import { adjustQuantityForBrand, applyFinalEdits, buildNorthOrderFiles, detectColumns, fillWorkbook, loadXlsx, normalizeArticle, saveXlsx } from "../src/workbookProcessor.js";
+import { adjustQuantityForBrand, applyFinalEdits, buildNorthOrderFiles, categoryCoefficient, detectColumns, fillWorkbook, loadXlsx, normalizeArticle, saveXlsx } from "../src/workbookProcessor.js";
 
 const sourcePath = "/Users/igorfrumes/Downloads/агио артикул.xlsx";
 const blankPath = "/Users/igorfrumes/Downloads/2026 06 23 Бланк заказа ANGIOPHARM (1).xlsx";
@@ -75,6 +75,13 @@ const christinaNoAdjust = adjustQuantityForBrand(13, "christina");
 if (christinaNoAdjust.inserted !== 13 || christinaNoAdjust.autoComment !== "") throw new Error("Christina should keep the value when neither multiple direction fits thresholds.");
 const christinaSmall = adjustQuantityForBrand(1, "christina");
 if (christinaSmall.inserted !== null) throw new Error("Christina should skip recommendations below 1.5.");
+
+const novacutanRule = { label: "NOVACUTAN" };
+if (categoryCoefficient("A+", novacutanRule) !== 2 || categoryCoefficient("A", novacutanRule) !== 2 || categoryCoefficient("B", novacutanRule) !== 2) {
+  throw new Error("Novacutan A+/A/B categories should use coefficient 2.");
+}
+if (categoryCoefficient("C", novacutanRule) !== 1.5) throw new Error("Novacutan C category should use coefficient 1.5.");
+if (categoryCoefficient("C", { label: "ANGIOPHARM" }) !== 1) throw new Error("Non-Novacutan C category coefficient should stay unchanged.");
 
 const novacutanNorth = buildNorthOrderFiles([
   { fileName: "Novacutan Тюмень.xlsx", workbook: novacutanNorthWorkbook("Тюмень", { sbio: 20, fbio: 10, bright: 4, mask: 2 }) },

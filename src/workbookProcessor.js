@@ -450,8 +450,12 @@ function normalizeCategory(value) {
     .replace(/\s+/g, "");
 }
 
-function categoryCoefficient(value) {
+export function categoryCoefficient(value, rule = null) {
   const category = normalizeCategory(value);
+  if (rule?.label === "NOVACUTAN") {
+    if (category === "C") return 1.5;
+    if (category === "A+" || category === "A" || category === "B") return 2;
+  }
   if (category === "A+") return 2;
   if (category === "A") return 1.75;
   if (category === "B") return 1.5;
@@ -478,7 +482,7 @@ function maxMonthlySales(sheet, row, salesColumns) {
 function calculateUrengoyRecommended(sheet, row, urengoyInfo) {
   const maxSales = maxMonthlySales(sheet, row, urengoyInfo.salesColumns);
   const category = sheetCellValue(sheet, row, urengoyInfo.categoryColumn);
-  const categoryPart = maxSales * categoryCoefficient(category);
+  const categoryPart = maxSales * categoryCoefficient(category, urengoyInfo.rule);
   const deliveryPart = maxSales * urengoyInfo.deliveryCoefficient;
   return {
     value: Number((categoryPart + deliveryPart).toFixed(2)),
@@ -666,7 +670,7 @@ function recalculateSourceTable(detection, deliveryWeeks, rule, calculationColum
     const category = novelty ? `${metrics.category}/New` : metrics.category;
     const targetStock = novelty
       ? novelty.targetStock
-      : monthlyNeed * categoryCoefficient(metrics.category) + monthlyNeed * deliveryCoefficient;
+      : monthlyNeed * categoryCoefficient(metrics.category, rule) + monthlyNeed * deliveryCoefficient;
     const stock = parseNumber(sheetCellValue(sheet, item.row, columns.stock)) ?? 0;
     const inTransit = parseNumber(sheetCellValue(sheet, item.row, columns.inTransit)) ?? 0;
     const recommended = Math.max(0, targetStock - stock - inTransit);
@@ -816,6 +820,7 @@ function readSource(workbook, orderMonth, rule = brandRule("angiopharm"), source
   const urengoyColumns = !calculationColumns && !isAngiopharm && isUrengoy ? detectUrengoyColumns(detection) : null;
   const urengoyInfo = !calculationColumns && !isAngiopharm && isUrengoy
     ? {
+        rule,
         deliveryWeeks,
         deliveryCoefficient: 1 + 0.25 * deliveryWeeks,
         categoryColumn: urengoyColumns.category,
