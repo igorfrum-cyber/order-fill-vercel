@@ -1925,7 +1925,7 @@ function northBlankDetection(workbook, fileName = "", brand = "") {
   }
 
   if (brand === "skin_synergy") {
-    return { kind: "nameOnly", detection: detectSkinSynergyNorthBlank(workbook, fileName, { force: true }) };
+    return { kind: "generic", detection: detectNameOnlyNorthBlank(workbook, { quantityHeader: "skinSynergy" }) };
   }
 
   if (brand === "sothys") {
@@ -1939,13 +1939,17 @@ function northBlankDetection(workbook, fileName = "", brand = "") {
   if (klapp) return { kind: "klapp", detection: klapp };
 
   const skinSynergy = detectSkinSynergyNorthBlank(workbook, fileName);
-  if (skinSynergy) return { kind: "nameOnly", detection: skinSynergy };
+  if (skinSynergy) return { kind: "generic", detection: skinSynergy };
 
   try {
     return { kind: "generic", detection: detectColumns(workbook, "blank", { requireBox: false, quantityHeader: "anyOrder" }) };
   } catch (error) {
-    if (brand) throw error;
-    return { kind: "splitVariants", detection: detectSothysVariantBlank(workbook) };
+    try {
+      return { kind: "generic", detection: detectNameOnlyNorthBlank(workbook) };
+    } catch (nameOnlyError) {
+      if (brand) throw error;
+      return { kind: "splitVariants", detection: detectSothysVariantBlank(workbook) };
+    }
   }
 }
 
@@ -1973,13 +1977,23 @@ function detectSkinSynergyNorthBlank(workbook, fileName = "", options = {}) {
   if (!hasSignal) return null;
 
   try {
+    return detectNameOnlyNorthBlank(workbook, { quantityHeader: "exactQuantity" });
+  } catch {
+    return detectNameOnlyNorthBlank(workbook);
+  }
+}
+
+function detectNameOnlyNorthBlank(workbook, options = {}) {
+  const quantityHeader = options.quantityHeader === "skinSynergy" ? "exactQuantity" : options.quantityHeader || "anyOrder";
+  try {
     return detectColumns(workbook, "blank", {
       requireArticle: false,
       requireBox: false,
       requireUnit: false,
-      quantityHeader: "exactQuantity",
+      quantityHeader,
     });
-  } catch {
+  } catch (error) {
+    if (quantityHeader !== "exactQuantity") throw error;
     return detectColumns(workbook, "blank", {
       requireArticle: false,
       requireBox: false,
@@ -2430,7 +2444,7 @@ function northNameKey(name, unit = "") {
 function sourceKeyCandidatesForNorth(item, kind) {
   const keys = new Set();
   if (kind === "novacutan") keys.add(novacutanPositionKey(item.name));
-  if (kind === "nameOnly") keys.add(northNameKey(item.name));
+  if (!item.articleRaw) keys.add(northNameKey(item.name));
   const preserved = normalizeArticle(item.articleRaw, { preserveHyphen: true });
   const regular = normalizeArticle(item.articleRaw, { preserveHyphen: false });
   if (preserved) keys.add(preserved);
@@ -2508,7 +2522,7 @@ function northAvailabilityForTotal(availability, total, kind) {
   if (exact) return exact;
   const baseExact = total.baseKey ? availability.get(total.baseKey) : null;
   if (baseExact) return baseExact;
-  if (kind === "nameOnly") {
+  if (!total.articleRaw) {
     const scored = Array.from(new Set(availability.values()))
       .map((item) => ({ item, score: volumeAwareSimilarity(total.name, item.name, total.unit) }))
       .sort((left, right) => right.score - left.score);
