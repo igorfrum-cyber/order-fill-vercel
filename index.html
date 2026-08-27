@@ -183,10 +183,18 @@
           <div class="north-head">
             <div class="north-title">
               <h2>Север</h2>
-              <div class="mode-switch north-brand-switch" aria-label="Бренд для раздела Север">
-                <button class="mode-button active" id="northDefaultBrandButton" type="button">Обычный</button>
-                <button class="mode-button" id="northChristinaBrandButton" type="button">Кристина</button>
-              </div>
+              <label class="brand-field north-brand-field" for="northBrandSelect">
+                <span class="label">Бренд</span>
+                <select id="northBrandSelect" name="northBrand">
+                  <option value="angiopharm">ANGIOPHARM</option>
+                  <option value="christina">CHRISTINA</option>
+                  <option value="levissime">LeviSsime</option>
+                  <option value="sothys">SOTHYS</option>
+                  <option value="novacutan">NOVACUTAN</option>
+                  <option value="skin_synergy">Skin Synergy</option>
+                  <option value="klapp">KLAPP</option>
+                </select>
+              </label>
             </div>
             <div class="north-actions">
               <button class="secondary" id="northBackButton" type="button">Вернуться к бланку</button>

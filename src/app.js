@@ -46,8 +46,7 @@ const orderSection = document.querySelector("#orderSection");
 const northSection = document.querySelector("#northSection");
 const orderModeButton = document.querySelector("#orderModeButton");
 const northModeButton = document.querySelector("#northModeButton");
-const northDefaultBrandButton = document.querySelector("#northDefaultBrandButton");
-const northChristinaBrandButton = document.querySelector("#northChristinaBrandButton");
+const northBrandSelect = document.querySelector("#northBrandSelect");
 const northForm = document.querySelector("#northForm");
 const northDefaultUpload = document.querySelector("#northDefaultUpload");
 const northChristinaUpload = document.querySelector("#northChristinaUpload");
@@ -92,7 +91,6 @@ let addedNorthFiles = [];
 let addedNorthHomeFiles = [];
 let addedNorthProffFiles = [];
 let northPlanEdits = new Map();
-let northBrandMode = "default";
 let isFormFilled = false;
 let activeFilter = null;
 let editState = new Map();
@@ -324,16 +322,11 @@ function mainBlankLabelForBrand(brand) {
 }
 
 function isNorthChristinaMode() {
-  return northBrandMode === "christina";
+  return selectedNorthBrand() === "christina";
 }
 
-function setNorthBrandMode(mode) {
-  northBrandMode = mode === "christina" ? "christina" : "default";
-  northDefaultBrandButton.classList.toggle("active", !isNorthChristinaMode());
-  northChristinaBrandButton.classList.toggle("active", isNorthChristinaMode());
-  northDefaultBrandButton.setAttribute("aria-pressed", String(!isNorthChristinaMode()));
-  northChristinaBrandButton.setAttribute("aria-pressed", String(isNorthChristinaMode()));
-  configureNorthBrandUploads();
+function selectedNorthBrand() {
+  return northBrandSelect.value || "angiopharm";
 }
 
 function configureNorthBrandUploads() {
@@ -341,6 +334,21 @@ function configureNorthBrandUploads() {
   northDefaultUpload.classList.toggle("hidden", isChristina);
   northChristinaUpload.classList.toggle("hidden", !isChristina);
   resetNorthCalculationState();
+}
+
+function resetNorthUploadedFiles() {
+  addedNorthFiles = [];
+  addedNorthHomeFiles = [];
+  addedNorthProffFiles = [];
+  northFileInput.value = "";
+  northHomeInput.value = "";
+  northProffInput.value = "";
+  northNames.textContent = "Выберите один или несколько заполненных бланков";
+  northHomeNames.textContent = "Выберите HOME-бланки городов";
+  northProffNames.textContent = "Выберите PROFF-бланки городов";
+  renderNorthFileList(northFileList, addedNorthFiles, "default");
+  renderNorthFileList(northHomeFileList, addedNorthHomeFiles, "home");
+  renderNorthFileList(northProffFileList, addedNorthProffFiles, "proff");
 }
 
 function configureBrandFields() {
@@ -354,15 +362,17 @@ function configureBrandFields() {
   proffFile.required = isChristina;
   adjustmentHeader.textContent = adjustmentLabelForBrand(brand);
   priorityAdjustmentHeader.textContent = adjustmentLabelForBrand(brand);
-  configureNorthBrandUploads();
   resetFillState();
 }
 
 brandSelect.addEventListener("change", configureBrandFields);
-northDefaultBrandButton.addEventListener("click", () => setNorthBrandMode("default"));
-northChristinaBrandButton.addEventListener("click", () => setNorthBrandMode("christina"));
+northBrandSelect.addEventListener("change", () => {
+  resetNorthUploadedFiles();
+  configureNorthBrandUploads();
+});
 orderMonth.addEventListener("change", resetFillState);
 configureBrandFields();
+configureNorthBrandUploads();
 
 function setSubmitButtonState(state) {
   submitButton.classList.toggle("completed", state === "completed");
@@ -1533,6 +1543,7 @@ northForm.addEventListener("submit", async (event) => {
     const tyumenSourceFile = northSourceFile.files[0] || null;
     const tyumenSourceWorkbook = tyumenSourceFile ? await loadWorkbook(tyumenSourceFile) : null;
     const result = buildNorthOrderFiles(blanks, {
+      brand: selectedNorthBrand(),
       tyumenSourceWorkbook,
       tyumenSourceFileName: tyumenSourceFile?.name || "",
     });

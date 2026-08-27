@@ -1911,7 +1911,27 @@ function detectNorthCity(workbook, fileName) {
   throw new Error(`Не понял город в файле «${fileName}». В параметрах или названии файла должен быть Сургут, Нижневартовск/Вартовск, Уренгой или Тюмень.`);
 }
 
-function northBlankDetection(workbook, fileName = "") {
+function northBlankDetection(workbook, fileName = "", brand = "") {
+  if (brand === "novacutan") {
+    const novacutan = detectNovacutanBlank(workbook);
+    if (!novacutan) throw new Error("Не удалось распознать бланк NOVACUTAN: не нашел описание товара и колонку количества.");
+    return { kind: "novacutan", detection: novacutan };
+  }
+
+  if (brand === "klapp") {
+    const klapp = detectKlappBlank(workbook);
+    if (!klapp) throw new Error("Не удалось распознать бланк KLAPP: не нашел основной лист с колонками Артикул, Наименование и Заказ.");
+    return { kind: "klapp", detection: klapp };
+  }
+
+  if (brand === "skin_synergy") {
+    return { kind: "nameOnly", detection: detectSkinSynergyNorthBlank(workbook, fileName, { force: true }) };
+  }
+
+  if (brand === "sothys") {
+    return { kind: "splitVariants", detection: detectSothysVariantBlank(workbook) };
+  }
+
   const novacutan = detectNovacutanBlank(workbook);
   if (novacutan) return { kind: "novacutan", detection: novacutan };
 
@@ -1923,14 +1943,15 @@ function northBlankDetection(workbook, fileName = "") {
 
   try {
     return { kind: "generic", detection: detectColumns(workbook, "blank", { requireBox: false, quantityHeader: "anyOrder" }) };
-  } catch {
+  } catch (error) {
+    if (brand) throw error;
     return { kind: "splitVariants", detection: detectSothysVariantBlank(workbook) };
   }
 }
 
-function detectSkinSynergyNorthBlank(workbook, fileName = "") {
+function detectSkinSynergyNorthBlank(workbook, fileName = "", options = {}) {
   const signal = normalizeHeader(fileName);
-  let hasSignal = signal.includes("skin synergy") || signal.includes("скин синерджи");
+  let hasSignal = Boolean(options.force) || signal.includes("skin synergy") || signal.includes("скин синерджи");
   for (const sheet of workbook.sheets) {
     if (hasSignal) break;
     if (normalizeHeader(sheet.name).includes("skin synergy") || normalizeHeader(sheet.name).includes("скин синерджи")) {
@@ -2189,8 +2210,8 @@ function northSplitVariantPositions(detection, blankId, blankLabel) {
   return rows;
 }
 
-function northPositions(workbook, blankId, blankLabel, fileName = "") {
-  const detected = northBlankDetection(workbook, fileName);
+function northPositions(workbook, blankId, blankLabel, fileName = "", brand = "") {
+  const detected = northBlankDetection(workbook, fileName, brand);
   const positions = detected.kind === "novacutan"
     ? northNovacutanPositions(detected.detection, blankId, blankLabel)
     : detected.kind === "splitVariants"
@@ -2721,6 +2742,7 @@ export function buildNorthOrderFiles(blanks, options = {}) {
     validateNorthTyumenSourceWorkbook(options.tyumenSourceWorkbook, options.tyumenSourceFileName || "");
   }
 
+  const northBrand = options.brand || "";
   const cityKeys = new Set();
   const prepared = blanks.map((blank, index) => {
     const city = detectNorthCity(blank.workbook, blank.fileName);
@@ -2729,7 +2751,7 @@ export function buildNorthOrderFiles(blanks, options = {}) {
     const duplicateLabel = variant ? `${city.label} ${blank.variantLabel || variant}` : city.label;
     if (cityKeys.has(duplicateKey)) throw new Error(`Загружено несколько бланков ${duplicateLabel}. Оставьте один файл на город и тип бланка.`);
     cityKeys.add(duplicateKey);
-    const extracted = northPositions(blank.workbook, `north-${index}`, variant ? `${city.label} ${blank.variantLabel || variant}` : city.label, blank.fileName);
+    const extracted = northPositions(blank.workbook, `north-${index}`, variant ? `${city.label} ${blank.variantLabel || variant}` : city.label, blank.fileName, northBrand);
     const positions = scopedNorthPositions(extracted.positions, variant, blank.variantLabel || "");
     return { ...blank, city, ...extracted, positions, variant, variantLabel: blank.variantLabel || "" };
   });

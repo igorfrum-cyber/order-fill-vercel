@@ -320,6 +320,10 @@ p {
   flex-wrap: wrap;
 }
 
+.north-brand-field {
+  width: min(280px, 100%);
+}
+
 .north-actions {
   display: flex;
   gap: 10px;
