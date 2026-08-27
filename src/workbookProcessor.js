@@ -754,6 +754,9 @@ function blankMatchers(options = {}) {
     unit: (h) => h.includes("объем") || h.includes("обьем") || h.includes("форма выпуска") || (h.includes("мл") && h.includes("гр")),
     quantity: quantityMatcher,
   };
+  if (options.requireArticle === false) {
+    delete matchers.article;
+  }
   if (options.requireBox !== false) {
     matchers.boxSize = boxMatcher;
   }
@@ -789,6 +792,7 @@ export function detectColumns(workbook, mode, options = {}) {
       if (foundKeys.length !== required.length) continue;
       let bestForRow = null;
       for (const combo of combinations(required.map((key) => candidates[key]))) {
+        if (new Set(combo).size !== combo.length) continue;
         const span = Math.max(...combo) - Math.min(...combo) + 1;
         if (!bestForRow || span < bestForRow.span) {
           bestForRow = { span, columns: Object.fromEntries(required.map((key, index) => [key, combo[index]])) };
@@ -1907,17 +1911,60 @@ function detectNorthCity(workbook, fileName) {
   throw new Error(`Не понял город в файле «${fileName}». В параметрах или названии файла должен быть Сургут, Нижневартовск/Вартовск, Уренгой или Тюмень.`);
 }
 
-function northBlankDetection(workbook) {
+function northBlankDetection(workbook, fileName = "") {
   const novacutan = detectNovacutanBlank(workbook);
   if (novacutan) return { kind: "novacutan", detection: novacutan };
 
   const klapp = detectKlappBlank(workbook);
   if (klapp) return { kind: "klapp", detection: klapp };
 
+  const skinSynergy = detectSkinSynergyNorthBlank(workbook, fileName);
+  if (skinSynergy) return { kind: "nameOnly", detection: skinSynergy };
+
   try {
     return { kind: "generic", detection: detectColumns(workbook, "blank", { requireBox: false, quantityHeader: "anyOrder" }) };
   } catch {
     return { kind: "splitVariants", detection: detectSothysVariantBlank(workbook) };
+  }
+}
+
+function detectSkinSynergyNorthBlank(workbook, fileName = "") {
+  const signal = normalizeHeader(fileName);
+  let hasSignal = signal.includes("skin synergy") || signal.includes("скин синерджи");
+  for (const sheet of workbook.sheets) {
+    if (hasSignal) break;
+    if (normalizeHeader(sheet.name).includes("skin synergy") || normalizeHeader(sheet.name).includes("скин синерджи")) {
+      hasSignal = true;
+      break;
+    }
+    const { maxRow, maxColumn } = sheetBounds(sheet);
+    for (let row = 1; row <= Math.min(maxRow, 60); row += 1) {
+      for (let col = 1; col <= maxColumn; col += 1) {
+        const text = normalizeHeader(sheetCellValue(sheet, row, col));
+        if (text.includes("skin synergy") || text.includes("скин синерджи")) {
+          hasSignal = true;
+          break;
+        }
+      }
+      if (hasSignal) break;
+    }
+  }
+  if (!hasSignal) return null;
+
+  try {
+    return detectColumns(workbook, "blank", {
+      requireArticle: false,
+      requireBox: false,
+      requireUnit: false,
+      quantityHeader: "exactQuantity",
+    });
+  } catch {
+    return detectColumns(workbook, "blank", {
+      requireArticle: false,
+      requireBox: false,
+      requireUnit: false,
+      quantityHeader: "anyOrder",
+    });
   }
 }
 
@@ -2019,11 +2066,14 @@ function northGenericPositions(detection, blankId, blankLabel) {
   const rows = [];
   const { maxRow } = sheetBounds(detection.sheet);
   for (let row = detection.headerRow + 1; row <= maxRow; row += 1) {
-    const articleRaw = asText(sheetCellValue(detection.sheet, row, detection.columns.article));
-    const article = normalizeArticle(articleRaw, { preserveHyphen: true });
-    if (!article) continue;
+    const name = asText(sheetCellValue(detection.sheet, row, detection.columns.name));
+    const unit = detection.columns.unit ? asText(sheetCellValue(detection.sheet, row, detection.columns.unit)) : "";
+    const articleRaw = detection.columns.article ? asText(sheetCellValue(detection.sheet, row, detection.columns.article)) : "";
+    const article = detection.columns.article ? normalizeArticle(articleRaw, { preserveHyphen: true }) : "";
+    const key = article || northNameKey(name, unit);
+    if (!key) continue;
     rows.push({
-      key: article,
+      key,
       blankId,
       blankLabel,
       row,
@@ -2032,8 +2082,8 @@ function northGenericPositions(detection, blankId, blankLabel) {
       nameCol: detection.columns.name,
       unitCol: detection.columns.unit,
       articleRaw,
-      name: asText(sheetCellValue(detection.sheet, row, detection.columns.name)),
-      unit: asText(sheetCellValue(detection.sheet, row, detection.columns.unit)),
+      name,
+      unit,
       quantity: parseNumber(sheetCellValue(detection.sheet, row, detection.columns.quantity)) ?? 0,
     });
   }
@@ -2139,8 +2189,8 @@ function northSplitVariantPositions(detection, blankId, blankLabel) {
   return rows;
 }
 
-function northPositions(workbook, blankId, blankLabel) {
-  const detected = northBlankDetection(workbook);
+function northPositions(workbook, blankId, blankLabel, fileName = "") {
+  const detected = northBlankDetection(workbook, fileName);
   const positions = detected.kind === "novacutan"
     ? northNovacutanPositions(detected.detection, blankId, blankLabel)
     : detected.kind === "splitVariants"
@@ -2351,9 +2401,15 @@ function novacutanNorthOrderTable(summary, planRows, actualByKey) {
   };
 }
 
+function northNameKey(name, unit = "") {
+  const normalized = normalizeName(`${name} ${unit || ""}`);
+  return normalized ? `name:${normalized}` : "";
+}
+
 function sourceKeyCandidatesForNorth(item, kind) {
   const keys = new Set();
-  if (kind === "novacutan" || !item.articleRaw) keys.add(novacutanPositionKey(item.name));
+  if (kind === "novacutan") keys.add(novacutanPositionKey(item.name));
+  if (kind === "nameOnly") keys.add(northNameKey(item.name));
   const preserved = normalizeArticle(item.articleRaw, { preserveHyphen: true });
   const regular = normalizeArticle(item.articleRaw, { preserveHyphen: false });
   if (preserved) keys.add(preserved);
@@ -2431,6 +2487,14 @@ function northAvailabilityForTotal(availability, total, kind) {
   if (exact) return exact;
   const baseExact = total.baseKey ? availability.get(total.baseKey) : null;
   if (baseExact) return baseExact;
+  if (kind === "nameOnly") {
+    const scored = Array.from(new Set(availability.values()))
+      .map((item) => ({ item, score: volumeAwareSimilarity(total.name, item.name, total.unit) }))
+      .sort((left, right) => right.score - left.score);
+    if (!scored.length || scored[0].score < 0.9) return null;
+    if (scored.length > 1 && scored[0].score - scored[1].score < 0.05) return null;
+    return scored[0].item;
+  }
   if (kind !== "novacutan") return null;
 
   const scored = Array.from(new Set(availability.values()))
@@ -2665,7 +2729,7 @@ export function buildNorthOrderFiles(blanks, options = {}) {
     const duplicateLabel = variant ? `${city.label} ${blank.variantLabel || variant}` : city.label;
     if (cityKeys.has(duplicateKey)) throw new Error(`Загружено несколько бланков ${duplicateLabel}. Оставьте один файл на город и тип бланка.`);
     cityKeys.add(duplicateKey);
-    const extracted = northPositions(blank.workbook, `north-${index}`, variant ? `${city.label} ${blank.variantLabel || variant}` : city.label);
+    const extracted = northPositions(blank.workbook, `north-${index}`, variant ? `${city.label} ${blank.variantLabel || variant}` : city.label, blank.fileName);
     const positions = scopedNorthPositions(extracted.positions, variant, blank.variantLabel || "");
     return { ...blank, city, ...extracted, positions, variant, variantLabel: blank.variantLabel || "" };
   });
