@@ -83,6 +83,21 @@ if (categoryCoefficient("A+", novacutanRule) !== 2 || categoryCoefficient("A", n
 if (categoryCoefficient("C", novacutanRule) !== 1.5) throw new Error("Novacutan C category should use coefficient 1.5.");
 if (categoryCoefficient("C", { label: "ANGIOPHARM" }) !== 1) throw new Error("Non-Novacutan C category coefficient should stay unchanged.");
 
+const skinSynergyDetection = detectColumns(workbookFromRows([
+  [null, null, null, null, null, null, null, null, null, null],
+  [null, null, "№", "Арт.", "Продукт", "Кол-во шт в трансп. уп.", "Цена", "Цена со скидкой", "Количество", "Сумма, р."],
+  [null, "Дом. уход", 1, "SK018", "Увлажняющий пилинг N.M.F.", 35, 1830, 1281, 0, null],
+], "Бланк заказа"), "blank", { requireBox: false, requireUnit: false, quantityHeader: "exactQuantity" });
+if (
+  skinSynergyDetection.sheetName !== "Бланк заказа" ||
+  skinSynergyDetection.headerRow !== 2 ||
+  skinSynergyDetection.columns.article !== 4 ||
+  skinSynergyDetection.columns.name !== 5 ||
+  skinSynergyDetection.columns.quantity !== 9
+) {
+  throw new Error("Skin Synergy blank should detect article, product and the real quantity column.");
+}
+
 const novacutanNorth = buildNorthOrderFiles([
   { fileName: "Novacutan Тюмень.xlsx", workbook: novacutanNorthWorkbook("Тюмень", { sbio: 20, fbio: 10, bright: 4, mask: 2 }) },
   { fileName: "Novacutan Сургут.xlsx", workbook: novacutanNorthWorkbook("Сургут", { sbio: 5, fbio: 15, bright: 6, mask: 3 }) },

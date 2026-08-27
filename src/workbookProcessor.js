@@ -48,6 +48,13 @@ const BRAND_RULES = {
     adjustmentLabel: "Мин. заказ",
     blankLayout: "novacutan",
   },
+  skin_synergy: {
+    label: "Skin Synergy",
+    adjustment: "none",
+    adjustmentLabel: "Без округления",
+    blankQuantityHeader: "exactQuantity",
+    requireUnit: false,
+  },
   klapp: {
     label: "KLAPP",
     adjustment: "nearestMultiple",
@@ -733,6 +740,8 @@ function blankMatchers(options = {}) {
   const isPackageHeader = (h) => h.includes("короб") || h.includes("упак") || h.split(" ").includes("уп");
   const quantityMatcher = options.quantityHeader === "order"
     ? (h) => h === "заказ" || h.includes("коробка заказ")
+    : options.quantityHeader === "exactQuantity"
+      ? (h) => h === "количество"
     : options.quantityHeader === "anyOrder"
       ? (h) => h === "заказ" || h.includes("коробка заказ") || (isQuantityHeader(h) && !isPackageHeader(h))
       : isQuantityHeader;
@@ -741,12 +750,15 @@ function blankMatchers(options = {}) {
     : (h) => h.includes("короб") || (h.includes("шт") && h.includes("упак"));
   const matchers = {
     article: (h) => h.includes("арт") || h.includes("артикул") || h.includes("код"),
-    name: (h) => h.includes("товар") || h.includes("номенклатура") || h.includes("наименование") || h.includes("название"),
+    name: (h) => h.includes("товар") || h.includes("номенклатура") || h.includes("наименование") || h.includes("название") || h.includes("продукт"),
     unit: (h) => h.includes("объем") || h.includes("обьем") || h.includes("форма выпуска") || (h.includes("мл") && h.includes("гр")),
     quantity: quantityMatcher,
   };
   if (options.requireBox !== false) {
     matchers.boxSize = boxMatcher;
+  }
+  if (options.requireUnit === false) {
+    delete matchers.unit;
   }
   return matchers;
 }
@@ -887,6 +899,7 @@ function articleNormalizeOptions(rule) {
 function blankDetectionOptions(rule) {
   return {
     requireBox: rule.adjustment === "box",
+    requireUnit: rule.requireUnit,
     quantityHeader: rule.blankQuantityHeader,
     boxHeader: rule.blankBoxHeader,
   };

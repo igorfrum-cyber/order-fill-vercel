@@ -309,6 +309,7 @@ function adjustmentLabelForBrand(brand) {
   if (brand === "levissime") return "Кол-во в уп.";
   if (brand === "sothys") return "Округление";
   if (brand === "novacutan") return "Мин. заказ";
+  if (brand === "skin_synergy") return "Округление";
   if (brand === "klapp") return "Кратность";
   return "Шт. в коробке";
 }
@@ -317,6 +318,7 @@ function mainBlankLabelForBrand(brand) {
   if (brand === "levissime") return "LeviSsime";
   if (brand === "sothys") return "SOTHYS";
   if (brand === "novacutan") return "NOVACUTAN";
+  if (brand === "skin_synergy") return "Skin Synergy";
   if (brand === "klapp") return "KLAPP";
   return "ANGIO";
 }
