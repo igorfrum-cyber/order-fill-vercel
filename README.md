@@ -36,6 +36,21 @@ http://127.0.0.1:3200
 npm run verify
 ```
 
+## Docker Compose
+
+Скопируйте `.env.example` в `.env` при необходимости локальных переопределений.
+
+```bash
+docker compose -f deploy/docker-compose.yml config
+docker compose -f deploy/docker-compose.yml up --build
+```
+
+Сервисы:
+
+- frontend: http://127.0.0.1:3200
+- api-service health: http://127.0.0.1:8080/healthz
+- document-service health: http://127.0.0.1:8081/healthz
+
 ## Деплой на Vercel
 
 1. Загрузите папку `order-fill-vercel` в GitHub-репозиторий.
