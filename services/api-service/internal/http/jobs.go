@@ -3,6 +3,7 @@ package httpapi
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"errors"
 	"io"
 	"mime/multipart"
@@ -21,9 +22,24 @@ type JobReader interface {
 	Find(ctx context.Context, id string) (jobs.Job, error)
 }
 
+type JobReporter interface {
+	Report(ctx context.Context, jobID string) (jobs.Report, error)
+}
+
+type JobEditor interface {
+	SubmitEdits(ctx context.Context, jobID string, edits []jobs.ManualEdit) (jobs.Job, error)
+}
+
+type JobFileLister interface {
+	Files(ctx context.Context, jobID string) ([]jobs.OutputFile, error)
+}
+
 type jobHandler struct {
-	creator JobCreator
-	reader  JobReader
+	creator    JobCreator
+	reader     JobReader
+	reporter   JobReporter
+	editor     JobEditor
+	fileLister JobFileLister
 }
 
 func (h jobHandler) createOrderFill(w http.ResponseWriter, r *http.Request) {
@@ -81,6 +97,59 @@ func (h jobHandler) getJob(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, job)
 }
 
+func (h jobHandler) getReport(w http.ResponseWriter, r *http.Request) {
+	if h.reporter == nil {
+		writeError(w, http.StatusNotFound, "not_found", "report was not found")
+		return
+	}
+	report, err := h.reporter.Report(r.Context(), r.PathValue("job_id"))
+	if err != nil {
+		writeJobReadError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, report)
+}
+
+func (h jobHandler) submitEdits(w http.ResponseWriter, r *http.Request) {
+	if h.editor == nil {
+		writeError(w, http.StatusNotFound, "not_found", "job was not found")
+		return
+	}
+	var payload struct {
+		Edits []jobs.ManualEdit `json:"edits"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
+		writeError(w, http.StatusBadRequest, "bad_request", err.Error())
+		return
+	}
+	job, err := h.editor.SubmitEdits(r.Context(), r.PathValue("job_id"), payload.Edits)
+	if err != nil {
+		status := http.StatusInternalServerError
+		if errors.Is(err, jobs.ErrInvalidJob) {
+			status = http.StatusBadRequest
+		}
+		if errors.Is(err, jobs.ErrJobNotFound) {
+			status = http.StatusNotFound
+		}
+		writeError(w, status, "submit_edits_failed", err.Error())
+		return
+	}
+	writeJSON(w, http.StatusAccepted, job)
+}
+
+func (h jobHandler) listFiles(w http.ResponseWriter, r *http.Request) {
+	if h.fileLister == nil {
+		writeError(w, http.StatusNotFound, "not_found", "job was not found")
+		return
+	}
+	files, err := h.fileLister.Files(r.Context(), r.PathValue("job_id"))
+	if err != nil {
+		writeJobReadError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string][]jobs.OutputFile{"files": files})
+}
+
 func (h jobHandler) parseCreateJobRequest(r *http.Request, jobType jobs.JobType) (jobs.CreateJobCommand, error) {
 	if h.creator == nil {
 		return jobs.CreateJobCommand{}, errors.New("job creator is not configured")
@@ -116,6 +185,16 @@ func (h jobHandler) parseCreateJobRequest(r *http.Request, jobType jobs.JobType)
 		OrderMonth: r.FormValue("order_month"),
 		Files:      files,
 	}, nil
+}
+
+func writeJobReadError(w http.ResponseWriter, err error) {
+	status := http.StatusInternalServerError
+	code := "read_job_failed"
+	if errors.Is(err, jobs.ErrJobNotFound) {
+		status = http.StatusNotFound
+		code = "not_found"
+	}
+	writeError(w, status, code, err.Error())
 }
 
 func multipartFiles(form *multipart.Form, field string, required bool) ([]jobs.UploadFile, error) {

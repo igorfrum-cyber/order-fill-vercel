@@ -20,6 +20,9 @@ type Clock func() time.Time
 type Repository interface {
 	Save(ctx context.Context, job Job) error
 	Find(ctx context.Context, id string) (Job, error)
+	UpdateStatus(ctx context.Context, id string, status JobStatus) (Job, error)
+	SaveReport(ctx context.Context, report Report) error
+	Report(ctx context.Context, jobID string) (Report, error)
 }
 
 type ObjectStorage interface {
@@ -109,6 +112,30 @@ func (s *Service) CreateJob(ctx context.Context, command CreateJobCommand) (Job,
 
 func (s *Service) Find(ctx context.Context, id string) (Job, error) {
 	return s.repository.Find(ctx, id)
+}
+
+func (s *Service) Report(ctx context.Context, jobID string) (Report, error) {
+	return s.repository.Report(ctx, jobID)
+}
+
+func (s *Service) SubmitEdits(ctx context.Context, jobID string, edits []ManualEdit) (Job, error) {
+	if strings.TrimSpace(jobID) == "" {
+		return Job{}, fmt.Errorf("%w: job id is required", ErrInvalidJob)
+	}
+	for _, edit := range edits {
+		if strings.TrimSpace(edit.Key) == "" {
+			return Job{}, fmt.Errorf("%w: edit key is required", ErrInvalidJob)
+		}
+	}
+	return s.repository.UpdateStatus(ctx, jobID, JobStatusFinalizing)
+}
+
+func (s *Service) Files(ctx context.Context, jobID string) ([]OutputFile, error) {
+	job, err := s.repository.Find(ctx, jobID)
+	if err != nil {
+		return nil, err
+	}
+	return append([]OutputFile(nil), job.OutputFiles...), nil
 }
 
 func validateCreateJobCommand(command CreateJobCommand) error {

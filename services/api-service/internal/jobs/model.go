@@ -60,3 +60,20 @@ type JobMessage struct {
 	JobID string  `json:"job_id"`
 	Type  JobType `json:"type"`
 }
+
+type Report struct {
+	JobID string      `json:"job_id"`
+	Rows  []ReportRow `json:"rows"`
+}
+
+type ReportRow struct {
+	Key      string `json:"key"`
+	Status   string `json:"status"`
+	Editable bool   `json:"editable"`
+}
+
+type ManualEdit struct {
+	Key     string `json:"key"`
+	Value   string `json:"value"`
+	Comment string `json:"comment,omitempty"`
+}
