@@ -33,8 +33,7 @@ http://127.0.0.1:3200
 ## Проверка
 
 ```bash
-npm run test:workbook
-npm run build
+npm run verify
 ```
 
 ## Деплой на Vercel
