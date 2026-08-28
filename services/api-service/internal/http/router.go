@@ -10,6 +10,7 @@ type routerConfig struct {
 	jobReporter   JobReporter
 	jobEditor     JobEditor
 	jobFileLister JobFileLister
+	metrics       MetricsReader
 }
 
 func WithJobCreator(creator JobCreator) RouterOption {
@@ -40,6 +41,12 @@ func WithJobService(service interface {
 	}
 }
 
+func WithMetrics(metrics MetricsReader) RouterOption {
+	return func(config *routerConfig) {
+		config.metrics = metrics
+	}
+}
+
 func NewRouter(options ...RouterOption) http.Handler {
 	config := routerConfig{}
 	for _, option := range options {
@@ -48,6 +55,9 @@ func NewRouter(options ...RouterOption) http.Handler {
 
 	mux := http.NewServeMux()
 	mux.Handle("GET /healthz", healthHandler{})
+	if config.metrics != nil {
+		mux.Handle("GET /metrics", metricsHandler{metrics: config.metrics})
+	}
 	jobHandler := jobHandler{
 		creator:    config.jobCreator,
 		reader:     config.jobReader,

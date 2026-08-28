@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log/slog"
 	"path"
 	"strings"
 	"time"
@@ -39,6 +40,8 @@ type ServiceConfig struct {
 	Queue      Queue
 	NewID      IDGenerator
 	Now        Clock
+	Logger     *slog.Logger
+	Metrics    Metrics
 }
 
 type Service struct {
@@ -47,6 +50,14 @@ type Service struct {
 	queue      Queue
 	newID      IDGenerator
 	now        Clock
+	logger     *slog.Logger
+	metrics    Metrics
+}
+
+type Metrics interface {
+	AddJobCreated()
+	AddJobFailed()
+	AddBytesStored(value int64)
 }
 
 type CreateJobCommand struct {
@@ -70,11 +81,15 @@ func NewService(config ServiceConfig) *Service {
 		queue:      config.Queue,
 		newID:      defaultID(config.NewID),
 		now:        defaultClock(config.Now),
+		logger:     defaultLogger(config.Logger),
+		metrics:    config.Metrics,
 	}
 }
 
 func (s *Service) CreateJob(ctx context.Context, command CreateJobCommand) (Job, error) {
+	startedAt := s.now()
 	if err := validateCreateJobCommand(command); err != nil {
+		s.observeFailure(ctx, "", "create_job_invalid", startedAt, "invalid_job", err)
 		return Job{}, err
 	}
 
@@ -84,7 +99,11 @@ func (s *Service) CreateJob(ctx context.Context, command CreateJobCommand) (Job,
 		key := fmt.Sprintf("jobs/%s/inputs/%s", id, cleanFileName(file.Name))
 		stored, err := s.storage.Put(ctx, key, file)
 		if err != nil {
+			s.observeFailure(ctx, id, "store_input_failed", startedAt, "storage_error", err)
 			return Job{}, fmt.Errorf("store input file: %w", err)
+		}
+		if s.metrics != nil {
+			s.metrics.AddBytesStored(stored.SizeBytes)
 		}
 		inputFiles = append(inputFiles, stored)
 	}
@@ -102,11 +121,25 @@ func (s *Service) CreateJob(ctx context.Context, command CreateJobCommand) (Job,
 		OutputFiles: []OutputFile{},
 	}
 	if err := s.repository.Save(ctx, job); err != nil {
+		s.observeFailure(ctx, id, "save_job_failed", startedAt, "repository_error", err)
 		return Job{}, fmt.Errorf("save job: %w", err)
 	}
 	if err := s.queue.Enqueue(ctx, JobMessage{JobID: job.ID, Type: job.Type}); err != nil {
+		s.observeFailure(ctx, id, "enqueue_job_failed", startedAt, "queue_error", err)
 		return Job{}, fmt.Errorf("enqueue job: %w", err)
 	}
+	if s.metrics != nil {
+		s.metrics.AddJobCreated()
+	}
+	s.logger.InfoContext(ctx, "job created",
+		"service", "api-service",
+		"job_id", job.ID,
+		"event", "job_created",
+		"duration_ms", durationMillis(startedAt, s.now()),
+		"error_code", "",
+		"type", job.Type,
+		"file_count", len(job.InputFiles),
+	)
 	return job, nil
 }
 
@@ -179,6 +212,34 @@ func defaultClock(clock Clock) Clock {
 		return clock
 	}
 	return time.Now
+}
+
+func defaultLogger(logger *slog.Logger) *slog.Logger {
+	if logger != nil {
+		return logger
+	}
+	return slog.Default()
+}
+
+func (s *Service) observeFailure(ctx context.Context, jobID string, event string, startedAt time.Time, errorCode string, err error) {
+	if s.metrics != nil {
+		s.metrics.AddJobFailed()
+	}
+	s.logger.ErrorContext(ctx, "job operation failed",
+		"service", "api-service",
+		"job_id", jobID,
+		"event", event,
+		"duration_ms", durationMillis(startedAt, s.now()),
+		"error_code", errorCode,
+		"error", err,
+	)
+}
+
+func durationMillis(start time.Time, end time.Time) int64 {
+	if end.Before(start) {
+		return 0
+	}
+	return end.Sub(start).Milliseconds()
 }
 
 func NewUUID() string {

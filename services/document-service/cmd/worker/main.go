@@ -5,14 +5,21 @@ import (
 	"log/slog"
 	"net/http"
 	"os"
+
+	"order-fill/services/document-service/internal/observability"
 )
 
 func main() {
 	addr := getenv("WORKER_HEALTH_ADDR", ":8081")
+	metrics := observability.NewMetrics()
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /healthz", func(w http.ResponseWriter, _ *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		_ = json.NewEncoder(w).Encode(map[string]string{"status": "ok"})
+	})
+	mux.HandleFunc("GET /metrics", func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(metrics.Snapshot())
 	})
 
 	slog.Info("starting document-service worker", "service", "document-service", "addr", addr)

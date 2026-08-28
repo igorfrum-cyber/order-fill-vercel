@@ -3,7 +3,9 @@ package jobs
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"path/filepath"
+	"time"
 
 	"order-fill/services/document-service/internal/orderfill"
 )
@@ -33,12 +35,21 @@ type WorkerConfig struct {
 	Storage        Storage
 	ReportWriter   ReportWriter
 	OrderProcessor orderfill.Processor
+	Logger         *slog.Logger
+	Metrics        Metrics
 }
 
 type Worker struct {
 	storage        Storage
 	reportWriter   ReportWriter
 	orderProcessor orderfill.Processor
+	logger         *slog.Logger
+	metrics        Metrics
+}
+
+type Metrics interface {
+	AddJobCompleted(durationMS int64)
+	AddJobFailed(durationMS int64)
 }
 
 func NewWorker(config WorkerConfig) *Worker {
@@ -46,22 +57,46 @@ func NewWorker(config WorkerConfig) *Worker {
 		storage:        config.Storage,
 		reportWriter:   config.ReportWriter,
 		orderProcessor: config.OrderProcessor,
+		logger:         defaultLogger(config.Logger),
+		metrics:        config.Metrics,
 	}
 }
 
 func (w *Worker) Handle(ctx context.Context, message JobMessage) error {
+	startedAt := time.Now()
 	if message.JobID == "" {
-		return fmt.Errorf("job id is required")
+		err := fmt.Errorf("job id is required")
+		w.observeFailure(ctx, message.JobID, "job_invalid", startedAt, "invalid_job", err)
+		return err
 	}
 	files, err := w.loadInputs(ctx, message.InputKeys)
 	if err != nil {
+		w.observeFailure(ctx, message.JobID, "load_inputs_failed", startedAt, "storage_error", err)
 		return err
 	}
 	switch message.Type {
 	case JobTypeOrderFill:
-		return w.processOrderFill(ctx, message.JobID, files)
+		if err := w.processOrderFill(ctx, message.JobID, files); err != nil {
+			w.observeFailure(ctx, message.JobID, "process_job_failed", startedAt, "processing_error", err)
+			return err
+		}
+		durationMS := time.Since(startedAt).Milliseconds()
+		if w.metrics != nil {
+			w.metrics.AddJobCompleted(durationMS)
+		}
+		w.logger.InfoContext(ctx, "document job completed",
+			"service", "document-service",
+			"job_id", message.JobID,
+			"event", "job_completed",
+			"duration_ms", durationMS,
+			"error_code", "",
+			"type", message.Type,
+		)
+		return nil
 	default:
-		return fmt.Errorf("unsupported job type %q", message.Type)
+		err := fmt.Errorf("unsupported job type %q", message.Type)
+		w.observeFailure(ctx, message.JobID, "unsupported_job_type", startedAt, "unsupported_job_type", err)
+		return err
 	}
 }
 
@@ -95,4 +130,26 @@ func (w *Worker) processOrderFill(ctx context.Context, jobID string, files []ord
 		return fmt.Errorf("save report: %w", err)
 	}
 	return nil
+}
+
+func defaultLogger(logger *slog.Logger) *slog.Logger {
+	if logger != nil {
+		return logger
+	}
+	return slog.Default()
+}
+
+func (w *Worker) observeFailure(ctx context.Context, jobID string, event string, startedAt time.Time, errorCode string, err error) {
+	durationMS := time.Since(startedAt).Milliseconds()
+	if w.metrics != nil {
+		w.metrics.AddJobFailed(durationMS)
+	}
+	w.logger.ErrorContext(ctx, "document job failed",
+		"service", "document-service",
+		"job_id", jobID,
+		"event", event,
+		"duration_ms", durationMS,
+		"error_code", errorCode,
+		"error", err,
+	)
 }

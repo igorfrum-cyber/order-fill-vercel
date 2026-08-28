@@ -16,6 +16,7 @@ func TestWorkerProcessesOrderFillJobAndStoresReport(t *testing.T) {
 		},
 	}
 	repository := reports.NewMemoryRepository()
+	metricRecorder := &recordingMetrics{}
 	processor := orderfill.ProcessorFunc(func(_ context.Context, files []orderfill.InputFile) (orderfill.Report, error) {
 		if len(files) != 2 {
 			t.Fatalf("expected two input files, got %d", len(files))
@@ -26,6 +27,7 @@ func TestWorkerProcessesOrderFillJobAndStoresReport(t *testing.T) {
 		Storage:        storage,
 		ReportWriter:   repository,
 		OrderProcessor: processor,
+		Metrics:        metricRecorder,
 	})
 
 	err := worker.Handle(context.Background(), JobMessage{
@@ -39,6 +41,9 @@ func TestWorkerProcessesOrderFillJobAndStoresReport(t *testing.T) {
 	if len(repository.Reports["job-1"].Rows) != 1 {
 		t.Fatalf("expected stored report, got %#v", repository.Reports)
 	}
+	if metricRecorder.completed != 1 {
+		t.Fatalf("expected completed metric to increment, got %d", metricRecorder.completed)
+	}
 }
 
 type recordingStorage struct {
@@ -47,4 +52,17 @@ type recordingStorage struct {
 
 func (s *recordingStorage) Get(_ context.Context, key string) ([]byte, error) {
 	return s.files[key], nil
+}
+
+type recordingMetrics struct {
+	completed int64
+	failed    int64
+}
+
+func (m *recordingMetrics) AddJobCompleted(_ int64) {
+	m.completed++
+}
+
+func (m *recordingMetrics) AddJobFailed(_ int64) {
+	m.failed++
 }
