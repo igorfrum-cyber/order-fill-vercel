@@ -1,16 +1,12 @@
 import "./styles.css";
 import {
-  applyFinalEdits,
-  buildNorthOrderFiles,
-  finalizeNorthOrderFiles,
-  fillWorkbook,
-  loadXlsx,
-  normalizeOrderValue,
-  outputFileName,
-  saveXlsx,
-  sourceOutputFileName,
-  validateNorthTyumenSourceWorkbook,
-} from "./workbookProcessor.js";
+  createNorthMergeJob,
+  createOrderFillJob,
+  getJobReport,
+  listJobFiles,
+  pollJob,
+  submitJobEdits,
+} from "./api/jobs.js";
 
 const form = document.querySelector("#uploadForm");
 const statusEl = document.querySelector("#status");
@@ -80,13 +76,11 @@ const northMergeContinue = document.querySelector("#northMergeContinue");
 
 let currentResults = [];
 let currentReportRows = [];
-let currentBlankWorkbooks = new Map();
-let currentSourceWorkbook = null;
-let currentBlankOutputNames = new Map();
-let currentSourceOutputName = "order заполненная таблица.xlsx";
 let currentDownloadUrls = [];
 let currentNorthDownloadUrls = [];
 let currentNorthResult = null;
+let currentJobId = null;
+let currentNorthJobId = null;
 let addedNorthFiles = [];
 let addedNorthHomeFiles = [];
 let addedNorthProffFiles = [];
@@ -284,18 +278,7 @@ northSourceFile.addEventListener("change", async () => {
   northSourceName.textContent = file?.name || "Для учета остатков и в пути .xlsx, .xlsm или .xls";
   resetNorthCalculationState();
   if (!file) return;
-
-  northStatus.textContent = "Проверяю таблицу Тюмени...";
-  try {
-    const workbook = await loadWorkbook(file);
-    validateNorthTyumenSourceWorkbook(workbook, file.name);
-    northStatus.textContent = "Таблица Тюмени загружена";
-  } catch (error) {
-    northSourceFile.value = "";
-    northSourceName.textContent = "Для учета остатков и в пути .xlsx, .xlsm или .xls";
-    northStatus.textContent = "Ошибка";
-    alert(error.message || "В это поле можно загрузить только заполненную таблицу Тюмени.");
-  }
+  northStatus.textContent = "Таблица Тюмени добавлена";
 });
 
 function selectedBrand() {
@@ -402,9 +385,7 @@ function resetFillState() {
   isFormFilled = false;
   currentResults = [];
   currentReportRows = [];
-  currentBlankWorkbooks = new Map();
-  currentBlankOutputNames = new Map();
-  currentSourceWorkbook = null;
+  currentJobId = null;
   activeFilter = null;
   editState = new Map();
   reportSearch.value = "";
@@ -758,35 +739,59 @@ function sourceDuplicateRows(results) {
   return rows;
 }
 
-async function loadWorkbook(file, options = {}) {
-  const buffer = await file.arrayBuffer();
-  return loadXlsx(await normalizeWorkbookBytes(buffer, file.name, options));
+function jobStatusText(job) {
+  const labels = {
+    queued: "Задача в очереди...",
+    processing: "Обработка...",
+    needs_review: "Проверьте расчет",
+    finalizing: "Готовлю файлы...",
+    completed: "Готово",
+    failed: job.error?.message || "Ошибка обработки",
+  };
+  return labels[job.status] || "Обработка...";
 }
 
-function isLegacyXls(fileName) {
-  return /\.xls$/i.test(fileName) && !/\.xlsx$/i.test(fileName) && !/\.xlsm$/i.test(fileName);
+function normalizeReportRow(row) {
+  return {
+    ...row,
+    blankId: row.blank_id || row.blankId || "main",
+    blankLabel: row.blank_label || row.blankLabel || "",
+    blankRow: row.blank_row || row.blankRow || "",
+    blankQuantityCol: row.blank_quantity_col || row.blankQuantityCol || null,
+    blankArticle: row.blank_article || row.blankArticle || "",
+    blankName: row.blank_name || row.blankName || "",
+    blankUnit: row.blank_unit || row.blankUnit || "",
+    blankBoxSize: row.blank_box_size || row.blankBoxSize || "",
+    sourceRow: row.source_row || row.sourceRow || null,
+    sourceArticle: row.source_article || row.sourceArticle || "",
+    sourceName: row.source_name || row.sourceName || "",
+    hasOrderedFact: row.has_ordered_fact || row.hasOrderedFact || false,
+    orderedFact: row.ordered_fact ?? row.orderedFact ?? null,
+    sourceComment: row.source_comment || row.sourceComment || "",
+    inTransit: row.in_transit ?? row.inTransit ?? "",
+    baseRounded: row.base_rounded ?? row.baseRounded ?? null,
+    autoComment: row.auto_comment || row.autoComment || "",
+    boxAdjusted: row.box_adjusted || row.boxAdjusted || false,
+    duplicateCandidates: row.duplicate_candidates || row.duplicateCandidates || [],
+    editable: row.editable !== false,
+  };
 }
 
-async function normalizeWorkbookBytes(buffer, fileName, options = {}) {
-  if (!isLegacyXls(fileName)) return buffer;
-  if (options.allowLegacyXls === false) {
-    throw new Error(`Файл «${fileName}» в старом формате .xls нельзя использовать как бланк: при такой конвертации теряется оформление. Откройте этот бланк в Excel и сохраните как .xlsx, затем загрузите .xlsx.`);
-  }
-  try {
-    const { read: readSpreadsheet, write: writeSpreadsheet } = await import("xlsx");
-    const workbook = readSpreadsheet(buffer, {
-      type: "array",
-      cellFormula: true,
-      cellStyles: true,
-      cellDates: false,
-    });
-    return writeSpreadsheet(workbook, {
-      bookType: "xlsx",
-      type: "array",
-    });
-  } catch {
-    throw new Error(`Файл «${fileName}» в старом формате .xls не удалось автоматически прочитать. Откройте его в Excel и сохраните как .xlsx.`);
-  }
+function reportSummaryFromRows(rows, job) {
+  return {
+    brand: job.brand || selectedBrand(),
+    orderMonthLabel: job.order_month || orderMonth.value,
+    actualMainPeriod: "",
+    actualPreviousPeriod: "",
+    sourceCity: "",
+    cityRule: "",
+    deliveryWeeks: "",
+    blankDuplicateArticles: 0,
+    filled: rows.filter((row) => (row.status === "matched" || row.status === "matched_by_name") && row.inserted != null).length,
+    leftBlank: rows.filter((row) => row.status === "left_blank_nonpositive").length,
+    suspicious: rows.filter(isIssueRow).length,
+    unmatched: rows.filter((row) => row.status === "not_in_source").length,
+  };
 }
 
 form.addEventListener("submit", async (event) => {
@@ -811,36 +816,30 @@ form.addEventListener("submit", async (event) => {
   currentReportRows = [];
   activeFilter = null;
   editState = new Map();
-  currentBlankWorkbooks = new Map();
-  currentBlankOutputNames = new Map();
-  currentSourceWorkbook = null;
+  currentJobId = null;
 
   try {
-    const sourceWorkbook = await loadWorkbook(sourceFile.files[0]);
-    const blankWorkbooks = await Promise.all(blankInputs.map((item) => loadWorkbook(item.file, { allowLegacyXls: brand === "novacutan" })));
-    const results = blankInputs.map((item, index) => fillWorkbook({
-      sourceWorkbook,
-      sourceFileName: sourceFile.files[0].name,
-      blankWorkbook: blankWorkbooks[index],
-      orderMonth: orderMonth.value,
+    const created = await createOrderFillJob({
       brand,
-      blankId: item.id,
-      blankLabel: item.label,
-    }));
-
-    currentResults = results;
-    currentSourceWorkbook = sourceWorkbook;
-    currentBlankWorkbooks = new Map(results.map((result) => [result.blankId, result.blankWorkbook]));
-    for (const [index, item] of blankInputs.entries()) {
-      currentBlankWorkbooks.set(item.id, results[index].blankWorkbook);
-      currentBlankOutputNames.set(item.id, outputFileName(item.file.name, results[index].summary.sourceCity));
+      orderMonth: orderMonth.value,
+      sourceFile: sourceFile.files[0],
+      blankFiles: blankInputs.map((item) => item.file),
+    });
+    currentJobId = created.id;
+    const job = await pollJob(created.id, {
+      onUpdate: (updatedJob) => {
+        statusEl.textContent = jobStatusText(updatedJob);
+      },
+    });
+    if (job.status === "failed") {
+      throw new Error(job.error?.message || "Задача завершилась с ошибкой.");
     }
-    currentSourceOutputName = sourceOutputFileName(sourceFile.files[0].name);
-
-    const rows = [...results.flatMap((result) => result.reportRows), ...sourceDuplicateRows(results), ...missingInBlankRows(results)];
+    const report = await getJobReport(job.id);
+    const rows = (report.rows || []).map(normalizeReportRow);
+    currentResults = [{ summary: report.summary || reportSummaryFromRows(rows, job), reportRows: rows }];
     currentReportRows = rows;
     editState = new Map(rows.map((row) => [row.key || `${row.blankId}:${row.blankRow}`, { value: row.inserted ?? "", comment: initialComment(row) }]));
-    renderMetrics(combinedSummary(results));
+    renderMetrics(combinedSummary(currentResults));
     renderReportView();
     resultEl.classList.remove("hidden");
     downloadButton.disabled = false;
@@ -936,6 +935,16 @@ function clearNorthDownloadLinks() {
   currentNorthDownloadUrls = [];
   northDownloadLinks.classList.add("hidden");
   northDownloadLinks.innerHTML = "";
+}
+
+function normalizeOrderValue(value) {
+  const text = String(value ?? "").trim().replace(",", ".");
+  if (text === "") return null;
+  const number = Number(text);
+  if (!Number.isFinite(number) || number < 0) {
+    throw new Error("Количество должно быть неотрицательным числом.");
+  }
+  return number;
 }
 
 function validateEdits() {
@@ -1076,61 +1085,11 @@ function prepareDownloadLinks(files) {
   });
 }
 
-function todayRu() {
-  const date = new Date();
-  return `${String(date.getDate()).padStart(2, "0")}.${String(date.getMonth() + 1).padStart(2, "0")}.${date.getFullYear()}`;
-}
-
-function transferWorkbookBytes(transfer) {
-  return import("xlsx").then(({ utils, write }) => {
-    const rows = [
-      ["", "", "", "", "", "", "", ""],
-      ["", "", "", "", "", "", "", ""],
-      ["", "", `Заказ на перемещение от ${todayRu()}`, "", "", "", "", ""],
-      ["", "", "", "", "", "", "", ""],
-      ["", "", "", "", "", "", "", ""],
-      ["", "", "", "", "", "", "", ""],
-      ["", "", "Отправитель:", "Склад Тюмень", "Получатель:", transfer.city.warehouse, "", ""],
-      ["", "", "", "", "", "", "", ""],
-      ["", "", "", "", "", "", "", ""],
-      ["", "№", "Товар", "Количество", "", "", "", ""],
-      ...transfer.items.map((item, index) => ["", index + 1, item.name, item.quantity, item.unit || "шт", "", "", ""]),
-      ["", "", "", "", "", "", "", ""],
-      ["Менеджер", "", "", "", "", "", "", ""],
-    ];
-    const workbook = utils.book_new();
-    const sheet = utils.aoa_to_sheet(rows);
-    sheet["!cols"] = [
-      { wch: 8 },
-      { wch: 8 },
-      { wch: 72 },
-      { wch: 14 },
-      { wch: 10 },
-      { wch: 22 },
-      { wch: 12 },
-      { wch: 12 },
-    ];
-    utils.book_append_sheet(workbook, sheet, "Лист_1");
-    return write(workbook, { bookType: "xlsx", type: "array" });
-  });
-}
-
-function northOrderTableBytes(table) {
-  return import("xlsx").then(({ utils, write }) => {
-    const rows = [
-      ["Позиция", "Заказано", "Комментарий"],
-      ...table.rows.map((item) => [item.name, item.quantity, item.comment]),
-    ];
-    const workbook = utils.book_new();
-    const sheet = utils.aoa_to_sheet(rows);
-    sheet["!cols"] = [
-      { wch: 72 },
-      { wch: 14 },
-      { wch: 80 },
-    ];
-    utils.book_append_sheet(workbook, sheet, "Заказ");
-    return write(workbook, { bookType: "xlsx", type: "array" });
-  });
+function prepareRemoteDownloadLinks(files, targetLinks = downloadLinks) {
+  targetLinks.innerHTML = files
+    .map((file) => `<a class="file-link" href="${escapeHtml(file.download_url || file.downloadUrl)}" download="${escapeHtml(file.name)}">${escapeHtml(file.label || file.name)}</a>`)
+    .join("");
+  targetLinks.classList.remove("hidden");
 }
 
 function formatNorthQuantity(value) {
@@ -1455,20 +1414,19 @@ function confirmNorthMerge(entries, result = null) {
   });
 }
 
-function prepareNorthDownloadLinks(files) {
-  clearNorthDownloadLinks();
-  currentNorthDownloadUrls = files.map((file) => URL.createObjectURL(file.blob));
-  northDownloadLinks.innerHTML = files
-    .map((file, index) => `<a class="file-link" href="${currentNorthDownloadUrls[index]}" download="${escapeHtml(file.name)}">${escapeHtml(file.label)}</a>`)
-    .join("");
-  northDownloadLinks.classList.remove("hidden");
-  currentNorthDownloadUrls.forEach((url, index) => {
-    window.setTimeout(() => triggerDownload(url, files[index].name), index * 250);
-  });
+function normalizeNorthResult(report, job) {
+  return {
+    hasTyumenSource: Boolean(report.has_tyumen_source || report.hasTyumenSource),
+    uploadedCities: report.uploaded_cities || report.uploadedCities || [],
+    planRows: report.plan_rows || report.planRows || [],
+    transfers: report.transfers || [],
+    confirmationGroups: report.confirmation_groups || report.confirmationGroups || [],
+    summary: report.summary || { kind: job.brand || selectedNorthBrand() },
+  };
 }
 
 downloadButton.addEventListener("click", async () => {
-  if (!currentResults.length || !currentBlankWorkbooks.size || !currentSourceWorkbook) {
+  if (!currentJobId) {
     alert("Сначала заполните бланк.");
     return;
   }
@@ -1479,35 +1437,17 @@ downloadButton.addEventListener("click", async () => {
   statusEl.textContent = "Сохраняю правки...";
   try {
     const edits = collectEdits();
-    const files = [];
-    for (const result of currentResults) {
-      const edited = applyFinalEdits({
-        blankWorkbook: result.blankWorkbook,
-        sourceWorkbook: currentSourceWorkbook,
-        reportRows: result.reportRows,
-        edits,
-        brand: selectedBrand(),
-      });
-      result.blankWorkbook = edited.blankWorkbook;
-      currentSourceWorkbook = edited.sourceWorkbook;
-      files.push({
-        label: `Скачать ${result.blankLabel || "бланк"}`,
-        name: currentBlankOutputNames.get(result.blankId) || "blank заполненный.xlsx",
-        blob: new Blob([saveXlsx(result.blankWorkbook)], {
-          type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-        }),
-      });
-    }
-
-    const sourceBytes = saveXlsx(currentSourceWorkbook);
-    files.push({
-      label: "Скачать таблицу заказа",
-      name: currentSourceOutputName,
-      blob: new Blob([sourceBytes], {
-        type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-      }),
+    const editedJob = await submitJobEdits(currentJobId, edits);
+    const finalJob = await pollJob(editedJob.id, {
+      onUpdate: (job) => {
+        statusEl.textContent = jobStatusText(job);
+      },
     });
-    prepareDownloadLinks(files);
+    if (finalJob.status === "failed") {
+      throw new Error(finalJob.error?.message || "Не удалось подготовить файлы.");
+    }
+    const payload = await listJobFiles(finalJob.id);
+    prepareRemoteDownloadLinks(payload.files || []);
     statusEl.textContent = "Файлы готовы";
   } catch (error) {
     statusEl.textContent = "Ошибка";
@@ -1532,21 +1472,26 @@ northForm.addEventListener("submit", async (event) => {
   clearNorthDownloadLinks();
   northResult.classList.add("hidden");
   currentNorthResult = null;
+  currentNorthJobId = null;
 
   try {
-    const blanks = await Promise.all(entries.map(async (entry) => ({
-      fileName: entry.file.name,
-      workbook: await loadWorkbook(entry.file),
-      variant: entry.variant || "",
-      variantLabel: entry.variantLabel || "",
-    })));
     const tyumenSourceFile = northSourceFile.files[0] || null;
-    const tyumenSourceWorkbook = tyumenSourceFile ? await loadWorkbook(tyumenSourceFile) : null;
-    const result = buildNorthOrderFiles(blanks, {
+    const created = await createNorthMergeJob({
       brand: selectedNorthBrand(),
-      tyumenSourceWorkbook,
-      tyumenSourceFileName: tyumenSourceFile?.name || "",
+      blankFiles: entries,
+      tyumenSourceFile,
     });
+    currentNorthJobId = created.id;
+    const job = await pollJob(created.id, {
+      onUpdate: (updatedJob) => {
+        northStatus.textContent = jobStatusText(updatedJob);
+      },
+    });
+    if (job.status === "failed") {
+      throw new Error(job.error?.message || "Задача завершилась с ошибкой.");
+    }
+    const report = await getJobReport(job.id);
+    const result = normalizeNorthResult(report, job);
     if (!(await confirmNorthMerge(entries, result))) {
       northStatus.textContent = "Готово";
       return;
@@ -1581,7 +1526,7 @@ northPlanBody.addEventListener("input", (event) => {
 });
 
 northDownloadButton.addEventListener("click", async () => {
-  if (!currentNorthResult) {
+  if (!currentNorthResult || !currentNorthJobId) {
     alert("Сначала соедините бланки.");
     return;
   }
@@ -1597,38 +1542,18 @@ northDownloadButton.addEventListener("click", async () => {
       northStatus.textContent = "Готово";
       return;
     }
-    const finalized = finalizeNorthOrderFiles(currentNorthResult, edits, { allowShortSupplierOrder: true });
-    const summaryFiles = finalized.summaryFiles?.length
-      ? finalized.summaryFiles
-      : [{ label: "общий бланк", fileName: finalized.summaryFileName, workbook: finalized.summaryWorkbook }];
-    const outputFiles = summaryFiles.map((file) => ({
-      label: `Скачать ${file.label || "общий бланк"}`,
-      name: file.fileName,
-      blob: new Blob([saveXlsx(file.workbook)], {
-        type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-      }),
-    }));
-    for (const transfer of finalized.transfers) {
-      outputFiles.push({
-        label: `Скачать перемещение ${transfer.city.label}`,
-        name: transfer.fileName,
-        blob: new Blob([await transferWorkbookBytes(transfer)], {
-          type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-        }),
-      });
+    const editedJob = await submitJobEdits(currentNorthJobId, edits);
+    const finalJob = await pollJob(editedJob.id, {
+      onUpdate: (job) => {
+        northStatus.textContent = jobStatusText(job);
+      },
+    });
+    if (finalJob.status === "failed") {
+      throw new Error(finalJob.error?.message || "Не удалось подготовить файлы.");
     }
-    if (finalized.orderTable?.rows?.length) {
-      outputFiles.push({
-        label: "Скачать таблицу заказа",
-        name: finalized.orderTable.fileName,
-        blob: new Blob([await northOrderTableBytes(finalized.orderTable)], {
-          type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-        }),
-      });
-    }
-
-    northSummary.textContent = `Города: ${finalized.uploadedCities.join(", ")}. В общем бланке позиций с заказом: ${finalized.totalsCount}. Перемещений: ${finalized.transfers.length}.${finalized.appendedToSummary.length ? ` Добавлено в конец общего бланка: ${finalized.appendedToSummary.length}.` : ""}${finalized.adjustedToMinimum ? ` Факт отличается от потребности: ${finalized.adjustedToMinimum}.` : ""}`;
-    prepareNorthDownloadLinks(outputFiles);
+    const payload = await listJobFiles(finalJob.id);
+    northSummary.textContent = "Файлы готовы к скачиванию.";
+    prepareRemoteDownloadLinks(payload.files || [], northDownloadLinks);
     northStatus.textContent = "Файлы готовы";
   } catch (error) {
     northStatus.textContent = "Ошибка";

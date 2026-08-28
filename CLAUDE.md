@@ -4,14 +4,16 @@ This file provides guidance to Claude Code when working with code in this reposi
 
 ## Overview
 
-Frontend-only Vercel tool for filling supplier order workbooks from Excel exports.
+Order-fill service system for processing supplier Excel workbooks.
 
-- `src/app.js` owns the browser UI, file upload flow, reports, manual edits, and downloads.
-- `src/workbookProcessor.js` owns Excel parsing, column detection, item matching, brand rules, order calculation, and workbook output.
-- `scripts/test-workbook.mjs` is the regression suite for workbook processing behavior.
-- `docs/` describes the target service architecture and migration plan; it is not the current runtime.
+- `src/` contains the thin browser frontend. It owns upload UI, report rendering, manual edits, polling, and download links.
+- `src/api/` contains frontend API clients. UI code should depend on these clients instead of calling service endpoints ad hoc.
+- `services/api-service/` owns HTTP endpoints, job metadata, upload handling, queue publication, and object-storage boundaries.
+- `services/document-service/` owns Excel parsing/writing, brand rules, matching, document job orchestration, and reports.
+- `packages/contracts/openapi.yaml` is the API contract.
+- `deploy/docker-compose.yml` is the local service runtime.
 
-The app processes files locally in the browser. Do not add a backend dependency to the current app unless the task explicitly moves into the service rewrite.
+The frontend must not process Excel workbooks locally. Excel logic belongs in `document-service`.
 
 ## Common Commands
 
@@ -21,21 +23,25 @@ Install dependencies first on a fresh checkout:
 npm ci
 ```
 
-Run locally:
+Run frontend locally:
 
 ```bash
 npm run dev
 ```
 
+Run the full local stack:
+
+```bash
+docker compose -f deploy/docker-compose.yml up --build
+```
+
 Build and test:
 
 ```bash
-npm run test:workbook
-npm run build
 npm run verify
 ```
 
-`npm run verify` is the local gate for this repository.
+`npm run verify` is the local precommit gate for this repository.
 
 ## Pre-Commit Gate
 
@@ -50,11 +56,10 @@ npm run verify
 This currently expands to:
 
 ```bash
-npm run test:workbook
 npm run build
+npm run verify:api
+npm run verify:document
 ```
-
-Run both even for a small change. Workbook logic and UI build failures often surface outside the file being edited.
 
 ### When dependencies changed
 
@@ -70,8 +75,9 @@ Commit `package-lock.json` together with `package.json` when dependency versions
 ## Working Rules
 
 - Keep workbook calculations deterministic and explainable unless the user explicitly asks for an ML experiment.
-- Preserve browser-only processing for the current Vercel app.
+- Keep frontend thin: UI, state, API orchestration, and rendering must be separated into focused modules.
+- Keep business rules out of HTTP handlers and browser code.
 - Do not execute macros from uploaded `.xlsm` files.
-- Keep generated output out of git: `dist/`, `test-output/`, `.vercel/`, and `node_modules/` are ignored.
+- Keep generated output out of git: `dist/`, `test-output/`, `.vercel/`, `node_modules/`, and `testdata/private/` are ignored.
 - Match existing brand-specific behavior before generalizing shared logic.
-- Add or update workbook regression coverage when changing matching, rounding, period validation, or order quantity calculations.
+- Add or update Go regression coverage when changing matching, rounding, period validation, or order quantity calculations.

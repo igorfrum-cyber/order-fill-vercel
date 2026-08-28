@@ -1,0 +1,8 @@
+node_modules
+dist
+test-output
+testdata/private
+.git
+.worktrees
+.vercel
+.DS_Store

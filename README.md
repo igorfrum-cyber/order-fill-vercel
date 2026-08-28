@@ -1,12 +1,11 @@
-# Заполнение бланка заказа — Vercel версия
+# Заполнение бланка заказа
 
-Это frontend-only версия инструмента. Excel-файлы обрабатываются прямо в браузере:
+Инструмент переписывается в сервисную схему:
 
-- файлы не отправляются на сервер;
-- backend не нужен;
-- подходит для бесплатного деплоя на Vercel;
-- сохраняет `.xlsx`, меняя только нужные ячейки количества;
-- скачивает два файла: заполненный бланк и заполненную таблицу заказа товара.
+- frontend отвечает за загрузку файлов, просмотр отчета и ручные правки;
+- api-service принимает jobs, хранит метаданные и отдает статус;
+- document-service владеет Excel-логикой и формированием отчетов;
+- Redis используется как очередь, PostgreSQL как хранилище метаданных, MinIO как S3-compatible object storage.
 
 ## Что делает
 
@@ -18,6 +17,21 @@
 - заполняет в таблице заказа товара колонки `Заказано по факту` и `Комментарий`.
 
 ## Локальный запуск
+
+Основной локальный runtime:
+
+```bash
+docker compose -f deploy/docker-compose.yml up --build
+```
+
+Сервисы:
+
+- frontend: http://127.0.0.1:3200
+- api-service health: http://127.0.0.1:8080/healthz
+- document-service health: http://127.0.0.1:8081/healthz
+- MinIO console: http://127.0.0.1:9001
+
+Frontend отдельно, для быстрой верстки:
 
 ```bash
 npm install
@@ -36,16 +50,17 @@ http://127.0.0.1:3200
 npm run verify
 ```
 
-## Деплой на Vercel
+## Docker Compose
 
-1. Загрузите папку `order-fill-vercel` в GitHub-репозиторий.
-2. В Vercel создайте новый проект из этого репозитория.
-3. Vercel сам подхватит настройки из `vercel.json`:
+Скопируйте `.env.example` в `.env` при необходимости локальных переопределений.
 
-```text
-Build Command: npm run build
-Output Directory: dist
-Install Command: npm ci
+```bash
+docker compose -f deploy/docker-compose.yml config
+docker compose -f deploy/docker-compose.yml up --build
 ```
 
-После деплоя Vercel выдаст прямую ссылку для закупщика.
+Для production-like локального запуска compose уже включает persistent volumes, healthchecks, restart policy и resource limits.
+
+## Контракты
+
+OpenAPI contract лежит в `packages/contracts/openapi.yaml`.
