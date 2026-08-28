@@ -1,5 +1,6 @@
 node_modules/
 dist/
 test-output/
+.worktrees/
 .vercel/
 .DS_Store
