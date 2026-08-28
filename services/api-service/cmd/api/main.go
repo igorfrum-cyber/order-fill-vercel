@@ -18,11 +18,12 @@ func main() {
 	objectStorage := storage.NewMemoryObjectStorage()
 	metrics := observability.NewMetrics()
 	jobService := jobs.NewService(jobs.ServiceConfig{
-		Repository: repository,
-		Storage:    objectStorage,
-		Queue:      queue,
-		Logger:     slog.Default(),
-		Metrics:    metrics,
+		Repository:       repository,
+		Storage:          objectStorage,
+		Queue:            queue,
+		Logger:           slog.Default(),
+		Metrics:          metrics,
+		PreviewProcessor: previewProcessor(),
 	})
 
 	slog.Info("starting api-service", "service", "api-service", "addr", addr)
@@ -37,4 +38,11 @@ func getenv(key, fallback string) string {
 		return value
 	}
 	return fallback
+}
+
+func previewProcessor() jobs.PreviewProcessor {
+	if getenv("API_DEV_PREVIEW", "true") == "false" {
+		return nil
+	}
+	return jobs.StaticPreviewProcessor{}
 }

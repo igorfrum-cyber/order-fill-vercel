@@ -59,6 +59,58 @@ func TestServiceCreatesQueuedJobWithStoredInputs(t *testing.T) {
 	}
 }
 
+func TestServicePreviewProcessorMovesJobToReviewAndStoresReport(t *testing.T) {
+	repository := NewMemoryRepository()
+	service := NewService(ServiceConfig{
+		Repository:       repository,
+		Storage:          &recordingStorage{},
+		Queue:            &recordingQueue{},
+		NewID:            fixedID("job-1"),
+		Now:              fixedNow(time.Date(2026, 8, 28, 9, 0, 0, 0, time.UTC)),
+		PreviewProcessor: StaticPreviewProcessor{},
+	})
+
+	job, err := service.CreateJob(context.Background(), CreateJobCommand{
+		Type:       JobTypeOrderFill,
+		Brand:      "angiopharm",
+		OrderMonth: "2026-08",
+		Files: []UploadFile{{
+			Name:        "source.xlsx",
+			ContentType: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+			Reader:      bytes.NewBufferString("source"),
+		}},
+	})
+	if err != nil {
+		t.Fatalf("CreateJob returned error: %v", err)
+	}
+
+	if job.Status != JobStatusNeedsReview {
+		t.Fatalf("expected needs_review preview job, got %q", job.Status)
+	}
+	report, err := service.Report(context.Background(), job.ID)
+	if err != nil {
+		t.Fatalf("Report returned error: %v", err)
+	}
+	if len(report.Rows) != 1 {
+		t.Fatalf("expected preview report row, got %#v", report.Rows)
+	}
+
+	completed, err := service.SubmitEdits(context.Background(), job.ID, []ManualEdit{{Key: "preview:job-1", Value: "1"}})
+	if err != nil {
+		t.Fatalf("SubmitEdits returned error: %v", err)
+	}
+	if completed.Status != JobStatusCompleted {
+		t.Fatalf("expected completed preview job, got %q", completed.Status)
+	}
+	files, err := service.Files(context.Background(), job.ID)
+	if err != nil {
+		t.Fatalf("Files returned error: %v", err)
+	}
+	if len(files) != 1 || files[0].DownloadURL == "" {
+		t.Fatalf("expected preview output file, got %#v", files)
+	}
+}
+
 func fixedID(value string) IDGenerator {
 	return func() string {
 		return value

@@ -35,23 +35,25 @@ type Queue interface {
 }
 
 type ServiceConfig struct {
-	Repository Repository
-	Storage    ObjectStorage
-	Queue      Queue
-	NewID      IDGenerator
-	Now        Clock
-	Logger     *slog.Logger
-	Metrics    Metrics
+	Repository       Repository
+	Storage          ObjectStorage
+	Queue            Queue
+	NewID            IDGenerator
+	Now              Clock
+	Logger           *slog.Logger
+	Metrics          Metrics
+	PreviewProcessor PreviewProcessor
 }
 
 type Service struct {
-	repository Repository
-	storage    ObjectStorage
-	queue      Queue
-	newID      IDGenerator
-	now        Clock
-	logger     *slog.Logger
-	metrics    Metrics
+	repository       Repository
+	storage          ObjectStorage
+	queue            Queue
+	newID            IDGenerator
+	now              Clock
+	logger           *slog.Logger
+	metrics          Metrics
+	previewProcessor PreviewProcessor
 }
 
 type Metrics interface {
@@ -76,13 +78,14 @@ type UploadFile struct {
 
 func NewService(config ServiceConfig) *Service {
 	return &Service{
-		repository: config.Repository,
-		storage:    config.Storage,
-		queue:      config.Queue,
-		newID:      defaultID(config.NewID),
-		now:        defaultClock(config.Now),
-		logger:     defaultLogger(config.Logger),
-		metrics:    config.Metrics,
+		repository:       config.Repository,
+		storage:          config.Storage,
+		queue:            config.Queue,
+		newID:            defaultID(config.NewID),
+		now:              defaultClock(config.Now),
+		logger:           defaultLogger(config.Logger),
+		metrics:          config.Metrics,
+		previewProcessor: config.PreviewProcessor,
 	}
 }
 
@@ -131,6 +134,24 @@ func (s *Service) CreateJob(ctx context.Context, command CreateJobCommand) (Job,
 	if s.metrics != nil {
 		s.metrics.AddJobCreated()
 	}
+	if s.previewProcessor != nil {
+		previewReport, outputFiles, err := s.previewProcessor.ProcessPreview(ctx, job)
+		if err != nil {
+			s.observeFailure(ctx, id, "preview_job_failed", startedAt, "preview_error", err)
+			return Job{}, fmt.Errorf("process preview job: %w", err)
+		}
+		if err := s.repository.SaveReport(ctx, previewReport); err != nil {
+			s.observeFailure(ctx, id, "save_preview_report_failed", startedAt, "repository_error", err)
+			return Job{}, fmt.Errorf("save preview report: %w", err)
+		}
+		job.Status = JobStatusNeedsReview
+		job.OutputFiles = outputFiles
+		job.UpdatedAt = s.now().UTC()
+		if err := s.repository.Save(ctx, job); err != nil {
+			s.observeFailure(ctx, id, "save_preview_job_failed", startedAt, "repository_error", err)
+			return Job{}, fmt.Errorf("save preview job: %w", err)
+		}
+	}
 	s.logger.InfoContext(ctx, "job created",
 		"service", "api-service",
 		"job_id", job.ID,
@@ -159,6 +180,9 @@ func (s *Service) SubmitEdits(ctx context.Context, jobID string, edits []ManualE
 		if strings.TrimSpace(edit.Key) == "" {
 			return Job{}, fmt.Errorf("%w: edit key is required", ErrInvalidJob)
 		}
+	}
+	if s.previewProcessor != nil {
+		return s.repository.UpdateStatus(ctx, jobID, JobStatusCompleted)
 	}
 	return s.repository.UpdateStatus(ctx, jobID, JobStatusFinalizing)
 }

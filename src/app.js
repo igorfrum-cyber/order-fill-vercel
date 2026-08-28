@@ -7,6 +7,29 @@ import {
   pollJob,
   submitJobEdits,
 } from "./api/jobs.js";
+import { adjustmentLabelForBrand, mainBlankLabelForBrand, usesChristinaSplitBlank } from "./features/brands/brandPresentation.js";
+import { remoteDownloadLinksHtml } from "./features/downloads/downloadLinks.js";
+import { editRequiresComment, normalizeOrderValue } from "./features/order/editRules.js";
+import { runNorthMergeJob } from "./features/jobs/northJobWorkflow.js";
+import { runOrderFillJob } from "./features/jobs/orderJobWorkflow.js";
+import {
+  baselineForReportRow,
+  combinedSummary,
+  initialComment,
+  isIssueRow,
+  isPriorityRow,
+  jobStatusText,
+  rowMatchesFilter,
+  statusLabel,
+} from "./features/report/reportModel.js";
+import { duplicateDescription as formatDuplicateDescription, issueReportCsv as buildIssueReportCsv } from "./features/report/issueReport.js";
+import {
+  NORTH_CITIES,
+  defaultNorthActual,
+  formatNorthQuantity,
+  northPlanComment,
+  recalculateNorthRow,
+} from "./features/north/northPlan.js";
 
 const form = document.querySelector("#uploadForm");
 const statusEl = document.querySelector("#status");
@@ -76,8 +99,6 @@ const northMergeContinue = document.querySelector("#northMergeContinue");
 
 let currentResults = [];
 let currentReportRows = [];
-let currentDownloadUrls = [];
-let currentNorthDownloadUrls = [];
 let currentNorthResult = null;
 let currentJobId = null;
 let currentNorthJobId = null;
@@ -88,16 +109,6 @@ let northPlanEdits = new Map();
 let isFormFilled = false;
 let activeFilter = null;
 let editState = new Map();
-
-const NORTH_CITIES = [
-  { key: "tyumen", label: "Тюмень" },
-  { key: "surgut", label: "Сургут" },
-  { key: "nizhnevartovsk", label: "Вартовск" },
-  { key: "urengoy", label: "Уренгой" },
-];
-
-const NORTH_ALLOCATION_ORDER = ["nizhnevartovsk", "urengoy", "surgut"];
-const NORTH_TRANSFER_DISPLAY_ORDER = ["surgut", "nizhnevartovsk", "urengoy"];
 
 function setDefaultOrderMonth() {
   const date = new Date();
@@ -285,27 +296,8 @@ function selectedBrand() {
   return brandSelect.value || "angiopharm";
 }
 
-function adjustmentLabelForBrand(brand) {
-  if (brand === "christina") return "Кратность";
-  if (brand === "levissime") return "Кол-во в уп.";
-  if (brand === "sothys") return "Округление";
-  if (brand === "novacutan") return "Мин. заказ";
-  if (brand === "skin_synergy") return "Округление";
-  if (brand === "klapp") return "Кратность";
-  return "Шт. в коробке";
-}
-
-function mainBlankLabelForBrand(brand) {
-  if (brand === "levissime") return "LeviSsime";
-  if (brand === "sothys") return "SOTHYS";
-  if (brand === "novacutan") return "NOVACUTAN";
-  if (brand === "skin_synergy") return "Skin Synergy";
-  if (brand === "klapp") return "KLAPP";
-  return "ANGIO";
-}
-
 function isNorthChristinaMode() {
-  return selectedNorthBrand() === "christina";
+  return usesChristinaSplitBlank(selectedNorthBrand());
 }
 
 function selectedNorthBrand() {
@@ -336,7 +328,7 @@ function resetNorthUploadedFiles() {
 
 function configureBrandFields() {
   const brand = selectedBrand();
-  const isChristina = brand === "christina";
+  const isChristina = usesChristinaSplitBlank(brand);
   blankField.classList.toggle("hidden", isChristina);
   homeField.classList.toggle("hidden", !isChristina);
   proffField.classList.toggle("hidden", !isChristina);
@@ -397,20 +389,6 @@ function resetFillState() {
   setSubmitButtonState("ready");
 }
 
-function statusLabel(status) {
-  const labels = {
-    matched: "Заполнено",
-    matched_by_name: "По названию",
-    warning_name_differs: "Проверить название",
-    warning_name_only: "Проверить без артикула",
-    left_blank_nonpositive: "Пусто",
-    not_in_source: "Нет в таблице",
-    not_in_blank: "Нет в бланке",
-    source_duplicate: "Дубль в таблице",
-  };
-  return labels[status] || status;
-}
-
 function escapeHtml(value) {
   return String(value ?? "")
     .replaceAll("&", "&amp;")
@@ -418,21 +396,6 @@ function escapeHtml(value) {
     .replaceAll(">", "&gt;")
     .replaceAll('"', "&quot;")
     .replaceAll("'", "&#039;");
-}
-
-function combinedSummary(results) {
-  const first = results[0]?.summary || {};
-  return {
-    ...first,
-    filled: results.reduce((sum, result) => sum + result.summary.filled, 0),
-    leftBlank: results.reduce((sum, result) => sum + result.summary.leftBlank, 0),
-    suspicious: results.reduce((sum, result) => sum + result.summary.suspicious, 0),
-    notInSource: results.reduce((sum, result) => sum + result.summary.unmatched, 0),
-    notInBlank: currentReportRows.filter((row) => row.status === "not_in_blank").length,
-    duplicates: currentReportRows.filter((row) => row.duplicate).length,
-    blankDuplicateArticles: results.reduce((sum, result) => sum + (result.summary.blankDuplicateArticles || 0), 0),
-    blankWarnings: results.flatMap((result) => result.summary.blankWarnings || []),
-  };
 }
 
 function renderMetrics(summary) {
@@ -460,35 +423,12 @@ function renderMetrics(summary) {
   periodNote.textContent = `${summary.brand}. Заказ на ${summary.orderMonthLabel}. Период: ${summary.actualMainPeriod}. Прошлый период: ${summary.actualPreviousPeriod}.${cityNote}${blankNote}`;
 }
 
-function initialComment(row) {
-  return row.sourceComment || row.autoComment || "";
-}
-
 function rowEdit(row) {
   const key = row.key || `${row.blankId}:${row.blankRow}`;
   if (!editState.has(key)) {
     editState.set(key, { value: row.inserted ?? "", comment: initialComment(row) });
   }
   return editState.get(key);
-}
-
-function isIssueRow(row) {
-  return row.status === "warning_name_differs" || row.status === "warning_name_only";
-}
-
-function isPriorityRow(row) {
-  return isIssueRow(row) || Boolean(row.duplicate);
-}
-
-function rowMatchesFilter(row, filter) {
-  if (!filter) return true;
-  if (filter === "filled") return (row.status === "matched" || row.status === "matched_by_name") && row.inserted != null;
-  if (filter === "leftBlank") return row.status === "left_blank_nonpositive";
-  if (filter === "suspicious") return isIssueRow(row);
-  if (filter === "notInSource") return row.status === "not_in_source";
-  if (filter === "notInBlank") return row.status === "not_in_blank";
-  if (filter === "duplicates") return Boolean(row.duplicate);
-  return true;
 }
 
 function rowSearchText(row) {
@@ -522,11 +462,7 @@ function filterTitle(filter) {
 }
 
 function duplicateDescription(row) {
-  const candidates = row.duplicateCandidates || [];
-  if (!candidates.length) return "";
-  return candidates
-    .map((item) => `Строка ${item.sourceRow}: ${item.sourceName || ""}`)
-    .join("; ");
+  return formatDuplicateDescription(row.duplicateCandidates || []);
 }
 
 function duplicateDetailsHtml(row) {
@@ -541,11 +477,6 @@ function duplicateDetailsHtml(row) {
     `)
     .join("");
   return `<div class="duplicate-details"><div>Дубли в таблице:</div>${rows}</div>`;
-}
-
-function baselineForReportRow(row) {
-  if (Number(row.recommended) < 1.5 || Number(row.rounded) <= 0) return null;
-  return Number(row.rounded);
 }
 
 function renderRows(targetBody, rows) {
@@ -739,65 +670,10 @@ function sourceDuplicateRows(results) {
   return rows;
 }
 
-function jobStatusText(job) {
-  const labels = {
-    queued: "Задача в очереди...",
-    processing: "Обработка...",
-    needs_review: "Проверьте расчет",
-    finalizing: "Готовлю файлы...",
-    completed: "Готово",
-    failed: job.error?.message || "Ошибка обработки",
-  };
-  return labels[job.status] || "Обработка...";
-}
-
-function normalizeReportRow(row) {
-  return {
-    ...row,
-    blankId: row.blank_id || row.blankId || "main",
-    blankLabel: row.blank_label || row.blankLabel || "",
-    blankRow: row.blank_row || row.blankRow || "",
-    blankQuantityCol: row.blank_quantity_col || row.blankQuantityCol || null,
-    blankArticle: row.blank_article || row.blankArticle || "",
-    blankName: row.blank_name || row.blankName || "",
-    blankUnit: row.blank_unit || row.blankUnit || "",
-    blankBoxSize: row.blank_box_size || row.blankBoxSize || "",
-    sourceRow: row.source_row || row.sourceRow || null,
-    sourceArticle: row.source_article || row.sourceArticle || "",
-    sourceName: row.source_name || row.sourceName || "",
-    hasOrderedFact: row.has_ordered_fact || row.hasOrderedFact || false,
-    orderedFact: row.ordered_fact ?? row.orderedFact ?? null,
-    sourceComment: row.source_comment || row.sourceComment || "",
-    inTransit: row.in_transit ?? row.inTransit ?? "",
-    baseRounded: row.base_rounded ?? row.baseRounded ?? null,
-    autoComment: row.auto_comment || row.autoComment || "",
-    boxAdjusted: row.box_adjusted || row.boxAdjusted || false,
-    duplicateCandidates: row.duplicate_candidates || row.duplicateCandidates || [],
-    editable: row.editable !== false,
-  };
-}
-
-function reportSummaryFromRows(rows, job) {
-  return {
-    brand: job.brand || selectedBrand(),
-    orderMonthLabel: job.order_month || orderMonth.value,
-    actualMainPeriod: "",
-    actualPreviousPeriod: "",
-    sourceCity: "",
-    cityRule: "",
-    deliveryWeeks: "",
-    blankDuplicateArticles: 0,
-    filled: rows.filter((row) => (row.status === "matched" || row.status === "matched_by_name") && row.inserted != null).length,
-    leftBlank: rows.filter((row) => row.status === "left_blank_nonpositive").length,
-    suspicious: rows.filter(isIssueRow).length,
-    unmatched: rows.filter((row) => row.status === "not_in_source").length,
-  };
-}
-
 form.addEventListener("submit", async (event) => {
   event.preventDefault();
   const brand = selectedBrand();
-  const blankInputs = brand === "christina"
+  const blankInputs = usesChristinaSplitBlank(brand)
     ? [
         { id: "home", label: "HOME", file: homeFile.files[0] },
         { id: "proff", label: "PROFF", file: proffFile.files[0] },
@@ -819,24 +695,21 @@ form.addEventListener("submit", async (event) => {
   currentJobId = null;
 
   try {
-    const created = await createOrderFillJob({
-      brand,
-      orderMonth: orderMonth.value,
-      sourceFile: sourceFile.files[0],
-      blankFiles: blankInputs.map((item) => item.file),
-    });
-    currentJobId = created.id;
-    const job = await pollJob(created.id, {
-      onUpdate: (updatedJob) => {
-        statusEl.textContent = jobStatusText(updatedJob);
+    const result = await runOrderFillJob({
+      api: { createOrderFillJob, pollJob, getJobReport },
+      command: {
+        brand,
+        orderMonth: orderMonth.value,
+        sourceFile: sourceFile.files[0],
+        blankFiles: blankInputs.map((item) => item.file),
+      },
+      onStatus: (text) => {
+        statusEl.textContent = text;
       },
     });
-    if (job.status === "failed") {
-      throw new Error(job.error?.message || "Задача завершилась с ошибкой.");
-    }
-    const report = await getJobReport(job.id);
-    const rows = (report.rows || []).map(normalizeReportRow);
-    currentResults = [{ summary: report.summary || reportSummaryFromRows(rows, job), reportRows: rows }];
+    const rows = result.rows;
+    currentJobId = result.jobId;
+    currentResults = result.results;
     currentReportRows = rows;
     editState = new Map(rows.map((row) => [row.key || `${row.blankId}:${row.blankRow}`, { value: row.inserted ?? "", comment: initialComment(row) }]));
     renderMetrics(combinedSummary(currentResults));
@@ -876,75 +749,14 @@ function issueReportRows() {
   return currentReportRows.filter((row) => row.status === "warning_name_differs" || row.status === "warning_name_only" || row.status === "not_in_source" || row.duplicate);
 }
 
-function issueReason(row) {
-  const reasons = [];
-  if (row.status === "warning_name_only") reasons.push("В таблице заказа нет артикула, найдено только по названию");
-  if (row.status === "warning_name_differs") reasons.push("Артикул найден, но название сильно отличается");
-  if (row.status === "not_in_source") reasons.push("Позиция есть в бланке, но не найдена в таблице заказа");
-  if (row.status === "source_duplicate") reasons.push("В таблице заказа есть несколько строк с одним артикулом");
-  if (row.duplicate) reasons.push("Есть дублирующиеся кандидаты по артикулу");
-  const duplicateText = duplicateDescription(row);
-  if (duplicateText) reasons.push(`Дубли в таблице: ${duplicateText}`);
-  return reasons.join("; ");
-}
-
-function csvCell(value) {
-  return `"${String(value ?? "").replaceAll('"', '""')}"`;
-}
-
-function issueReportCsv() {
-  const header = [
-    "Статус",
-    "Бланк",
-    "Артикул в бланке",
-    "Товар в бланке",
-    "Объем",
-    "Строка в таблице заказа",
-    "Артикул в 1С",
-    "Товар в 1С",
-    "Проблема",
-    "Комментарий менеджера",
-  ];
-  const rows = issueReportRows().map((row) => {
-    const edit = rowEdit(row);
-    return [
-      statusLabel(row.status),
-      row.blankLabel,
-      row.blankArticle,
-      row.blankName,
-      row.blankUnit,
-      row.sourceRow || "",
-      row.sourceArticle,
-      row.sourceName,
-      issueReason(row),
-      edit.comment,
-    ];
-  });
-  return [header, ...rows].map((row) => row.map(csvCell).join(";")).join("\n");
-}
-
 function clearDownloadLinks() {
-  for (const url of currentDownloadUrls) URL.revokeObjectURL(url);
-  currentDownloadUrls = [];
   downloadLinks.classList.add("hidden");
   downloadLinks.innerHTML = "";
 }
 
 function clearNorthDownloadLinks() {
-  for (const url of currentNorthDownloadUrls) URL.revokeObjectURL(url);
-  currentNorthDownloadUrls = [];
   northDownloadLinks.classList.add("hidden");
   northDownloadLinks.innerHTML = "";
-}
-
-function normalizeOrderValue(value) {
-  const text = String(value ?? "").trim().replace(",", ".");
-  if (text === "") return null;
-  const number = Number(text);
-  if (!Number.isFinite(number) || number < 0) {
-    throw new Error("Количество должно быть неотрицательным числом.");
-  }
-  return number;
 }
 
 function validateEdits() {
@@ -958,7 +770,6 @@ function validateEdits() {
     const edit = rowEdit(rowInfo);
     const initial = rowInfo.inserted == null ? null : Number(rowInfo.inserted);
     const baseline = baselineForReportRow(rowInfo);
-    const autoComment = (rowInfo.autoComment || "").trim().toLowerCase();
     let value;
     try {
       value = normalizeOrderValue(edit.value);
@@ -967,11 +778,7 @@ function validateEdits() {
       invalidCount += 1;
       continue;
     }
-    const comment = edit.comment.trim();
-    const requiresComment = value !== baseline;
-    const stillAutoComment = autoComment && comment.toLowerCase() === autoComment;
-    const autoCommentAllowed = stillAutoComment && value === initial;
-    if (requiresComment && (!comment || (stillAutoComment && !autoCommentAllowed))) {
+    if (editRequiresComment({ value, baseline, initial, comment: edit.comment, autoComment: rowInfo.autoComment })) {
       document.querySelectorAll(`[data-key="${CSS.escape(key)}"]`).forEach((input) => input.closest("tr")?.classList.add("invalid"));
       invalidCount += 1;
     }
@@ -1030,7 +837,6 @@ function rowNeedsComment(row) {
 
   const initial = qtyInput.dataset.initialValue === "" ? null : Number(qtyInput.dataset.initialValue);
   const baseline = qtyInput.dataset.baselineValue === "" ? null : Number(qtyInput.dataset.baselineValue);
-  const autoComment = (qtyInput.dataset.autoComment || "").trim().toLowerCase();
   let value;
   try {
     value = normalizeOrderValue(qtyInput.value);
@@ -1038,10 +844,13 @@ function rowNeedsComment(row) {
     return false;
   }
 
-  const comment = commentInput.value.trim();
-  const stillAutoComment = autoComment && comment.toLowerCase() === autoComment;
-  const autoCommentAllowed = stillAutoComment && value === initial;
-  return value !== baseline && (!comment || (stillAutoComment && !autoCommentAllowed));
+  return editRequiresComment({
+    value,
+    baseline,
+    initial,
+    comment: commentInput.value,
+    autoComment: qtyInput.dataset.autoComment,
+  });
 }
 
 function updateCommentHint(row) {
@@ -1065,119 +874,15 @@ function downloadIssueReport() {
     alert("Нет спорных строк для отчета.");
     return;
   }
-  const blob = new Blob([`\ufeff${issueReportCsv()}`], { type: "text/csv;charset=utf-8" });
+  const blob = new Blob([`\ufeff${buildIssueReportCsv(rows, rowEdit)}`], { type: "text/csv;charset=utf-8" });
   const url = URL.createObjectURL(blob);
   triggerDownload(url, "отчет для исправления в 1С.csv");
   window.setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
-function prepareDownloadLinks(files) {
-  clearDownloadLinks();
-  currentDownloadUrls = files.map((file) => URL.createObjectURL(file.blob));
-
-  downloadLinks.innerHTML = files
-    .map((file, index) => `<a class="file-link" href="${currentDownloadUrls[index]}" download="${escapeHtml(file.name)}">${escapeHtml(file.label)}</a>`)
-    .join("");
-  downloadLinks.classList.remove("hidden");
-
-  currentDownloadUrls.forEach((url, index) => {
-    window.setTimeout(() => triggerDownload(url, files[index].name), index * 250);
-  });
-}
-
 function prepareRemoteDownloadLinks(files, targetLinks = downloadLinks) {
-  targetLinks.innerHTML = files
-    .map((file) => `<a class="file-link" href="${escapeHtml(file.download_url || file.downloadUrl)}" download="${escapeHtml(file.name)}">${escapeHtml(file.label || file.name)}</a>`)
-    .join("");
+  targetLinks.innerHTML = remoteDownloadLinksHtml(files);
   targetLinks.classList.remove("hidden");
-}
-
-function formatNorthQuantity(value) {
-  const number = Number(value || 0);
-  if (!Number.isFinite(number) || number <= 0) return "";
-  if (Number.isInteger(number)) return String(number);
-  return String(Number(number.toFixed(2)));
-}
-
-function formatNorthCommentQuantity(value) {
-  const number = Math.round(Number(value || 0));
-  return Number.isFinite(number) && number > 0 ? String(number) : "";
-}
-
-function supplierUnitsFromPieces(quantity, unitSize = 1) {
-  const number = Number(quantity || 0);
-  const size = Number(unitSize || 1);
-  if (!Number.isFinite(number) || number <= 0) return null;
-  if (!Number.isFinite(size) || size <= 1) return Number(number.toFixed(2));
-  return Math.ceil(number / size);
-}
-
-function demandPiecesFromSupplierUnits(quantity, unitSize = 1) {
-  const number = Number(quantity || 0);
-  const size = Number(unitSize || 1);
-  if (!Number.isFinite(number) || number <= 0) return 0;
-  return Number((number * (Number.isFinite(size) && size > 0 ? size : 1)).toFixed(2));
-}
-
-function northTransferParts(row) {
-  const quantities = new Map((row.cities || []).map((city) => [city.key, Number(city.quantity || 0)]));
-  return NORTH_TRANSFER_DISPLAY_ORDER
-    .map((cityKey) => {
-      const city = NORTH_CITIES.find((item) => item.key === cityKey);
-      return city ? { ...city, quantity: quantities.get(city.key) || 0 } : null;
-    })
-    .filter(Boolean);
-}
-
-function northSupplierOrderText(row, actual) {
-  const actualRounded = Math.round(Number(actual || 0));
-  const neededRounded = Math.round(Number(row.supplierNeed || 0));
-  const extraRounded = Math.max(0, actualRounded - neededRounded);
-  const unitNote = Number(row.supplierUnitSize || 1) > 1 ? ` коробок по ${Number(row.supplierUnitSize)}` : "";
-  if (extraRounded > 0) {
-    return `${neededRounded} + ${extraRounded} (до минимального) = ${actualRounded}${unitNote}`;
-  }
-  return `${formatNorthQuantity(actual)}${unitNote}`;
-}
-
-function supplierPartsForNorthActual(row, actualValue = row.actualSupplierOrder) {
-  const actual = demandPiecesFromSupplierUnits(actualValue, row.supplierUnitSize);
-  const northParts = (row.supplierParts || []).filter((part) => part.key !== "tyumen");
-  const northNeed = northParts.reduce((sum, part) => sum + Number(part.quantity || 0), 0);
-  const tyumenQuantity = Math.max(0, actual - northNeed);
-  return [
-    ...(tyumenQuantity > 0 ? [{ key: "tyumen", label: "Тюмень", quantity: Number(tyumenQuantity.toFixed(2)) }] : []),
-    ...northParts,
-  ];
-}
-
-function northPlanComment(row, actualValue = row.actualSupplierOrder) {
-  const lines = [];
-  const actual = Number(actualValue || 0);
-  const supplierParts = supplierPartsForNorthActual(row, actualValue);
-  const tyumenSupplier = supplierParts.find((part) => part.key === "tyumen");
-  const transferParts = northTransferParts(row);
-
-  if (actual > 0) lines.push(`Заказать у поставщика: ${northSupplierOrderText(row, actual)}`);
-  for (const part of transferParts) {
-    if (Number(part.quantity || 0) > 0) lines.push(`Отправить в ${part.label}: ${formatNorthQuantity(part.quantity)}`);
-  }
-  if (Number(tyumenSupplier?.quantity || 0) > 0) {
-    lines.push(`Оставить в Тюмени: ${formatNorthCommentQuantity(tyumenSupplier.quantity)}`);
-  }
-  if (!lines.length && row.northNeed > 0) lines.push("Закрывается остатком Тюмени");
-  return lines.join("\n");
-}
-
-function nearestNorthMultiple(value, multiple) {
-  const number = Number(value || 0);
-  const step = Math.round(Number(multiple));
-  if (!Number.isFinite(number) || number <= 0) return "";
-  if (!Number.isFinite(step) || step <= 0) return Number(number.toFixed(2));
-  const lower = Math.floor(number / step) * step;
-  const upper = Math.ceil(number / step) * step;
-  if (lower <= 0) return upper;
-  return upper - number <= number - lower ? upper : lower;
 }
 
 function northCityInputs(row) {
@@ -1226,14 +931,6 @@ function renderNorthPlan(result) {
     .join("");
 }
 
-function defaultNorthActual(row, supplierNeed) {
-  if (supplierNeed <= 0) return "";
-  if (currentNorthResult?.summary?.kind === "klapp") return nearestNorthMultiple(supplierNeed, 3);
-  if (currentNorthResult?.summary?.kind !== "novacutan") return Number(supplierNeed.toFixed(2));
-  const minimum = Number(row.novacutanMinimum || 100);
-  return Math.round(Math.max(supplierNeed, minimum) / 10) * 10;
-}
-
 function northCityQuantities(rowEl) {
   const quantities = {};
   for (const input of rowEl.querySelectorAll(".north-city-input")) {
@@ -1242,62 +939,13 @@ function northCityQuantities(rowEl) {
   return quantities;
 }
 
-function recalculateNorthRow(row, quantities) {
-  const cityMap = new Map(Object.entries(quantities).map(([key, value]) => [key, Number(value || 0)]));
-  const tyumenUploadedOrder = Number(cityMap.get("tyumen") || 0);
-  const tyumenPlannedOrder = cityMap.has("tyumen") ? tyumenUploadedOrder : Number(row.tyumenPlannedOrder || 0);
-  const tyumenSupplierNeed = Math.max(0, tyumenPlannedOrder);
-  const supplierUnitSize = Number(row.supplierUnitSize || 1);
-  let freeLeft = Math.max(0, Number(row.tyumenStock || 0) + Number(row.tyumenInTransit || 0) + tyumenPlannedOrder - Number(row.tyumenTarget || 0));
-  const supplierParts = [];
-  const tyumenParts = [];
-  let northNeed = 0;
-  let supplierNorthNeed = 0;
-  let fromTyumen = 0;
-  const cities = NORTH_CITIES
-    .map((city) => ({ key: city.key, label: city.label, quantity: Number((cityMap.get(city.key) || 0).toFixed(2)) }))
-    .filter((city) => city.quantity > 0);
-
-  if (tyumenSupplierNeed > 0) supplierParts.push({ key: "tyumen", label: "Тюмень", quantity: Number(tyumenSupplierNeed.toFixed(2)) });
-
-  for (const cityKey of NORTH_ALLOCATION_ORDER) {
-    const city = NORTH_CITIES.find((item) => item.key === cityKey);
-    if (!city) continue;
-    const quantity = Number(cityMap.get(city.key) || 0);
-    if (quantity <= 0) continue;
-    northNeed += quantity;
-    const fromTyumenPart = Math.min(quantity, freeLeft);
-    const fromSupplierPart = quantity - fromTyumenPart;
-    freeLeft -= fromTyumenPart;
-    fromTyumen += fromTyumenPart;
-    supplierNorthNeed += fromSupplierPart;
-    if (fromTyumenPart > 0) tyumenParts.push({ key: city.key, label: city.label, quantity: Number(fromTyumenPart.toFixed(2)) });
-    if (fromSupplierPart > 0) supplierParts.push({ key: city.key, label: city.label, quantity: Number(fromSupplierPart.toFixed(2)) });
-  }
-
-  const supplierDemandNeed = Number((tyumenSupplierNeed + supplierNorthNeed).toFixed(2));
-  const supplierNeed = supplierUnitsFromPieces(supplierDemandNeed, supplierUnitSize) || 0;
-  return {
-    ...row,
-    northNeed: Number(northNeed.toFixed(2)),
-    cities,
-    tyumenFree: Number(Math.max(0, Number(row.tyumenStock || 0) + Number(row.tyumenInTransit || 0) + tyumenPlannedOrder - Number(row.tyumenTarget || 0)).toFixed(2)),
-    fromTyumen: Number(fromTyumen.toFixed(2)),
-    supplierNorthNeed: Number(supplierNorthNeed.toFixed(2)),
-    supplierDemandNeed,
-    supplierNeed,
-    supplierParts,
-    tyumenParts,
-  };
-}
-
 function updateNorthRowDisplay(rowEl, changedCity = false) {
   const source = currentNorthResult?.planRows.find((item) => item.key === rowEl.dataset.key);
   if (!source) return;
   const calculated = recalculateNorthRow(source, northCityQuantities(rowEl));
   const actualInput = rowEl.querySelector(".north-actual-input");
   if (changedCity && actualInput?.dataset.manual !== "true") {
-    actualInput.value = defaultNorthActual(calculated, calculated.supplierNeed);
+    actualInput.value = defaultNorthActual(calculated, calculated.supplierNeed, currentNorthResult?.summary || {});
   }
   const actual = actualInput?.value.trim() === "" ? null : Number(actualInput.value);
   rowEl.querySelector('[data-role="tyumen-free"]').textContent = formatNorthQuantity(calculated.tyumenFree);
@@ -1330,7 +978,7 @@ function northShortOrderWarnings() {
     const input = rowEl.querySelector(".north-actual-input");
     const actual = input?.value.trim() === "" ? 0 : Number(input.value);
     const need = Number(calculated.supplierNeed || 0);
-    if (calculated.allowsRoundedShortSupplierOrder && actual === defaultNorthActual(calculated, need)) continue;
+    if (calculated.allowsRoundedShortSupplierOrder && actual === defaultNorthActual(calculated, need, currentNorthResult?.summary || {})) continue;
     if (Number.isFinite(actual) && actual < need) {
       warnings.push({
         name: calculated.name,
@@ -1414,17 +1062,6 @@ function confirmNorthMerge(entries, result = null) {
   });
 }
 
-function normalizeNorthResult(report, job) {
-  return {
-    hasTyumenSource: Boolean(report.has_tyumen_source || report.hasTyumenSource),
-    uploadedCities: report.uploaded_cities || report.uploadedCities || [],
-    planRows: report.plan_rows || report.planRows || [],
-    transfers: report.transfers || [],
-    confirmationGroups: report.confirmation_groups || report.confirmationGroups || [],
-    summary: report.summary || { kind: job.brand || selectedNorthBrand() },
-  };
-}
-
 downloadButton.addEventListener("click", async () => {
   if (!currentJobId) {
     alert("Сначала заполните бланк.");
@@ -1476,31 +1113,28 @@ northForm.addEventListener("submit", async (event) => {
 
   try {
     const tyumenSourceFile = northSourceFile.files[0] || null;
-    const created = await createNorthMergeJob({
-      brand: selectedNorthBrand(),
-      blankFiles: entries,
-      tyumenSourceFile,
-    });
-    currentNorthJobId = created.id;
-    const job = await pollJob(created.id, {
-      onUpdate: (updatedJob) => {
-        northStatus.textContent = jobStatusText(updatedJob);
+    const jobResult = await runNorthMergeJob({
+      api: { createNorthMergeJob, pollJob, getJobReport },
+      command: {
+        brand: selectedNorthBrand(),
+        blankFiles: entries,
+        tyumenSourceFile,
+      },
+      onStatus: (text) => {
+        northStatus.textContent = text;
       },
     });
-    if (job.status === "failed") {
-      throw new Error(job.error?.message || "Задача завершилась с ошибкой.");
-    }
-    const report = await getJobReport(job.id);
-    const result = normalizeNorthResult(report, job);
-    if (!(await confirmNorthMerge(entries, result))) {
+    const plan = jobResult.plan;
+    currentNorthJobId = jobResult.jobId;
+    if (!(await confirmNorthMerge(entries, plan))) {
       northStatus.textContent = "Готово";
       return;
     }
-    currentNorthResult = result;
-    renderNorthPlan(result);
-    const supplierRows = result.planRows.filter((row) => Number(row.supplierNeed || 0) > 0).length;
-    const tyumenCovered = result.planRows.filter((row) => Number(row.fromTyumen || 0) > 0).length;
-    northSummary.textContent = `Города: ${result.uploadedCities.join(", ")}. Позиций к заказу у поставщика: ${supplierRows}. Позиций закрыто остатком Тюмени: ${tyumenCovered}. Перемещений: ${result.transfers.length}.${result.hasTyumenSource ? "" : " Таблица Тюмени не загружена, остаток Тюмени не учитывался."}`;
+    currentNorthResult = plan;
+    renderNorthPlan(plan);
+    const supplierRows = plan.planRows.filter((row) => Number(row.supplierNeed || 0) > 0).length;
+    const tyumenCovered = plan.planRows.filter((row) => Number(row.fromTyumen || 0) > 0).length;
+    northSummary.textContent = `Города: ${plan.uploadedCities.join(", ")}. Позиций к заказу у поставщика: ${supplierRows}. Позиций закрыто остатком Тюмени: ${tyumenCovered}. Перемещений: ${plan.transfers.length}.${plan.hasTyumenSource ? "" : " Таблица Тюмени не загружена, остаток Тюмени не учитывался."}`;
     northResult.classList.remove("hidden");
     northDownloadButton.disabled = false;
     northStatus.textContent = "Проверьте расчет";
