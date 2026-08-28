@@ -1,13 +1,13 @@
 const DEFAULT_API_BASE_URL = "http://127.0.0.1:8080";
 
 export class ApiClient {
-  constructor({ baseUrl = import.meta.env.VITE_API_BASE_URL || DEFAULT_API_BASE_URL, fetcher = fetch } = {}) {
+  constructor({ baseUrl = apiBaseUrl(), fetcher = globalThis.fetch } = {}) {
     this.baseUrl = baseUrl.replace(/\/+$/, "");
     this.fetcher = fetcher;
   }
 
   async request(path, options = {}) {
-    const response = await this.fetcher(`${this.baseUrl}${path}`, {
+    const response = await this.fetcher.call(globalThis, `${this.baseUrl}${path}`, {
       ...options,
       headers: {
         ...(options.body instanceof FormData ? {} : { "Content-Type": "application/json" }),
@@ -19,6 +19,10 @@ export class ApiClient {
     }
     return parseResponse(response);
   }
+}
+
+function apiBaseUrl() {
+  return import.meta.env?.VITE_API_BASE_URL || DEFAULT_API_BASE_URL;
 }
 
 export class ApiError extends Error {
