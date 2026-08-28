@@ -7,7 +7,9 @@
     "dev": "vite --host 127.0.0.1 --port 3200",
     "build": "vite build",
     "preview": "vite preview --host 127.0.0.1 --port 3200",
-    "test:workbook": "node scripts/test-workbook.mjs"
+    "test:workbook": "node scripts/test-workbook.mjs",
+    "verify": "npm run test:workbook && npm run build",
+    "precommit": "npm run verify"
   },
   "dependencies": {
     "@xmldom/xmldom": "^0.9.10",
