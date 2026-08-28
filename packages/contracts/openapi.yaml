@@ -1,0 +1,373 @@
+openapi: 3.1.0
+info:
+  title: Order Fill Service API
+  version: 0.1.0
+  description: Job API for Excel order-fill and North merge processing.
+  license:
+    name: Proprietary
+    url: https://example.com/proprietary-license
+servers:
+  - url: http://127.0.0.1:8080
+    description: Local Docker Compose API
+security: []
+paths:
+  /healthz:
+    get:
+      operationId: getHealthz
+      summary: Health check
+      responses:
+        "200":
+          description: Service is healthy.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [status]
+                properties:
+                  status:
+                    type: string
+                    enum: [ok]
+        "400":
+          $ref: "#/components/responses/BadRequest"
+  /api/v1/jobs/order-fill:
+    post:
+      operationId: createOrderFillJob
+      summary: Create an order-fill workbook processing job
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              $ref: "#/components/schemas/OrderFillRequest"
+      responses:
+        "202":
+          description: Job accepted.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Job"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+  /api/v1/jobs/north-merge:
+    post:
+      operationId: createNorthMergeJob
+      summary: Create a North merge workbook processing job
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              $ref: "#/components/schemas/NorthMergeRequest"
+      responses:
+        "202":
+          description: Job accepted.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Job"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+  /api/v1/jobs/{job_id}:
+    get:
+      operationId: getJob
+      summary: Get job status and metadata
+      parameters:
+        - $ref: "#/components/parameters/JobId"
+      responses:
+        "200":
+          description: Job state.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Job"
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /api/v1/jobs/{job_id}/report:
+    get:
+      operationId: getJobReport
+      summary: Get report rows for a job
+      parameters:
+        - $ref: "#/components/parameters/JobId"
+      responses:
+        "200":
+          description: Job report.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/JobReport"
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /api/v1/jobs/{job_id}/edits:
+    post:
+      operationId: submitJobEdits
+      summary: Submit manual edits before finalization
+      parameters:
+        - $ref: "#/components/parameters/JobId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [edits]
+              properties:
+                edits:
+                  type: array
+                  items:
+                    $ref: "#/components/schemas/ManualEdit"
+      responses:
+        "202":
+          description: Edits accepted and finalization queued.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Job"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /api/v1/jobs/{job_id}/files:
+    get:
+      operationId: listJobFiles
+      summary: List generated output files
+      parameters:
+        - $ref: "#/components/parameters/JobId"
+      responses:
+        "200":
+          description: Generated files.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [files]
+                properties:
+                  files:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/OutputFile"
+        "404":
+          $ref: "#/components/responses/NotFound"
+components:
+  parameters:
+    JobId:
+      name: job_id
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+  responses:
+    BadRequest:
+      description: Invalid request.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ApiError"
+    NotFound:
+      description: Resource not found.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ApiError"
+  schemas:
+    Job:
+      type: object
+      required: [id, type, status, created_at, updated_at, input_files, output_files]
+      properties:
+        id:
+          type: string
+          format: uuid
+        type:
+          type: string
+          enum: [order_fill, north_merge]
+        status:
+          $ref: "#/components/schemas/JobStatus"
+        brand:
+          type: string
+          examples: [angiopharm]
+        order_month:
+          type: string
+          pattern: "^\\d{4}-\\d{2}$"
+          examples: ["2026-08"]
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+        error:
+          anyOf:
+            - $ref: "#/components/schemas/ApiError"
+            - type: "null"
+        input_files:
+          type: array
+          items:
+            $ref: "#/components/schemas/StoredFile"
+        output_files:
+          type: array
+          items:
+            $ref: "#/components/schemas/OutputFile"
+    JobStatus:
+      type: string
+      enum: [queued, processing, needs_review, finalizing, completed, failed]
+    OrderFillRequest:
+      type: object
+      required: [brand, order_month, source_file, blank_files]
+      properties:
+        brand:
+          type: string
+          enum: [angiopharm, christina, levissime, sothys, novacutan, skin_synergy, klapp]
+        order_month:
+          type: string
+          pattern: "^\\d{4}-\\d{2}$"
+        source_file:
+          type: string
+          format: binary
+        blank_files:
+          type: array
+          minItems: 1
+          items:
+            type: string
+            format: binary
+    NorthMergeRequest:
+      type: object
+      required: [brand, blank_files]
+      properties:
+        brand:
+          type: string
+          enum: [angiopharm, christina, levissime, sothys, novacutan, skin_synergy, klapp]
+        blank_files:
+          type: array
+          minItems: 1
+          items:
+            type: string
+            format: binary
+        tyumen_source_file:
+          type: string
+          format: binary
+    JobReport:
+      type: object
+      required: [job_id, rows]
+      properties:
+        job_id:
+          type: string
+          format: uuid
+        rows:
+          type: array
+          items:
+            $ref: "#/components/schemas/ReportRow"
+    ReportRow:
+      type: object
+      required: [key, status, editable]
+      properties:
+        key:
+          type: string
+        status:
+          type: string
+          enum:
+            - matched
+            - matched_by_name
+            - warning_name_differs
+            - warning_name_only
+            - left_blank_nonpositive
+            - not_in_source
+            - not_in_blank
+            - source_duplicate
+        blank_row:
+          type: integer
+          minimum: 1
+        blank_article:
+          type: string
+        blank_name:
+          type: string
+        source_row:
+          type: integer
+          minimum: 1
+        source_article:
+          type: string
+        source_name:
+          type: string
+        similarity:
+          type: number
+          minimum: 0
+          maximum: 1
+        stock:
+          type: number
+        in_transit:
+          type: number
+        recommended:
+          type: number
+        inserted:
+          type: number
+        auto_comment:
+          type: string
+        editable:
+          type: boolean
+        duplicate_candidates:
+          type: array
+          items:
+            $ref: "#/components/schemas/DuplicateCandidate"
+    DuplicateCandidate:
+      type: object
+      properties:
+        source_row:
+          type: integer
+          minimum: 1
+        source_article:
+          type: string
+        source_name:
+          type: string
+        recommended:
+          type: number
+    ManualEdit:
+      type: object
+      required: [key, value]
+      properties:
+        key:
+          type: string
+        value:
+          type: string
+        comment:
+          type: string
+    StoredFile:
+      type: object
+      required: [id, name, content_type, size_bytes]
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        content_type:
+          type: string
+        size_bytes:
+          type: integer
+          minimum: 0
+    OutputFile:
+      type: object
+      required: [id, label, name, content_type, size_bytes, download_url]
+      properties:
+        id:
+          type: string
+        label:
+          type: string
+        name:
+          type: string
+        content_type:
+          type: string
+        size_bytes:
+          type: integer
+          minimum: 0
+        download_url:
+          type: string
+          format: uri
+    ApiError:
+      type: object
+      required: [code, message]
+      properties:
+        code:
+          type: string
+        message:
+          type: string
+        details:
+          type: object
+          additionalProperties: true
