@@ -1092,63 +1092,6 @@ function prepareRemoteDownloadLinks(files, targetLinks = downloadLinks) {
   targetLinks.classList.remove("hidden");
 }
 
-function todayRu() {
-  const date = new Date();
-  return `${String(date.getDate()).padStart(2, "0")}.${String(date.getMonth() + 1).padStart(2, "0")}.${date.getFullYear()}`;
-}
-
-function transferWorkbookBytes(transfer) {
-  return import("xlsx").then(({ utils, write }) => {
-    const rows = [
-      ["", "", "", "", "", "", "", ""],
-      ["", "", "", "", "", "", "", ""],
-      ["", "", `Заказ на перемещение от ${todayRu()}`, "", "", "", "", ""],
-      ["", "", "", "", "", "", "", ""],
-      ["", "", "", "", "", "", "", ""],
-      ["", "", "", "", "", "", "", ""],
-      ["", "", "Отправитель:", "Склад Тюмень", "Получатель:", transfer.city.warehouse, "", ""],
-      ["", "", "", "", "", "", "", ""],
-      ["", "", "", "", "", "", "", ""],
-      ["", "№", "Товар", "Количество", "", "", "", ""],
-      ...transfer.items.map((item, index) => ["", index + 1, item.name, item.quantity, item.unit || "шт", "", "", ""]),
-      ["", "", "", "", "", "", "", ""],
-      ["Менеджер", "", "", "", "", "", "", ""],
-    ];
-    const workbook = utils.book_new();
-    const sheet = utils.aoa_to_sheet(rows);
-    sheet["!cols"] = [
-      { wch: 8 },
-      { wch: 8 },
-      { wch: 72 },
-      { wch: 14 },
-      { wch: 10 },
-      { wch: 22 },
-      { wch: 12 },
-      { wch: 12 },
-    ];
-    utils.book_append_sheet(workbook, sheet, "Лист_1");
-    return write(workbook, { bookType: "xlsx", type: "array" });
-  });
-}
-
-function northOrderTableBytes(table) {
-  return import("xlsx").then(({ utils, write }) => {
-    const rows = [
-      ["Позиция", "Заказано", "Комментарий"],
-      ...table.rows.map((item) => [item.name, item.quantity, item.comment]),
-    ];
-    const workbook = utils.book_new();
-    const sheet = utils.aoa_to_sheet(rows);
-    sheet["!cols"] = [
-      { wch: 72 },
-      { wch: 14 },
-      { wch: 80 },
-    ];
-    utils.book_append_sheet(workbook, sheet, "Заказ");
-    return write(workbook, { bookType: "xlsx", type: "array" });
-  });
-}
-
 function formatNorthQuantity(value) {
   const number = Number(value || 0);
   if (!Number.isFinite(number) || number <= 0) return "";
@@ -1480,18 +1423,6 @@ function normalizeNorthResult(report, job) {
     confirmationGroups: report.confirmation_groups || report.confirmationGroups || [],
     summary: report.summary || { kind: job.brand || selectedNorthBrand() },
   };
-}
-
-function prepareNorthDownloadLinks(files) {
-  clearNorthDownloadLinks();
-  currentNorthDownloadUrls = files.map((file) => URL.createObjectURL(file.blob));
-  northDownloadLinks.innerHTML = files
-    .map((file, index) => `<a class="file-link" href="${currentNorthDownloadUrls[index]}" download="${escapeHtml(file.name)}">${escapeHtml(file.label)}</a>`)
-    .join("");
-  northDownloadLinks.classList.remove("hidden");
-  currentNorthDownloadUrls.forEach((url, index) => {
-    window.setTimeout(() => triggerDownload(url, files[index].name), index * 250);
-  });
 }
 
 downloadButton.addEventListener("click", async () => {
