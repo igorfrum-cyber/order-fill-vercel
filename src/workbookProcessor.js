@@ -1,69 +1,15 @@
 import { strFromU8, strToU8, unzipSync, zipSync } from "fflate";
 import { DOMParser, XMLSerializer } from "@xmldom/xmldom";
+import { articleNormalizeOptions, blankDetectionOptions, brandRule, calculateAdjustedQuantity, categoryCoefficient } from "./domain/brandRules.js";
+import { asText, normalizeArticle, normalizeCategory, normalizeHeader, normalizeName, parseNumber, roundHalfUp } from "./domain/normalization.js";
 
-const ARTICLE_TRANSLATION = new Map([
-  ["А", "A"], ["В", "B"], ["Е", "E"], ["К", "K"], ["М", "M"], ["Н", "H"], ["О", "O"],
-  ["Р", "P"], ["С", "C"], ["Т", "T"], ["Х", "X"], ["У", "Y"], ["а", "A"], ["в", "B"],
-  ["е", "E"], ["к", "K"], ["м", "M"], ["н", "H"], ["о", "O"], ["р", "P"], ["с", "C"],
-  ["т", "T"], ["х", "X"], ["у", "Y"],
-]);
+export { adjustQuantityForBrand, categoryCoefficient } from "./domain/brandRules.js";
+export { asText, normalizeArticle, normalizeHeader, normalizeName, parseNumber, roundHalfUp } from "./domain/normalization.js";
 
 const MONTHS_RU = ["", "январь", "февраль", "март", "апрель", "май", "июнь", "июль", "август", "сентябрь", "октябрь", "ноябрь", "декабрь"];
 const NS_MAIN = "http://schemas.openxmlformats.org/spreadsheetml/2006/main";
 const XML_PARSER = new DOMParser();
 const XML_SERIALIZER = new XMLSerializer();
-const BRAND_RULES = {
-  angiopharm: {
-    label: "ANGIOPHARM",
-    adjustment: "box",
-    adjustmentLabel: "Шт. в коробке",
-    adjustmentComment: "до коробки",
-  },
-  christina: {
-    label: "CHRISTINA",
-    adjustment: "multiple",
-    multiple: 3,
-    adjustmentLabel: "Кратность",
-    adjustmentComment: "до кратности 3",
-  },
-  levissime: {
-    label: "LeviSsime",
-    adjustment: "box",
-    adjustmentLabel: "Кол-во в уп.",
-    adjustmentComment: "до коробки",
-    articlePrefixAliases: ["MT"],
-    blankQuantityHeader: "order",
-    blankBoxHeader: "packageQuantity",
-  },
-  sothys: {
-    label: "SOTHYS",
-    adjustment: "none",
-    adjustmentLabel: "Без округления",
-    preserveArticleHyphen: true,
-    blankLayout: "splitVariants",
-  },
-  novacutan: {
-    label: "NOVACUTAN",
-    adjustment: "none",
-    adjustmentLabel: "Мин. заказ",
-    blankLayout: "novacutan",
-  },
-  skin_synergy: {
-    label: "Skin Synergy",
-    adjustment: "none",
-    adjustmentLabel: "Без округления",
-    blankQuantityHeader: "exactQuantity",
-    requireUnit: false,
-  },
-  klapp: {
-    label: "KLAPP",
-    adjustment: "nearestMultiple",
-    multiple: 3,
-    adjustmentLabel: "Кратность",
-    adjustmentComment: "до кратности 3",
-    blankQuantityHeader: "order",
-  },
-};
 
 export function loadXlsx(buffer) {
   const files = unzipSync(new Uint8Array(buffer));
@@ -221,39 +167,6 @@ function sheetCellValue(sheet, row, col) {
 function refreshCellValue(sheet, row, col) {
   const cell = sheet.cells.get(cellKey(row, col));
   if (cell) cell.value = readCellValue(cell.node, []);
-}
-
-export function asText(value) {
-  if (value == null) return "";
-  return String(value).normalize("NFC").replace(/\n/g, " ").trim();
-}
-
-export function normalizeHeader(value) {
-  return asText(value).toLowerCase().replaceAll("ё", "е").replace(/[^\p{L}\p{N}%]+/gu, " ").replace(/\s+/g, " ").trim();
-}
-
-export function normalizeArticle(value, options = {}) {
-  const allowed = options.preserveHyphen ? /[^A-Z0-9-]/g : /[^A-Z0-9]/g;
-  return asText(value).replace(/[АВЕКМНОРСТХУавекмнорстху]/g, (ch) => ARTICLE_TRANSLATION.get(ch) || ch).toUpperCase().replace(allowed, "");
-}
-
-export function normalizeName(value) {
-  return normalizeHeader(value).replace(/\bан\b/g, " ").replace(/\bangiopharm\b/g, " ").replace(/\s+/g, " ").trim();
-}
-
-export function parseNumber(value) {
-  if (value == null || asText(value) === "") return null;
-  const normalized = asText(value).replace(/\s+/g, "").replace(",", ".");
-  const number = Number(normalized);
-  if (Number.isFinite(number)) return number;
-  const match = normalized.match(/-?\d+(?:\.\d+)?/);
-  if (!match) return null;
-  const extracted = Number(match[0]);
-  return Number.isFinite(extracted) ? extracted : null;
-}
-
-export function roundHalfUp(value) {
-  return Math.floor(value + 0.5);
 }
 
 function addMonths(date, months) {
@@ -448,26 +361,6 @@ function detectCalculationColumns(detection, options = {}) {
   if (missing.length && options.required !== false) throw new Error(`Не нашел расчетные колонки: ${missing.join(", ")}.`);
   if (missing.length) return null;
   return found;
-}
-
-function normalizeCategory(value) {
-  return asText(value)
-    .replace(/[АВСавс]/g, (ch) => ARTICLE_TRANSLATION.get(ch) || ch)
-    .toUpperCase()
-    .replace(/\s+/g, "");
-}
-
-export function categoryCoefficient(value, rule = null) {
-  const category = normalizeCategory(value);
-  if (rule?.label === "NOVACUTAN") {
-    if (category === "C") return 1.5;
-    if (category === "A+" || category === "A" || category === "B") return 2;
-  }
-  if (category === "A+") return 2;
-  if (category === "A") return 1.75;
-  if (category === "B") return 1.5;
-  if (category === "C") return 1;
-  return 1;
 }
 
 function categoryFromCumulative(percent) {
@@ -892,23 +785,6 @@ function readSource(workbook, orderMonth, rule = brandRule("angiopharm"), source
   };
 }
 
-function brandRule(brand) {
-  return BRAND_RULES[brand] || BRAND_RULES.angiopharm;
-}
-
-function articleNormalizeOptions(rule) {
-  return { preserveHyphen: Boolean(rule.preserveArticleHyphen) };
-}
-
-function blankDetectionOptions(rule) {
-  return {
-    requireBox: rule.adjustment === "box",
-    requireUnit: rule.requireUnit,
-    quantityHeader: rule.blankQuantityHeader,
-    boxHeader: rule.blankBoxHeader,
-  };
-}
-
 function articleKeys(article, rule) {
   const keys = new Set([article]);
   for (const prefix of rule.articlePrefixAliases || []) {
@@ -984,42 +860,6 @@ function duplicateCandidatesForReport(candidates) {
   }));
 }
 
-function calculateAdjustedQuantity(recommended, rule, boxSizeValue) {
-  const rounded = roundHalfUp(recommended);
-  if (!rule.allowSmallPositiveOrder && recommended < 1.5) return { rounded, inserted: null, autoComment: "", boxAdjusted: false };
-  if (rounded <= 0) return { rounded, inserted: null, autoComment: "", boxAdjusted: false };
-
-  if (rule.adjustment === "none") {
-    return { rounded, inserted: rounded, autoComment: "", boxAdjusted: false };
-  }
-
-  if (rule.adjustment === "multiple") {
-    return calculateMultipleAdjustedQuantity(rounded, rule.multiple, rule.adjustmentComment);
-  }
-
-  if (rule.adjustment === "nearestMultiple") {
-    return calculateNearestMultipleAdjustedQuantity(rounded, rule.multiple, rule.adjustmentComment);
-  }
-
-  if (rule.adjustment === "minimum") {
-    const minimum = Math.round(parseNumber(boxSizeValue) || 0);
-    if (minimum > 0 && rounded < minimum) {
-      return { rounded, inserted: minimum, autoComment: rule.adjustmentComment, boxAdjusted: true };
-    }
-    return { rounded, inserted: rounded, autoComment: "", boxAdjusted: false };
-  }
-
-  const boxSize = parseNumber(boxSizeValue);
-  if (!boxSize || boxSize <= 0) return { rounded, inserted: rounded, autoComment: "", boxAdjusted: false };
-  const box = Math.round(boxSize);
-  return calculateMultipleAdjustedQuantity(rounded, box, rule.adjustmentComment);
-}
-
-export function adjustQuantityForBrand(recommended, brand = "angiopharm", boxSizeValue = null) {
-  const rule = brandRule(brand);
-  return calculateAdjustedQuantity(recommended, rule, boxSizeValue ?? rule.multiple);
-}
-
 function orderForItem(item, rule, adjustmentValue) {
   if (!item.hasOrderedFact) return calculateAdjustedQuantity(item.recommended, rule, adjustmentValue);
   return {
@@ -1060,48 +900,6 @@ function convertOrderToSupplierUnits(order, unitSize = 1) {
 
 function novacutanOrderForItem(item, rowInfo, rule) {
   return convertOrderToSupplierUnits(orderForItem(item, rule, rowInfo.blankBoxSize), rowInfo.supplierUnitSize);
-}
-
-function calculateMultipleAdjustedQuantity(rounded, multiple, comment) {
-  const step = Math.round(Number(multiple));
-  if (step <= 0 || rounded % step === 0) return { rounded, inserted: rounded, autoComment: "", boxAdjusted: false };
-
-  const lower = Math.floor(rounded / step) * step;
-  const upper = Math.ceil(rounded / step) * step;
-  const upPercent = (upper - rounded) / rounded;
-  const downPercent = lower > 0 ? (rounded - lower) / rounded : Infinity;
-
-  if (upPercent > 0 && upPercent <= 0.15) {
-    return { rounded, inserted: upper, autoComment: comment, boxAdjusted: true };
-  }
-  if (downPercent > 0 && downPercent <= 0.05) {
-    return { rounded, inserted: lower, autoComment: comment, boxAdjusted: true };
-  }
-  return { rounded, inserted: rounded, autoComment: "", boxAdjusted: false };
-}
-
-function nearestMultipleValue(value, multiple) {
-  const number = Number(value || 0);
-  const step = Math.round(Number(multiple));
-  if (!Number.isFinite(number) || number <= 0) return null;
-  if (!Number.isFinite(step) || step <= 0) return Number(number.toFixed(2));
-  const lower = Math.floor(number / step) * step;
-  const upper = Math.ceil(number / step) * step;
-  if (lower <= 0) return upper;
-  const lowerDiff = number - lower;
-  const upperDiff = upper - number;
-  return upperDiff <= lowerDiff ? upper : lower;
-}
-
-function calculateNearestMultipleAdjustedQuantity(rounded, multiple, comment) {
-  const inserted = nearestMultipleValue(rounded, multiple);
-  if (inserted == null) return { rounded, inserted: null, autoComment: "", boxAdjusted: false };
-  return {
-    rounded,
-    inserted,
-    autoComment: inserted !== rounded ? comment : "",
-    boxAdjusted: inserted !== rounded,
-  };
 }
 
 function extractVolumeKeys(...values) {
