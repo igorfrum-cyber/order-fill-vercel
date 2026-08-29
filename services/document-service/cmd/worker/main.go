@@ -1,37 +1,111 @@
+// Command worker is the composition root of document-service: it wires the
+// queue consumer to the order-fill use case and the infrastructure adapters.
 package main
 
 import (
-	"encoding/json"
+	"context"
+	"errors"
 	"log/slog"
 	"net/http"
 	"os"
+	"os/signal"
+	"syscall"
+	"time"
 
-	"order-fill/services/document-service/internal/observability"
+	"order-fill/services/document-service/internal/adapter/inbound/httpapi"
+	"order-fill/services/document-service/internal/adapter/inbound/queue"
+	"order-fill/services/document-service/internal/adapter/outbound/jobstore"
+	"order-fill/services/document-service/internal/adapter/outbound/objectstore"
+	"order-fill/services/document-service/internal/adapter/outbound/xlsx"
+	"order-fill/services/document-service/internal/app/usecase"
+	"order-fill/services/document-service/internal/platform/config"
+	"order-fill/services/document-service/internal/platform/observability"
 )
 
-func main() {
-	addr := getenv("WORKER_HEALTH_ADDR", ":8081")
-	metrics := observability.NewMetrics()
-	mux := http.NewServeMux()
-	mux.HandleFunc("GET /healthz", func(w http.ResponseWriter, _ *http.Request) {
-		w.Header().Set("Content-Type", "application/json")
-		_ = json.NewEncoder(w).Encode(map[string]string{"status": "ok"})
-	})
-	mux.HandleFunc("GET /metrics", func(w http.ResponseWriter, _ *http.Request) {
-		w.Header().Set("Content-Type", "application/json")
-		_ = json.NewEncoder(w).Encode(metrics.Snapshot())
-	})
+const shutdownTimeout = 15 * time.Second
 
-	slog.Info("starting document-service worker", "service", "document-service", "addr", addr)
-	if err := http.ListenAndServe(addr, mux); err != nil {
-		slog.Error("document-service stopped", "service", "document-service", "error", err)
+func main() {
+	logger := slog.New(slog.NewJSONHandler(os.Stdout, nil))
+	if err := run(logger); err != nil {
+		logger.Error("document-service stopped", "service", "document-service", "event", "startup_failed", "error", err)
 		os.Exit(1)
 	}
 }
 
-func getenv(key, fallback string) string {
-	if value := os.Getenv(key); value != "" {
-		return value
+func run(logger *slog.Logger) error {
+	settings, err := config.Load()
+	if err != nil {
+		return err
 	}
-	return fallback
+
+	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
+	defer stop()
+
+	pool, err := jobstore.OpenPool(ctx, settings.DatabaseURL)
+	if err != nil {
+		return err
+	}
+	defer pool.Close()
+
+	storage, err := objectstore.NewStore(settings.S3Endpoint, settings.S3AccessKey, settings.S3SecretKey, settings.S3Bucket)
+	if err != nil {
+		return err
+	}
+	if err := storage.EnsureBucket(ctx); err != nil {
+		return err
+	}
+
+	consumer, err := queue.NewConsumer(settings.QueueURL, settings.QueueName, logger)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = consumer.Close() }()
+
+	metrics := observability.NewMetrics()
+	store := jobstore.NewStore(pool)
+	processor := usecase.NewProcessJob(
+		xlsx.NewCodec(),
+		storage,
+		store,
+		store,
+		func() time.Time { return time.Now().UTC() },
+		logger,
+		metrics,
+	)
+
+	server := &http.Server{
+		Addr:              settings.HealthAddr,
+		Handler:           httpapi.NewRouter(metrics),
+		ReadHeaderTimeout: 10 * time.Second,
+	}
+	serverErrors := make(chan error, 1)
+	go func() { serverErrors <- server.ListenAndServe() }()
+
+	consumerErrors := make(chan error, 1)
+	go func() {
+		logger.Info("starting document-service",
+			"service", "document-service",
+			"event", "worker_started",
+			"addr", settings.HealthAddr,
+			"queue", settings.QueueName,
+		)
+		consumerErrors <- consumer.Run(ctx, processor.Handle)
+	}()
+
+	select {
+	case err := <-serverErrors:
+		if !errors.Is(err, http.ErrServerClosed) {
+			return err
+		}
+	case err := <-consumerErrors:
+		if err != nil && !errors.Is(err, context.Canceled) {
+			return err
+		}
+	case <-ctx.Done():
+	}
+
+	shutdownCtx, cancel := context.WithTimeout(context.Background(), shutdownTimeout)
+	defer cancel()
+	logger.Info("stopping document-service", "service", "document-service", "event", "worker_stopping")
+	return server.Shutdown(shutdownCtx)
 }

@@ -147,6 +147,28 @@ paths:
                       $ref: "#/components/schemas/OutputFile"
         "404":
           $ref: "#/components/responses/NotFound"
+  /api/v1/jobs/{job_id}/files/{file_id}:
+    get:
+      operationId: downloadJobFile
+      summary: Download one generated output file
+      parameters:
+        - $ref: "#/components/parameters/JobId"
+        - name: file_id
+          in: path
+          required: true
+          schema:
+            type: string
+            examples: [output-1]
+      responses:
+        "200":
+          description: The generated workbook.
+          content:
+            application/vnd.openxmlformats-officedocument.spreadsheetml.sheet:
+              schema:
+                type: string
+                format: binary
+        "404":
+          $ref: "#/components/responses/NotFound"
 components:
   parameters:
     JobId:
@@ -247,21 +269,72 @@ components:
           format: binary
     JobReport:
       type: object
-      required: [job_id, rows]
+      required: [job_id, summary, rows]
       properties:
         job_id:
           type: string
           format: uuid
+        summary:
+          $ref: "#/components/schemas/ReportSummary"
         rows:
           type: array
           items:
             $ref: "#/components/schemas/ReportRow"
+    ReportSummary:
+      type: object
+      description: Aggregate counters and the period metadata shown above the review table.
+      properties:
+        brand:
+          type: string
+          examples: [ANGIOPHARM]
+        order_month_label:
+          type: string
+          examples: ["сентябрь 2026"]
+        adjustment_label:
+          type: string
+          examples: ["Шт. в коробке"]
+        actual_main_period:
+          type: string
+        actual_previous_period:
+          type: string
+        source_city:
+          type: string
+        city_rule:
+          type: string
+        delivery_weeks:
+          type: number
+        filled:
+          type: integer
+        left_blank:
+          type: integer
+        suspicious:
+          type: integer
+        unmatched:
+          type: integer
+        duplicates:
+          type: integer
+        blank_duplicate_articles:
+          type: integer
+        source_items:
+          type: integer
+        source_articles:
+          type: integer
+        source_sheet:
+          type: string
+        source_header_row:
+          type: integer
+        blank_sheet:
+          type: string
+        blank_header_row:
+          type: integer
     ReportRow:
       type: object
       required: [key, status, editable]
       properties:
         key:
           type: string
+          description: Stable row identifier, also used as the manual edit key.
+          examples: ["blank-1:7"]
         status:
           type: string
           enum:
@@ -273,34 +346,64 @@ components:
             - not_in_source
             - not_in_blank
             - source_duplicate
+        blank_id:
+          type: string
+          examples: [blank-1]
+        blank_label:
+          type: string
         blank_row:
+          type: integer
+          minimum: 1
+        blank_quantity_col:
           type: integer
           minimum: 1
         blank_article:
           type: string
         blank_name:
           type: string
+        blank_unit:
+          type: string
+        blank_box_size:
+          type: string
         source_row:
-          type: integer
+          type: [integer, "null"]
           minimum: 1
         source_article:
           type: string
         source_name:
+          type: string
+        has_ordered_fact:
+          type: boolean
+        ordered_fact:
+          type: [number, "null"]
+        source_comment:
           type: string
         similarity:
           type: number
           minimum: 0
           maximum: 1
         stock:
-          type: number
+          type: string
         in_transit:
-          type: number
+          type: string
         recommended:
-          type: number
+          type: [number, "null"]
+        rounded:
+          type: [integer, "null"]
+        base_rounded:
+          type: [integer, "null"]
+          description: Quantity before the brand rounding rule was applied.
         inserted:
-          type: number
+          type: [number, "null"]
+          description: Quantity written into the blank; null means the cell was left empty.
         auto_comment:
           type: string
+        adjustment_label:
+          type: string
+        box_adjusted:
+          type: boolean
+        duplicate:
+          type: boolean
         editable:
           type: boolean
         duplicate_candidates:
@@ -319,6 +422,12 @@ components:
           type: string
         recommended:
           type: number
+        rounded:
+          type: integer
+        stock:
+          type: string
+        in_transit:
+          type: string
     ManualEdit:
       type: object
       required: [key, value]
@@ -331,10 +440,13 @@ components:
           type: string
     StoredFile:
       type: object
-      required: [id, name, content_type, size_bytes]
+      required: [id, role, name, content_type, size_bytes]
       properties:
         id:
           type: string
+        role:
+          type: string
+          enum: [source, blank]
         name:
           type: string
         content_type:
@@ -344,10 +456,11 @@ components:
           minimum: 0
     OutputFile:
       type: object
-      required: [id, label, name, content_type, size_bytes, download_url]
+      required: [id, label, name, content_type, size_bytes, download_path]
       properties:
         id:
           type: string
+          examples: [output-1]
         label:
           type: string
         name:
@@ -357,9 +470,13 @@ components:
         size_bytes:
           type: integer
           minimum: 0
-        download_url:
+        download_path:
           type: string
-          format: uri
+          description: >-
+            Path of the download endpoint relative to the API base URL. The client
+            composes the absolute URL, so the API stays independent of how it is
+            published.
+          examples: ["/api/v1/jobs/job-1/files/output-1"]
     ApiError:
       type: object
       required: [code, message]

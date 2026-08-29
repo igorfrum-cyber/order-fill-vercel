@@ -1,83 +1,109 @@
 # CLAUDE.md
 
-This file provides guidance to Claude Code when working with code in this repository.
+This file provides guidance to Claude Code and Cursor when working in this repository.
 
 ## Overview
 
-Order-fill service system for processing supplier Excel workbooks.
+Order-fill processes supplier Excel workbooks. The browser never parses Excel; that stays in `document-service`.
 
-- `src/` contains the thin browser frontend. It owns upload UI, report rendering, manual edits, polling, and download links.
-- `src/api/` contains frontend API clients. UI code should depend on these clients instead of calling service endpoints ad hoc.
-- `services/api-service/` owns HTTP endpoints, job metadata, upload handling, queue publication, and object-storage boundaries.
-- `services/document-service/` owns Excel parsing/writing, brand rules, matching, document job orchestration, and reports.
-- `packages/contracts/openapi.yaml` is the API contract.
-- `deploy/docker-compose.yml` is the local service runtime.
-
-The frontend must not process Excel workbooks locally. Excel logic belongs in `document-service`.
-
-## Common Commands
-
-Install dependencies first on a fresh checkout:
-
-```bash
-npm ci
+```text
+frontend  -->  api-service  -->  postgres
+                    |               redis (job queue)
+                    |               minio (workbooks)
+                    v
+            document-service
 ```
 
-Run frontend locally:
+- `frontend/` — Vite browser app: upload UI, report, manual edits, polling, download links. Talks to the API only through `frontend/src/api/`.
+- `services/api-service/` — public HTTP API, job metadata, uploads, queue publish, object-storage boundary.
+- `services/document-service/` — Excel read/write, brand rules, matching, job processing, reports.
+- `packages/contracts/openapi.yaml` — HTTP contract between frontend and api-service.
+- `deploy/docker-compose.yml` — local runtime for all three apps plus Postgres, Redis, MinIO.
+
+Do not put workbook rules in HTTP handlers or in the browser. Match existing brand-specific behavior before generalizing. Do not execute macros from uploaded `.xlsm` files.
+
+## Setup
 
 ```bash
-npm run dev
+cp .env.example .env
+npm ci --prefix frontend
 ```
 
-Run the full local stack:
+Go modules vendor themselves on first `go test` / `go build` in each service.
+
+## Common commands
 
 ```bash
-docker compose -f deploy/docker-compose.yml up --build
+make up                          # docker compose stack
+make down
+make logs
+
+npm run dev --prefix frontend    # UI only, http://127.0.0.1:3200, API still from the stack
 ```
 
-Build and test:
+Service health:
+
+- frontend: http://127.0.0.1:3200
+- api-service: http://127.0.0.1:8080/healthz
+- document-service: http://127.0.0.1:8081/healthz
+
+From a service directory:
 
 ```bash
-npm run verify
+cd services/api-service && go test ./...
+cd services/document-service && go test ./internal/domain/orderfill -run TestFill
 ```
 
-`npm run verify` is the local precommit gate for this repository.
+## Pre-commit gate — mandatory before every commit
 
-## Pre-Commit Gate
-
-### Mandatory before every commit
-
-Run the full local gate from the repository root and commit only if it passes:
+Run the full local suite from the repository root and commit only if it passes. It is the same script CI runs in `.github/workflows/verify.yml`. Do not push and wait for GitHub to find a failure that `scripts/verify.sh` would have caught.
 
 ```bash
-npm run verify
+make verify
 ```
 
-This currently expands to:
+That is `bash scripts/verify.sh`, which runs:
 
 ```bash
-npm run build
-npm run verify:api
-npm run verify:document
+bash scripts/verify-toolchain.sh          # Node/Go pins: engines, go.mod, Docker, CI
+npm run verify --prefix frontend          # ESLint + syntax, node:test, vite build
+bash scripts/verify-go.sh services/api-service
+bash scripts/verify-go.sh services/document-service
 ```
 
-### When dependencies changed
-
-If `package.json` or `package-lock.json` changed, run a clean install before the gate:
+Each Go module is checked with:
 
 ```bash
-npm ci
-npm run verify
+gofmt -l .              # must print nothing; fix with gofmt -w .
+go vet ./...
+golangci-lint run       # unused, errcheck, staticcheck, misspell, …
+gosec ./...             # security
+go mod tidy             # go.mod / go.sum must stay unchanged
+go build ./...
+go test ./...
 ```
 
-Commit `package-lock.json` together with `package.json` when dependency versions change.
+Local Node must be ≥ `engines.node` (24). Local Go must be ≥ the `go` line in both `go.mod` files, and those lines must match. `golangci-lint` v2 and `gosec` are installed on first run if missing.
 
-## Working Rules
+`npm run precommit` is an alias for the same gate.
+
+`make lint` is the same checks without tests and Vite build.
+
+If `frontend/package.json` or `frontend/package-lock.json` changed:
+
+```bash
+npm ci --prefix frontend
+make verify
+```
+
+Commit the lockfile together with `frontend/package.json`.
+
+If `gofmt -l`, ESLint, golangci-lint, or gosec report issues, fix them and create a **new** commit after a failed hook — do not `--no-verify`.
+
+## Working rules
 
 - Keep workbook calculations deterministic and explainable unless the user explicitly asks for an ML experiment.
-- Keep frontend thin: UI, state, API orchestration, and rendering must be separated into focused modules.
-- Keep business rules out of HTTP handlers and browser code.
-- Do not execute macros from uploaded `.xlsm` files.
-- Keep generated output out of git: `dist/`, `test-output/`, `.vercel/`, `node_modules/`, and `testdata/private/` are ignored.
-- Match existing brand-specific behavior before generalizing shared logic.
-- Add or update Go regression coverage when changing matching, rounding, period validation, or order quantity calculations.
+- Keep the frontend thin: UI, state, API orchestration, and rendering stay in focused modules under `frontend/src/`.
+- Keep business rules out of `httpapi` handlers and out of the browser.
+- Add or update Go tests when changing matching, rounding, period validation, ЧЗ merge, or order-quantity rules.
+- Keep generated output out of git: `dist/`, `test-output/`, `.vercel/`, `node_modules/`, `testdata/private/`.

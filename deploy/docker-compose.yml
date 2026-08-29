@@ -1,8 +1,8 @@
 services:
   frontend:
     build:
-      context: ..
-      dockerfile: frontend/Dockerfile
+      context: ../frontend
+      dockerfile: Dockerfile
       args:
         VITE_API_BASE_URL: ${API_PUBLIC_URL:-http://127.0.0.1:8080}
     restart: unless-stopped
@@ -28,6 +28,7 @@ services:
     restart: unless-stopped
     environment:
       API_ADDR: ":8080"
+      API_ALLOWED_ORIGINS: ${API_ALLOWED_ORIGINS:-*}
       DATABASE_URL: ${DATABASE_URL:-postgres://order_fill:order_fill@postgres:5432/order_fill?sslmode=disable}
       QUEUE_URL: ${QUEUE_URL:-redis://redis:6379/0}
       S3_ENDPOINT: ${S3_ENDPOINT:-http://minio:9000}
@@ -69,6 +70,9 @@ services:
     ports:
       - "8081:8081"
     depends_on:
+      # api-service owns the database schema and creates it on startup.
+      api-service:
+        condition: service_healthy
       postgres:
         condition: service_healthy
       redis:

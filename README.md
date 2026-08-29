@@ -1,66 +1,42 @@
 # Заполнение бланка заказа
 
-Инструмент переписывается в сервисную схему:
+Сервисная схема:
 
-- frontend отвечает за загрузку файлов, просмотр отчета и ручные правки;
-- api-service принимает jobs, хранит метаданные и отдает статус;
-- document-service владеет Excel-логикой и формированием отчетов;
-- Redis используется как очередь, PostgreSQL как хранилище метаданных, MinIO как S3-compatible object storage.
+- `frontend/` — загрузка файлов, отчёт и ручные правки;
+- `services/api-service/` — jobs, метаданные, статус;
+- `services/document-service/` — Excel-логика и отчёты;
+- Redis — очередь, PostgreSQL — метаданные, MinIO — файлы.
 
-## Что делает
-
-- находит колонки по заголовкам, а не по буквам;
-- показывает объем, остаток, товар в пути, рекомендацию и вставленное количество;
-- округляет заказ до целой коробки, если добавка не больше 15% или уменьшение не больше 5%;
-- автоматически пишет комментарий `до коробки` при таком округлении;
-- требует новый комментарий, если менеджер вручную меняет значение в колонке `Вставлено`;
-- заполняет в таблице заказа товара колонки `Заказано по факту` и `Комментарий`.
+Браузер Excel не разбирает.
 
 ## Локальный запуск
 
-Основной локальный runtime:
-
 ```bash
+cp .env.example .env
 docker compose -f deploy/docker-compose.yml up --build
 ```
-
-Сервисы:
 
 - frontend: http://127.0.0.1:3200
-- api-service health: http://127.0.0.1:8080/healthz
-- document-service health: http://127.0.0.1:8081/healthz
+- api-service: http://127.0.0.1:8080/healthz
+- document-service: http://127.0.0.1:8081/healthz
 - MinIO console: http://127.0.0.1:9001
 
-Frontend отдельно, для быстрой верстки:
+Только UI:
 
 ```bash
-npm install
-npm run dev
+npm ci --prefix frontend
+npm run dev --prefix frontend
 ```
 
-Открыть:
+## Проверка перед коммитом
 
-```text
-http://127.0.0.1:3200
-```
-
-## Проверка
+Тот же набор шагов, что в GitHub Actions:
 
 ```bash
-npm run verify
+make verify
 ```
 
-## Docker Compose
+`make lint` — только версии, ESLint, gofmt, vet, golangci-lint, gosec и `go mod tidy`.
 
-Скопируйте `.env.example` в `.env` при необходимости локальных переопределений.
-
-```bash
-docker compose -f deploy/docker-compose.yml config
-docker compose -f deploy/docker-compose.yml up --build
-```
-
-Для production-like локального запуска compose уже включает persistent volumes, healthchecks, restart policy и resource limits.
-
-## Контракты
-
-OpenAPI contract лежит в `packages/contracts/openapi.yaml`.
+Контракт API: `packages/contracts/openapi.yaml`.
+Правила для агентов: `CLAUDE.md`.
