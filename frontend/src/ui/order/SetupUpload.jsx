@@ -2,14 +2,14 @@ import { useRef, useState } from "react";
 import { ORDER_BRANDS, blankSlotsForBrand, brandLabel } from "../../features/brands/brandPresentation.js";
 import { selectableOrderMonths } from "../../features/order/monthPolicy.js";
 import { IconCheck, IconChevron, IconFile, IconUpload } from "../icons.jsx";
-import { Field, PrimaryButton, Select, StageHeading } from "../widgets.jsx";
+import { Field, PrimaryButton, ProgressBar, Select, StageHeading } from "../widgets.jsx";
 
 export function SetupStage({ brand, month, onBrand, onMonth, onNext }) {
   const months = selectableOrderMonths();
   return (
     <div className="mx-auto flex h-full max-w-xl flex-col justify-center px-6">
       <StageHeading index="01" kicker="Настройка" title="Новая сессия заполнения">
-        <p className="mt-2 max-w-md text-[14px] leading-relaxed text-[var(--color-ink-soft)]">
+        <p className="mt-3 max-w-md text-[16px] leading-relaxed text-[var(--color-ink-soft)]">
           Выберите бренд и месяц заказа — по ним подтянется нужный бланк для сверки. Прошедшие месяцы выбрать нельзя.
         </p>
       </StageHeading>
@@ -43,6 +43,7 @@ export function UploadStage({
   onProcess,
   processing,
   status,
+  progress,
   error,
 }) {
   const slots = blankSlotsForBrand(brand);
@@ -50,7 +51,7 @@ export function UploadStage({
   return (
     <div className="mx-auto flex h-full max-w-2xl flex-col justify-center px-6">
       <StageHeading index="02" kicker="Загрузка файлов" title="Загрузите файлы">
-        <p className="mt-2 max-w-lg text-[14px] leading-relaxed text-[var(--color-ink-soft)]">
+        <p className="mt-3 max-w-lg text-[16px] leading-relaxed text-[var(--color-ink-soft)]">
           Таблица заказа и текущий бланк для бренда{" "}
           <span className="font-medium text-[var(--color-ink)]">{brandLabel(brand)}</span>. Форматы .xlsx, .xlsm и .xls.
         </p>
@@ -76,15 +77,15 @@ export function UploadStage({
         ))}
       </div>
 
-      {error && <p className="mt-4 text-[13px] text-[var(--color-danger)]">{error}</p>}
-      {processing && <p className="mt-4 font-mono text-[12px] text-[var(--color-ink-soft)]">{status}</p>}
+      {error && <p className="mt-4 text-[15px] text-[var(--color-danger)]">{error}</p>}
+      {processing && <ProgressBar value={progress} label={status || "Обработка..."} />}
 
       <div className="mt-8 flex items-center justify-between">
         <button
           type="button"
           onClick={onBack}
           disabled={processing}
-          className="flex items-center gap-1.5 rounded-lg px-3 py-2 text-[13px] font-medium text-[var(--color-ink-soft)] transition hover:bg-[var(--color-line-soft)] disabled:opacity-40"
+          className="flex items-center gap-1.5 rounded-xl px-4 py-2.5 text-[15px] font-medium text-[var(--color-ink-soft)] transition hover:bg-[var(--color-line-soft)] disabled:opacity-40"
         >
           <IconChevron className="h-4 w-4 rotate-90" />
           Назад
@@ -114,7 +115,7 @@ function Dropzone({ title, hint, file, accept, onPick }) {
         const next = event.dataTransfer.files[0];
         if (next) onPick(next);
       }}
-      className={`relative rounded-xl border-2 border-dashed p-5 transition ${
+      className={`relative rounded-xl border-2 border-dashed p-6 transition ${
         file
           ? "border-[var(--color-ok)] bg-[var(--color-ok-soft)]"
           : drag
@@ -130,7 +131,7 @@ function Dropzone({ title, hint, file, accept, onPick }) {
         onChange={(event) => onPick(event.target.files?.[0] || null)}
       />
       <div className="mb-2 flex items-center justify-between">
-        <span className="text-[13px] font-semibold">{title}</span>
+        <span className="text-[15px] font-semibold">{title}</span>
         {file && (
           <span className="grid h-5 w-5 place-items-center rounded-full bg-[var(--color-ok)] text-white">
             <IconCheck className="h-3 w-3" />
@@ -141,7 +142,7 @@ function Dropzone({ title, hint, file, accept, onPick }) {
         <div className="flex items-center gap-2.5">
           <IconFile className="h-8 w-8 shrink-0 text-[var(--color-ok)]" />
           <div className="min-w-0 flex-1">
-            <div className="truncate font-mono text-[12px] font-medium">{file.name}</div>
+            <div className="truncate font-mono text-[13px] font-medium">{file.name}</div>
             <button
               type="button"
               onClick={() => {
@@ -157,8 +158,8 @@ function Dropzone({ title, hint, file, accept, onPick }) {
       ) : (
         <button type="button" onClick={() => inputRef.current?.click()} className="flex w-full flex-col items-start gap-1 text-left">
           <IconUpload className="h-8 w-8 text-[var(--color-ink-faint)]" />
-          <span className="mt-1 text-[12.5px] font-medium text-[var(--color-brand)]">Выбрать файл</span>
-          <span className="text-[11.5px] text-[var(--color-ink-faint)]">{hint}</span>
+          <span className="mt-1 text-[14px] font-medium text-[var(--color-brand)]">Выбрать файл</span>
+          <span className="text-[13px] text-[var(--color-ink-faint)]">{hint}</span>
         </button>
       )}
     </div>

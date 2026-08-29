@@ -71,15 +71,16 @@ func run(logger *slog.Logger) error {
 	now := func() time.Time { return time.Now().UTC() }
 
 	router := httpapi.NewRouter(httpapi.Config{
-		CreateJob:      usecase.NewCreateJob(repository, storage, publisher, uuid.NewString, now, logger, metrics),
-		GetJob:         usecase.NewGetJob(repository),
-		GetReport:      usecase.NewGetReport(repository),
-		ListFiles:      usecase.NewListFiles(repository),
-		DownloadFile:   usecase.NewDownloadFile(repository, storage),
-		SubmitEdits:    usecase.NewSubmitEdits(repository, publisher, now, logger),
-		Metrics:        metrics,
-		AllowedOrigins: httpapi.ParseAllowedOrigins(settings.AllowedOrigins),
-		MaxUploadBytes: settings.MaxUploadBytes,
+		CreateJob:       usecase.NewCreateJob(repository, storage, publisher, uuid.NewString, now, logger, metrics),
+		GetJob:          usecase.NewGetJob(repository),
+		GetReport:       usecase.NewGetReport(repository),
+		ListFiles:       usecase.NewListFiles(repository),
+		DownloadFile:    usecase.NewDownloadFile(repository, storage),
+		DownloadArchive: usecase.NewDownloadArchive(repository, storage),
+		SubmitEdits:     usecase.NewSubmitEdits(repository, publisher, now, logger),
+		Metrics:         metrics,
+		AllowedOrigins:  httpapi.ParseAllowedOrigins(settings.AllowedOrigins),
+		MaxUploadBytes:  settings.MaxUploadBytes,
 	})
 
 	server := &http.Server{

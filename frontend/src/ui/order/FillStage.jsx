@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { adjustmentLabelForBrand } from "../../features/brands/brandPresentation.js";
 import { editRequiresComment, normalizeOrderValue } from "../../features/order/editRules.js";
+import { quantityDivergesFromRecommendation, roundingComment } from "../../features/order/quantityPresentation.js";
 import { rowKey } from "../../features/order/reviewEdits.js";
 import { duplicateDescription } from "../../features/report/issueReport.js";
 import { baselineForReportRow, statusLabel } from "../../features/report/reportModel.js";
@@ -8,6 +9,8 @@ import {
   boxStep,
   countByTab,
   criticalOpenCount,
+  displayArticle,
+  displayName,
   FILL_COMPOSITION_ORDER,
   FILL_TABS,
   matchPercent,
@@ -43,6 +46,19 @@ const TONE_CHIP = {
   neutral: "text-[var(--color-neutral)] bg-[var(--color-neutral-soft)]",
 };
 
+const TABLE_HEADERS = [
+  { key: "bar", label: "", align: "left" },
+  { key: "article", label: "Артикул", align: "left" },
+  { key: "name", label: "Товар", align: "left" },
+  { key: "unit", label: "Объём", align: "right" },
+  { key: "stock", label: "Остаток", align: "right" },
+  { key: "transit", label: "В пути", align: "right" },
+  { key: "recommended", label: "Реком.", align: "right" },
+  { key: "inserted", label: "Вставлено", align: "right" },
+  { key: "match", label: "Совпад.", align: "right" },
+  { key: "comment", label: "Комментарий", align: "left" },
+];
+
 export function FillStage({
   brand,
   rows,
@@ -50,7 +66,6 @@ export function FillStage({
   onEdit,
   invalidKeys,
   summary,
-  files,
   status,
   busy,
   onDownloadFiles,
@@ -72,12 +87,12 @@ export function FillStage({
           <div className="flex items-center gap-4">
             <Ring value={rows.length ? filledCount / rows.length : 0} />
             <div>
-              <div className="text-[12.5px] font-medium text-[var(--color-ink-soft)]">Готовность бланка</div>
+              <div className="text-[14px] font-medium text-[var(--color-ink-soft)]">Готовность бланка</div>
               <div className="mt-0.5 flex items-baseline gap-1.5">
-                <span className="font-mono text-[24px] font-semibold leading-none tabular-nums">{filledCount}</span>
-                <span className="font-mono text-[13px] text-[var(--color-ink-faint)]">/ {rows.length}</span>
+                <span className="font-mono text-[28px] font-semibold leading-none tabular-nums">{filledCount}</span>
+                <span className="font-mono text-[15px] text-[var(--color-ink-faint)]">/ {rows.length}</span>
               </div>
-              <div className="mt-1 text-[11.5px] text-[var(--color-ink-faint)]">позиций заполнено</div>
+              <div className="mt-1 text-[13px] text-[var(--color-ink-faint)]">позиций заполнено</div>
             </div>
           </div>
 
@@ -85,8 +100,8 @@ export function FillStage({
 
           <div className="min-w-0 flex-1">
             <div className="mb-2 flex items-center justify-between">
-              <span className="text-[12.5px] font-medium text-[var(--color-ink-soft)]">Состав заказа</span>
-              <span className="font-mono text-[11px] text-[var(--color-ink-faint)]">{rows.length} позиций</span>
+              <span className="text-[14px] font-medium text-[var(--color-ink-soft)]">Состав заказа</span>
+              <span className="font-mono text-[13px] text-[var(--color-ink-faint)]">{rows.length} позиций</span>
             </div>
             <div className="flex h-2.5 w-full overflow-hidden rounded-full bg-[var(--color-line-soft)]">
               {FILL_COMPOSITION_ORDER.map((key) => {
@@ -106,7 +121,7 @@ export function FillStage({
             </div>
             <div className="mt-2.5 flex flex-wrap gap-x-4 gap-y-1.5">
               {FILL_COMPOSITION_ORDER.map((key) => (
-                <button key={key} type="button" onClick={() => setTab(key)} className="group flex items-center gap-1.5 text-[11.5px]">
+                <button key={key} type="button" onClick={() => setTab(key)} className="group flex items-center gap-1.5 text-[13px]">
                   <span className={`h-2 w-2 rounded-[3px] ${COMPOSITION[key]}`} />
                   <span className="text-[var(--color-ink-soft)] group-hover:text-[var(--color-ink)]">{STATUS_META[key].label}</span>
                   <span className="font-mono tabular-nums text-[var(--color-ink-faint)]">{counts[key] ?? 0}</span>
@@ -114,7 +129,7 @@ export function FillStage({
               ))}
             </div>
             {summary.orderMonthLabel && (
-              <div className="mt-2 font-mono text-[11px] text-[var(--color-ink-faint)]">
+              <div className="mt-2 font-mono text-[13px] text-[var(--color-ink-faint)]">
                 {summary.brand}. Заказ на {summary.orderMonthLabel}. Период: {summary.actualMainPeriod || "—"}.
                 {summary.cityRule ? ` ${summary.cityRule}: срок поставки ${summary.deliveryWeeks} нед.` : ""}
                 {summary.blankDuplicateArticles ? ` Дублей артикулов в бланке: ${summary.blankDuplicateArticles}.` : ""}
@@ -137,8 +152,8 @@ export function FillStage({
               {criticalOpen ? <IconAlert className="h-4 w-4" /> : <IconCheck className="h-4 w-4" />}
             </span>
             <span className="leading-tight">
-              <span className="block text-[13px] font-semibold">{criticalOpen ? `${criticalOpen} требуют решения` : "Всё под контролем"}</span>
-              <span className="block text-[11.5px] text-[var(--color-ink-soft)]">
+              <span className="block text-[15px] font-semibold">{criticalOpen ? `${criticalOpen} требуют решения` : "Всё под контролем"}</span>
+              <span className="block text-[13px] text-[var(--color-ink-soft)]">
                 {criticalOpen ? "дубли и спорные позиции" : "критичных проблем нет"}
               </span>
             </span>
@@ -156,12 +171,12 @@ export function FillStage({
                 key={item.key}
                 type="button"
                 onClick={() => setTab(item.key)}
-                className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-[12.5px] font-medium transition ${
+                className={`flex items-center gap-1.5 rounded-lg px-3 py-2 text-[14px] font-medium transition ${
                   active ? "bg-[var(--color-brand)] text-white" : "text-[var(--color-ink-soft)] hover:bg-[var(--color-line-soft)]"
                 }`}
               >
                 {item.label}
-                <span className={`rounded-full px-1.5 font-mono text-[10.5px] tabular-nums ${active ? "bg-white/20" : "bg-[var(--color-neutral-soft)] text-[var(--color-ink-faint)]"}`}>
+                <span className={`rounded-full px-1.5 font-mono text-[12px] tabular-nums ${active ? "bg-white/20" : "bg-[var(--color-neutral-soft)] text-[var(--color-ink-faint)]"}`}>
                   {n}
                 </span>
               </button>
@@ -174,7 +189,7 @@ export function FillStage({
             value={query}
             onChange={(event) => setQuery(event.target.value)}
             placeholder="Артикул или наименование"
-            className="w-full rounded-lg border border-[var(--color-line)] bg-[var(--color-surface)] py-1.5 pl-8 pr-8 text-[12.5px] outline-none transition focus:border-[var(--color-brand)] focus:ring-4 focus:ring-[var(--color-brand-soft)]"
+            className="w-full rounded-lg border border-[var(--color-line)] bg-[var(--color-surface)] py-2 pl-8 pr-8 text-[14px] outline-none transition focus:border-[var(--color-brand)] focus:ring-4 focus:ring-[var(--color-brand-soft)]"
           />
           {query && (
             <button type="button" onClick={() => setQuery("")} className="absolute right-2 top-1/2 -translate-y-1/2 text-[var(--color-ink-faint)] hover:text-[var(--color-ink)]">
@@ -184,16 +199,30 @@ export function FillStage({
         </div>
       </div>
 
-      <div className="flex-1 overflow-auto px-6 py-3">
-        <table className="w-full min-w-[980px] border-separate border-spacing-0">
+      <div className="flex-1 overflow-auto px-6 py-4">
+        <table className="w-full min-w-[1280px] table-fixed border-separate border-spacing-0">
+          <colgroup>
+            <col className="w-12" />
+            <col className="w-[11%]" />
+            <col />
+            <col className="w-[8%]" />
+            <col className="w-[8%]" />
+            <col className="w-[8%]" />
+            <col className="w-[9%]" />
+            <col className="w-[13%]" />
+            <col className="w-[8%]" />
+            <col className="w-[18%]" />
+          </colgroup>
           <thead>
             <tr className="text-left">
-              {["", "Артикул", "Товар", "Объём", "Остаток", "В пути", "Реком.", "Вставлено", "Совпад."].map((header, index) => (
+              {TABLE_HEADERS.map((header) => (
                 <th
-                  key={header || "bar"}
-                  className={`sticky top-0 z-10 bg-[var(--color-ground)] pb-2.5 pt-1 text-[11.5px] font-medium text-[var(--color-ink-faint)] ${index >= 3 ? "text-right" : ""}`}
+                  key={header.key}
+                  className={`sticky top-0 z-10 whitespace-nowrap bg-[var(--color-ground)] px-4 pb-3.5 pt-2 text-[13px] font-medium tracking-wide text-[var(--color-ink-faint)] ${
+                    header.align === "right" ? "text-right" : ""
+                  }`}
                 >
-                  {header}
+                  {header.label}
                 </th>
               ))}
             </tr>
@@ -201,7 +230,7 @@ export function FillStage({
           <tbody>
             {visible.length === 0 && (
               <tr>
-                <td colSpan={9} className="py-16 text-center text-[13px] text-[var(--color-ink-faint)]">
+                <td colSpan={10} className="py-16 text-center text-[15px] text-[var(--color-ink-faint)]">
                   Нет позиций в этой категории
                 </td>
               </tr>
@@ -223,20 +252,12 @@ export function FillStage({
       </div>
 
       <footer className="flex flex-wrap items-center gap-3 border-t border-[var(--color-line)] bg-[var(--color-surface)] px-6 py-3">
-        <div className="flex flex-wrap gap-2">
-          {files.map((file) => (
-            <a key={file.id} href={file.downloadUrl} download={file.name} className="flex items-center gap-1.5 rounded-lg border border-[var(--color-line)] bg-[var(--color-surface)] px-3 py-2 text-[12.5px] font-medium text-[var(--color-ink-soft)] transition hover:border-[var(--color-ink-faint)] hover:text-[var(--color-ink)]">
-              <IconDownload className="h-4 w-4" />
-              {file.label}
-            </a>
-          ))}
-          <GhostButton onClick={onIssueReport} disabled={busy}>
-            <IconDownload className="h-4 w-4" />
-            Отчёт для 1С
-          </GhostButton>
-        </div>
+        <GhostButton onClick={onIssueReport} disabled={busy}>
+          <IconDownload className="h-4 w-4" />
+          Отчёт для 1С
+        </GhostButton>
         <div className="ml-auto flex items-center gap-3">
-          <span className="font-mono text-[11px] text-[var(--color-ink-soft)]">
+          <span className="font-mono text-[13px] text-[var(--color-ink-soft)]">
             {status ? <span>{status}</span> : criticalOpen === 0 ? <span className="text-[var(--color-ok)]">Критичных проблем нет</span> : <span className="text-[var(--color-warn)]">Осталось критичных: {criticalOpen}</span>}
           </span>
           <PrimaryButton onClick={onDownloadFiles} disabled={busy}>
@@ -253,7 +274,9 @@ export function FillStage({
 function ReportRow({ row, edit, expanded, invalid, boxLabel, onToggle, onEdit }) {
   const status = presentationStatus(row);
   const meta = STATUS_META[status];
-  const cell = `border-b border-[var(--color-line-soft)] py-2 align-middle text-[13px] ${invalid ? "bg-[var(--color-danger-soft)]" : ""}`;
+  const diverges = row.editable !== false && quantityDivergesFromRecommendation(row, edit?.value);
+  const note = roundingComment(row);
+  const cell = `border-b border-[var(--color-line-soft)] px-4 py-4 align-middle text-[14px] ${invalid ? "bg-[var(--color-danger-soft)]" : diverges ? "bg-[var(--color-warn-soft)]" : ""}`;
   const num = `${cell} text-right font-mono tabular-nums`;
   const key = rowKey(row);
   const match = matchPercent(row);
@@ -262,24 +285,31 @@ function ReportRow({ row, edit, expanded, invalid, boxLabel, onToggle, onEdit })
   return (
     <>
       <tr className="group transition hover:bg-[var(--color-line-soft)]">
-        <td className={`${cell} w-8 pl-0`}>
-          <button type="button" onClick={onToggle} className="flex items-center gap-1.5">
-            <span className={`h-6 w-1 rounded-full ${meta.bar}`} aria-label={meta.label} />
-            <IconChevron className={`h-3.5 w-3.5 text-[var(--color-ink-faint)] transition ${expanded ? "rotate-180" : ""}`} />
+        <td className={`${cell} pl-1 pr-2`}>
+          <button type="button" onClick={onToggle} className="flex items-center gap-2">
+            <span className={`h-7 w-1.5 rounded-full ${meta.bar}`} aria-label={meta.label} />
+            <IconChevron className={`h-4 w-4 text-[var(--color-ink-faint)] transition ${expanded ? "rotate-180" : ""}`} />
           </button>
         </td>
-        <td className={`${cell} pr-3 font-mono text-[12px] text-[var(--color-ink-soft)]`}>{row.blankArticle}</td>
-        <td className={`${cell} pr-3`}>
-          <span className="font-medium">{row.blankName}</span>
+        <td className={`${cell} truncate font-mono text-[13px] text-[var(--color-ink-soft)]`} title={displayArticle(row)}>
+          {displayArticle(row) || "—"}
         </td>
-        <td className={`${num} pr-3 text-[var(--color-ink-soft)]`}>{row.blankUnit}</td>
-        <td className={`${num} pr-3`}>{quantityDisplay(row.stock)}</td>
-        <td className={`${num} pr-3 text-[var(--color-ink-soft)]`}>{quantityDisplay(row.inTransit) || "—"}</td>
-        <td className={`${num} pr-3 font-semibold text-[var(--color-brand-strong)]`}>
+        <td className={cell}>
+          <span className="block leading-snug font-medium">{displayName(row) || "—"}</span>
+        </td>
+        <td className={`${num} text-[var(--color-ink-soft)]`}>{row.blankUnit || "—"}</td>
+        <td className={num}>{quantityDisplay(row.stock) || "—"}</td>
+        <td className={`${num} text-[var(--color-ink-soft)]`}>{quantityDisplay(row.inTransit) || "—"}</td>
+        <td className={`${num} font-semibold text-[var(--color-brand-strong)]`}>
           {row.recommended == null ? "—" : Number(row.recommended).toFixed(2)}
         </td>
-        <td className={`${cell} pr-3`}>
-          <div className="flex justify-end">
+        <td className={cell}>
+          <div className="flex items-center justify-end gap-2.5">
+            {note ? (
+              <span className="hidden max-w-28 truncate rounded-md bg-[var(--color-warn-soft)] px-1.5 py-0.5 text-[12px] font-medium text-[var(--color-warn)] xl:inline" title={note}>
+                {note}
+              </span>
+            ) : null}
             <Stepper
               value={edit?.value ?? ""}
               disabled={row.editable === false}
@@ -288,46 +318,55 @@ function ReportRow({ row, edit, expanded, invalid, boxLabel, onToggle, onEdit })
             />
           </div>
         </td>
-        <td className={`${cell} pr-0`}>
+        <td className={cell}>
           <div className="flex justify-end">
             {match == null ? <span className="px-2 text-[var(--color-ink-faint)]">—</span> : <MatchPill value={match} />}
           </div>
         </td>
+        <td className={cell}>
+          {row.editable === false ? (
+            <span className="block max-w-xs truncate text-[13px] text-[var(--color-ink-soft)]" title={edit?.comment || ""}>
+              {edit?.comment || "—"}
+            </span>
+          ) : (
+            <input
+              type="text"
+              value={edit?.comment || ""}
+              onChange={(event) => onEdit(key, { ...edit, comment: event.target.value })}
+              placeholder="Почему изменили количество"
+              className={`w-full rounded-lg border px-3 py-2 text-[13px] outline-none ${
+                needsComment ? "border-[var(--color-warn)] bg-[var(--color-warn-soft)]" : "border-[var(--color-line)] bg-[var(--color-surface)]"
+              }`}
+            />
+          )}
+        </td>
       </tr>
       {expanded && (
         <tr>
-          <td colSpan={9} className="border-b border-[var(--color-line-soft)] bg-[var(--color-ground)] px-3 py-3">
-            <div className="grid gap-x-8 gap-y-3 pl-5 text-[12px] sm:grid-cols-3">
+          <td colSpan={10} className="border-b border-[var(--color-line-soft)] bg-[var(--color-ground)] px-3 py-3">
+            <div className="grid gap-x-8 gap-y-3 pl-5 text-[14px] sm:grid-cols-3">
               <Detail label="Статус">
-                <span className={`inline-flex rounded-md px-2 py-0.5 text-[11px] font-medium ${TONE_CHIP[meta.tone]}`}>
+                <span className={`inline-flex rounded-md px-2 py-0.5 text-[13px] font-medium ${TONE_CHIP[meta.tone]}`}>
                   {statusLabel(row.status)}
                 </span>
               </Detail>
               <Detail label={boxLabel}>{quantityDisplay(row.blankBoxSize) || "—"}</Detail>
               <Detail label="Заказано по факту">{row.hasOrderedFact ? quantityDisplay(row.orderedFact) : "—"}</Detail>
               <Detail label="Бланк">
-                <span className="font-mono text-[11px]">{row.blankLabel || "—"}</span>
+                <span className="font-mono text-[13px]">{row.blankLabel || "—"}</span>
               </Detail>
+              {row.sourceArticle || row.sourceName ? (
+                <Detail label="Таблица заказа">
+                  <span className="font-mono text-[13px]">
+                    {[row.sourceArticle, row.sourceName].filter(Boolean).join(" · ") || "—"}
+                  </span>
+                </Detail>
+              ) : null}
               {row.duplicate && (
                 <Detail label="Дубли в таблице">
                   <span className="text-[var(--color-danger)]">{duplicateDescription(row.duplicateCandidates) || "есть совпадения"}</span>
                 </Detail>
               )}
-              <Detail label="Комментарий">
-                {row.editable === false ? (
-                  <span className="text-[var(--color-ink-soft)]">{edit?.comment || "—"}</span>
-                ) : (
-                  <input
-                    type="text"
-                    value={edit?.comment || ""}
-                    onChange={(event) => onEdit(key, { ...edit, comment: event.target.value })}
-                    placeholder="Почему изменили количество"
-                    className={`w-full rounded-lg border px-2.5 py-1.5 text-[12px] outline-none ${
-                      needsComment ? "border-[var(--color-warn)]" : "border-[var(--color-line)]"
-                    }`}
-                  />
-                )}
-              </Detail>
             </div>
           </td>
         </tr>
@@ -339,7 +378,7 @@ function ReportRow({ row, edit, expanded, invalid, boxLabel, onToggle, onEdit })
 function Detail({ label, children }) {
   return (
     <div>
-      <div className="mb-0.5 text-[11px] text-[var(--color-ink-faint)]">{label}</div>
+      <div className="mb-0.5 text-[13px] text-[var(--color-ink-faint)]">{label}</div>
       <div>{children}</div>
     </div>
   );
@@ -348,7 +387,7 @@ function Detail({ label, children }) {
 function MatchPill({ value }) {
   const tone = value >= 85 ? "ok" : value >= 60 ? "warn" : "danger";
   return (
-    <span className={`rounded-md px-2 py-0.5 font-mono text-[11px] font-medium tabular-nums ${TONE_CHIP[tone]}`}>
+    <span className={`rounded-md px-2 py-0.5 font-mono text-[13px] font-medium tabular-nums ${TONE_CHIP[tone]}`}>
       {value}%
     </span>
   );

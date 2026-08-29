@@ -164,6 +164,19 @@ func OutputStorageKey(jobID string, fileName string) string {
 	return fmt.Sprintf("jobs/%s/outputs/%s", jobID, SafeFileName(fileName))
 }
 
+// ArchiveFileName is the download name for every generated workbook packed together.
+func ArchiveFileName(brand string, orderMonth string) string {
+	safeBrand := SafeFileName(brand)
+	if safeBrand == "" || safeBrand == "file" {
+		safeBrand = "order"
+	}
+	month := strings.TrimSpace(orderMonth)
+	if month == "" {
+		return safeBrand + ".zip"
+	}
+	return safeBrand + "_" + month + ".zip"
+}
+
 // SafeFileName strips any directory component a browser may have sent.
 func SafeFileName(value string) string {
 	normalized := strings.ReplaceAll(strings.TrimSpace(value), "\\", "/")

@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { collectReviewEdits, validateReviewEdits } from "./reviewEdits.js";
+import { collectReviewEdits, hasManualDeviations, validateReviewEdits } from "./reviewEdits.js";
 
 function editMap(entries) {
   return new Map(entries);
@@ -33,4 +33,20 @@ test("collectReviewEdits sends only editable rows", () => {
   assert.deepEqual(collectReviewEdits(rows, edits), [
     { key: "a", blankId: "main", blankRow: 4, value: "6", comment: "меньше склада" },
   ]);
+});
+
+test("hasManualDeviations is false when the reviewer kept the engine quantities", () => {
+  const rows = [
+    { key: "a", editable: true, inserted: 12, recommended: 10, rounded: 12 },
+  ];
+  const edits = editMap([["a", { value: "12", comment: "до коробки" }]]);
+  assert.equal(hasManualDeviations(rows, edits), false);
+});
+
+test("hasManualDeviations is true when a quantity left the engine baseline", () => {
+  const rows = [
+    { key: "a", editable: true, inserted: 12, recommended: 10, rounded: 12 },
+  ];
+  const edits = editMap([["a", { value: "18", comment: "вручную" }]]);
+  assert.equal(hasManualDeviations(rows, edits), true);
 });

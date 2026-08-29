@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { remoteDownloadLinksHtml } from "./downloadLinks.js";
+import { remoteDownloadLinksHtml, fileNameFromContentDisposition } from "./downloadLinks.js";
 
 test("remoteDownloadLinksHtml renders escaped server download links", () => {
   const html = remoteDownloadLinksHtml([
@@ -17,4 +17,11 @@ test("remoteDownloadLinksHtml renders escaped server download links", () => {
 
 test("remoteDownloadLinksHtml supports camelCase downloadUrl fallback", () => {
   assert.match(remoteDownloadLinksHtml([{ downloadUrl: "/file", name: "file.xlsx" }]), /href="\/file"/);
+});
+
+test("fileNameFromContentDisposition prefers the RFC 5987 file name", () => {
+  assert.equal(
+    fileNameFromContentDisposition(`attachment; filename="angio.zip"; filename*=UTF-8''angiopharm_2026-09.zip`),
+    "angiopharm_2026-09.zip",
+  );
 });

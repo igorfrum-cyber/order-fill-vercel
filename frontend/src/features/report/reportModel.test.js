@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { combinedSummary, jobStatusText, reportSummaryFromRows, statusLabel } from "./reportModel.js";
+import { combinedSummary, jobProgress, jobStatusText, reportSummaryFromRows, statusLabel } from "./reportModel.js";
 
 test("reportSummaryFromRows derives dashboard metrics from API report rows", () => {
   const rows = [
@@ -62,4 +62,12 @@ test("statusLabel falls back to raw status", () => {
 test("jobStatusText maps terminal errors to their API message", () => {
   assert.equal(jobStatusText({ status: "queued" }), "Задача в очереди...");
   assert.equal(jobStatusText({ status: "failed", error: { message: "Нет файла" } }), "Нет файла");
+});
+
+test("jobProgress maps queue states to a visible progress fraction", () => {
+  assert.equal(jobProgress({ status: "queued" }), 0.2);
+  assert.equal(jobProgress({ status: "processing" }), 0.65);
+  assert.equal(jobProgress({ status: "needs_review" }), 1);
+  assert.equal(jobProgress({ status: "completed" }), 1);
+  assert.equal(jobProgress({ status: "failed" }), 1);
 });

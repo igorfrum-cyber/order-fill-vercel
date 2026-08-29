@@ -1,6 +1,8 @@
 package usecase
 
 import (
+	"archive/zip"
+	"bytes"
 	"context"
 	"errors"
 	"io"
@@ -233,8 +235,72 @@ func TestDownloadFileReturnsTheStoredWorkbook(t *testing.T) {
 	if string(download.Content) != "filled" || download.Name != "Бланк заполненный.xlsx" {
 		t.Fatalf("unexpected download %+v", download)
 	}
+}
 
-	if _, err := NewDownloadFile(repository, storage).Execute(context.Background(), "job-1", "output-9"); !errors.Is(err, job.ErrNotFound) {
+func TestDownloadArchiveZipsEveryGeneratedWorkbook(t *testing.T) {
+	repository := newFakeRepository()
+	storage := newFakeStorage()
+	entity, err := job.NewJob("job-1", job.TypeOrderFill, "angiopharm", "2026-09", time.Now(), []job.InputFile{{ID: "in", Role: job.RoleBlank, Name: "b.xlsx"}})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	entity.OutputFiles = []job.OutputFile{
+		{ID: "output-1", Name: "Бланк заполненный.xlsx", ContentType: "application/xlsx", StorageKey: "jobs/job-1/outputs/blank"},
+		{ID: "output-2", Name: "Таблица заказа.xlsx", ContentType: "application/xlsx", StorageKey: "jobs/job-1/outputs/source"},
+	}
+	if err := repository.Create(context.Background(), entity); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if err := storage.Put(context.Background(), "jobs/job-1/outputs/blank", "application/xlsx", []byte("blank-bytes")); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if err := storage.Put(context.Background(), "jobs/job-1/outputs/source", "application/xlsx", []byte("source-bytes")); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	download, err := NewDownloadArchive(repository, storage).Execute(context.Background(), "job-1")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if download.Name != "angiopharm_2026-09.zip" {
+		t.Fatalf("unexpected archive name %q", download.Name)
+	}
+	if download.ContentType != "application/zip" {
+		t.Fatalf("unexpected content type %q", download.ContentType)
+	}
+
+	reader, err := zip.NewReader(bytes.NewReader(download.Content), int64(len(download.Content)))
+	if err != nil {
+		t.Fatalf("open archive: %v", err)
+	}
+	got := map[string]string{}
+	for _, file := range reader.File {
+		opened, err := file.Open()
+		if err != nil {
+			t.Fatalf("open entry %s: %v", file.Name, err)
+		}
+		body, err := io.ReadAll(opened)
+		_ = opened.Close()
+		if err != nil {
+			t.Fatalf("read entry %s: %v", file.Name, err)
+		}
+		got[file.Name] = string(body)
+	}
+	if got["Бланк заполненный.xlsx"] != "blank-bytes" || got["Таблица заказа.xlsx"] != "source-bytes" {
+		t.Fatalf("unexpected archive contents %+v", got)
+	}
+}
+
+func TestDownloadArchiveRequiresGeneratedFiles(t *testing.T) {
+	repository := newFakeRepository()
+	entity, err := job.NewJob("job-1", job.TypeOrderFill, "angiopharm", "2026-09", time.Now(), []job.InputFile{{ID: "in", Role: job.RoleBlank, Name: "b.xlsx"}})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if err := repository.Create(context.Background(), entity); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if _, err := NewDownloadArchive(repository, newFakeStorage()).Execute(context.Background(), "job-1"); !errors.Is(err, job.ErrNotFound) {
 		t.Fatalf("expected a not found error, got %v", err)
 	}
 }

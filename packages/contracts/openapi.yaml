@@ -147,6 +147,22 @@ paths:
                       $ref: "#/components/schemas/OutputFile"
         "404":
           $ref: "#/components/responses/NotFound"
+  /api/v1/jobs/{job_id}/archive:
+    get:
+      operationId: downloadJobArchive
+      summary: Download every generated workbook as one zip archive
+      parameters:
+        - $ref: "#/components/parameters/JobId"
+      responses:
+        "200":
+          description: Zip archive of generated workbooks.
+          content:
+            application/zip:
+              schema:
+                type: string
+                format: binary
+        "404":
+          $ref: "#/components/responses/NotFound"
   /api/v1/jobs/{job_id}/files/{file_id}:
     get:
       operationId: downloadJobFile

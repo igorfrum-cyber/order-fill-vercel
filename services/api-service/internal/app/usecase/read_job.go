@@ -1,8 +1,12 @@
 package usecase
 
 import (
+	"archive/zip"
+	"bytes"
 	"context"
 	"fmt"
+	"path"
+	"strings"
 
 	"order-fill/services/api-service/internal/app/port"
 	"order-fill/services/api-service/internal/domain/job"
@@ -93,4 +97,64 @@ func (u *DownloadFile) Execute(ctx context.Context, jobID string, fileID string)
 		return Download{Name: file.Name, ContentType: contentType, Content: object.Content}, nil
 	}
 	return Download{}, fmt.Errorf("%w: file %q", job.ErrNotFound, fileID)
+}
+
+// DownloadArchive packs every generated workbook into one zip for a single click.
+type DownloadArchive struct {
+	repository JobReader
+	storage    port.ObjectStore
+}
+
+func NewDownloadArchive(repository JobReader, storage port.ObjectStore) *DownloadArchive {
+	return &DownloadArchive{repository: repository, storage: storage}
+}
+
+func (u *DownloadArchive) Execute(ctx context.Context, jobID string) (Download, error) {
+	entity, err := u.repository.Get(ctx, jobID)
+	if err != nil {
+		return Download{}, err
+	}
+	if len(entity.OutputFiles) == 0 {
+		return Download{}, fmt.Errorf("%w: generated files", job.ErrNotFound)
+	}
+
+	var buffer bytes.Buffer
+	writer := zip.NewWriter(&buffer)
+	used := map[string]int{}
+	for _, file := range entity.OutputFiles {
+		object, err := u.storage.Get(ctx, file.StorageKey)
+		if err != nil {
+			return Download{}, fmt.Errorf("read output file: %w", err)
+		}
+		entryName := uniqueZipName(job.SafeFileName(file.Name), used)
+		entry, err := writer.Create(entryName)
+		if err != nil {
+			return Download{}, fmt.Errorf("create archive entry: %w", err)
+		}
+		if _, err := entry.Write(object.Content); err != nil {
+			return Download{}, fmt.Errorf("write archive entry: %w", err)
+		}
+	}
+	if err := writer.Close(); err != nil {
+		return Download{}, fmt.Errorf("close archive: %w", err)
+	}
+	return Download{
+		Name:        job.ArchiveFileName(entity.Brand, entity.OrderMonth),
+		ContentType: "application/zip",
+		Content:     buffer.Bytes(),
+	}, nil
+}
+
+func uniqueZipName(name string, used map[string]int) string {
+	if name == "" || name == "file" {
+		name = "file.xlsx"
+	}
+	count := used[name]
+	used[name] = count + 1
+	if count == 0 {
+		return name
+	}
+	ext := path.Ext(name)
+	base := strings.TrimSuffix(name, ext)
+	return fmt.Sprintf("%s-%d%s", base, count+1, ext)
 }

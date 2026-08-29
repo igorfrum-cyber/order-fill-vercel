@@ -2,14 +2,14 @@ import { IconCheck, IconList } from "./icons.jsx";
 
 export function TopBar({ brandLabel, monthLabel, stage, mode, onMode }) {
   return (
-    <header className="flex items-center justify-between border-b border-[var(--color-line)] bg-[var(--color-surface)] px-6 py-3">
+    <header className="flex items-center justify-between border-b border-[var(--color-line)] bg-[var(--color-surface)] px-6 py-3.5">
       <div className="flex items-center gap-2.5">
-        <div className="grid h-8 w-8 place-items-center rounded-md bg-[var(--color-brand)] text-white">
+        <div className="grid h-9 w-9 place-items-center rounded-md bg-[var(--color-brand)] text-white">
           <IconList className="h-4 w-4" />
         </div>
         <div className="leading-tight">
-          <div className="text-[13.5px] font-semibold tracking-tight">Бланки закупки</div>
-          <div className="text-[11px] text-[var(--color-ink-faint)]">автозаполнение</div>
+          <div className="text-[16px] font-semibold tracking-tight">Бланки закупки</div>
+          <div className="text-[13px] text-[var(--color-ink-faint)]">автозаполнение</div>
         </div>
         <div className="ml-4 inline-flex gap-1 rounded-lg border border-[var(--color-line)] bg-[var(--color-ground)] p-1">
           <ModeButton active={mode === "order"} onClick={() => onMode("order")}>Бланк</ModeButton>
@@ -17,7 +17,7 @@ export function TopBar({ brandLabel, monthLabel, stage, mode, onMode }) {
         </div>
       </div>
       {stage === "fill" && (
-        <div className="flex items-center gap-2 font-mono text-[11px] text-[var(--color-ink-soft)]">
+        <div className="flex items-center gap-2 font-mono text-[13px] text-[var(--color-ink-soft)]">
           <span className="rounded-full bg-[var(--color-brand-soft)] px-2.5 py-1 text-[var(--color-brand-strong)]">
             {brandLabel}
           </span>
@@ -35,7 +35,7 @@ function ModeButton({ active, onClick, children }) {
       type="button"
       onClick={onClick}
       aria-pressed={active}
-      className={`rounded-md px-3 py-1.5 text-[12.5px] font-semibold transition ${
+      className={`rounded-md px-3 py-1.5 text-[14px] font-semibold transition ${
         active ? "bg-[var(--color-surface)] text-[var(--color-brand-strong)] shadow-sm" : "text-[var(--color-ink-faint)] hover:text-[var(--color-ink)]"
       }`}
     >
@@ -54,7 +54,7 @@ export function StageRail({ stage, brandLabel, monthLabel, filesReady, onGoto })
   const currentIdx = Math.max(0, order.indexOf(stage === "processing" ? "upload" : stage));
 
   return (
-    <nav className="flex items-center gap-1 border-b border-[var(--color-line)] bg-[var(--color-surface)] px-6 py-2.5">
+    <nav className="flex items-center gap-1 border-b border-[var(--color-line)] bg-[var(--color-surface)] px-6 py-3">
       {steps.map((step, index) => {
         const idx = order.indexOf(step.key);
         const state = idx < currentIdx ? "done" : idx === currentIdx ? "active" : "todo";
@@ -70,7 +70,7 @@ export function StageRail({ stage, brandLabel, monthLabel, filesReady, onGoto })
               }`}
             >
               <span
-                className={`grid h-6 w-6 shrink-0 place-items-center rounded-full font-mono text-[11px] font-semibold transition ${
+                className={`grid h-7 w-7 shrink-0 place-items-center rounded-full font-mono text-[12px] font-semibold transition ${
                   state === "active"
                     ? "bg-[var(--color-brand)] text-white"
                     : state === "done"
@@ -81,11 +81,11 @@ export function StageRail({ stage, brandLabel, monthLabel, filesReady, onGoto })
                 {state === "done" ? <IconCheck className="h-3.5 w-3.5" /> : step.n}
               </span>
               <span className="leading-tight">
-                <span className={`block text-[12.5px] font-medium ${state === "todo" ? "text-[var(--color-ink-faint)]" : "text-[var(--color-ink)]"}`}>
+                <span className={`block text-[14px] font-medium ${state === "todo" ? "text-[var(--color-ink-faint)]" : "text-[var(--color-ink)]"}`}>
                   {step.title}
                 </span>
                 {state === "done" && step.summary && (
-                  <span className="block font-mono text-[10.5px] text-[var(--color-ink-faint)]">{step.summary}</span>
+                  <span className="block font-mono text-[12px] text-[var(--color-ink-faint)]">{step.summary}</span>
                 )}
               </span>
             </button>

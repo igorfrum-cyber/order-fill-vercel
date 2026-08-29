@@ -60,6 +60,14 @@ export function visibleReportRows(rows, { tab = "all", query = "" } = {}) {
   return rows.filter((row) => rowMatchesTab(row, tab) && rowMatchesQuery(row, query));
 }
 
+export function displayArticle(row) {
+  return String(row.blankArticle || "").trim() || String(row.sourceArticle || "").trim();
+}
+
+export function displayName(row) {
+  return String(row.blankName || "").trim() || String(row.sourceName || "").trim();
+}
+
 export function matchPercent(row) {
   if (row.status === "not_in_source" || row.status === "not_in_blank") return null;
   return Math.round(Number(row.similarity || 0) * 100);

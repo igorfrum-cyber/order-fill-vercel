@@ -1,17 +1,17 @@
 import { useMemo, useState } from "react";
 import {
   createOrderFillJob,
+  downloadJobArchive,
   getJobReport,
-  listJobFiles,
   pollJob,
   submitJobEdits,
 } from "../../api/jobs.js";
 import { blankSlotsForBrand, brandLabel, usesChristinaSplitBlank } from "../../features/brands/brandPresentation.js";
 import { runOrderFillJob } from "../../features/jobs/orderJobWorkflow.js";
 import { defaultOrderMonth, formatOrderMonthLabel, sanitizeOrderMonth } from "../../features/order/monthPolicy.js";
-import { collectReviewEdits, initialEditState, rowKey, validateReviewEdits } from "../../features/order/reviewEdits.js";
+import { collectReviewEdits, hasManualDeviations, initialEditState, rowKey, validateReviewEdits } from "../../features/order/reviewEdits.js";
 import { issueReportCsv } from "../../features/report/issueReport.js";
-import { combinedSummary, jobStatusText } from "../../features/report/reportModel.js";
+import { combinedSummary, jobProgress, jobStatusText } from "../../features/report/reportModel.js";
 import { issueReportRows, qualityWarningLines, qualityWarningSummary } from "../../features/report/qualityWarnings.js";
 import { StageRail, TopBar } from "../chrome.jsx";
 import { Modal } from "../widgets.jsx";
@@ -27,6 +27,12 @@ function triggerDownload(url, fileName) {
   anchor.remove();
 }
 
+function triggerBlobDownload(blob, fileName) {
+  const url = URL.createObjectURL(blob);
+  triggerDownload(url, fileName || "заполненные-файлы.zip");
+  window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
 export function OrderFillApp({ mode, onMode }) {
   const [stage, setStage] = useState("setup");
   const [brand, setBrand] = useState("angiopharm");
@@ -34,6 +40,7 @@ export function OrderFillApp({ mode, onMode }) {
   const [sourceFile, setSourceFile] = useState(null);
   const [blankFiles, setBlankFiles] = useState({});
   const [processing, setProcessing] = useState(false);
+  const [progress, setProgress] = useState(0);
   const [status, setStatus] = useState("");
   const [error, setError] = useState("");
   const [jobId, setJobId] = useState(null);
@@ -41,7 +48,6 @@ export function OrderFillApp({ mode, onMode }) {
   const [results, setResults] = useState([]);
   const [edits, setEdits] = useState(new Map());
   const [invalidKeys, setInvalidKeys] = useState(new Set());
-  const [files, setFiles] = useState([]);
   const [busy, setBusy] = useState(false);
   const [confirmLines, setConfirmLines] = useState(null);
 
@@ -55,9 +61,9 @@ export function OrderFillApp({ mode, onMode }) {
     setResults([]);
     setEdits(new Map());
     setInvalidKeys(new Set());
-    setFiles([]);
     setError("");
     setStatus("");
+    setProgress(0);
     setProcessing(false);
   }
 
@@ -83,8 +89,8 @@ export function OrderFillApp({ mode, onMode }) {
 
     setProcessing(true);
     setError("");
-    setStatus("Обработка...");
-    setFiles([]);
+    setProgress(0.08);
+    setStatus("Отправляю файлы...");
     try {
       const result = await runOrderFillJob({
         api: { createOrderFillJob, pollJob, getJobReport },
@@ -94,7 +100,10 @@ export function OrderFillApp({ mode, onMode }) {
           sourceFile,
           blankFiles: blanks,
         },
-        onStatus: (text) => setStatus(text),
+        onStatus: (text, job) => {
+          setStatus(text);
+          if (job) setProgress(jobProgress(job));
+        },
       });
       setJobId(result.jobId);
       setRows(result.rows);
@@ -102,9 +111,11 @@ export function OrderFillApp({ mode, onMode }) {
       setEdits(initialEditState(result.rows));
       setStage("fill");
       setStatus("");
+      setProgress(1);
     } catch (err) {
       setError(err.message || "Не удалось обработать файлы.");
       setStatus("");
+      setProgress(0);
     } finally {
       setProcessing(false);
     }
@@ -133,9 +144,7 @@ export function OrderFillApp({ mode, onMode }) {
     const blob = new Blob([`\ufeff${issueReportCsv(issueRows, (row) => edits.get(rowKey(row)) || { comment: "" })}`], {
       type: "text/csv;charset=utf-8",
     });
-    const url = URL.createObjectURL(blob);
-    triggerDownload(url, "отчет для исправления в 1С.csv");
-    window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+    triggerBlobDownload(blob, "отчет для исправления в 1С.csv");
   }
 
   async function finalizeDownloads() {
@@ -161,18 +170,21 @@ export function OrderFillApp({ mode, onMode }) {
   async function submitAndDownload() {
     setConfirmLines(null);
     setBusy(true);
-    setStatus("Сохраняю правки...");
     try {
-      const payload = collectReviewEdits(rows, edits);
-      const editedJob = await submitJobEdits(jobId, payload);
-      const finalJob = await pollJob(editedJob.id, {
-        onUpdate: (job) => setStatus(jobStatusText(job)),
-      });
-      if (finalJob.status === "failed") {
-        throw new Error(finalJob.error?.message || "Не удалось подготовить файлы.");
+      if (hasManualDeviations(rows, edits)) {
+        setStatus("Сохраняю правки...");
+        const payload = collectReviewEdits(rows, edits);
+        const editedJob = await submitJobEdits(jobId, payload);
+        const finalJob = await pollJob(editedJob.id, {
+          onUpdate: (job) => setStatus(jobStatusText(job)),
+        });
+        if (finalJob.status === "failed") {
+          throw new Error(finalJob.error?.message || "Не удалось подготовить файлы.");
+        }
       }
-      const listed = await listJobFiles(finalJob.id);
-      setFiles(listed.files || []);
+      setStatus("Скачиваю архив...");
+      const archive = await downloadJobArchive(jobId);
+      triggerBlobDownload(archive.blob, archive.fileName);
       setStatus("Файлы готовы");
     } catch (err) {
       setStatus("Ошибка");
@@ -228,6 +240,7 @@ export function OrderFillApp({ mode, onMode }) {
             onProcess={processFiles}
             processing={processing}
             status={status}
+            progress={progress}
             error={error}
           />
         )}
@@ -239,7 +252,6 @@ export function OrderFillApp({ mode, onMode }) {
             onEdit={updateEdit}
             invalidKeys={invalidKeys}
             summary={summary}
-            files={files}
             status={status}
             busy={busy}
             onDownloadFiles={finalizeDownloads}

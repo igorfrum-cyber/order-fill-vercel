@@ -3,6 +3,8 @@ import assert from "node:assert/strict";
 
 import {
   countByTab,
+  displayArticle,
+  displayName,
   presentationStatus,
   rowMatchesQuery,
   rowMatchesTab,
@@ -52,4 +54,31 @@ test("visibleReportRows filters by tab and searches article or name", () => {
   assert.equal(visibleReportRows(rows, { tab: "empty", query: "крем" }).length, 1);
   assert.equal(visibleReportRows(rows, { tab: "all", query: "AP-" }).length, 2);
   assert.equal(rowMatchesQuery(rows[1], "тоник"), true);
+});
+
+test("displayArticle and displayName fall back to source identity when the row is missing from the blank", () => {
+  const row = {
+    status: "not_in_blank",
+    blankArticle: "",
+    blankName: "",
+    sourceArticle: "A400",
+    sourceName: "Сыворотка",
+    recommended: 8,
+  };
+
+  assert.equal(displayArticle(row), "A400");
+  assert.equal(displayName(row), "Сыворотка");
+});
+
+test("displayArticle and displayName keep blank identity when both sides exist", () => {
+  const row = {
+    status: "matched",
+    blankArticle: "AP-100",
+    blankName: "Крем",
+    sourceArticle: "AP-100",
+    sourceName: "Крем для лица",
+  };
+
+  assert.equal(displayArticle(row), "AP-100");
+  assert.equal(displayName(row), "Крем");
 });

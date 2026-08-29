@@ -1,3 +1,5 @@
+import { fileNameFromContentDisposition } from "../features/downloads/downloadLinks.js";
+
 const DEFAULT_API_BASE_URL = "http://127.0.0.1:8080";
 
 export class ApiClient {
@@ -24,6 +26,20 @@ export class ApiClient {
       throw new ApiError(response.status, await parseError(response));
     }
     return parseResponse(response);
+  }
+
+  async requestDownload(path) {
+    const response = await this.fetcher.call(globalThis, `${this.baseUrl}${path}`);
+    if (!response.ok) {
+      throw new ApiError(response.status, await parseError(response));
+    }
+    const contentType = response.headers.get("Content-Type") || "application/octet-stream";
+    const fileName = fileNameFromContentDisposition(response.headers.get("Content-Disposition"));
+    return {
+      blob: await response.blob(),
+      fileName,
+      contentType,
+    };
   }
 }
 

@@ -70,3 +70,7 @@ export function isManualDeviation(row, edits) {
   }
   return value !== baselineForReportRow(row);
 }
+
+export function hasManualDeviations(rows, edits) {
+  return rows.some((row) => isManualDeviation(row, edits));
+}

@@ -44,6 +44,32 @@ test("mapReport converts the API contract into the shape the UI renders", () => 
   ]);
 });
 
+test("mapReport keeps source identity for rows that are missing from the blank", () => {
+  const report = mapReport({
+    job_id: "job-1",
+    rows: [
+      {
+        key: "blank-1:missing:12",
+        status: "not_in_blank",
+        source_row: 12,
+        source_article: "A400",
+        source_name: "Сыворотка",
+        recommended: 8,
+        stock: "2",
+        editable: false,
+      },
+    ],
+  });
+
+  const row = report.rows[0];
+  assert.equal(row.status, "not_in_blank");
+  assert.equal(row.blankArticle, "");
+  assert.equal(row.blankName, "");
+  assert.equal(row.sourceArticle, "A400");
+  assert.equal(row.sourceName, "Сыворотка");
+  assert.equal(row.recommended, 8);
+});
+
 test("mapReport tolerates an empty report", () => {
   const report = mapReport({});
   assert.deepEqual(report.rows, []);

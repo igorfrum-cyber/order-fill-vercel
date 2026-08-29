@@ -35,6 +35,9 @@ type (
 	fileDownloader interface {
 		Execute(ctx context.Context, jobID string, fileID string) (usecase.Download, error)
 	}
+	archiveDownloader interface {
+		Execute(ctx context.Context, jobID string) (usecase.Download, error)
+	}
 	editSubmitter interface {
 		Execute(ctx context.Context, jobID string, edits []job.ManualEdit) (job.Job, error)
 	}
@@ -46,6 +49,7 @@ type jobHandler struct {
 	reports    reportFinder
 	files      fileLister
 	downloads  fileDownloader
+	archive    archiveDownloader
 	editor     editSubmitter
 	maxUploads int64
 }
@@ -152,6 +156,23 @@ func (h jobHandler) downloadFile(w http.ResponseWriter, r *http.Request) {
 	download, err := h.downloads.Execute(r.Context(), r.PathValue("job_id"), r.PathValue("file_id"))
 	if err != nil {
 		writeDomainError(w, "download_failed", err)
+		return
+	}
+	w.Header().Set("Content-Type", download.ContentType)
+	w.Header().Set("Content-Disposition", contentDisposition(download.Name))
+	w.Header().Set("Content-Length", fmt.Sprint(len(download.Content)))
+	w.WriteHeader(http.StatusOK)
+	_, _ = w.Write(download.Content)
+}
+
+func (h jobHandler) downloadArchive(w http.ResponseWriter, r *http.Request) {
+	if h.archive == nil {
+		writeError(w, http.StatusNotFound, "not_found", "file was not found")
+		return
+	}
+	download, err := h.archive.Execute(r.Context(), r.PathValue("job_id"))
+	if err != nil {
+		writeDomainError(w, "download_archive_failed", err)
 		return
 	}
 	w.Header().Set("Content-Type", download.ContentType)

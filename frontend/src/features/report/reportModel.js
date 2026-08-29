@@ -24,6 +24,18 @@ export function jobStatusText(job) {
   return labels[job.status] || "Обработка...";
 }
 
+export function jobProgress(job) {
+  const fractions = {
+    queued: 0.2,
+    processing: 0.65,
+    needs_review: 1,
+    finalizing: 0.8,
+    completed: 1,
+    failed: 1,
+  };
+  return fractions[job?.status] ?? 0.35;
+}
+
 export function isIssueRow(row) {
   return row.status === "warning_name_differs" || row.status === "warning_name_only";
 }

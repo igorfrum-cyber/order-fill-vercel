@@ -3,6 +3,9 @@ import { mapOutputFile, mapReport, toManualEditPayload } from "./mappers.js";
 
 const TERMINAL_STATUSES = new Set(["needs_review", "completed", "failed"]);
 
+export const DEFAULT_POLL_INTERVAL_MS = 200;
+export const DEFAULT_POLL_TIMEOUT_MS = 120000;
+
 const absoluteUrl = (path) => apiClient.absoluteUrl(path);
 
 export function createOrderFillJob({ brand, orderMonth, sourceFile, blankFiles }) {
@@ -48,7 +51,11 @@ export async function listJobFiles(jobId) {
   return { files: (payload.files || []).map((file) => mapOutputFile(file, absoluteUrl)) };
 }
 
-export async function pollJob(jobId, { intervalMs = 1000, timeoutMs = 120000, onUpdate = () => {} } = {}) {
+export function downloadJobArchive(jobId) {
+  return apiClient.requestDownload(`/api/v1/jobs/${encodeURIComponent(jobId)}/archive`);
+}
+
+export async function pollJob(jobId, { intervalMs = DEFAULT_POLL_INTERVAL_MS, timeoutMs = DEFAULT_POLL_TIMEOUT_MS, onUpdate = () => {} } = {}) {
   const startedAt = Date.now();
   while (Date.now() - startedAt < timeoutMs) {
     const job = await getJob(jobId);
