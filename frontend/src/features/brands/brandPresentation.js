@@ -1,3 +1,13 @@
+export const ORDER_BRANDS = [
+  { id: "angiopharm", label: "ANGIOPHARM" },
+  { id: "christina", label: "CHRISTINA" },
+  { id: "levissime", label: "LeviSsime" },
+  { id: "sothys", label: "SOTHYS" },
+  { id: "novacutan", label: "NOVACUTAN" },
+  { id: "skin_synergy", label: "Skin Synergy" },
+  { id: "klapp", label: "KLAPP" },
+];
+
 const BRAND_PRESENTATION = {
   christina: {
     adjustmentLabel: "Кратность",
@@ -49,4 +59,25 @@ export function mainBlankLabelForBrand(brand) {
 
 export function usesChristinaSplitBlank(brand) {
   return Boolean(presentationForBrand(brand).splitBlank);
+}
+
+export function brandLabel(brand) {
+  return ORDER_BRANDS.find((item) => item.id === brand)?.label || brand;
+}
+
+export function blankSlotsForBrand(brand) {
+  if (usesChristinaSplitBlank(brand)) {
+    return [
+      { id: "home", label: "Бланк HOME", hint: "HOME-бланк для заполнения количеств", accept: ".xlsx,.xlsm" },
+      { id: "proff", label: "Бланк PROFF", hint: "PROFF-бланк для заполнения количеств", accept: ".xlsx,.xlsm" },
+    ];
+  }
+  return [
+    {
+      id: "main",
+      label: "Текущий бланк",
+      hint: `Бланк для заполнения количеств`,
+      accept: ".xlsx,.xlsm,.xls",
+    },
+  ];
 }

@@ -1,0 +1,373 @@
+import { useMemo, useState } from "react";
+import { adjustmentLabelForBrand } from "../../features/brands/brandPresentation.js";
+import { editRequiresComment, normalizeOrderValue } from "../../features/order/editRules.js";
+import { rowKey } from "../../features/order/reviewEdits.js";
+import { duplicateDescription } from "../../features/report/issueReport.js";
+import { baselineForReportRow, statusLabel } from "../../features/report/reportModel.js";
+import {
+  boxStep,
+  countByTab,
+  criticalOpenCount,
+  FILL_COMPOSITION_ORDER,
+  FILL_TABS,
+  matchPercent,
+  presentationStatus,
+  quantityDisplay,
+  visibleReportRows,
+} from "../../features/report/rowPresentation.js";
+import { IconAlert, IconCheck, IconChevron, IconDownload, IconSearch, IconX } from "../icons.jsx";
+import { GhostButton, PrimaryButton, Ring, Stepper } from "../widgets.jsx";
+
+const STATUS_META = {
+  filled: { label: "Заполнено", tone: "ok", bar: "bg-[var(--color-ok)]" },
+  empty: { label: "Пусто", tone: "warn", bar: "bg-[var(--color-warn)]" },
+  check: { label: "Нужно проверить", tone: "warn", bar: "bg-[var(--color-warn)]" },
+  duplicate: { label: "Дубли", tone: "danger", bar: "bg-[var(--color-danger)]" },
+  not_in_table: { label: "Нет в таблице", tone: "neutral", bar: "bg-[var(--color-neutral)]" },
+  not_in_blank: { label: "Нет в бланке", tone: "neutral", bar: "bg-[var(--color-neutral)]" },
+};
+
+const COMPOSITION = {
+  filled: "bg-[var(--color-ok)]",
+  empty: "bg-[var(--color-warn)]",
+  check: "bg-[color-mix(in_srgb,var(--color-warn)_55%,white)]",
+  duplicate: "bg-[var(--color-danger)]",
+  not_in_table: "bg-[var(--color-neutral)]",
+  not_in_blank: "bg-[color-mix(in_srgb,var(--color-neutral)_55%,white)]",
+};
+
+const TONE_CHIP = {
+  ok: "text-[var(--color-ok)] bg-[var(--color-ok-soft)]",
+  warn: "text-[var(--color-warn)] bg-[var(--color-warn-soft)]",
+  danger: "text-[var(--color-danger)] bg-[var(--color-danger-soft)]",
+  neutral: "text-[var(--color-neutral)] bg-[var(--color-neutral-soft)]",
+};
+
+export function FillStage({
+  brand,
+  rows,
+  edits,
+  onEdit,
+  invalidKeys,
+  summary,
+  files,
+  status,
+  busy,
+  onDownloadFiles,
+  onIssueReport,
+}) {
+  const [tab, setTab] = useState("empty");
+  const [query, setQuery] = useState("");
+  const [expanded, setExpanded] = useState(null);
+  const counts = useMemo(() => countByTab(rows), [rows]);
+  const filledCount = counts.filled ?? 0;
+  const criticalOpen = criticalOpenCount(counts);
+  const visible = useMemo(() => visibleReportRows(rows, { tab, query }), [rows, tab, query]);
+  const boxLabel = summary.adjustmentLabel || adjustmentLabelForBrand(brand);
+
+  return (
+    <div className="flex h-full flex-col">
+      <div className="border-b border-[var(--color-line)] bg-[var(--color-surface)] px-6 py-5">
+        <div className="flex flex-col gap-6 xl:flex-row xl:items-center">
+          <div className="flex items-center gap-4">
+            <Ring value={rows.length ? filledCount / rows.length : 0} />
+            <div>
+              <div className="text-[12.5px] font-medium text-[var(--color-ink-soft)]">Готовность бланка</div>
+              <div className="mt-0.5 flex items-baseline gap-1.5">
+                <span className="font-mono text-[24px] font-semibold leading-none tabular-nums">{filledCount}</span>
+                <span className="font-mono text-[13px] text-[var(--color-ink-faint)]">/ {rows.length}</span>
+              </div>
+              <div className="mt-1 text-[11.5px] text-[var(--color-ink-faint)]">позиций заполнено</div>
+            </div>
+          </div>
+
+          <div className="hidden h-14 w-px bg-[var(--color-line)] xl:block" />
+
+          <div className="min-w-0 flex-1">
+            <div className="mb-2 flex items-center justify-between">
+              <span className="text-[12.5px] font-medium text-[var(--color-ink-soft)]">Состав заказа</span>
+              <span className="font-mono text-[11px] text-[var(--color-ink-faint)]">{rows.length} позиций</span>
+            </div>
+            <div className="flex h-2.5 w-full overflow-hidden rounded-full bg-[var(--color-line-soft)]">
+              {FILL_COMPOSITION_ORDER.map((key) => {
+                const n = counts[key] ?? 0;
+                if (!n) return null;
+                return (
+                  <button
+                    key={key}
+                    type="button"
+                    title={`${STATUS_META[key].label}: ${n}`}
+                    onClick={() => setTab(key)}
+                    style={{ width: `${(n / rows.length) * 100}%` }}
+                    className={`h-full ${COMPOSITION[key]} transition-opacity hover:opacity-80`}
+                  />
+                );
+              })}
+            </div>
+            <div className="mt-2.5 flex flex-wrap gap-x-4 gap-y-1.5">
+              {FILL_COMPOSITION_ORDER.map((key) => (
+                <button key={key} type="button" onClick={() => setTab(key)} className="group flex items-center gap-1.5 text-[11.5px]">
+                  <span className={`h-2 w-2 rounded-[3px] ${COMPOSITION[key]}`} />
+                  <span className="text-[var(--color-ink-soft)] group-hover:text-[var(--color-ink)]">{STATUS_META[key].label}</span>
+                  <span className="font-mono tabular-nums text-[var(--color-ink-faint)]">{counts[key] ?? 0}</span>
+                </button>
+              ))}
+            </div>
+            {summary.orderMonthLabel && (
+              <div className="mt-2 font-mono text-[11px] text-[var(--color-ink-faint)]">
+                {summary.brand}. Заказ на {summary.orderMonthLabel}. Период: {summary.actualMainPeriod || "—"}.
+                {summary.cityRule ? ` ${summary.cityRule}: срок поставки ${summary.deliveryWeeks} нед.` : ""}
+                {summary.blankDuplicateArticles ? ` Дублей артикулов в бланке: ${summary.blankDuplicateArticles}.` : ""}
+              </div>
+            )}
+          </div>
+
+          <div className="hidden h-14 w-px bg-[var(--color-line)] xl:block" />
+
+          <button
+            type="button"
+            onClick={() => setTab(criticalOpen ? ((counts.check ?? 0) ? "check" : "duplicate") : "empty")}
+            className={`flex items-center gap-3 rounded-xl border px-4 py-3 text-left transition hover:shadow-sm ${
+              criticalOpen
+                ? "border-[color-mix(in_srgb,var(--color-danger)_35%,white)] bg-[var(--color-danger-soft)]"
+                : "border-[color-mix(in_srgb,var(--color-ok)_35%,white)] bg-[var(--color-ok-soft)]"
+            }`}
+          >
+            <span className={`grid h-9 w-9 shrink-0 place-items-center rounded-full bg-[var(--color-surface)] ${criticalOpen ? "text-[var(--color-danger)]" : "text-[var(--color-ok)]"}`}>
+              {criticalOpen ? <IconAlert className="h-4 w-4" /> : <IconCheck className="h-4 w-4" />}
+            </span>
+            <span className="leading-tight">
+              <span className="block text-[13px] font-semibold">{criticalOpen ? `${criticalOpen} требуют решения` : "Всё под контролем"}</span>
+              <span className="block text-[11.5px] text-[var(--color-ink-soft)]">
+                {criticalOpen ? "дубли и спорные позиции" : "критичных проблем нет"}
+              </span>
+            </span>
+          </button>
+        </div>
+      </div>
+
+      <div className="flex flex-wrap items-center gap-3 border-b border-[var(--color-line)] bg-[var(--color-surface)] px-6 py-2.5">
+        <div className="flex flex-wrap gap-1">
+          {FILL_TABS.map((item) => {
+            const n = counts[item.key] ?? 0;
+            const active = tab === item.key;
+            return (
+              <button
+                key={item.key}
+                type="button"
+                onClick={() => setTab(item.key)}
+                className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-[12.5px] font-medium transition ${
+                  active ? "bg-[var(--color-brand)] text-white" : "text-[var(--color-ink-soft)] hover:bg-[var(--color-line-soft)]"
+                }`}
+              >
+                {item.label}
+                <span className={`rounded-full px-1.5 font-mono text-[10.5px] tabular-nums ${active ? "bg-white/20" : "bg-[var(--color-neutral-soft)] text-[var(--color-ink-faint)]"}`}>
+                  {n}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+        <div className="relative ml-auto min-w-52">
+          <IconSearch className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--color-ink-faint)]" />
+          <input
+            value={query}
+            onChange={(event) => setQuery(event.target.value)}
+            placeholder="Артикул или наименование"
+            className="w-full rounded-lg border border-[var(--color-line)] bg-[var(--color-surface)] py-1.5 pl-8 pr-8 text-[12.5px] outline-none transition focus:border-[var(--color-brand)] focus:ring-4 focus:ring-[var(--color-brand-soft)]"
+          />
+          {query && (
+            <button type="button" onClick={() => setQuery("")} className="absolute right-2 top-1/2 -translate-y-1/2 text-[var(--color-ink-faint)] hover:text-[var(--color-ink)]">
+              <IconX className="h-4 w-4" />
+            </button>
+          )}
+        </div>
+      </div>
+
+      <div className="flex-1 overflow-auto px-6 py-3">
+        <table className="w-full min-w-[980px] border-separate border-spacing-0">
+          <thead>
+            <tr className="text-left">
+              {["", "Артикул", "Товар", "Объём", "Остаток", "В пути", "Реком.", "Вставлено", "Совпад."].map((header, index) => (
+                <th
+                  key={header || "bar"}
+                  className={`sticky top-0 z-10 bg-[var(--color-ground)] pb-2.5 pt-1 text-[11.5px] font-medium text-[var(--color-ink-faint)] ${index >= 3 ? "text-right" : ""}`}
+                >
+                  {header}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {visible.length === 0 && (
+              <tr>
+                <td colSpan={9} className="py-16 text-center text-[13px] text-[var(--color-ink-faint)]">
+                  Нет позиций в этой категории
+                </td>
+              </tr>
+            )}
+            {visible.map((row) => (
+              <ReportRow
+                key={rowKey(row)}
+                row={row}
+                edit={edits.get(rowKey(row))}
+                expanded={expanded === rowKey(row)}
+                invalid={invalidKeys.has(rowKey(row))}
+                boxLabel={boxLabel}
+                onToggle={() => setExpanded(expanded === rowKey(row) ? null : rowKey(row))}
+                onEdit={onEdit}
+              />
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      <footer className="flex flex-wrap items-center gap-3 border-t border-[var(--color-line)] bg-[var(--color-surface)] px-6 py-3">
+        <div className="flex flex-wrap gap-2">
+          {files.map((file) => (
+            <a key={file.id} href={file.downloadUrl} download={file.name} className="flex items-center gap-1.5 rounded-lg border border-[var(--color-line)] bg-[var(--color-surface)] px-3 py-2 text-[12.5px] font-medium text-[var(--color-ink-soft)] transition hover:border-[var(--color-ink-faint)] hover:text-[var(--color-ink)]">
+              <IconDownload className="h-4 w-4" />
+              {file.label}
+            </a>
+          ))}
+          <GhostButton onClick={onIssueReport} disabled={busy}>
+            <IconDownload className="h-4 w-4" />
+            Отчёт для 1С
+          </GhostButton>
+        </div>
+        <div className="ml-auto flex items-center gap-3">
+          <span className="font-mono text-[11px] text-[var(--color-ink-soft)]">
+            {status ? <span>{status}</span> : criticalOpen === 0 ? <span className="text-[var(--color-ok)]">Критичных проблем нет</span> : <span className="text-[var(--color-warn)]">Осталось критичных: {criticalOpen}</span>}
+          </span>
+          <PrimaryButton onClick={onDownloadFiles} disabled={busy}>
+            <span className={`h-2 w-2 rounded-full ${criticalOpen === 0 ? "bg-[var(--color-ok)]" : "bg-white/40"}`} />
+            {busy ? "Готовлю файлы..." : "Скачать заполненные файлы"}
+            <IconDownload className="h-4 w-4" />
+          </PrimaryButton>
+        </div>
+      </footer>
+    </div>
+  );
+}
+
+function ReportRow({ row, edit, expanded, invalid, boxLabel, onToggle, onEdit }) {
+  const status = presentationStatus(row);
+  const meta = STATUS_META[status];
+  const cell = `border-b border-[var(--color-line-soft)] py-2 align-middle text-[13px] ${invalid ? "bg-[var(--color-danger-soft)]" : ""}`;
+  const num = `${cell} text-right font-mono tabular-nums`;
+  const key = rowKey(row);
+  const match = matchPercent(row);
+  const needsComment = rowNeedsComment(row, edit);
+
+  return (
+    <>
+      <tr className="group transition hover:bg-[var(--color-line-soft)]">
+        <td className={`${cell} w-8 pl-0`}>
+          <button type="button" onClick={onToggle} className="flex items-center gap-1.5">
+            <span className={`h-6 w-1 rounded-full ${meta.bar}`} aria-label={meta.label} />
+            <IconChevron className={`h-3.5 w-3.5 text-[var(--color-ink-faint)] transition ${expanded ? "rotate-180" : ""}`} />
+          </button>
+        </td>
+        <td className={`${cell} pr-3 font-mono text-[12px] text-[var(--color-ink-soft)]`}>{row.blankArticle}</td>
+        <td className={`${cell} pr-3`}>
+          <span className="font-medium">{row.blankName}</span>
+        </td>
+        <td className={`${num} pr-3 text-[var(--color-ink-soft)]`}>{row.blankUnit}</td>
+        <td className={`${num} pr-3`}>{quantityDisplay(row.stock)}</td>
+        <td className={`${num} pr-3 text-[var(--color-ink-soft)]`}>{quantityDisplay(row.inTransit) || "—"}</td>
+        <td className={`${num} pr-3 font-semibold text-[var(--color-brand-strong)]`}>
+          {row.recommended == null ? "—" : Number(row.recommended).toFixed(2)}
+        </td>
+        <td className={`${cell} pr-3`}>
+          <div className="flex justify-end">
+            <Stepper
+              value={edit?.value ?? ""}
+              disabled={row.editable === false}
+              onChange={(value) => onEdit(key, { ...edit, value })}
+              step={boxStep(row)}
+            />
+          </div>
+        </td>
+        <td className={`${cell} pr-0`}>
+          <div className="flex justify-end">
+            {match == null ? <span className="px-2 text-[var(--color-ink-faint)]">—</span> : <MatchPill value={match} />}
+          </div>
+        </td>
+      </tr>
+      {expanded && (
+        <tr>
+          <td colSpan={9} className="border-b border-[var(--color-line-soft)] bg-[var(--color-ground)] px-3 py-3">
+            <div className="grid gap-x-8 gap-y-3 pl-5 text-[12px] sm:grid-cols-3">
+              <Detail label="Статус">
+                <span className={`inline-flex rounded-md px-2 py-0.5 text-[11px] font-medium ${TONE_CHIP[meta.tone]}`}>
+                  {statusLabel(row.status)}
+                </span>
+              </Detail>
+              <Detail label={boxLabel}>{quantityDisplay(row.blankBoxSize) || "—"}</Detail>
+              <Detail label="Заказано по факту">{row.hasOrderedFact ? quantityDisplay(row.orderedFact) : "—"}</Detail>
+              <Detail label="Бланк">
+                <span className="font-mono text-[11px]">{row.blankLabel || "—"}</span>
+              </Detail>
+              {row.duplicate && (
+                <Detail label="Дубли в таблице">
+                  <span className="text-[var(--color-danger)]">{duplicateDescription(row.duplicateCandidates) || "есть совпадения"}</span>
+                </Detail>
+              )}
+              <Detail label="Комментарий">
+                {row.editable === false ? (
+                  <span className="text-[var(--color-ink-soft)]">{edit?.comment || "—"}</span>
+                ) : (
+                  <input
+                    type="text"
+                    value={edit?.comment || ""}
+                    onChange={(event) => onEdit(key, { ...edit, comment: event.target.value })}
+                    placeholder="Почему изменили количество"
+                    className={`w-full rounded-lg border px-2.5 py-1.5 text-[12px] outline-none ${
+                      needsComment ? "border-[var(--color-warn)]" : "border-[var(--color-line)]"
+                    }`}
+                  />
+                )}
+              </Detail>
+            </div>
+          </td>
+        </tr>
+      )}
+    </>
+  );
+}
+
+function Detail({ label, children }) {
+  return (
+    <div>
+      <div className="mb-0.5 text-[11px] text-[var(--color-ink-faint)]">{label}</div>
+      <div>{children}</div>
+    </div>
+  );
+}
+
+function MatchPill({ value }) {
+  const tone = value >= 85 ? "ok" : value >= 60 ? "warn" : "danger";
+  return (
+    <span className={`rounded-md px-2 py-0.5 font-mono text-[11px] font-medium tabular-nums ${TONE_CHIP[tone]}`}>
+      {value}%
+    </span>
+  );
+}
+
+function rowNeedsComment(row, edit) {
+  if (!edit || row.editable === false) return false;
+  let value;
+  try {
+    value = normalizeOrderValue(edit.value);
+  } catch {
+    return false;
+  }
+  const initial = row.inserted == null ? null : Number(row.inserted);
+  return editRequiresComment({
+    value,
+    baseline: baselineForReportRow(row),
+    initial,
+    comment: edit.comment,
+    autoComment: row.autoComment,
+  });
+}

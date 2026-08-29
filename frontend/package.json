@@ -14,10 +14,19 @@
   "engines": {
     "node": ">=24"
   },
+  "dependencies": {
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0"
+  },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
+    "@tailwindcss/vite": "^4.1.12",
+    "@types/react": "^19.1.12",
+    "@types/react-dom": "^19.1.9",
+    "@vitejs/plugin-react": "^5.0.2",
     "eslint": "^10.9.1",
     "globals": "^17.11.0",
+    "tailwindcss": "^4.1.12",
     "vite": "^7.2.4"
   }
 }

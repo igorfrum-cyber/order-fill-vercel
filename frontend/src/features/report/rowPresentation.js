@@ -1,0 +1,82 @@
+import { isIssueRow, rowMatchesFilter } from "./reportModel.js";
+
+export const FILL_TABS = [
+  { key: "empty", label: "Пусто" },
+  { key: "check", label: "Нужно проверить" },
+  { key: "duplicate", label: "Дубли" },
+  { key: "not_in_table", label: "Нет в таблице" },
+  { key: "not_in_blank", label: "Нет в бланке" },
+  { key: "filled", label: "Заполнено" },
+  { key: "all", label: "Все" },
+];
+
+export const FILL_COMPOSITION_ORDER = ["filled", "empty", "check", "duplicate", "not_in_table", "not_in_blank"];
+
+const FILTER_BY_TAB = {
+  filled: "filled",
+  empty: "leftBlank",
+  check: "suspicious",
+  duplicate: "duplicates",
+  not_in_table: "notInSource",
+  not_in_blank: "notInBlank",
+};
+
+export function presentationStatus(row) {
+  if (row.duplicate || row.status === "source_duplicate") return "duplicate";
+  if (row.status === "not_in_source") return "not_in_table";
+  if (row.status === "not_in_blank") return "not_in_blank";
+  if (isIssueRow(row)) return "check";
+  if (row.status === "left_blank_nonpositive") return "empty";
+  if ((row.status === "matched" || row.status === "matched_by_name") && row.inserted != null) return "filled";
+  return "empty";
+}
+
+export function rowMatchesTab(row, tab) {
+  if (!tab || tab === "all") return true;
+  return rowMatchesFilter(row, FILTER_BY_TAB[tab]);
+}
+
+export function countByTab(rows) {
+  const counts = { all: rows.length, filled: 0, empty: 0, check: 0, duplicate: 0, not_in_table: 0, not_in_blank: 0 };
+  for (const row of rows) {
+    const status = presentationStatus(row);
+    counts[status] = (counts[status] || 0) + 1;
+  }
+  return counts;
+}
+
+export function rowMatchesQuery(row, query) {
+  const normalized = String(query || "").trim().toLowerCase();
+  if (!normalized) return true;
+  return [
+    row.blankArticle,
+    row.blankName,
+    row.sourceArticle,
+    row.sourceName,
+  ].some((value) => String(value || "").toLowerCase().includes(normalized));
+}
+
+export function visibleReportRows(rows, { tab = "all", query = "" } = {}) {
+  return rows.filter((row) => rowMatchesTab(row, tab) && rowMatchesQuery(row, query));
+}
+
+export function matchPercent(row) {
+  if (row.status === "not_in_source" || row.status === "not_in_blank") return null;
+  return Math.round(Number(row.similarity || 0) * 100);
+}
+
+export function boxStep(row) {
+  const size = Number(row.blankBoxSize);
+  return Number.isFinite(size) && size > 0 ? size : 1;
+}
+
+export function criticalOpenCount(counts) {
+  return (counts.check || 0) + (counts.duplicate || 0);
+}
+
+export function quantityDisplay(value) {
+  if (value == null || value === "") return "";
+  const number = Number(value);
+  if (!Number.isFinite(number)) return String(value);
+  return Number.isInteger(number) ? String(number) : String(number);
+}
