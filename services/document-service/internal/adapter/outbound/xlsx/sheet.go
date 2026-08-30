@@ -1,6 +1,7 @@
 package xlsx
 
 import (
+	"fmt"
 	"math"
 	"sort"
 	"strconv"
@@ -31,6 +32,8 @@ type sheet struct {
 	sheetData *etree.Element
 	rows      map[int]*etree.Element
 	cells     map[cellKey]*cell
+	maxRow    int
+	maxColumn int
 	modified  bool
 }
 
@@ -39,32 +42,32 @@ type cell struct {
 	value   string
 }
 
-func newSheet(name string, entry *part, document *etree.Document, shared []string) *sheet {
+func newSheet(name string, entry *part, data []byte, shared []string, report func(float64)) (*sheet, error) {
+	document, rows, cells, err := parseSheetDocument(data, shared, report)
+	if err != nil {
+		return nil, err
+	}
 	root := document.Root()
+	if root == nil {
+		return nil, fmt.Errorf("xlsx: worksheet %q has no root element", name)
+	}
 	loaded := &sheet{
 		name:      name,
 		entry:     entry,
 		document:  document,
 		sheetData: ensureChild(root, "sheetData", sheetDataFollowers...),
-		rows:      map[int]*etree.Element{},
-		cells:     map[cellKey]*cell{},
+		rows:      rows,
+		cells:     cells,
 	}
-	for _, rowElement := range loaded.sheetData.SelectElements("row") {
-		number, err := strconv.Atoi(rowElement.SelectAttrValue("r", ""))
-		if err == nil && number > 0 {
-			if _, exists := loaded.rows[number]; !exists {
-				loaded.rows[number] = rowElement
-			}
+	for key := range cells {
+		if key.row > loaded.maxRow {
+			loaded.maxRow = key.row
 		}
-		for _, cellElement := range rowElement.SelectElements("c") {
-			key, ok := parseCellRef(cellElement.SelectAttrValue("r", ""))
-			if !ok {
-				continue
-			}
-			loaded.cells[key] = &cell{element: cellElement, value: readCellValue(cellElement, shared)}
+		if key.column > loaded.maxColumn {
+			loaded.maxColumn = key.column
 		}
 	}
-	return loaded
+	return loaded, nil
 }
 
 func (s *sheet) Name() string {
@@ -72,16 +75,16 @@ func (s *sheet) Name() string {
 }
 
 func (s *sheet) Bounds() spreadsheet.Bounds {
-	bounds := spreadsheet.Bounds{}
-	for key := range s.cells {
-		if key.row > bounds.MaxRow {
-			bounds.MaxRow = key.row
-		}
-		if key.column > bounds.MaxColumn {
-			bounds.MaxColumn = key.column
-		}
+	return spreadsheet.Bounds{MaxRow: s.maxRow, MaxColumn: s.maxColumn}
+}
+
+func (s *sheet) noteBounds(row int, column int) {
+	if row > s.maxRow {
+		s.maxRow = row
 	}
-	return bounds
+	if column > s.maxColumn {
+		s.maxColumn = column
+	}
 }
 
 func (s *sheet) Value(row int, column int) string {
@@ -97,9 +100,11 @@ func (s *sheet) SetNumber(row int, column int, value float64) {
 		return
 	}
 	target := s.findOrCreateCell(row, column)
-	clearCell(target.element)
 	text := strconv.FormatFloat(value, 'f', -1, 64)
-	newChild(target.element, "v", nil).SetText(text)
+	if !overwriteNumber(target.element, text) {
+		clearCell(target.element)
+		newChild(target.element, "v", nil).SetText(text)
+	}
 	target.value = text
 	s.modified = true
 }
@@ -178,6 +183,16 @@ func (s *sheet) DeleteRows(rows []int) {
 	}
 	s.cells = movedCells
 	s.modified = true
+	s.maxRow = 0
+	s.maxColumn = 0
+	for key := range s.cells {
+		if key.row > s.maxRow {
+			s.maxRow = key.row
+		}
+		if key.column > s.maxColumn {
+			s.maxColumn = key.column
+		}
+	}
 }
 
 func (s *sheet) serialize() error {
@@ -210,6 +225,7 @@ func (s *sheet) findOrCreateCell(row int, column int) *cell {
 	element.CreateAttr("r", formatCellRef(row, column))
 	created := &cell{element: element}
 	s.cells[key] = created
+	s.noteBounds(row, column)
 	return created
 }
 
@@ -244,6 +260,11 @@ func clearCell(element *etree.Element) {
 func readCellValue(element *etree.Element, shared []string) string {
 	kind := element.SelectAttrValue("t", "")
 	if kind == "inlineStr" {
+		if inline := element.SelectElement("is"); inline != nil {
+			if text := inline.SelectElement("t"); text != nil {
+				return elementText(text)
+			}
+		}
 		var builder strings.Builder
 		for _, node := range descendants(element, "t") {
 			builder.WriteString(elementText(node))
@@ -270,4 +291,16 @@ func readCellValue(element *etree.Element, shared []string) string {
 	default:
 		return raw
 	}
+}
+
+func overwriteNumber(element *etree.Element, text string) bool {
+	if element.SelectAttrValue("t", "") != "" {
+		return false
+	}
+	children := element.ChildElements()
+	if len(children) != 1 || (children[0].Tag != "v" && !hasLocalName(children[0].Tag, "v")) {
+		return false
+	}
+	children[0].SetText(text)
+	return true
 }

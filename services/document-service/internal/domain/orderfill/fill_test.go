@@ -2,6 +2,7 @@ package orderfill
 
 import (
 	"errors"
+	"fmt"
 	"testing"
 )
 
@@ -141,6 +142,53 @@ func TestFillSummaryCountsPositions(t *testing.T) {
 	if result.Summary.OrderMonthLabel != "сентябрь 2026" {
 		t.Fatalf("unexpected order month label %q", result.Summary.OrderMonthLabel)
 	}
+	if result.Summary.NotInBlank != 1 {
+		t.Fatalf("expected 1 source item missing from the blank, got %d", result.Summary.NotInBlank)
+	}
+}
+
+func TestFillCapsMissingFromBlankRowsButKeepsTheTrueCount(t *testing.T) {
+	sourceRows := [][]string{
+		{"Период: 01.08.2025 - 31.07.2026"},
+		{"Прошлый период: 01.08.2025 - 31.10.2025"},
+		{"Артикул", "Товар", "Рекомендуемый заказ", "Остаток", "В пути", "Заказано по факту", "Комментарий"},
+		{"A100", "Крем для лица 50 мл", "10", "0", "0", "", ""},
+	}
+	for i := 0; i < MaxNotInBlankReportRows+3; i++ {
+		sourceRows = append(sourceRows, []string{
+			fmt.Sprintf("X%04d", i),
+			fmt.Sprintf("Лишний товар %d", i),
+			"8",
+			"0",
+			"0",
+			"",
+			"",
+		})
+	}
+	result, err := Fill(FillCommand{
+		Source:     newFakeWorkbook("Заказ", sourceRows),
+		Blank:      newFakeWorkbook("Бланк", blankGrid()),
+		OrderMonth: "2026-09",
+		Brand:      "angiopharm",
+		BlankID:    "blank-1",
+		BlankLabel: "Бланк",
+	})
+	if err != nil {
+		t.Fatalf("fill failed: %v", err)
+	}
+
+	missing := 0
+	for _, row := range result.Rows {
+		if row.Status == StatusNotInBlank {
+			missing++
+		}
+	}
+	if missing != MaxNotInBlankReportRows {
+		t.Fatalf("reported missing rows = %d, want cap %d", missing, MaxNotInBlankReportRows)
+	}
+	if result.Summary.NotInBlank != MaxNotInBlankReportRows+3 {
+		t.Fatalf("summary missing count = %d, want %d", result.Summary.NotInBlank, MaxNotInBlankReportRows+3)
+	}
 }
 
 func TestFillDoesNotRepeatSourceDuplicatesAlreadyFlaggedOnBlankRows(t *testing.T) {
@@ -216,5 +264,41 @@ func TestFillRejectsUnsupportedBlankLayout(t *testing.T) {
 	})
 	if !errors.Is(err, ErrInvalidInput) {
 		t.Fatalf("expected an invalid input error, got %v", err)
+	}
+}
+
+func TestFillReportsProgressThroughThePipeline(t *testing.T) {
+	var reports []float64
+	var messages []string
+	_, err := Fill(FillCommand{
+		Source:     newFakeWorkbook("Заказ", sourceGrid()),
+		Blank:      newFakeWorkbook("Бланк", blankGrid()),
+		OrderMonth: "2026-09",
+		Brand:      "angiopharm",
+		BlankID:    "blank-1",
+		BlankLabel: "Бланк",
+		OnProgress: func(fraction float64, message string) {
+			reports = append(reports, fraction)
+			messages = append(messages, message)
+		},
+	})
+	if err != nil {
+		t.Fatalf("fill failed: %v", err)
+	}
+	if len(reports) == 0 {
+		t.Fatal("fill must report progress while it works")
+	}
+	if reports[len(reports)-1] < 0.99 {
+		t.Fatalf("final progress %v, want at least 0.99", reports[len(reports)-1])
+	}
+	for index := 1; index < len(reports); index++ {
+		if reports[index]+1e-9 < reports[index-1] {
+			t.Fatalf("progress went backwards: %v -> %v", reports[index-1], reports[index])
+		}
+	}
+	for _, message := range messages {
+		if message == "" {
+			t.Fatal("every progress update needs a user-facing message")
+		}
 	}
 }

@@ -6,3 +6,4 @@ testdata/private/
 .worktrees/
 .vercel/
 .DS_Store
+.gocache

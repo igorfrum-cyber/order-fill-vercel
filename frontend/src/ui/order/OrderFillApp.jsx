@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import {
   createOrderFillJob,
   downloadJobArchive,
+  FINALIZE_DONE_STATUSES,
   getJobReport,
   pollJob,
   submitJobEdits,
@@ -9,7 +10,7 @@ import {
 import { blankSlotsForBrand, brandLabel, usesChristinaSplitBlank } from "../../features/brands/brandPresentation.js";
 import { runOrderFillJob } from "../../features/jobs/orderJobWorkflow.js";
 import { defaultOrderMonth, formatOrderMonthLabel, sanitizeOrderMonth } from "../../features/order/monthPolicy.js";
-import { collectReviewEdits, hasManualDeviations, initialEditState, rowKey, validateReviewEdits } from "../../features/order/reviewEdits.js";
+import { collectReviewEdits, hasManualDeviations, initialEditState, patchEdit, rowKey, validateReviewEdits } from "../../features/order/reviewEdits.js";
 import { issueReportCsv } from "../../features/report/issueReport.js";
 import { combinedSummary, jobProgress, jobStatusText } from "../../features/report/reportModel.js";
 import { issueReportRows, qualityWarningLines, qualityWarningSummary } from "../../features/report/qualityWarnings.js";
@@ -121,12 +122,8 @@ export function OrderFillApp({ mode, onMode }) {
     }
   }
 
-  function updateEdit(key, next) {
-    setEdits((prev) => {
-      const copy = new Map(prev);
-      copy.set(key, next);
-      return copy;
-    });
+  function updateEdit(key, patch) {
+    setEdits((prev) => patchEdit(prev, key, patch));
     setInvalidKeys((prev) => {
       if (!prev.has(key)) return prev;
       const copy = new Set(prev);
@@ -176,6 +173,7 @@ export function OrderFillApp({ mode, onMode }) {
         const payload = collectReviewEdits(rows, edits);
         const editedJob = await submitJobEdits(jobId, payload);
         const finalJob = await pollJob(editedJob.id, {
+          until: FINALIZE_DONE_STATUSES,
           onUpdate: (job) => setStatus(jobStatusText(job)),
         });
         if (finalJob.status === "failed") {

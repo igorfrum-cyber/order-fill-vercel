@@ -36,6 +36,7 @@ type summaryDTO struct {
 	Suspicious             int     `json:"suspicious"`
 	Unmatched              int     `json:"unmatched"`
 	Duplicates             int     `json:"duplicates"`
+	NotInBlank             int     `json:"not_in_blank"`
 	BlankDuplicateArticles int     `json:"blank_duplicate_articles"`
 	SourceItems            int     `json:"source_items"`
 	SourceArticles         int     `json:"source_articles"`
@@ -132,6 +133,7 @@ func summaryToDTO(summary orderfill.Summary) summaryDTO {
 		Suspicious:             summary.Suspicious,
 		Unmatched:              summary.Unmatched,
 		Duplicates:             summary.Duplicates,
+		NotInBlank:             summary.NotInBlank,
 		BlankDuplicateArticles: summary.BlankDuplicateArticles,
 		SourceItems:            summary.SourceItems,
 		SourceArticles:         summary.SourceArticles,
@@ -157,6 +159,7 @@ func summaryToDomain(summary summaryDTO) orderfill.Summary {
 		Suspicious:             summary.Suspicious,
 		Unmatched:              summary.Unmatched,
 		Duplicates:             summary.Duplicates,
+		NotInBlank:             summary.NotInBlank,
 		BlankDuplicateArticles: summary.BlankDuplicateArticles,
 		SourceItems:            summary.SourceItems,
 		SourceArticles:         summary.SourceArticles,

@@ -3,6 +3,7 @@ package xlsx
 import (
 	"archive/zip"
 	"bytes"
+	"fmt"
 	"io"
 	"testing"
 
@@ -64,6 +65,107 @@ func TestSheetsFollowWorkbookOrder(t *testing.T) {
 	}
 	if _, ok := book.Sheet("отсутствует"); ok {
 		t.Fatal("Sheet() found a sheet that does not exist")
+	}
+}
+
+func TestLoadWithProgressReportsFractions(t *testing.T) {
+	loader, ok := NewCodec().(spreadsheet.ProgressCodec)
+	if !ok {
+		t.Fatal("xlsx codec must report load progress for large workbooks")
+	}
+
+	var last float64
+	count := 0
+	book, err := loader.LoadWithProgress(buildFixture(t), func(fraction float64) {
+		count++
+		if fraction+1e-9 < last {
+			t.Fatalf("progress went backwards: %v -> %v", last, fraction)
+		}
+		last = fraction
+	})
+	if err != nil {
+		t.Fatalf("LoadWithProgress failed: %v", err)
+	}
+	if mustSheet(t, book, priceSheetName).Value(2, 1) != "АРТ-1" {
+		t.Fatal("progress-aware load must still read cell values")
+	}
+	if count == 0 || last < 0.99 {
+		t.Fatalf("expected progress to reach the end, got %d updates ending at %v", count, last)
+	}
+}
+
+func TestChunkRowsByWorkersKeepsEveryRow(t *testing.T) {
+	rows := make([][]byte, 100)
+	for index := range rows {
+		rows[index] = bytes.Repeat([]byte("x"), 10+index)
+	}
+	chunks := chunkRowsByWorkers(rows)
+	if len(chunks) == 0 {
+		t.Fatal("expected at least one chunk")
+	}
+	total := 0
+	for _, chunk := range chunks {
+		total += len(chunk)
+	}
+	if total != len(rows) {
+		t.Fatalf("split %d rows into %d, want %d", total, len(chunks), len(rows))
+	}
+}
+
+func TestWrapRowChunkParsesWithThinEnvelope(t *testing.T) {
+	data := []byte(`<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">
+	<dimension ref="A1:A2"/>
+	<sheetData>
+		<row r="1"><c r="A1"><v>1</v></c></row>
+		<row r="2"><c r="A2"><v>2</v></c></row>
+	</sheetData>
+</worksheet>`)
+	open, closeTag, ok := worksheetEnvelope(data)
+	if !ok {
+		t.Fatal("expected a worksheet envelope")
+	}
+	split, ok := splitWorksheet(data)
+	if !ok || len(split.rows) != 2 {
+		t.Fatalf("split rows = %d, want 2", len(split.rows))
+	}
+	document, err := parseDocument(wrapRowChunk(open, split.rows, closeTag))
+	if err != nil {
+		t.Fatalf("thin envelope did not parse: %v", err)
+	}
+	sheetData := findDirectSheetData(document.Root())
+	if sheetData == nil || len(sheetData.ChildElements()) != 2 {
+		t.Fatal("thin envelope lost row elements")
+	}
+}
+
+func TestLoadIndexesManyRowsInParallel(t *testing.T) {
+	var rows bytes.Buffer
+	for index := 1; index <= 40; index++ {
+		fmt.Fprintf(&rows, `<row r="%d"><c r="A%d" t="inlineStr"><is><t>R%d</t></is></c></row>`, index, index, index)
+	}
+	sheetXML := `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><sheetData>` + rows.String() + `</sheetData></worksheet>`
+	content := buildArchive(t, []fixtureEntry{
+		{name: contentTypesPath, data: []byte(contentTypesFixtureXML)},
+		{name: "_rels/.rels", data: []byte(rootRelsFixtureXML)},
+		{name: workbookPath, data: []byte(workbookXML)},
+		{name: workbookRelsPath, data: []byte(workbookRelsXML)},
+		{name: sharedStringsPath, data: []byte(sharedStringsXML)},
+		{name: "xl/styles.xml", data: []byte(stylesXML)},
+		{name: sheet1Path, data: []byte(sheetXML)},
+		{name: "xl/worksheets/sheet2.xml", data: []byte(sheet2XML)},
+	})
+	book := mustLoad(t, content)
+	sheet := mustSheet(t, book, priceSheetName)
+	if got := sheet.Value(1, 1); got != "R1" {
+		t.Fatalf("first row = %q, want R1", got)
+	}
+	if got := sheet.Value(40, 1); got != "R40" {
+		t.Fatalf("last row = %q, want R40", got)
+	}
+	if got := sheet.Bounds(); got.MaxRow != 40 {
+		t.Fatalf("bounds max row = %d, want 40", got.MaxRow)
 	}
 }
 

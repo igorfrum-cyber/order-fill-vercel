@@ -79,6 +79,7 @@ func ApplyFinalEdits(command FinalizeCommand) error {
 		}
 		comment := normalize.AsText(edit.Comment)
 		baseline := baselineQuantity(row, rule)
+		autoComment := normalize.AsText(row.AutoComment)
 
 		if !sameQuantity(quantity, baseline) && comment == "" {
 			return fmt.Errorf("%w: если значение в колонке «Вставлено» изменено, нужно заполнить комментарий (строка %d)", ErrInvalidInput, row.BlankRow)
@@ -99,7 +100,8 @@ func ApplyFinalEdits(command FinalizeCommand) error {
 		if row.SourceRow == nil || *row.SourceRow <= source.HeaderRow {
 			continue
 		}
-		recordFact := !sameQuantity(quantity, baseline)
+		userComment := comment != "" && comment != autoComment
+		recordFact := !sameQuantity(quantity, baseline) || userComment
 		if recordFact {
 			value := 0.0
 			if quantity != nil {

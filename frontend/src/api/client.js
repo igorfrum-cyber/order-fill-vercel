@@ -16,6 +16,7 @@ export class ApiClient {
 
   async request(path, options = {}) {
     const response = await this.fetcher.call(globalThis, `${this.baseUrl}${path}`, {
+      cache: "no-store",
       ...options,
       headers: {
         ...(options.body instanceof FormData ? {} : { "Content-Type": "application/json" }),
@@ -29,7 +30,9 @@ export class ApiClient {
   }
 
   async requestDownload(path) {
-    const response = await this.fetcher.call(globalThis, `${this.baseUrl}${path}`);
+    const response = await this.fetcher.call(globalThis, `${this.baseUrl}${path}`, {
+      cache: "no-store",
+    });
     if (!response.ok) {
       throw new ApiError(response.status, await parseError(response));
     }

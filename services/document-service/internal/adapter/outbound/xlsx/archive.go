@@ -82,17 +82,24 @@ func (a *archive) write() ([]byte, error) {
 }
 
 func (p *part) bytes() ([]byte, error) {
+	return p.bytesWithProgress(nil)
+}
+
+func (p *part) bytesWithProgress(report func(float64)) ([]byte, error) {
 	if p.updated != nil {
+		reportProgress(report, 1)
 		return p.updated, nil
 	}
 	if p.plain != nil {
+		reportProgress(report, 1)
 		return p.plain, nil
 	}
-	decoded, err := decompress(p.header.Method, p.raw)
+	decoded, err := decompressWithProgress(p.header.Method, p.raw, report)
 	if err != nil {
 		return nil, fmt.Errorf("decompress entry %s: %w", p.header.Name, err)
 	}
 	p.plain = decoded
+	reportProgress(report, 1)
 	return decoded, nil
 }
 
@@ -135,14 +142,20 @@ func readRaw(file *zip.File) ([]byte, error) {
 	return io.ReadAll(reader)
 }
 
-func decompress(method uint16, raw []byte) ([]byte, error) {
+func decompressWithProgress(method uint16, raw []byte, report func(float64)) ([]byte, error) {
 	switch method {
 	case zip.Store:
+		reportProgress(report, 1)
 		return raw, nil
 	case zip.Deflate:
 		reader := flate.NewReader(bytes.NewReader(raw))
 		defer func() { _ = reader.Close() }()
-		return io.ReadAll(reader)
+		decoded, err := io.ReadAll(reader)
+		if err != nil {
+			return nil, err
+		}
+		reportProgress(report, 1)
+		return decoded, nil
 	default:
 		return nil, fmt.Errorf("unsupported compression method %d", method)
 	}

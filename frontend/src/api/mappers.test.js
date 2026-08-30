@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { mapOutputFile, mapReport, toManualEditPayload } from "./mappers.js";
+import { mapJob, mapOutputFile, mapReport, toManualEditPayload } from "./mappers.js";
 
 const absoluteUrl = (path) => `http://api.test${path}`;
 
@@ -105,4 +105,21 @@ test("mapOutputFile turns the API resource path into an absolute download URL", 
   assert.equal(file.downloadUrl, "http://api.test/api/v1/jobs/job-1/files/output-1");
   assert.equal(file.label, "Скачать заполненный бланк");
   assert.equal(file.sizeBytes, 2048);
+});
+
+test("mapJob keeps live progress from the worker", () => {
+  const job = mapJob(
+    {
+      id: "job-1",
+      type: "order_fill",
+      status: "processing",
+      progress: 0.37,
+      progress_message: "Читаю таблицу заказа",
+      input_files: [],
+      output_files: [],
+    },
+    absoluteUrl,
+  );
+  assert.equal(job.progress, 0.37);
+  assert.equal(job.progressMessage, "Читаю таблицу заказа");
 });

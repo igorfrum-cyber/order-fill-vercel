@@ -28,6 +28,7 @@ type Summary struct {
 	Suspicious             int
 	Unmatched              int
 	Duplicates             int
+	NotInBlank             int
 	BlankDuplicateArticles int
 	SourceItems            int
 	SourceArticles         int

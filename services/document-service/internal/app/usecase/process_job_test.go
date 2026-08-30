@@ -6,6 +6,7 @@ import (
 	"io"
 	"log/slog"
 	"strconv"
+	"sync"
 	"testing"
 	"time"
 
@@ -107,10 +108,13 @@ func (c fakeCodec) Load(content []byte) (spreadsheet.Workbook, error) {
 }
 
 type fakeStorage struct {
+	mu      sync.Mutex
 	objects map[string][]byte
 }
 
 func (s *fakeStorage) Get(_ context.Context, key string) ([]byte, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
 	content, ok := s.objects[key]
 	if !ok {
 		return nil, errors.New("missing object " + key)
@@ -119,23 +123,36 @@ func (s *fakeStorage) Get(_ context.Context, key string) ([]byte, error) {
 }
 
 func (s *fakeStorage) Put(_ context.Context, key string, _ string, content []byte) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
 	s.objects[key] = content
 	return nil
 }
 
 type fakeJobStore struct {
+	mu       sync.Mutex
 	statuses []string
 	outputs  []port.OutputFile
 	failCode string
 	failText string
+	progress []progressNote
+}
+
+type progressNote struct {
+	fraction float64
+	message  string
 }
 
 func (s *fakeJobStore) MarkProcessing(context.Context, string, time.Time) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
 	s.statuses = append(s.statuses, "processing")
 	return nil
 }
 
 func (s *fakeJobStore) MarkFailed(_ context.Context, _ string, code string, message string, _ time.Time) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
 	s.statuses = append(s.statuses, "failed")
 	s.failCode = code
 	s.failText = message
@@ -143,8 +160,17 @@ func (s *fakeJobStore) MarkFailed(_ context.Context, _ string, code string, mess
 }
 
 func (s *fakeJobStore) SaveResult(_ context.Context, _ string, status string, outputs []port.OutputFile, _ time.Time) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
 	s.statuses = append(s.statuses, status)
 	s.outputs = outputs
+	return nil
+}
+
+func (s *fakeJobStore) SetProgress(_ context.Context, _ string, fraction float64, message string, _ time.Time) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.progress = append(s.progress, progressNote{fraction: fraction, message: message})
 	return nil
 }
 
@@ -240,6 +266,19 @@ func TestProcessJobFillsTheBlankAndPublishesTheReport(t *testing.T) {
 	}
 	if reports.summary.Filled != 1 {
 		t.Fatalf("expected one filled position, got %d", reports.summary.Filled)
+	}
+	if len(jobs.progress) == 0 {
+		t.Fatal("the worker must publish progress while the job is running")
+	}
+	var last float64
+	for _, note := range jobs.progress {
+		if note.fraction+1e-9 < last {
+			t.Fatalf("progress went backwards: %v -> %v", last, note.fraction)
+		}
+		last = note.fraction
+		if note.message == "" {
+			t.Fatal("every progress update needs a user-facing message")
+		}
 	}
 }
 

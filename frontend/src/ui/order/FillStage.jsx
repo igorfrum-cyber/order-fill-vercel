@@ -313,7 +313,7 @@ function ReportRow({ row, edit, expanded, invalid, boxLabel, onToggle, onEdit })
             <Stepper
               value={edit?.value ?? ""}
               disabled={row.editable === false}
-              onChange={(value) => onEdit(key, { ...edit, value })}
+              onChange={(value) => onEdit(key, { value })}
               step={boxStep(row)}
             />
           </div>
@@ -332,7 +332,7 @@ function ReportRow({ row, edit, expanded, invalid, boxLabel, onToggle, onEdit })
             <input
               type="text"
               value={edit?.comment || ""}
-              onChange={(event) => onEdit(key, { ...edit, comment: event.target.value })}
+              onChange={(event) => onEdit(key, { comment: event.target.value })}
               placeholder="Почему изменили количество"
               className={`w-full rounded-lg border px-3 py-2 text-[13px] outline-none ${
                 needsComment ? "border-[var(--color-warn)] bg-[var(--color-warn-soft)]" : "border-[var(--color-line)] bg-[var(--color-surface)]"

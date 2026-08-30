@@ -3,6 +3,7 @@ package xlsx
 import (
 	"fmt"
 	"strings"
+	"sync"
 
 	"github.com/beevik/etree"
 
@@ -40,10 +41,16 @@ func (w *workbook) Sheet(name string) (spreadsheet.Sheet, bool) {
 }
 
 func (w *workbook) Save() ([]byte, error) {
-	for _, item := range w.sheets {
+	var firstErr error
+	var errOnce sync.Once
+	runWorkers(len(w.sheets), func(index int) {
+		item := w.sheets[index]
 		if err := item.serialize(); err != nil {
-			return nil, fmt.Errorf("xlsx: serialize sheet %q: %w", item.name, err)
+			errOnce.Do(func() { firstErr = fmt.Errorf("xlsx: serialize sheet %q: %w", item.name, err) })
 		}
+	})
+	if firstErr != nil {
+		return nil, firstErr
 	}
 	if err := w.forceFormulaRecalculation(); err != nil {
 		return nil, err

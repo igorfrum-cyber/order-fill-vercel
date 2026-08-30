@@ -19,7 +19,7 @@ var (
 )
 
 const jobColumns = `id, type, status, brand, order_month, created_at, updated_at,
-		error_code, error_message, input_files, output_files`
+		error_code, error_message, input_files, output_files, progress, progress_message`
 
 // Repository is the PostgreSQL backed job store. api-service owns this schema;
 // document-service only updates existing rows.
@@ -45,8 +45,12 @@ func (r *Repository) Migrate(ctx context.Context) error {
 			error_code TEXT,
 			error_message TEXT,
 			input_files JSONB NOT NULL DEFAULT '[]',
-			output_files JSONB NOT NULL DEFAULT '[]'
+			output_files JSONB NOT NULL DEFAULT '[]',
+			progress DOUBLE PRECISION NOT NULL DEFAULT 0,
+			progress_message TEXT NOT NULL DEFAULT ''
 		)`,
+		`ALTER TABLE jobs ADD COLUMN IF NOT EXISTS progress DOUBLE PRECISION NOT NULL DEFAULT 0`,
+		`ALTER TABLE jobs ADD COLUMN IF NOT EXISTS progress_message TEXT NOT NULL DEFAULT ''`,
 		`CREATE TABLE IF NOT EXISTS job_reports (
 			job_id TEXT PRIMARY KEY REFERENCES jobs(id) ON DELETE CASCADE,
 			summary JSONB NOT NULL DEFAULT '{}',
@@ -89,7 +93,7 @@ func (r *Repository) Create(ctx context.Context, entity job.Job) error {
 	}
 
 	const query = `INSERT INTO jobs (` + jobColumns + `)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)`
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)`
 	_, err = r.pool.Exec(ctx, query,
 		entity.ID,
 		string(entity.Type),
@@ -102,6 +106,8 @@ func (r *Repository) Create(ctx context.Context, entity job.Job) error {
 		errorMessage,
 		inputFiles,
 		outputFiles,
+		entity.Progress,
+		entity.ProgressMessage,
 	)
 	if err != nil {
 		return fmt.Errorf("insert job %s: %w", entity.ID, err)
@@ -180,6 +186,8 @@ func scanJob(row pgx.Row) (job.Job, error) {
 		&errorMessage,
 		&inputFiles,
 		&outputFiles,
+		&entity.Progress,
+		&entity.ProgressMessage,
 	)
 	if err != nil {
 		return job.Job{}, err

@@ -54,6 +54,12 @@ test("combinedSummary aggregates result summaries and report-only counters", () 
   assert.equal(summary.blankDuplicateArticles, 1);
 });
 
+test("combinedSummary prefers the engine notInBlank count over sampled report rows", () => {
+  const rows = [{ status: "not_in_blank" }, { status: "not_in_blank" }];
+  const summary = combinedSummary([{ summary: { notInBlank: 12 }, reportRows: rows }], rows);
+  assert.equal(summary.notInBlank, 12);
+});
+
 test("statusLabel falls back to raw status", () => {
   assert.equal(statusLabel("matched"), "Заполнено");
   assert.equal(statusLabel("custom"), "custom");
@@ -64,10 +70,21 @@ test("jobStatusText maps terminal errors to their API message", () => {
   assert.equal(jobStatusText({ status: "failed", error: { message: "Нет файла" } }), "Нет файла");
 });
 
-test("jobProgress maps queue states to a visible progress fraction", () => {
-  assert.equal(jobProgress({ status: "queued" }), 0.2);
-  assert.equal(jobProgress({ status: "processing" }), 0.65);
+test("jobStatusText prefers the live progress message from the worker", () => {
+  assert.equal(
+    jobStatusText({ status: "processing", progress_message: "Читаю таблицу заказа" }),
+    "Читаю таблицу заказа",
+  );
+});
+
+test("jobProgress uses the worker-reported fraction instead of a fake status mapping", () => {
+  assert.equal(jobProgress({ status: "processing", progress: 0.42 }), 0.42);
+  assert.equal(jobProgress({ status: "processing", progress: 0.08 }), 0.08);
+  assert.equal(jobProgress({ status: "processing", progress: 0 }), 0.12);
+  assert.equal(jobProgress({ status: "queued" }), 0.05);
+  assert.equal(jobProgress({ status: "processing" }), 0.12);
   assert.equal(jobProgress({ status: "needs_review" }), 1);
+  assert.equal(jobProgress({ status: "needs_review", progress: 0.9 }), 1);
   assert.equal(jobProgress({ status: "completed" }), 1);
   assert.equal(jobProgress({ status: "failed" }), 1);
 });

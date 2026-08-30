@@ -45,16 +45,18 @@ const (
 )
 
 type Job struct {
-	ID          string
-	Type        Type
-	Status      Status
-	Brand       string
-	OrderMonth  string
-	CreatedAt   time.Time
-	UpdatedAt   time.Time
-	Failure     *Failure
-	InputFiles  []InputFile
-	OutputFiles []OutputFile
+	ID              string
+	Type            Type
+	Status          Status
+	Brand           string
+	OrderMonth      string
+	CreatedAt       time.Time
+	UpdatedAt       time.Time
+	Failure         *Failure
+	InputFiles      []InputFile
+	OutputFiles     []OutputFile
+	Progress        float64
+	ProgressMessage string
 }
 
 type Failure struct {

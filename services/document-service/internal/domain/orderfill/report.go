@@ -24,6 +24,7 @@ type Summary struct {
 	Suspicious             int
 	Unmatched              int
 	Duplicates             int
+	NotInBlank             int
 	BlankDuplicateArticles int
 	SourceItems            int
 	SourceArticles         int
@@ -135,9 +136,14 @@ func matchedRow(
 	return row
 }
 
+// MaxNotInBlankReportRows keeps the review payload bounded when the 1C export
+// lists tens of thousands of SKUs that are not on the supplier blank.
+const MaxNotInBlankReportRows = 500
+
 // missingFromBlankRows lists source positions that need an order but were not
-// represented by any matched blank row.
-func missingFromBlankRows(source Source, rows []ReportRow, command FillCommand, rule brand.RuleConfig) []ReportRow {
+// represented by any matched blank row. The returned slice is capped; total is
+// the true number of missing positions.
+func missingFromBlankRows(source Source, rows []ReportRow, command FillCommand, rule brand.RuleConfig) ([]ReportRow, int) {
 	matched := map[int]bool{}
 	for _, row := range rows {
 		if row.SourceRow != nil {
@@ -145,8 +151,13 @@ func missingFromBlankRows(source Source, rows []ReportRow, command FillCommand, 
 		}
 	}
 	missing := make([]ReportRow, 0)
+	total := 0
 	for _, item := range ItemsMissingFromBlank(source) {
 		if matched[item.RowIndex] {
+			continue
+		}
+		total++
+		if len(missing) >= MaxNotInBlankReportRows {
 			continue
 		}
 		sourceRow := item.RowIndex
@@ -176,7 +187,7 @@ func missingFromBlankRows(source Source, rows []ReportRow, command FillCommand, 
 		}
 		missing = append(missing, row)
 	}
-	return missing
+	return missing, total
 }
 
 // sourceDuplicateRows surfaces articles the 1C export repeats so the buyer can

@@ -1,10 +1,15 @@
 import { apiClient } from "./client.js";
 import { mapOutputFile, mapReport, toManualEditPayload } from "./mappers.js";
 
-const TERMINAL_STATUSES = new Set(["needs_review", "completed", "failed"]);
+const TERMINAL_STATUSES = ["needs_review", "completed", "failed"];
+export const FINALIZE_DONE_STATUSES = ["completed", "failed"];
+
+export function isPollDone(status, until = TERMINAL_STATUSES) {
+  return until.includes(status);
+}
 
 export const DEFAULT_POLL_INTERVAL_MS = 200;
-export const DEFAULT_POLL_TIMEOUT_MS = 120000;
+export const DEFAULT_POLL_TIMEOUT_MS = 600000;
 
 const absoluteUrl = (path) => apiClient.absoluteUrl(path);
 
@@ -55,12 +60,12 @@ export function downloadJobArchive(jobId) {
   return apiClient.requestDownload(`/api/v1/jobs/${encodeURIComponent(jobId)}/archive`);
 }
 
-export async function pollJob(jobId, { intervalMs = DEFAULT_POLL_INTERVAL_MS, timeoutMs = DEFAULT_POLL_TIMEOUT_MS, onUpdate = () => {} } = {}) {
+export async function pollJob(jobId, { intervalMs = DEFAULT_POLL_INTERVAL_MS, timeoutMs = DEFAULT_POLL_TIMEOUT_MS, onUpdate = () => {}, until = TERMINAL_STATUSES } = {}) {
   const startedAt = Date.now();
   while (Date.now() - startedAt < timeoutMs) {
     const job = await getJob(jobId);
     onUpdate(job);
-    if (TERMINAL_STATUSES.has(job.status)) return job;
+    if (isPollDone(job.status, until)) return job;
     await delay(intervalMs);
   }
   throw new Error("Задача выполняется слишком долго. Попробуйте обновить статус позже.");

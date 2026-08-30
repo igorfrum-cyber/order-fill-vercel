@@ -137,7 +137,18 @@ func maxMonthlySales(sheet spreadsheet.Sheet, row int, columns []int) float64 {
 
 // rebuildSourceWithChz merges "ЧЗ" clone rows into their base article and then
 // recalculates the whole table, mirroring the 1C workflow.
-func rebuildSourceWithChz(detection Detection, deliveryWeeks float64, rule brand.RuleConfig, columns calculationColumns) {
+func rebuildSourceWithChz(detection Detection, deliveryWeeks float64, rule brand.RuleConfig, columns calculationColumns, onProgress func(float64)) {
+	report := func(fraction float64) {
+		if onProgress != nil {
+			if fraction < 0 {
+				fraction = 0
+			}
+			if fraction > 1 {
+				fraction = 1
+			}
+			onProgress(fraction)
+		}
+	}
 	rows := readSourceRowRefs(detection, rule)
 	byArticle := map[string][]sourceRowRef{}
 	articles := make([]string, 0)
@@ -150,10 +161,15 @@ func rebuildSourceWithChz(detection Detection, deliveryWeeks float64, rule brand
 		}
 		byArticle[row.article] = append(byArticle[row.article], row)
 	}
+	report(0.05)
 
-	rowsToDelete := make([]int, 0)
-	for _, article := range articles {
-		group := byArticle[article]
+	type chzPlan struct {
+		target  sourceRowRef
+		matched []int
+	}
+	plans := make([]chzPlan, len(articles))
+	runWorkers(len(articles), func(index int) {
+		group := byArticle[articles[index]]
 		normalRows := make([]sourceRowRef, 0, len(group))
 		chzRows := make([]sourceRowRef, 0, len(group))
 		for _, row := range group {
@@ -164,9 +180,8 @@ func rebuildSourceWithChz(detection Detection, deliveryWeeks float64, rule brand
 			normalRows = append(normalRows, row)
 		}
 		if len(normalRows) == 0 || len(chzRows) == 0 {
-			continue
+			return
 		}
-
 		target := normalRows[0]
 		matched := make([]int, 0, len(chzRows))
 		for _, row := range chzRows {
@@ -175,34 +190,44 @@ func rebuildSourceWithChz(detection Detection, deliveryWeeks float64, rule brand
 			}
 		}
 		if len(matched) == 0 {
+			return
+		}
+		plans[index] = chzPlan{target: target, matched: matched}
+	})
+	report(0.45)
+
+	rowsToDelete := make([]int, 0)
+	for _, plan := range plans {
+		if len(plan.matched) == 0 {
 			continue
 		}
-
-		merged := append([]int{target.row}, matched...)
-		mergedName := "ЧЗ + " + target.name
-		detection.Sheet.SetText(target.row, detection.Columns[ColumnName], mergedName)
+		merged := append([]int{plan.target.row}, plan.matched...)
+		mergedName := "ЧЗ + " + plan.target.name
+		detection.Sheet.SetText(plan.target.row, detection.Columns[ColumnName], mergedName)
 		if detection.Columns[ColumnName] != 1 {
-			detection.Sheet.SetText(target.row, 1, mergedName)
+			detection.Sheet.SetText(plan.target.row, 1, mergedName)
 		}
-		sumInto(detection.Sheet, target.row, merged, append(append([]int{}, columns.salesColumns...),
+		sumInto(detection.Sheet, plan.target.row, merged, append(append([]int{}, columns.salesColumns...),
 			columns.totalQuantity, columns.revenue, columns.previousQuantity,
 			detection.Columns[ColumnStock], detection.Columns[ColumnInTransit]))
 
 		fact, comment := mergeFactAndComment(detection, merged)
 		if fact != nil {
-			detection.Sheet.SetNumber(target.row, detection.Columns[ColumnOrderedFact], *fact)
+			detection.Sheet.SetNumber(plan.target.row, detection.Columns[ColumnOrderedFact], *fact)
 		} else {
-			detection.Sheet.ClearValue(target.row, detection.Columns[ColumnOrderedFact])
+			detection.Sheet.ClearValue(plan.target.row, detection.Columns[ColumnOrderedFact])
 		}
-		detection.Sheet.SetText(target.row, detection.Columns[ColumnComment], comment)
-		rowsToDelete = append(rowsToDelete, matched...)
+		detection.Sheet.SetText(plan.target.row, detection.Columns[ColumnComment], comment)
+		rowsToDelete = append(rowsToDelete, plan.matched...)
 	}
 
 	if len(rowsToDelete) > 0 {
 		sort.Ints(rowsToDelete)
 		detection.Sheet.DeleteRows(rowsToDelete)
 	}
+	report(0.6)
 	recalculateSourceTable(detection, deliveryWeeks, rule, columns)
+	report(1)
 }
 
 // recalculateSourceTable rebuilds ABC metrics, target stock and the recommended
@@ -220,16 +245,19 @@ func recalculateSourceTable(detection Detection, deliveryWeeks float64, rule bra
 	}
 
 	totalRevenue := 0.0
-	calculated := make([]calculatedRow, 0, len(rows))
-	for _, row := range rows {
+	calculated := make([]calculatedRow, len(rows))
+	runWorkers(len(rows), func(index int) {
+		row := rows[index]
 		values := monthlyValues(detection.Sheet, row.row, columns.salesColumns)
 		total := 0.0
 		for _, value := range values {
 			total += value
 		}
 		revenue, _ := normalize.ParseNumber(detection.Sheet.Value(row.row, columns.revenue))
-		totalRevenue += revenue
-		calculated = append(calculated, calculatedRow{row: row.row, values: values, totalQuantity: total, revenue: revenue})
+		calculated[index] = calculatedRow{row: row.row, values: values, totalQuantity: total, revenue: revenue}
+	})
+	for _, item := range calculated {
+		totalRevenue += item.revenue
 	}
 
 	ranked := make([]calculatedRow, len(calculated))

@@ -12,16 +12,18 @@ import (
 // evolve without touching business rules.
 
 type jobResponse struct {
-	ID          string               `json:"id"`
-	Type        string               `json:"type"`
-	Status      string               `json:"status"`
-	Brand       string               `json:"brand,omitempty"`
-	OrderMonth  string               `json:"order_month,omitempty"`
-	CreatedAt   time.Time            `json:"created_at"`
-	UpdatedAt   time.Time            `json:"updated_at"`
-	Error       *errorResponse       `json:"error,omitempty"`
-	InputFiles  []inputFileResponse  `json:"input_files"`
-	OutputFiles []outputFileResponse `json:"output_files"`
+	ID              string               `json:"id"`
+	Type            string               `json:"type"`
+	Status          string               `json:"status"`
+	Brand           string               `json:"brand,omitempty"`
+	OrderMonth      string               `json:"order_month,omitempty"`
+	CreatedAt       time.Time            `json:"created_at"`
+	UpdatedAt       time.Time            `json:"updated_at"`
+	Error           *errorResponse       `json:"error,omitempty"`
+	InputFiles      []inputFileResponse  `json:"input_files"`
+	OutputFiles     []outputFileResponse `json:"output_files"`
+	Progress        float64              `json:"progress"`
+	ProgressMessage string               `json:"progress_message,omitempty"`
 }
 
 type inputFileResponse struct {
@@ -61,6 +63,7 @@ type summaryResponse struct {
 	Suspicious             int     `json:"suspicious"`
 	Unmatched              int     `json:"unmatched"`
 	Duplicates             int     `json:"duplicates"`
+	NotInBlank             int     `json:"not_in_blank"`
 	BlankDuplicateArticles int     `json:"blank_duplicate_articles"`
 	SourceItems            int     `json:"source_items"`
 	SourceArticles         int     `json:"source_articles"`
@@ -120,15 +123,17 @@ type errorResponse struct {
 
 func presentJob(entity job.Job) jobResponse {
 	response := jobResponse{
-		ID:          entity.ID,
-		Type:        string(entity.Type),
-		Status:      string(entity.Status),
-		Brand:       entity.Brand,
-		OrderMonth:  entity.OrderMonth,
-		CreatedAt:   entity.CreatedAt,
-		UpdatedAt:   entity.UpdatedAt,
-		InputFiles:  make([]inputFileResponse, 0, len(entity.InputFiles)),
-		OutputFiles: presentOutputFiles(entity.ID, entity.OutputFiles),
+		ID:              entity.ID,
+		Type:            string(entity.Type),
+		Status:          string(entity.Status),
+		Brand:           entity.Brand,
+		OrderMonth:      entity.OrderMonth,
+		CreatedAt:       entity.CreatedAt,
+		UpdatedAt:       entity.UpdatedAt,
+		InputFiles:      make([]inputFileResponse, 0, len(entity.InputFiles)),
+		OutputFiles:     presentOutputFiles(entity.ID, entity.OutputFiles),
+		Progress:        entity.Progress,
+		ProgressMessage: entity.ProgressMessage,
 	}
 	if entity.Failure != nil {
 		response.Error = &errorResponse{Code: entity.Failure.Code, Message: entity.Failure.Message}

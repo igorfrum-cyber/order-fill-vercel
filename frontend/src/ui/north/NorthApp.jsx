@@ -1,6 +1,7 @@
 import { useRef, useState } from "react";
 import {
   createNorthMergeJob,
+  FINALIZE_DONE_STATUSES,
   getJobReport,
   listJobFiles,
   pollJob,
@@ -200,6 +201,7 @@ export function NorthApp({ mode, onMode }) {
       }
       const editedJob = await submitJobEdits(jobId, edits);
       const finalJob = await pollJob(editedJob.id, {
+        until: FINALIZE_DONE_STATUSES,
         onUpdate: (job) => setStatus(jobStatusText(job)),
       });
       if (finalJob.status === "failed") {

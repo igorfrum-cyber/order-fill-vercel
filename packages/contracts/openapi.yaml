@@ -245,6 +245,15 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/OutputFile"
+        progress:
+          type: number
+          format: double
+          minimum: 0
+          maximum: 1
+          description: Honest fraction of work completed by the worker. Absent or 0 while the job is still queued.
+        progress_message:
+          type: string
+          description: Short Russian status shown on the progress bar while the job is running.
     JobStatus:
       type: string
       enum: [queued, processing, needs_review, finalizing, completed, failed]
@@ -329,6 +338,9 @@ components:
           type: integer
         duplicates:
           type: integer
+        not_in_blank:
+          type: integer
+          description: Source SKUs that need an order but are not on the blank. The row list may be capped.
         blank_duplicate_articles:
           type: integer
         source_items:

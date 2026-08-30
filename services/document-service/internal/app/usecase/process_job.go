@@ -8,7 +8,10 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"sync"
 	"time"
+
+	"golang.org/x/sync/errgroup"
 
 	"order-fill/services/document-service/internal/app/port"
 	"order-fill/services/document-service/internal/domain/orderfill"
@@ -98,9 +101,11 @@ func (u *ProcessJob) Handle(ctx context.Context, message port.JobMessage) error 
 }
 
 func (u *ProcessJob) process(ctx context.Context, message port.JobMessage) error {
+	progress := newJobProgress(u.jobs, message.JobID, u.now)
 	if err := u.jobs.MarkProcessing(ctx, message.JobID, u.now()); err != nil {
 		return fmt.Errorf("mark job processing: %w", err)
 	}
+	progress.Set(ctx, 0.04, "Забираю файлы")
 	if message.Type != "order_fill" {
 		return fmt.Errorf("%w: тип задачи %q пока не поддерживается сервисом", orderfill.ErrInvalidInput, message.Type)
 	}
@@ -110,8 +115,72 @@ func (u *ProcessJob) process(ctx context.Context, message port.JobMessage) error
 		return err
 	}
 
-	sourceWorkbook, err := u.loadWorkbook(ctx, sourceInput.StorageKey)
-	if err != nil {
+	type loadedFile struct {
+		workbook spreadsheet.Workbook
+	}
+	sourceLoaded := loadedFile{}
+	blanksLoaded := make([]loadedFile, len(blankInputs))
+	var sourceFrac, blankFrac float64
+	var fracMu sync.Mutex
+	publishLoad := func() {
+		fracMu.Lock()
+		src := sourceFrac
+		blank := blankFrac
+		fracMu.Unlock()
+		messageText := "Читаю таблицу заказа"
+		if src >= 0.999 && blank < 1 {
+			messageText = "Читаю бланк"
+		}
+		progress.Set(ctx, 0.08+0.42*src+0.08*blank, messageText)
+	}
+
+	group, groupCtx := errgroup.WithContext(ctx)
+	group.Go(func() error {
+		workbook, err := u.loadWorkbook(groupCtx, sourceInput.StorageKey, func(fraction float64) {
+			fracMu.Lock()
+			sourceFrac = fraction
+			fracMu.Unlock()
+			publishLoad()
+		})
+		if err != nil {
+			return err
+		}
+		sourceLoaded.workbook = workbook
+		fracMu.Lock()
+		sourceFrac = 1
+		fracMu.Unlock()
+		publishLoad()
+		return nil
+	})
+	group.Go(func() error {
+		inner, innerCtx := errgroup.WithContext(groupCtx)
+		for index, blankInput := range blankInputs {
+			inner.Go(func() error {
+				workbook, err := u.loadWorkbook(innerCtx, blankInput.StorageKey, func(fraction float64) {
+					fracMu.Lock()
+					if fraction > blankFrac {
+						blankFrac = fraction
+					}
+					fracMu.Unlock()
+					publishLoad()
+				})
+				if err != nil {
+					return err
+				}
+				blanksLoaded[index].workbook = workbook
+				return nil
+			})
+		}
+		if err := inner.Wait(); err != nil {
+			return err
+		}
+		fracMu.Lock()
+		blankFrac = 1
+		fracMu.Unlock()
+		publishLoad()
+		return nil
+	})
+	if err := group.Wait(); err != nil {
 		return err
 	}
 
@@ -120,37 +189,52 @@ func (u *ProcessJob) process(ctx context.Context, message port.JobMessage) error
 	summary := orderfill.Summary{}
 
 	for index, blankInput := range blankInputs {
-		blankWorkbook, err := u.loadWorkbook(ctx, blankInput.StorageKey)
-		if err != nil {
-			return err
-		}
+		progress.Set(ctx, 0.58, "Сверяю с бланком")
 		result, err := orderfill.Fill(orderfill.FillCommand{
-			Source:     sourceWorkbook,
-			Blank:      blankWorkbook,
+			Source:     sourceLoaded.workbook,
+			Blank:      blanksLoaded[index].workbook,
 			OrderMonth: message.OrderMonth,
 			Brand:      message.Brand,
 			BlankID:    blankID(index),
 			BlankLabel: blankInput.Name,
+			OnProgress: func(fraction float64, text string) {
+				progress.Set(ctx, 0.58+0.24*fraction, text)
+			},
 		})
 		if err != nil {
 			return err
 		}
 		rows = append(rows, result.Rows...)
 		summary = mergeSummary(summary, result.Summary)
+	}
 
-		output, err := u.saveWorkbook(ctx, message.JobID, blankWorkbook, orderfill.BlankOutputFileName(blankInput.Name, ""), "Скачать заполненный бланк")
+	progress.Set(ctx, 0.84, "Сохраняю файлы")
+	saved := make([]port.OutputFile, len(blankInputs)+1)
+	saveGroup, saveCtx := errgroup.WithContext(ctx)
+	for index, blankInput := range blankInputs {
+		saveGroup.Go(func() error {
+			output, err := u.saveWorkbook(saveCtx, message.JobID, blanksLoaded[index].workbook, orderfill.BlankOutputFileName(blankInput.Name, ""), "Скачать заполненный бланк")
+			if err != nil {
+				return err
+			}
+			saved[index] = output
+			return nil
+		})
+	}
+	saveGroup.Go(func() error {
+		output, err := u.saveWorkbook(saveCtx, message.JobID, sourceLoaded.workbook, orderfill.SourceOutputFileName(sourceInput.Name), "Скачать заполненную таблицу заказа")
 		if err != nil {
 			return err
 		}
-		outputs = append(outputs, output)
-	}
-
-	sourceOutput, err := u.saveWorkbook(ctx, message.JobID, sourceWorkbook, orderfill.SourceOutputFileName(sourceInput.Name), "Скачать заполненную таблицу заказа")
-	if err != nil {
+		saved[len(blankInputs)] = output
+		return nil
+	})
+	if err := saveGroup.Wait(); err != nil {
 		return err
 	}
-	outputs = append(outputs, sourceOutput)
+	outputs = append(outputs, saved...)
 
+	progress.Set(ctx, 0.95, "Сохраняю отчёт")
 	if err := u.reports.Save(ctx, message.JobID, summary, rows, u.now()); err != nil {
 		return fmt.Errorf("save report: %w", err)
 	}
@@ -161,6 +245,8 @@ func (u *ProcessJob) process(ctx context.Context, message port.JobMessage) error
 }
 
 func (u *ProcessJob) finalize(ctx context.Context, message port.JobMessage) error {
+	progress := newJobProgress(u.jobs, message.JobID, u.now)
+	progress.Set(ctx, 0.1, "Готовлю файлы")
 	summary, rows, err := u.reports.Load(ctx, message.JobID)
 	if err != nil {
 		return fmt.Errorf("load report: %w", err)
@@ -175,7 +261,7 @@ func (u *ProcessJob) finalize(ctx context.Context, message port.JobMessage) erro
 		return err
 	}
 
-	sourceWorkbook, err := u.loadStoredOutput(ctx, previousOutputs, orderfill.SourceOutputFileName(sourceInput.Name))
+	sourceWorkbook, err := u.loadStoredOutput(ctx, previousOutputs, orderfill.SourceOutputFileName(sourceInput.Name), nil)
 	if err != nil {
 		return err
 	}
@@ -187,8 +273,9 @@ func (u *ProcessJob) finalize(ctx context.Context, message port.JobMessage) erro
 
 	outputs := make([]port.OutputFile, 0, len(blankInputs)+1)
 	for index, blankInput := range blankInputs {
+		progress.Set(ctx, 0.25+0.4*float64(index)/float64(max(len(blankInputs), 1)), "Вношу правки в бланк")
 		name := orderfill.BlankOutputFileName(blankInput.Name, "")
-		blankWorkbook, err := u.loadStoredOutput(ctx, previousOutputs, name)
+		blankWorkbook, err := u.loadStoredOutput(ctx, previousOutputs, name, nil)
 		if err != nil {
 			return err
 		}
@@ -208,6 +295,7 @@ func (u *ProcessJob) finalize(ctx context.Context, message port.JobMessage) erro
 		outputs = append(outputs, output)
 	}
 
+	progress.Set(ctx, 0.85, "Сохраняю файлы")
 	sourceOutput, err := u.saveWorkbook(ctx, message.JobID, sourceWorkbook, orderfill.SourceOutputFileName(sourceInput.Name), "Скачать заполненную таблицу заказа")
 	if err != nil {
 		return err
@@ -223,22 +311,32 @@ func (u *ProcessJob) finalize(ctx context.Context, message port.JobMessage) erro
 	return nil
 }
 
-func (u *ProcessJob) loadWorkbook(ctx context.Context, key string) (spreadsheet.Workbook, error) {
+func (u *ProcessJob) loadWorkbook(ctx context.Context, key string, report func(float64)) (spreadsheet.Workbook, error) {
 	content, err := u.storage.Get(ctx, key)
 	if err != nil {
 		return nil, fmt.Errorf("read input %s: %w", key, err)
+	}
+	if loader, ok := u.codec.(spreadsheet.ProgressCodec); ok {
+		workbook, err := loader.LoadWithProgress(content, report)
+		if err != nil {
+			return nil, fmt.Errorf("%w: не удалось прочитать файл %s: %v", orderfill.ErrInvalidInput, key, err)
+		}
+		return workbook, nil
 	}
 	workbook, err := u.codec.Load(content)
 	if err != nil {
 		return nil, fmt.Errorf("%w: не удалось прочитать файл %s: %v", orderfill.ErrInvalidInput, key, err)
 	}
+	if report != nil {
+		report(1)
+	}
 	return workbook, nil
 }
 
-func (u *ProcessJob) loadStoredOutput(ctx context.Context, outputs []port.OutputFile, name string) (spreadsheet.Workbook, error) {
+func (u *ProcessJob) loadStoredOutput(ctx context.Context, outputs []port.OutputFile, name string, report func(float64)) (spreadsheet.Workbook, error) {
 	for _, output := range outputs {
 		if output.Name == name {
-			return u.loadWorkbook(ctx, output.StorageKey)
+			return u.loadWorkbook(ctx, output.StorageKey, report)
 		}
 	}
 	return nil, fmt.Errorf("generated file %q was not found for finalization", name)
@@ -318,6 +416,7 @@ func mergeSummary(accumulated orderfill.Summary, next orderfill.Summary) orderfi
 	accumulated.Suspicious += next.Suspicious
 	accumulated.Unmatched += next.Unmatched
 	accumulated.Duplicates += next.Duplicates
+	accumulated.NotInBlank += next.NotInBlank
 	accumulated.BlankDuplicateArticles += next.BlankDuplicateArticles
 	return accumulated
 }

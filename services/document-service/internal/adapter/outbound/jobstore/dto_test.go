@@ -94,7 +94,7 @@ func TestSummaryRoundTrip(t *testing.T) {
 		"brand", "order_month_label", "adjustment_label", "actual_main_period",
 		"actual_previous_period", "source_city", "city_rule", "delivery_weeks",
 		"filled", "left_blank", "suspicious", "unmatched", "duplicates",
-		"blank_duplicate_articles", "source_items", "source_articles",
+		"not_in_blank", "blank_duplicate_articles", "source_items", "source_articles",
 		"source_sheet", "source_header_row", "blank_sheet", "blank_header_row",
 	})
 

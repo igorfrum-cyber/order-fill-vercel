@@ -31,7 +31,9 @@ func NewStore(pool *pgxpool.Pool) *Store {
 }
 
 func (s *Store) MarkProcessing(ctx context.Context, jobID string, at time.Time) error {
-	const query = `UPDATE jobs SET status = 'processing', updated_at = $2 WHERE id = $1`
+	const query = `UPDATE jobs
+		SET status = 'processing', progress = 0.04, progress_message = 'Забираю файлы', updated_at = $2
+		WHERE id = $1`
 	tag, err := s.pool.Exec(ctx, query, jobID, at.UTC())
 	if err != nil {
 		return fmt.Errorf("mark job %s processing: %w", jobID, err)
@@ -44,7 +46,7 @@ func (s *Store) MarkProcessing(ctx context.Context, jobID string, at time.Time) 
 
 func (s *Store) MarkFailed(ctx context.Context, jobID string, code string, message string, at time.Time) error {
 	const query = `UPDATE jobs
-		SET status = 'failed', error_code = $2, error_message = $3, updated_at = $4
+		SET status = 'failed', error_code = $2, error_message = $3, progress = 1, progress_message = $3, updated_at = $4
 		WHERE id = $1`
 	tag, err := s.pool.Exec(ctx, query, jobID, code, message, at.UTC())
 	if err != nil {
@@ -63,7 +65,8 @@ func (s *Store) SaveResult(ctx context.Context, jobID string, status string, out
 	}
 
 	const query = `UPDATE jobs
-		SET status = $2, output_files = $3, updated_at = $4, error_code = NULL, error_message = NULL
+		SET status = $2, output_files = $3, updated_at = $4, error_code = NULL, error_message = NULL,
+			progress = 1, progress_message = ''
 		WHERE id = $1`
 	tag, err := s.pool.Exec(ctx, query, jobID, status, outputFiles, at.UTC())
 	if err != nil {
@@ -91,6 +94,24 @@ func (s *Store) Outputs(ctx context.Context, jobID string) ([]port.OutputFile, e
 		return nil, err
 	}
 	return outputFilesToDomain(outputs), nil
+}
+
+func (s *Store) SetProgress(ctx context.Context, jobID string, fraction float64, message string, at time.Time) error {
+	if fraction < 0 {
+		fraction = 0
+	}
+	if fraction > 1 {
+		fraction = 1
+	}
+	const query = `UPDATE jobs SET progress = $2, progress_message = $3, updated_at = $4 WHERE id = $1`
+	tag, err := s.pool.Exec(ctx, query, jobID, fraction, message, at.UTC())
+	if err != nil {
+		return fmt.Errorf("set progress for job %s: %w", jobID, err)
+	}
+	if tag.RowsAffected() == 0 {
+		return fmt.Errorf("set progress for job %s: job not found", jobID)
+	}
+	return nil
 }
 
 func (s *Store) Save(ctx context.Context, jobID string, summary orderfill.Summary, rows []orderfill.ReportRow, at time.Time) error {

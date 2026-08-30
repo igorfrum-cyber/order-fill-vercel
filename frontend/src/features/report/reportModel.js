@@ -13,6 +13,8 @@ export function statusLabel(status) {
 }
 
 export function jobStatusText(job) {
+  const live = job?.progress_message || job?.progressMessage;
+  if (live) return live;
   const labels = {
     queued: "Задача в очереди...",
     processing: "Обработка...",
@@ -25,15 +27,20 @@ export function jobStatusText(job) {
 }
 
 export function jobProgress(job) {
-  const fractions = {
-    queued: 0.2,
-    processing: 0.65,
-    needs_review: 1,
-    finalizing: 0.8,
-    completed: 1,
-    failed: 1,
+  if (job?.status === "needs_review" || job?.status === "completed" || job?.status === "failed") {
+    return 1;
+  }
+  const raw = Number(job?.progress);
+  const hasMessage = Boolean(job?.progress_message || job?.progressMessage);
+  if (Number.isFinite(raw) && raw >= 0 && (raw > 0 || hasMessage)) {
+    return Math.max(0, Math.min(1, raw));
+  }
+  const fallback = {
+    queued: 0.05,
+    processing: 0.12,
+    finalizing: 0.85,
   };
-  return fractions[job?.status] ?? 0.35;
+  return fallback[job?.status] ?? 0.05;
 }
 
 export function isIssueRow(row) {
@@ -75,7 +82,9 @@ export function combinedSummary(results, reportRows = []) {
     leftBlank: results.reduce((sum, result) => sum + Number(result.summary?.leftBlank || 0), 0),
     suspicious: results.reduce((sum, result) => sum + Number(result.summary?.suspicious || 0), 0),
     notInSource: results.reduce((sum, result) => sum + Number(result.summary?.unmatched || 0), 0),
-    notInBlank: rows.filter((row) => row.status === "not_in_blank").length,
+    notInBlank: first.notInBlank != null
+      ? Number(first.notInBlank)
+      : rows.filter((row) => row.status === "not_in_blank").length,
     duplicates: first.duplicates != null
       ? Number(first.duplicates)
       : rows.filter((row) => row.duplicate && row.status !== "source_duplicate").length,

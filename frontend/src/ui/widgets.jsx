@@ -69,7 +69,7 @@ export function StageHeading({ index, kicker, title, children }) {
 }
 
 export function ProgressBar({ value, label }) {
-  const pct = Math.max(8, Math.round(Number(value || 0) * 100));
+  const pct = Math.max(0, Math.min(100, Math.round(Number(value || 0) * 100)));
   return (
     <div className="mt-5">
       <div className="mb-2 flex items-center justify-between gap-3 text-[14px] text-[var(--color-ink-soft)]">

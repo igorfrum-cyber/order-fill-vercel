@@ -10,6 +10,8 @@ export function mapJob(payload, absoluteUrl) {
     brand: payload.brand || "",
     orderMonth: payload.order_month || "",
     error: payload.error || null,
+    progress: Number.isFinite(Number(payload.progress)) ? Number(payload.progress) : null,
+    progressMessage: payload.progress_message || "",
     outputFiles: (payload.output_files || []).map((file) => mapOutputFile(file, absoluteUrl)),
   };
 }
@@ -60,6 +62,7 @@ export function mapSummary(summary) {
     suspicious: source.suspicious || 0,
     unmatched: source.unmatched || 0,
     duplicates: source.duplicates || 0,
+    notInBlank: source.not_in_blank || 0,
     blankDuplicateArticles: source.blank_duplicate_articles || 0,
   };
 }

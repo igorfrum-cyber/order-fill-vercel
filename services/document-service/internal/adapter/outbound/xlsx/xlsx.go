@@ -1,13 +1,9 @@
-// Package xlsx adapts xlsx and xlsm archives to the spreadsheet port. It edits
-// the uploaded document in place: only the parts the domain changes are
-// re-serialized and every other zip entry is copied as it was read, so styles,
-// number formats, merged cells, images, defined names, charts, data validation
-// and macros survive a load and save round trip.
 package xlsx
 
 import (
 	"fmt"
 	"strings"
+	"sync"
 
 	"order-fill/services/document-service/internal/domain/spreadsheet"
 )
@@ -26,11 +22,20 @@ func NewCodec() spreadsheet.Codec {
 	return codec{}
 }
 
-func (codec) Load(content []byte) (spreadsheet.Workbook, error) {
+func (c codec) Load(content []byte) (spreadsheet.Workbook, error) {
+	return c.LoadWithProgress(content, nil)
+}
+
+func (c codec) LoadWithProgress(content []byte, report spreadsheet.LoadProgress) (spreadsheet.Workbook, error) {
+	safe := monotonicReporter(report)
+	safe(0)
+
 	parts, err := readArchive(content)
 	if err != nil {
 		return nil, fmt.Errorf("xlsx: %w", err)
 	}
+	safe(0.06)
+
 	workbookPart, ok := parts.get(workbookPath)
 	if !ok {
 		return nil, fmt.Errorf("xlsx: %s is missing", workbookPath)
@@ -51,12 +56,20 @@ func (codec) Load(content []byte) (spreadsheet.Workbook, error) {
 	if err != nil {
 		return nil, err
 	}
+	safe(0.12)
 
 	book := &workbook{parts: parts, document: workbookDocument, byName: map[string]*sheet{}}
 	sheets := workbookDocument.Root().SelectElement("sheets")
 	if sheets == nil {
 		return nil, fmt.Errorf("xlsx: %s has no sheets element", workbookPath)
 	}
+
+	type sheetSpec struct {
+		name string
+		part *part
+		path string
+	}
+	specs := make([]sheetSpec, 0)
 	for _, node := range sheets.SelectElements("sheet") {
 		name := node.SelectAttrValue("name", "")
 		target, ok := targets[relationshipID(node)]
@@ -68,21 +81,108 @@ func (codec) Load(content []byte) (spreadsheet.Workbook, error) {
 		if !ok {
 			return nil, fmt.Errorf("xlsx: worksheet part %s is missing", sheetPath)
 		}
-		sheetData, err := sheetPart.bytes()
-		if err != nil {
-			return nil, fmt.Errorf("xlsx: %w", err)
+		specs = append(specs, sheetSpec{name: name, part: sheetPart, path: sheetPath})
+	}
+
+	weights := make([]float64, len(specs))
+	var weightSum float64
+	for index, spec := range specs {
+		weight := float64(spec.part.header.UncompressedSize64)
+		if weight <= 0 {
+			weight = 1
 		}
-		sheetDocument, err := parseDocument(sheetData)
-		if err != nil {
-			return nil, fmt.Errorf("xlsx: parse %s: %w", sheetPath, err)
+		weights[index] = weight
+		weightSum += weight
+	}
+
+	loaded := make([]*sheet, len(specs))
+	frac := make([]float64, len(specs))
+	var fracMu sync.Mutex
+	var firstErr error
+	var errOnce sync.Once
+
+	publish := func() {
+		fracMu.Lock()
+		var sum float64
+		for index := range frac {
+			sum += frac[index] * weights[index]
 		}
-		loaded := newSheet(name, sheetPart, sheetDocument, shared)
-		book.sheets = append(book.sheets, loaded)
-		if _, exists := book.byName[name]; !exists {
-			book.byName[name] = loaded
+		fracMu.Unlock()
+		if weightSum > 0 {
+			safe(0.12 + 0.88*(sum/weightSum))
 		}
 	}
+	setSheet := func(index int, value float64) {
+		if value < 0 {
+			value = 0
+		}
+		if value > 1 {
+			value = 1
+		}
+		fracMu.Lock()
+		if value > frac[index] {
+			frac[index] = value
+		}
+		fracMu.Unlock()
+		publish()
+	}
+
+	runWorkers(len(specs), func(index int) {
+		spec := specs[index]
+		data, err := spec.part.bytesWithProgress(func(fraction float64) {
+			setSheet(index, 0.2*fraction)
+		})
+		if err != nil {
+			errOnce.Do(func() { firstErr = fmt.Errorf("xlsx: %w", err) })
+			return
+		}
+		setSheet(index, 0.2)
+		item, err := newSheet(spec.name, spec.part, data, shared, func(fraction float64) {
+			setSheet(index, 0.2+0.8*fraction)
+		})
+		if err != nil {
+			errOnce.Do(func() { firstErr = fmt.Errorf("xlsx: parse %s: %w", spec.path, err) })
+			return
+		}
+		loaded[index] = item
+		setSheet(index, 1)
+	})
+	if firstErr != nil {
+		return nil, firstErr
+	}
+
+	for index, spec := range specs {
+		item := loaded[index]
+		book.sheets = append(book.sheets, item)
+		if _, exists := book.byName[spec.name]; !exists {
+			book.byName[spec.name] = item
+		}
+	}
+	safe(1)
 	return book, nil
+}
+
+func monotonicReporter(report spreadsheet.LoadProgress) func(float64) {
+	var mu sync.Mutex
+	last := -1.0
+	return func(fraction float64) {
+		if report == nil {
+			return
+		}
+		if fraction < 0 {
+			fraction = 0
+		}
+		if fraction > 1 {
+			fraction = 1
+		}
+		mu.Lock()
+		defer mu.Unlock()
+		if fraction+1e-9 < last {
+			return
+		}
+		last = fraction
+		report(fraction)
+	}
 }
 
 func readRelationshipTargets(parts *archive) (map[string]string, error) {

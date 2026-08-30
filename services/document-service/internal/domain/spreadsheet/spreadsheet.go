@@ -35,6 +35,15 @@ type Codec interface {
 	Load(content []byte) (Workbook, error)
 }
 
+// LoadProgress reports a 0..1 fraction of workbook loading.
+type LoadProgress func(fraction float64)
+
+// ProgressCodec is implemented by the xlsx adapter so the worker can show
+// honest progress while a large sheet is inflated and parsed.
+type ProgressCodec interface {
+	LoadWithProgress(content []byte, report LoadProgress) (Workbook, error)
+}
+
 // ColumnName converts a 1-based column index into its spreadsheet letters.
 func ColumnName(column int) string {
 	name := ""

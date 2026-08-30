@@ -6,6 +6,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"sync"
 
 	"order-fill/services/document-service/internal/domain/normalize"
 )
@@ -26,28 +27,45 @@ type Candidate struct {
 
 var volumePattern = regexp.MustCompile(`(?i)(\d+(?:[,.]\d+)?)\s*(мл|ml|гр|г|g)\b`)
 
+var lcsPool = sync.Pool{New: func() any {
+	buf := make([]int, 0, 64)
+	return &buf
+}}
+
 func Similarity(left string, right string) float64 {
 	a := normalize.NormalizeName(left)
 	b := normalize.NormalizeName(right)
 	if a == "" || b == "" {
 		return 0
 	}
-	rows := make([]int, len([]rune(b))+1)
 	leftRunes := []rune(a)
 	rightRunes := []rune(b)
+	needed := len(rightRunes) + 1
+	ptr := lcsPool.Get().(*[]int)
+	buf := *ptr
+	if cap(buf) < needed {
+		buf = make([]int, needed)
+	} else {
+		buf = buf[:needed]
+		clear(buf)
+	}
+	defer func() {
+		*ptr = buf[:0]
+		lcsPool.Put(ptr)
+	}()
 	for i := 1; i <= len(leftRunes); i++ {
 		previous := 0
 		for j := 1; j <= len(rightRunes); j++ {
-			tmp := rows[j]
+			tmp := buf[j]
 			if leftRunes[i-1] == rightRunes[j-1] {
-				rows[j] = previous + 1
-			} else if rows[j-1] > rows[j] {
-				rows[j] = rows[j-1]
+				buf[j] = previous + 1
+			} else if buf[j-1] > buf[j] {
+				buf[j] = buf[j-1]
 			}
 			previous = tmp
 		}
 	}
-	return (2 * float64(rows[len(rightRunes)])) / float64(len(leftRunes)+len(rightRunes))
+	return (2 * float64(buf[len(rightRunes)])) / float64(len(leftRunes)+len(rightRunes))
 }
 
 func VolumeAwareSimilarity(blankName string, sourceName string, blankUnit string) float64 {
@@ -69,17 +87,27 @@ func ChooseCandidate(candidates []Item, blankName string, blankUnit string) (Can
 	if len(candidates) == 0 {
 		return Candidate{}, false
 	}
-	scored := make([]Candidate, 0, len(candidates))
-	for _, item := range candidates {
-		scored = append(scored, Candidate{
-			Item:  item,
-			Score: VolumeAwareSimilarity(blankName, item.Name, blankUnit),
-		})
+	scored := make([]Candidate, len(candidates))
+	score := func(i int) {
+		scored[i] = Candidate{
+			Item:  candidates[i],
+			Score: VolumeAwareSimilarity(blankName, candidates[i].Name, blankUnit),
+		}
 	}
-	sort.SliceStable(scored, func(i, j int) bool {
-		return scored[i].Score > scored[j].Score
-	})
-	return scored[0], true
+	if len(candidates) < 16 {
+		for i := range candidates {
+			score(i)
+		}
+	} else {
+		runWorkers(len(candidates), score)
+	}
+	best := 0
+	for i := 1; i < len(scored); i++ {
+		if scored[i].Score > scored[best].Score {
+			best = i
+		}
+	}
+	return scored[best], true
 }
 
 func ChooseNameFallback(candidates []Item, blankName string, blankUnit string) (Candidate, bool) {

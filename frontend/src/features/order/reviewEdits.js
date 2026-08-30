@@ -59,6 +59,13 @@ export function collectReviewEdits(rows, edits) {
     });
 }
 
+export function patchEdit(edits, key, patch) {
+  const next = new Map(edits);
+  const current = next.get(key) || { value: "", comment: "" };
+  next.set(key, { ...current, ...patch });
+  return next;
+}
+
 export function isManualDeviation(row, edits) {
   if (row.editable === false) return false;
   const edit = editForRow(row, edits);
@@ -68,7 +75,8 @@ export function isManualDeviation(row, edits) {
   } catch {
     return true;
   }
-  return value !== baselineForReportRow(row);
+  if (value !== baselineForReportRow(row)) return true;
+  return String(edit.comment || "").trim() !== String(initialComment(row) || "").trim();
 }
 
 export function hasManualDeviations(rows, edits) {

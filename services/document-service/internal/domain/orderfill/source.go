@@ -67,6 +67,11 @@ var digitsPattern = regexp.MustCompile(`^\d+$`)
 
 // ReadSource validates the export period and extracts every product row.
 func ReadSource(workbook spreadsheet.Workbook, orderMonth string, rule brand.RuleConfig) (Source, error) {
+	return readSource(workbook, orderMonth, rule, nil)
+}
+
+func readSource(workbook spreadsheet.Workbook, orderMonth string, rule brand.RuleConfig, report func(float64, string)) (Source, error) {
+	reportProgress(report, 0, "Читаю таблицу заказа")
 	periodInfo, err := ValidateSourcePeriods(workbook, orderMonth)
 	if err != nil {
 		return Source{}, err
@@ -79,7 +84,10 @@ func ReadSource(workbook spreadsheet.Workbook, orderMonth string, rule brand.Rul
 	deliveryWeeks := math.Max(1, detectDeliveryWeeks(workbook))
 	calculationColumns := detectCalculationColumns(detection)
 	if calculationColumns != nil {
-		rebuildSourceWithChz(detection, deliveryWeeks, rule, *calculationColumns)
+		reportProgress(report, 0.08, "Объединяю строки ЧЗ")
+		rebuildSourceWithChz(detection, deliveryWeeks, rule, *calculationColumns, func(fraction float64) {
+			reportProgress(report, 0.08+0.45*fraction, "Объединяю строки ЧЗ")
+		})
 	}
 
 	urengoy := (*urengoyInfo)(nil)
@@ -96,10 +104,45 @@ func ReadSource(workbook spreadsheet.Workbook, orderMonth string, rule brand.Rul
 	}
 
 	bounds := detection.Sheet.Bounds()
-	items := make([]SourceItem, 0)
-	for row := detection.HeaderRow + 1; row <= bounds.MaxRow; row++ {
+	items, err := collectSourceItems(detection, rule, urengoy, bounds, report)
+	if err != nil {
+		return Source{}, err
+	}
+	reportProgress(report, 1, "Читаю таблицу заказа")
+
+	return Source{
+		Workbook:   workbook,
+		Detection:  detection,
+		Items:      items,
+		PeriodInfo: periodInfo,
+		CityRule:   cityRule,
+		Delivery:   deliveryWeeks,
+	}, nil
+}
+
+type scannedSourceRow struct {
+	item SourceItem
+	keep bool
+	err  error
+}
+
+func collectSourceItems(detection Detection, rule brand.RuleConfig, urengoy *urengoyInfo, bounds spreadsheet.Bounds, report func(float64, string)) ([]SourceItem, error) {
+	start := detection.HeaderRow + 1
+	if bounds.MaxRow < start {
+		return nil, nil
+	}
+	count := bounds.MaxRow - start + 1
+	scanned := make([]scannedSourceRow, count)
+	options := brand.ArticleNormalizeOptions(rule)
+	total := count
+	if total < 1 {
+		total = 1
+	}
+
+	scan := func(offset int) {
+		row := start + offset
 		if isSourceTotalRow(detection, row, bounds.MaxColumn) {
-			continue
+			return
 		}
 		articleRaw := normalize.AsText(detection.Sheet.Value(row, detection.Columns[ColumnArticle]))
 		name := normalize.AsText(detection.Sheet.Value(row, detection.Columns[ColumnName]))
@@ -115,35 +158,51 @@ func ReadSource(workbook spreadsheet.Workbook, orderMonth string, rule brand.Rul
 		hasOrderedFact := normalize.AsText(orderedFactRaw) != ""
 
 		if articleRaw == "" && name == "" && !hasRecommended {
-			continue
+			return
 		}
 		if hasOrderedFact && !hasParsedFact {
-			return Source{}, fmt.Errorf("%w: в строке %d таблицы заказа некорректно заполнено «Заказано по факту»", ErrInvalidInput, row)
+			scanned[offset] = scannedSourceRow{err: fmt.Errorf("%w: в строке %d таблицы заказа некорректно заполнено «Заказано по факту»", ErrInvalidInput, row)}
+			return
 		}
-
-		items = append(items, SourceItem{
-			RowIndex:       row,
-			ArticleRaw:     articleRaw,
-			Article:        normalize.NormalizeArticle(articleRaw, brand.ArticleNormalizeOptions(rule)),
-			Name:           name,
-			Recommended:    recommendedValue,
-			Rounded:        normalize.RoundHalfUp(recommendedValue),
-			HasOrderedFact: hasOrderedFact,
-			OrderedFact:    orderedFact,
-			SourceComment:  normalize.AsText(detection.Sheet.Value(row, detection.Columns[ColumnComment])),
-			Stock:          normalize.AsText(detection.Sheet.Value(row, detection.Columns[ColumnStock])),
-			InTransit:      normalize.AsText(detection.Sheet.Value(row, detection.Columns[ColumnInTransit])),
-		})
+		scanned[offset] = scannedSourceRow{
+			keep: true,
+			item: SourceItem{
+				RowIndex:       row,
+				ArticleRaw:     articleRaw,
+				Article:        normalize.NormalizeArticle(articleRaw, options),
+				Name:           name,
+				Recommended:    recommendedValue,
+				Rounded:        normalize.RoundHalfUp(recommendedValue),
+				HasOrderedFact: hasOrderedFact,
+				OrderedFact:    orderedFact,
+				SourceComment:  normalize.AsText(detection.Sheet.Value(row, detection.Columns[ColumnComment])),
+				Stock:          normalize.AsText(detection.Sheet.Value(row, detection.Columns[ColumnStock])),
+				InTransit:      normalize.AsText(detection.Sheet.Value(row, detection.Columns[ColumnInTransit])),
+			},
+		}
+		if offset%512 == 0 {
+			reportProgress(report, 0.55+0.45*float64(offset)/float64(total), "Читаю таблицу заказа")
+		}
 	}
 
-	return Source{
-		Workbook:   workbook,
-		Detection:  detection,
-		Items:      items,
-		PeriodInfo: periodInfo,
-		CityRule:   cityRule,
-		Delivery:   deliveryWeeks,
-	}, nil
+	if urengoy != nil || count < 32 {
+		for offset := 0; offset < count; offset++ {
+			scan(offset)
+		}
+	} else {
+		runWorkers(count, scan)
+	}
+
+	items := make([]SourceItem, 0, count)
+	for _, row := range scanned {
+		if row.err != nil {
+			return nil, row.err
+		}
+		if row.keep {
+			items = append(items, row.item)
+		}
+	}
+	return items, nil
 }
 
 // BuildSourceContext indexes source items by every article alias of the brand.
@@ -320,4 +379,17 @@ func isMonthHeader(value string) bool {
 		}
 	}
 	return false
+}
+
+func reportProgress(report func(float64, string), fraction float64, message string) {
+	if report == nil {
+		return
+	}
+	if fraction < 0 {
+		fraction = 0
+	}
+	if fraction > 1 {
+		fraction = 1
+	}
+	report(fraction, message)
 }
