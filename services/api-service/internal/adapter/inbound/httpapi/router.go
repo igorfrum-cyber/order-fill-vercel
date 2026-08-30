@@ -22,6 +22,7 @@ type Config struct {
 	DownloadFile    fileDownloader
 	DownloadArchive archiveDownloader
 	SubmitEdits     editSubmitter
+	Preview         previewReader
 	Metrics         MetricsReader
 	AllowedOrigins  []string
 	MaxUploadBytes  int64
@@ -42,6 +43,7 @@ func NewRouter(config Config) http.Handler {
 		downloads:  config.DownloadFile,
 		archive:    config.DownloadArchive,
 		editor:     config.SubmitEdits,
+		previews:   config.Preview,
 		maxUploads: config.MaxUploadBytes,
 	}
 	mux.HandleFunc("POST /api/v1/jobs/order-fill", handler.createOrderFill)
@@ -52,6 +54,9 @@ func NewRouter(config Config) http.Handler {
 	mux.HandleFunc("GET /api/v1/jobs/{job_id}/files", handler.listFiles)
 	mux.HandleFunc("GET /api/v1/jobs/{job_id}/archive", handler.downloadArchive)
 	mux.HandleFunc("GET /api/v1/jobs/{job_id}/files/{file_id}", handler.downloadFile)
+	mux.HandleFunc("GET /api/v1/jobs/{job_id}/files/{file_id}/preview", handler.previewMeta)
+	mux.HandleFunc("GET /api/v1/jobs/{job_id}/files/{file_id}/preview/window", handler.previewWindow)
+	mux.HandleFunc("GET /api/v1/jobs/{job_id}/files/{file_id}/preview/find", handler.previewFind)
 
 	return withCORS(mux, config.AllowedOrigins)
 }

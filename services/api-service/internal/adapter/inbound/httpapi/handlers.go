@@ -9,10 +9,12 @@ import (
 	"mime/multipart"
 	"net/http"
 	"net/url"
+	"strconv"
 	"strings"
 
 	"order-fill/services/api-service/internal/app/usecase"
 	"order-fill/services/api-service/internal/domain/job"
+	"order-fill/services/api-service/internal/domain/preview"
 )
 
 const maxUploadMemory = 32 << 20
@@ -41,6 +43,11 @@ type (
 	editSubmitter interface {
 		Execute(ctx context.Context, jobID string, edits []job.ManualEdit) (job.Job, error)
 	}
+	previewReader interface {
+		Meta(ctx context.Context, jobID string, fileID string) (preview.Meta, error)
+		Window(ctx context.Context, query usecase.PreviewWindowQuery) (preview.Window, error)
+		Find(ctx context.Context, jobID string, fileID string, sheetIndex int, query string) (preview.Hit, error)
+	}
 )
 
 type jobHandler struct {
@@ -51,6 +58,7 @@ type jobHandler struct {
 	downloads  fileDownloader
 	archive    archiveDownloader
 	editor     editSubmitter
+	previews   previewReader
 	maxUploads int64
 }
 
@@ -165,6 +173,53 @@ func (h jobHandler) downloadFile(w http.ResponseWriter, r *http.Request) {
 	_, _ = w.Write(download.Content)
 }
 
+func (h jobHandler) previewMeta(w http.ResponseWriter, r *http.Request) {
+	if h.previews == nil {
+		writeError(w, http.StatusNotFound, "not_found", "preview was not found")
+		return
+	}
+	meta, err := h.previews.Meta(r.Context(), r.PathValue("job_id"), r.PathValue("file_id"))
+	if err != nil {
+		writeDomainError(w, "read_preview_failed", err)
+		return
+	}
+	writeJSON(w, http.StatusOK, presentPreviewMeta(meta))
+}
+
+func (h jobHandler) previewWindow(w http.ResponseWriter, r *http.Request) {
+	if h.previews == nil {
+		writeError(w, http.StatusNotFound, "not_found", "preview was not found")
+		return
+	}
+	fromRow := queryInt(r, "from_row", 1)
+	window, err := h.previews.Window(r.Context(), usecase.PreviewWindowQuery{
+		JobID:      r.PathValue("job_id"),
+		FileID:     r.PathValue("file_id"),
+		SheetIndex: queryInt(r, "sheet", 0),
+		FromRow:    fromRow,
+		ToRow:      queryInt(r, "to_row", fromRow+99),
+	})
+	if err != nil {
+		writeDomainError(w, "read_preview_failed", err)
+		return
+	}
+	writeJSON(w, http.StatusOK, presentPreviewWindow(queryInt(r, "sheet", 0), window))
+}
+
+func (h jobHandler) previewFind(w http.ResponseWriter, r *http.Request) {
+	if h.previews == nil {
+		writeError(w, http.StatusNotFound, "not_found", "preview was not found")
+		return
+	}
+	sheet := queryInt(r, "sheet", 0)
+	hit, err := h.previews.Find(r.Context(), r.PathValue("job_id"), r.PathValue("file_id"), sheet, r.URL.Query().Get("q"))
+	if err != nil {
+		writeDomainError(w, "read_preview_failed", err)
+		return
+	}
+	writeJSON(w, http.StatusOK, presentPreviewHit(sheet, hit))
+}
+
 func (h jobHandler) downloadArchive(w http.ResponseWriter, r *http.Request) {
 	if h.archive == nil {
 		writeError(w, http.StatusNotFound, "not_found", "file was not found")
@@ -277,4 +332,16 @@ func writeDomainError(w http.ResponseWriter, code string, err error) {
 	default:
 		writeError(w, http.StatusInternalServerError, code, err.Error())
 	}
+}
+
+func queryInt(r *http.Request, name string, fallback int) int {
+	raw := strings.TrimSpace(r.URL.Query().Get(name))
+	if raw == "" {
+		return fallback
+	}
+	value, err := strconv.Atoi(raw)
+	if err != nil {
+		return fallback
+	}
+	return value
 }

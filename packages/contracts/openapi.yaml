@@ -169,12 +169,7 @@ paths:
       summary: Download one generated output file
       parameters:
         - $ref: "#/components/parameters/JobId"
-        - name: file_id
-          in: path
-          required: true
-          schema:
-            type: string
-            examples: [output-1]
+        - $ref: "#/components/parameters/FileId"
       responses:
         "200":
           description: The generated workbook.
@@ -183,6 +178,91 @@ paths:
               schema:
                 type: string
                 format: binary
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /api/v1/jobs/{job_id}/files/{file_id}/preview:
+    get:
+      operationId: getJobFilePreview
+      summary: Grid metadata for an Excel-like preview of a generated workbook
+      description: >
+        Returns used-range bounds so the browser can virtualize the sheet.
+        The article index stays on the server; jump-to-SKU uses preview/find.
+        Never returns cell values.
+      parameters:
+        - $ref: "#/components/parameters/JobId"
+        - $ref: "#/components/parameters/FileId"
+      responses:
+        "200":
+          description: Preview metadata.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PreviewMeta"
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /api/v1/jobs/{job_id}/files/{file_id}/preview/window:
+    get:
+      operationId: getJobFilePreviewWindow
+      summary: A short row window of the generated workbook
+      description: >
+        Loads one or two sidecar chunks. The window cannot exceed 200 rows so
+        api-service never inflates a 100k-row sheet.
+      parameters:
+        - $ref: "#/components/parameters/JobId"
+        - $ref: "#/components/parameters/FileId"
+        - name: sheet
+          in: query
+          schema:
+            type: integer
+            minimum: 0
+            default: 0
+        - name: from_row
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+        - name: to_row
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+      responses:
+        "200":
+          description: Dense cell values for the requested rows.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PreviewWindow"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /api/v1/jobs/{job_id}/files/{file_id}/preview/find:
+    get:
+      operationId: findJobFilePreviewArticle
+      summary: Jump to the first row that holds an article
+      parameters:
+        - $ref: "#/components/parameters/JobId"
+        - $ref: "#/components/parameters/FileId"
+        - name: sheet
+          in: query
+          schema:
+            type: integer
+            minimum: 0
+            default: 0
+        - name: q
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Whether the article was found and where.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PreviewHit"
         "404":
           $ref: "#/components/responses/NotFound"
 components:
@@ -194,6 +274,13 @@ components:
       schema:
         type: string
         format: uuid
+    FileId:
+      name: file_id
+      in: path
+      required: true
+      schema:
+        type: string
+        examples: [output-1]
   responses:
     BadRequest:
       description: Invalid request.
@@ -516,3 +603,64 @@ components:
         details:
           type: object
           additionalProperties: true
+    PreviewMeta:
+      type: object
+      required: [chunk_rows, sheets]
+      properties:
+        chunk_rows:
+          type: integer
+          minimum: 1
+        sheets:
+          type: array
+          items:
+            $ref: "#/components/schemas/PreviewSheet"
+    PreviewSheet:
+      type: object
+      required: [name, index, max_row, max_column]
+      properties:
+        name:
+          type: string
+        index:
+          type: integer
+          minimum: 0
+        max_row:
+          type: integer
+          minimum: 0
+        max_column:
+          type: integer
+          minimum: 0
+        header_row:
+          type: integer
+        article_column:
+          type: integer
+    PreviewWindow:
+      type: object
+      required: [sheet_index, from_row, to_row, rows]
+      properties:
+        sheet_index:
+          type: integer
+          minimum: 0
+        from_row:
+          type: integer
+          minimum: 1
+        to_row:
+          type: integer
+          minimum: 1
+        rows:
+          type: array
+          items:
+            type: array
+            items:
+              type: string
+    PreviewHit:
+      type: object
+      required: [found]
+      properties:
+        found:
+          type: boolean
+        row:
+          type: integer
+        column:
+          type: integer
+        sheet_index:
+          type: integer

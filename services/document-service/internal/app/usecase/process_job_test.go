@@ -12,6 +12,7 @@ import (
 
 	"order-fill/services/document-service/internal/app/port"
 	"order-fill/services/document-service/internal/domain/orderfill"
+	"order-fill/services/document-service/internal/domain/preview"
 	"order-fill/services/document-service/internal/domain/spreadsheet"
 )
 
@@ -267,6 +268,13 @@ func TestProcessJobFillsTheBlankAndPublishesTheReport(t *testing.T) {
 	if reports.summary.Filled != 1 {
 		t.Fatalf("expected one filled position, got %d", reports.summary.Filled)
 	}
+	if _, stored := storage.objects[preview.MetaKey("job-1", "output-1")]; !stored {
+		t.Fatal("fill must write a grid preview so the browser never parses xlsx")
+	}
+	if _, stored := storage.objects[preview.ChunkKey("job-1", "output-1", 0, 0)]; !stored {
+		t.Fatal("fill must write at least one preview chunk")
+	}
+
 	if len(jobs.progress) == 0 {
 		t.Fatal("the worker must publish progress while the job is running")
 	}
@@ -322,6 +330,31 @@ func TestProcessJobFinalizeAppliesEditsAndCompletesTheJob(t *testing.T) {
 	if last != "completed" {
 		t.Fatalf("expected the job to complete, got %q", last)
 	}
+
+	chunk, ok := storage.objects[preview.ChunkKey("job-1", "output-2", 0, 0)]
+	if !ok {
+		t.Fatal("finalize must rewrite the source preview so fact and comment are visible")
+	}
+	snapshot, err := preview.Decode([]preview.Object{{Name: "meta.json.gz", Content: storage.objects[preview.MetaKey("job-1", "output-2")]}, {Name: "s0/c0.json.gz", Content: chunk}})
+	if err != nil {
+		t.Fatalf("decode rewritten preview: %v", err)
+	}
+	window, err := snapshot.Window(0, 4, 4)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(window.Rows) == 0 || !containsCell(window.Rows[0], "7") {
+		t.Fatalf("source preview should contain the edited fact quantity, got %#v", window.Rows)
+	}
+}
+
+func containsCell(row []string, needle string) bool {
+	for _, cell := range row {
+		if cell == needle {
+			return true
+		}
+	}
+	return false
 }
 
 func TestProcessJobRejectsAMessageWithoutABlank(t *testing.T) {

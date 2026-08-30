@@ -4,6 +4,7 @@ import {
   downloadJobArchive,
   FINALIZE_DONE_STATUSES,
   getJobReport,
+  listJobFiles,
   pollJob,
   submitJobEdits,
 } from "../../api/jobs.js";
@@ -17,6 +18,7 @@ import { issueReportRows, qualityWarningLines, qualityWarningSummary } from "../
 import { StageRail, TopBar } from "../chrome.jsx";
 import { Modal } from "../widgets.jsx";
 import { FillStage } from "./FillStage.jsx";
+import { PreviewStage } from "./PreviewStage.jsx";
 import { SetupStage, UploadStage } from "./SetupUpload.jsx";
 
 function triggerDownload(url, fileName) {
@@ -51,6 +53,8 @@ export function OrderFillApp({ mode, onMode }) {
   const [invalidKeys, setInvalidKeys] = useState(new Set());
   const [busy, setBusy] = useState(false);
   const [confirmLines, setConfirmLines] = useState(null);
+  const [outputFiles, setOutputFiles] = useState([]);
+  const [finalized, setFinalized] = useState(false);
 
   const monthLabel = formatOrderMonthLabel(month);
   const filesReady = Boolean(sourceFile && blankSlotsForBrand(brand).every((slot) => blankFiles[slot.id]));
@@ -62,6 +66,8 @@ export function OrderFillApp({ mode, onMode }) {
     setResults([]);
     setEdits(new Map());
     setInvalidKeys(new Set());
+    setOutputFiles([]);
+    setFinalized(false);
     setError("");
     setStatus("");
     setProgress(0);
@@ -72,13 +78,13 @@ export function OrderFillApp({ mode, onMode }) {
     setBrand(next);
     setBlankFiles({});
     resetResult();
-    if (stage === "fill") setStage("upload");
+    if (stage === "fill" || stage === "preview") setStage("upload");
   }
 
   function changeMonth(next) {
     setMonth(sanitizeOrderMonth(next));
     resetResult();
-    if (stage === "fill") setStage("upload");
+    if (stage === "fill" || stage === "preview") setStage("upload");
   }
 
   async function processFiles() {
@@ -144,7 +150,7 @@ export function OrderFillApp({ mode, onMode }) {
     triggerBlobDownload(blob, "отчет для исправления в 1С.csv");
   }
 
-  async function finalizeDownloads() {
+  async function openPreview() {
     if (!jobId) {
       window.alert("Сначала заполните бланк.");
       return;
@@ -161,14 +167,14 @@ export function OrderFillApp({ mode, onMode }) {
       setConfirmLines(lines);
       return;
     }
-    await submitAndDownload();
+    await submitAndPreview();
   }
 
-  async function submitAndDownload() {
+  async function submitAndPreview() {
     setConfirmLines(null);
     setBusy(true);
     try {
-      if (hasManualDeviations(rows, edits)) {
+      if (!finalized && hasManualDeviations(rows, edits)) {
         setStatus("Сохраняю правки...");
         const payload = collectReviewEdits(rows, edits);
         const editedJob = await submitJobEdits(jobId, payload);
@@ -180,13 +186,31 @@ export function OrderFillApp({ mode, onMode }) {
           throw new Error(finalJob.error?.message || "Не удалось подготовить файлы.");
         }
       }
+      setStatus("Открываю файлы...");
+      const listed = await listJobFiles(jobId);
+      setOutputFiles(listed.files);
+      setFinalized(true);
+      setStage("preview");
+      setStatus("");
+    } catch (err) {
+      setStatus("Ошибка");
+      window.alert(err.message || "Не удалось сохранить правки.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function downloadArchive() {
+    if (!jobId) return;
+    setBusy(true);
+    try {
       setStatus("Скачиваю архив...");
       const archive = await downloadJobArchive(jobId);
       triggerBlobDownload(archive.blob, archive.fileName);
       setStatus("Файлы готовы");
     } catch (err) {
       setStatus("Ошибка");
-      window.alert(err.message || "Не удалось сохранить правки.");
+      window.alert(err.message || "Не удалось скачать файлы.");
     } finally {
       setBusy(false);
     }
@@ -207,7 +231,7 @@ export function OrderFillApp({ mode, onMode }) {
         monthLabel={monthLabel}
         filesReady={filesReady}
         onGoto={(next) => {
-          if (next === "upload" && stage === "fill") resetResult();
+          if (next === "upload" && (stage === "fill" || stage === "preview")) resetResult();
           setStage(next);
         }}
       />
@@ -252,8 +276,18 @@ export function OrderFillApp({ mode, onMode }) {
             summary={summary}
             status={status}
             busy={busy}
-            onDownloadFiles={finalizeDownloads}
+            onDownloadFiles={openPreview}
             onIssueReport={downloadIssueReport}
+          />
+        )}
+        {stage === "preview" && (
+          <PreviewStage
+            files={outputFiles}
+            jobId={jobId}
+            status={status}
+            busy={busy}
+            onBack={() => setStage("fill")}
+            onDownload={downloadArchive}
           />
         )}
       </main>
@@ -261,9 +295,9 @@ export function OrderFillApp({ mode, onMode }) {
         <Modal
           title="Проверьте спорные строки"
           cancelLabel="Назад"
-          confirmLabel="Продолжить скачивание"
+          confirmLabel="Продолжить проверку"
           onCancel={() => setConfirmLines(null)}
-          onConfirm={submitAndDownload}
+          onConfirm={submitAndPreview}
         >
           {confirmLines.join("\n")}
         </Modal>

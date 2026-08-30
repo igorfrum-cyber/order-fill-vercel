@@ -15,6 +15,7 @@ import (
 
 	"order-fill/services/document-service/internal/app/port"
 	"order-fill/services/document-service/internal/domain/orderfill"
+	"order-fill/services/document-service/internal/domain/preview"
 	"order-fill/services/document-service/internal/domain/spreadsheet"
 )
 
@@ -232,13 +233,23 @@ func (u *ProcessJob) process(ctx context.Context, message port.JobMessage) error
 	if err := saveGroup.Wait(); err != nil {
 		return err
 	}
-	outputs = append(outputs, saved...)
+	outputs = append(outputs, assignOutputIDs(saved)...)
+
+	progress.Set(ctx, 0.92, "Готовлю превью")
+	workbooks := make([]spreadsheet.Workbook, len(blankInputs)+1)
+	for index := range blankInputs {
+		workbooks[index] = blanksLoaded[index].workbook
+	}
+	workbooks[len(blankInputs)] = sourceLoaded.workbook
+	if err := u.writePreviews(ctx, message.JobID, outputs, workbooks); err != nil {
+		return err
+	}
 
 	progress.Set(ctx, 0.95, "Сохраняю отчёт")
 	if err := u.reports.Save(ctx, message.JobID, summary, rows, u.now()); err != nil {
 		return fmt.Errorf("save report: %w", err)
 	}
-	if err := u.jobs.SaveResult(ctx, message.JobID, "needs_review", assignOutputIDs(outputs), u.now()); err != nil {
+	if err := u.jobs.SaveResult(ctx, message.JobID, "needs_review", outputs, u.now()); err != nil {
 		return fmt.Errorf("save job result: %w", err)
 	}
 	return nil
@@ -272,6 +283,7 @@ func (u *ProcessJob) finalize(ctx context.Context, message port.JobMessage) erro
 	}
 
 	outputs := make([]port.OutputFile, 0, len(blankInputs)+1)
+	workbooks := make([]spreadsheet.Workbook, 0, len(blankInputs)+1)
 	for index, blankInput := range blankInputs {
 		progress.Set(ctx, 0.25+0.4*float64(index)/float64(max(len(blankInputs), 1)), "Вношу правки в бланк")
 		name := orderfill.BlankOutputFileName(blankInput.Name, "")
@@ -293,6 +305,7 @@ func (u *ProcessJob) finalize(ctx context.Context, message port.JobMessage) erro
 			return err
 		}
 		outputs = append(outputs, output)
+		workbooks = append(workbooks, blankWorkbook)
 	}
 
 	progress.Set(ctx, 0.85, "Сохраняю файлы")
@@ -301,11 +314,18 @@ func (u *ProcessJob) finalize(ctx context.Context, message port.JobMessage) erro
 		return err
 	}
 	outputs = append(outputs, sourceOutput)
+	workbooks = append(workbooks, sourceWorkbook)
+	outputs = assignOutputIDs(outputs)
+
+	progress.Set(ctx, 0.9, "Готовлю превью")
+	if err := u.writePreviews(ctx, message.JobID, outputs, workbooks); err != nil {
+		return err
+	}
 
 	if err := u.reports.Save(ctx, message.JobID, summary, rows, u.now()); err != nil {
 		return fmt.Errorf("save report: %w", err)
 	}
-	if err := u.jobs.SaveResult(ctx, message.JobID, "completed", assignOutputIDs(outputs), u.now()); err != nil {
+	if err := u.jobs.SaveResult(ctx, message.JobID, "completed", outputs, u.now()); err != nil {
 		return fmt.Errorf("save job result: %w", err)
 	}
 	return nil
@@ -340,6 +360,41 @@ func (u *ProcessJob) loadStoredOutput(ctx context.Context, outputs []port.Output
 		}
 	}
 	return nil, fmt.Errorf("generated file %q was not found for finalization", name)
+}
+
+func (u *ProcessJob) writePreviews(ctx context.Context, jobID string, outputs []port.OutputFile, workbooks []spreadsheet.Workbook) error {
+	if len(outputs) != len(workbooks) {
+		return fmt.Errorf("preview: %d outputs and %d workbooks", len(outputs), len(workbooks))
+	}
+	group, groupCtx := errgroup.WithContext(ctx)
+	group.SetLimit(4)
+	for index := range outputs {
+		output := outputs[index]
+		workbook := workbooks[index]
+		group.Go(func() error {
+			return u.writePreview(groupCtx, jobID, output.ID, workbook)
+		})
+	}
+	return group.Wait()
+}
+
+func (u *ProcessJob) writePreview(ctx context.Context, jobID string, fileID string, workbook spreadsheet.Workbook) error {
+	objects, err := preview.Encode(preview.Capture(workbook))
+	if err != nil {
+		return fmt.Errorf("encode preview %s: %w", fileID, err)
+	}
+	group, groupCtx := errgroup.WithContext(ctx)
+	group.SetLimit(8)
+	for _, object := range objects {
+		group.Go(func() error {
+			key := fmt.Sprintf("jobs/%s/preview/%s/%s", jobID, fileID, object.Name)
+			if err := u.storage.Put(groupCtx, key, object.ContentType, object.Content); err != nil {
+				return fmt.Errorf("store preview %s: %w", key, err)
+			}
+			return nil
+		})
+	}
+	return group.Wait()
 }
 
 func (u *ProcessJob) saveWorkbook(ctx context.Context, jobID string, workbook spreadsheet.Workbook, name string, label string) (port.OutputFile, error) {

@@ -16,7 +16,7 @@ export function TopBar({ brandLabel, monthLabel, stage, mode, onMode }) {
           <ModeButton active={mode === "north"} onClick={() => onMode("north")}>Север</ModeButton>
         </div>
       </div>
-      {stage === "fill" && (
+      {(stage === "fill" || stage === "preview") && (
         <div className="flex items-center gap-2 font-mono text-[13px] text-[var(--color-ink-soft)]">
           <span className="rounded-full bg-[var(--color-brand-soft)] px-2.5 py-1 text-[var(--color-brand-strong)]">
             {brandLabel}
@@ -49,8 +49,9 @@ export function StageRail({ stage, brandLabel, monthLabel, filesReady, onGoto })
     { key: "setup", n: 1, title: "Настройка", summary: `${brandLabel} · ${monthLabel}` },
     { key: "upload", n: 2, title: "Загрузка файлов", summary: filesReady ? "файлы загружены" : undefined },
     { key: "fill", n: 3, title: "Заполнение" },
+    { key: "preview", n: 4, title: "Проверка файлов" },
   ];
-  const order = ["setup", "upload", "fill"];
+  const order = ["setup", "upload", "fill", "preview"];
   const currentIdx = Math.max(0, order.indexOf(stage === "processing" ? "upload" : stage));
 
   return (
@@ -58,7 +59,7 @@ export function StageRail({ stage, brandLabel, monthLabel, filesReady, onGoto })
       {steps.map((step, index) => {
         const idx = order.indexOf(step.key);
         const state = idx < currentIdx ? "done" : idx === currentIdx ? "active" : "todo";
-        const clickable = idx < currentIdx || (idx === 1 && stage === "fill");
+        const clickable = idx < currentIdx || (idx === 1 && (stage === "fill" || stage === "preview")) || (idx === 2 && stage === "preview");
         return (
           <div key={step.key} className="flex items-center">
             <button

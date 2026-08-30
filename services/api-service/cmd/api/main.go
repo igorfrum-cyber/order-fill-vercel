@@ -78,6 +78,7 @@ func run(logger *slog.Logger) error {
 		DownloadFile:    usecase.NewDownloadFile(repository, storage),
 		DownloadArchive: usecase.NewDownloadArchive(repository, storage),
 		SubmitEdits:     usecase.NewSubmitEdits(repository, publisher, now, logger),
+		Preview:         usecase.NewPreviewReader(repository, storage),
 		Metrics:         metrics,
 		AllowedOrigins:  httpapi.ParseAllowedOrigins(settings.AllowedOrigins),
 		MaxUploadBytes:  settings.MaxUploadBytes,

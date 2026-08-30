@@ -262,7 +262,7 @@ export function FillStage({
           </span>
           <PrimaryButton onClick={onDownloadFiles} disabled={busy}>
             <span className={`h-2 w-2 rounded-full ${criticalOpen === 0 ? "bg-[var(--color-ok)]" : "bg-white/40"}`} />
-            {busy ? "Готовлю файлы..." : "Скачать заполненные файлы"}
+            {busy ? "Готовлю файлы..." : "Проверить файлы"}
             <IconDownload className="h-4 w-4" />
           </PrimaryButton>
         </div>

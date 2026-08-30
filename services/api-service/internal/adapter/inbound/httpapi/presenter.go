@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"order-fill/services/api-service/internal/domain/job"
+	"order-fill/services/api-service/internal/domain/preview"
 )
 
 // The DTOs below are the wire contract described in packages/contracts/openapi.yaml.
@@ -209,4 +210,65 @@ func presentReport(report job.Report) reportResponse {
 		Summary: summaryResponse(report.Summary),
 		Rows:    rows,
 	}
+}
+
+func presentPreviewMeta(meta preview.Meta) previewMetaResponse {
+	sheets := make([]previewSheetResponse, 0, len(meta.Sheets))
+	for _, sheet := range meta.Sheets {
+		sheets = append(sheets, previewSheetResponse{
+			Name:          sheet.Name,
+			Index:         sheet.Index,
+			MaxRow:        sheet.MaxRow,
+			MaxColumn:     sheet.MaxColumn,
+			HeaderRow:     sheet.HeaderRow,
+			ArticleColumn: sheet.ArticleColumn,
+		})
+	}
+	return previewMetaResponse{ChunkRows: meta.ChunkRows, Sheets: sheets}
+}
+
+func presentPreviewWindow(sheetIndex int, window preview.Window) previewWindowResponse {
+	return previewWindowResponse{
+		SheetIndex: sheetIndex,
+		FromRow:    window.FromRow,
+		ToRow:      window.ToRow,
+		Rows:       window.Rows,
+	}
+}
+
+func presentPreviewHit(sheetIndex int, hit preview.Hit) previewHitResponse {
+	return previewHitResponse{
+		Found:      hit.Found,
+		Row:        hit.Row,
+		Column:     hit.Column,
+		SheetIndex: sheetIndex,
+	}
+}
+
+type previewMetaResponse struct {
+	ChunkRows int                    `json:"chunk_rows"`
+	Sheets    []previewSheetResponse `json:"sheets"`
+}
+
+type previewSheetResponse struct {
+	Name          string `json:"name"`
+	Index         int    `json:"index"`
+	MaxRow        int    `json:"max_row"`
+	MaxColumn     int    `json:"max_column"`
+	HeaderRow     int    `json:"header_row,omitempty"`
+	ArticleColumn int    `json:"article_column,omitempty"`
+}
+
+type previewWindowResponse struct {
+	SheetIndex int        `json:"sheet_index"`
+	FromRow    int        `json:"from_row"`
+	ToRow      int        `json:"to_row"`
+	Rows       [][]string `json:"rows"`
+}
+
+type previewHitResponse struct {
+	Found      bool `json:"found"`
+	Row        int  `json:"row,omitempty"`
+	Column     int  `json:"column,omitempty"`
+	SheetIndex int  `json:"sheet_index"`
 }
