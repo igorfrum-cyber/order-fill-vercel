@@ -7,18 +7,22 @@ import { duplicateDescription } from "../../features/report/issueReport.js";
 import { baselineForReportRow, statusLabel } from "../../features/report/reportModel.js";
 import {
   boxStep,
+  canProceedPastDuplicates,
   countByTab,
-  criticalOpenCount,
   displayArticle,
   displayName,
   FILL_COMPOSITION_ORDER,
-  FILL_TABS,
+  fillReadiness,
+  MATCH_LAYER_TABS,
+  matchLayerHint,
   matchPercent,
+  pairedRowCount,
   presentationStatus,
   quantityDisplay,
+  visibleFillTabs,
   visibleReportRows,
 } from "../../features/report/rowPresentation.js";
-import { IconAlert, IconCheck, IconChevron, IconDownload, IconSearch, IconX } from "../icons.jsx";
+import { IconCheck, IconChevron, IconDownload, IconSearch, IconX } from "../icons.jsx";
 import { GhostButton, PrimaryButton, Ring, Stepper } from "../widgets.jsx";
 
 const STATUS_META = {
@@ -35,8 +39,6 @@ const COMPOSITION = {
   empty: "bg-[var(--color-warn)]",
   check: "bg-[color-mix(in_srgb,var(--color-warn)_55%,white)]",
   duplicate: "bg-[var(--color-danger)]",
-  not_in_table: "bg-[var(--color-neutral)]",
-  not_in_blank: "bg-[color-mix(in_srgb,var(--color-neutral)_55%,white)]",
 };
 
 const TONE_CHIP = {
@@ -45,6 +47,11 @@ const TONE_CHIP = {
   danger: "text-[var(--color-danger)] bg-[var(--color-danger-soft)]",
   neutral: "text-[var(--color-neutral)] bg-[var(--color-neutral-soft)]",
 };
+
+const MATCH_CARDS = [
+  { key: "not_in_table", label: "Нет в таблице", detail: "бланк без пары в заказе", bar: "bg-[var(--color-neutral)]" },
+  { key: "not_in_blank", label: "Нет в бланке", detail: "заказ без пары в бланке", bar: "bg-[color-mix(in_srgb,var(--color-neutral)_55%,white)]" },
+];
 
 const TABLE_HEADERS = [
   { key: "bar", label: "", align: "left" },
@@ -74,59 +81,88 @@ export function FillStage({
   const [tab, setTab] = useState("empty");
   const [query, setQuery] = useState("");
   const [expanded, setExpanded] = useState(null);
+  const [acknowledgedDuplicates, setAcknowledgedDuplicates] = useState(() => new Set());
   const counts = useMemo(() => countByTab(rows), [rows]);
   const filledCount = counts.filled ?? 0;
-  const criticalOpen = criticalOpenCount(counts);
-  const visible = useMemo(() => visibleReportRows(rows, { tab, query }), [rows, tab, query]);
+  const emptyCount = counts.empty ?? 0;
+  const duplicateCount = counts.duplicate ?? 0;
+  const duplicateKeys = useMemo(
+    () => rows.filter((row) => presentationStatus(row) === "duplicate").map(rowKey),
+    [rows],
+  );
+  const paired = pairedRowCount(counts);
+  const tabs = useMemo(() => visibleFillTabs(counts), [counts]);
+  const activeTab = tabs.some((item) => item.key === tab) ? tab : (tabs[0]?.key ?? "all");
+  const visible = useMemo(() => visibleReportRows(rows, { tab: activeTab, query }), [rows, activeTab, query]);
   const boxLabel = summary.adjustmentLabel || adjustmentLabelForBrand(brand);
+  const canProceed = canProceedPastDuplicates({ duplicateKeys, acknowledgedKeys: acknowledgedDuplicates });
+  const acknowledgedCount = duplicateKeys.filter((key) => acknowledgedDuplicates.has(key)).length;
+  const unmatchedTotal = MATCH_LAYER_TABS.reduce((sum, key) => sum + (counts[key] || 0), 0);
+  const hint = matchLayerHint(activeTab);
+
+  function toggleDuplicateAck(key, next) {
+    setAcknowledgedDuplicates((prev) => {
+      const copy = new Set(prev);
+      if (next) copy.add(key);
+      else copy.delete(key);
+      return copy;
+    });
+  }
 
   return (
     <div className="flex h-full flex-col">
       <div className="border-b border-[var(--color-line)] bg-[var(--color-surface)] px-6 py-5">
-        <div className="flex flex-col gap-6 xl:flex-row xl:items-center">
-          <div className="flex items-center gap-4">
-            <Ring value={rows.length ? filledCount / rows.length : 0} />
+        <div className="flex flex-col gap-6 xl:flex-row xl:items-start">
+          <div className="flex shrink-0 items-center gap-4">
+            <Ring value={fillReadiness(counts)} />
             <div>
               <div className="text-[14px] font-medium text-[var(--color-ink-soft)]">Готовность бланка</div>
               <div className="mt-0.5 flex items-baseline gap-1.5">
                 <span className="font-mono text-[28px] font-semibold leading-none tabular-nums">{filledCount}</span>
-                <span className="font-mono text-[15px] text-[var(--color-ink-faint)]">/ {rows.length}</span>
+                <span className="font-mono text-[15px] text-[var(--color-ink-faint)]">/ {paired}</span>
               </div>
-              <div className="mt-1 text-[13px] text-[var(--color-ink-faint)]">позиций заполнено</div>
+              <div className="mt-1 text-[13px] text-[var(--color-ink-faint)]">с парой заполнено</div>
+              {emptyCount > 0 && (
+                <div className="mt-0.5 text-[13px] text-[var(--color-ink-faint)]">{emptyCount} ещё пустые</div>
+              )}
             </div>
           </div>
 
-          <div className="hidden h-14 w-px bg-[var(--color-line)] xl:block" />
+          <div className="hidden w-px self-stretch bg-[var(--color-line)] xl:block" />
 
           <div className="min-w-0 flex-1">
             <div className="mb-2 flex items-center justify-between">
-              <span className="text-[14px] font-medium text-[var(--color-ink-soft)]">Состав заказа</span>
-              <span className="font-mono text-[13px] text-[var(--color-ink-faint)]">{rows.length} позиций</span>
+              <span className="text-[14px] font-medium text-[var(--color-ink-soft)]">Заполнение</span>
+              <span className="font-mono text-[13px] text-[var(--color-ink-faint)]">{paired} с парой</span>
             </div>
             <div className="flex h-2.5 w-full overflow-hidden rounded-full bg-[var(--color-line-soft)]">
               {FILL_COMPOSITION_ORDER.map((key) => {
                 const n = counts[key] ?? 0;
-                if (!n) return null;
+                if (!n || !paired) return null;
                 return (
                   <button
                     key={key}
                     type="button"
                     title={`${STATUS_META[key].label}: ${n}`}
                     onClick={() => setTab(key)}
-                    style={{ width: `${(n / rows.length) * 100}%` }}
+                    style={{ width: `${(n / paired) * 100}%` }}
                     className={`h-full ${COMPOSITION[key]} transition-opacity hover:opacity-80`}
                   />
                 );
               })}
             </div>
             <div className="mt-2.5 flex flex-wrap gap-x-4 gap-y-1.5">
-              {FILL_COMPOSITION_ORDER.map((key) => (
-                <button key={key} type="button" onClick={() => setTab(key)} className="group flex items-center gap-1.5 text-[13px]">
-                  <span className={`h-2 w-2 rounded-[3px] ${COMPOSITION[key]}`} />
-                  <span className="text-[var(--color-ink-soft)] group-hover:text-[var(--color-ink)]">{STATUS_META[key].label}</span>
-                  <span className="font-mono tabular-nums text-[var(--color-ink-faint)]">{counts[key] ?? 0}</span>
-                </button>
-              ))}
+              {FILL_COMPOSITION_ORDER.map((key) => {
+                const n = counts[key] ?? 0;
+                if (!n) return null;
+                return (
+                  <button key={key} type="button" onClick={() => setTab(key)} className="group flex items-center gap-1.5 text-[13px]">
+                    <span className={`h-2 w-2 rounded-[3px] ${COMPOSITION[key]}`} />
+                    <span className="text-[var(--color-ink-soft)] group-hover:text-[var(--color-ink)]">{STATUS_META[key].label}</span>
+                    <span className="font-mono tabular-nums text-[var(--color-ink-faint)]">{n}</span>
+                  </button>
+                );
+              })}
             </div>
             {summary.orderMonthLabel && (
               <div className="mt-2 font-mono text-[13px] text-[var(--color-ink-faint)]">
@@ -137,35 +173,56 @@ export function FillStage({
             )}
           </div>
 
-          <div className="hidden h-14 w-px bg-[var(--color-line)] xl:block" />
+          <div className="hidden w-px self-stretch bg-[var(--color-line)] xl:block" />
 
-          <button
-            type="button"
-            onClick={() => setTab(criticalOpen ? ((counts.check ?? 0) ? "check" : "duplicate") : "empty")}
-            className={`flex items-center gap-3 rounded-xl border px-4 py-3 text-left transition hover:shadow-sm ${
-              criticalOpen
-                ? "border-[color-mix(in_srgb,var(--color-danger)_35%,white)] bg-[var(--color-danger-soft)]"
-                : "border-[color-mix(in_srgb,var(--color-ok)_35%,white)] bg-[var(--color-ok-soft)]"
-            }`}
-          >
-            <span className={`grid h-9 w-9 shrink-0 place-items-center rounded-full bg-[var(--color-surface)] ${criticalOpen ? "text-[var(--color-danger)]" : "text-[var(--color-ok)]"}`}>
-              {criticalOpen ? <IconAlert className="h-4 w-4" /> : <IconCheck className="h-4 w-4" />}
-            </span>
-            <span className="leading-tight">
-              <span className="block text-[15px] font-semibold">{criticalOpen ? `${criticalOpen} требуют решения` : "Всё под контролем"}</span>
-              <span className="block text-[13px] text-[var(--color-ink-soft)]">
-                {criticalOpen ? "дубли и спорные позиции" : "критичных проблем нет"}
-              </span>
-            </span>
-          </button>
+          <div className="w-full shrink-0 xl:w-96">
+            <div className="mb-2 flex items-center justify-between">
+              <span className="text-[14px] font-medium text-[var(--color-ink-soft)]">Сопоставление</span>
+              {unmatchedTotal === 0 ? (
+                <span className="flex items-center gap-1 text-[13px] text-[var(--color-ok)]">
+                  <IconCheck className="h-3.5 w-3.5" />
+                  все нашли пару
+                </span>
+              ) : (
+                <span className="font-mono text-[13px] text-[var(--color-ink-faint)]">{unmatchedTotal} без пары</span>
+              )}
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              {MATCH_CARDS.map((card) => {
+                const n = counts[card.key] ?? 0;
+                const active = activeTab === card.key;
+                return (
+                  <button
+                    key={card.key}
+                    type="button"
+                    onClick={() => setTab(card.key)}
+                    className={`flex gap-2.5 rounded-xl border px-3 py-2.5 text-left transition ${
+                      active
+                        ? "border-[var(--color-brand)] bg-[var(--color-brand-soft)]"
+                        : n
+                          ? "border-[color-mix(in_srgb,var(--color-neutral)_35%,white)] bg-[var(--color-neutral-soft)] hover:border-[var(--color-neutral)]"
+                          : "border-[var(--color-line)] bg-[var(--color-surface)] hover:bg-[var(--color-line-soft)]"
+                    }`}
+                  >
+                    <span className={`mt-0.5 h-9 w-1 shrink-0 rounded-full ${card.bar}`} />
+                    <span className="min-w-0">
+                      <span className="block text-[13px] text-[var(--color-ink-soft)]">{card.label}</span>
+                      <span className="mt-0.5 block font-mono text-[20px] font-semibold leading-none tabular-nums">{n}</span>
+                      <span className="mt-1.5 block text-[12px] leading-snug text-[var(--color-ink-faint)]">{card.detail}</span>
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
         </div>
       </div>
 
       <div className="flex flex-wrap items-center gap-3 border-b border-[var(--color-line)] bg-[var(--color-surface)] px-6 py-2.5">
         <div className="flex flex-wrap gap-1">
-          {FILL_TABS.map((item) => {
+          {tabs.map((item) => {
             const n = counts[item.key] ?? 0;
-            const active = tab === item.key;
+            const active = activeTab === item.key;
             return (
               <button
                 key={item.key}
@@ -198,6 +255,19 @@ export function FillStage({
           )}
         </div>
       </div>
+
+      {activeTab === "duplicate" && duplicateCount > 0 ? (
+        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[color-mix(in_srgb,var(--color-danger)_25%,white)] bg-[var(--color-danger-soft)] px-6 py-2.5 text-[14px] text-[var(--color-ink)]">
+          <span>В таблице заказа несколько строк на одну позицию бланка. На каждой строке отметьте «оставляю», когда разобрали конфликт.</span>
+          <span className="font-mono text-[13px] tabular-nums text-[var(--color-ink-soft)]">
+            {acknowledgedCount} из {duplicateCount} подтверждены
+          </span>
+        </div>
+      ) : hint ? (
+        <div className="border-b border-[var(--color-line)] bg-[var(--color-neutral-soft)] px-6 py-2.5 text-[14px] text-[var(--color-ink-soft)]">
+          {hint}
+        </div>
+      ) : null}
 
       <div className="flex-1 overflow-auto px-6 py-4">
         <table className="w-full min-w-[1280px] table-fixed border-separate border-spacing-0">
@@ -242,9 +312,11 @@ export function FillStage({
                 edit={edits.get(rowKey(row))}
                 expanded={expanded === rowKey(row)}
                 invalid={invalidKeys.has(rowKey(row))}
+                acknowledged={acknowledgedDuplicates.has(rowKey(row))}
                 boxLabel={boxLabel}
                 onToggle={() => setExpanded(expanded === rowKey(row) ? null : rowKey(row))}
                 onEdit={onEdit}
+                onAcknowledge={(next) => toggleDuplicateAck(rowKey(row), next)}
               />
             ))}
           </tbody>
@@ -256,12 +328,20 @@ export function FillStage({
           <IconDownload className="h-4 w-4" />
           Отчёт для 1С
         </GhostButton>
-        <div className="ml-auto flex items-center gap-3">
+        <div className="ml-auto flex flex-wrap items-center gap-3">
           <span className="font-mono text-[13px] text-[var(--color-ink-soft)]">
-            {status ? <span>{status}</span> : criticalOpen === 0 ? <span className="text-[var(--color-ok)]">Критичных проблем нет</span> : <span className="text-[var(--color-warn)]">Осталось критичных: {criticalOpen}</span>}
+            {status ? (
+              <span>{status}</span>
+            ) : canProceed ? (
+              <span className="text-[var(--color-ok)]">{duplicateCount ? "Дубли подтверждены" : "Критичных проблем нет"}</span>
+            ) : (
+              <button type="button" className="text-[var(--color-danger)] hover:underline" onClick={() => setTab("duplicate")}>
+                Сначала подтвердите дубли: {duplicateCount - acknowledgedCount}
+              </button>
+            )}
           </span>
-          <PrimaryButton onClick={onDownloadFiles} disabled={busy}>
-            <span className={`h-2 w-2 rounded-full ${criticalOpen === 0 ? "bg-[var(--color-ok)]" : "bg-white/40"}`} />
+          <PrimaryButton onClick={onDownloadFiles} disabled={busy || !canProceed}>
+            <span className={`h-2 w-2 rounded-full ${canProceed ? "bg-[var(--color-ok)]" : "bg-white/40"}`} />
             {busy ? "Готовлю файлы..." : "Проверить файлы"}
             <IconDownload className="h-4 w-4" />
           </PrimaryButton>
@@ -271,16 +351,17 @@ export function FillStage({
   );
 }
 
-function ReportRow({ row, edit, expanded, invalid, boxLabel, onToggle, onEdit }) {
+function ReportRow({ row, edit, expanded, invalid, acknowledged, boxLabel, onToggle, onEdit, onAcknowledge }) {
   const status = presentationStatus(row);
   const meta = STATUS_META[status];
   const diverges = row.editable !== false && quantityDivergesFromRecommendation(row, edit?.value);
   const note = roundingComment(row);
-  const cell = `border-b border-[var(--color-line-soft)] px-4 py-4 align-middle text-[14px] ${invalid ? "bg-[var(--color-danger-soft)]" : diverges ? "bg-[var(--color-warn-soft)]" : ""}`;
+  const cell = `border-b border-[var(--color-line-soft)] px-4 py-4 align-middle text-[14px] ${invalid ? "bg-[var(--color-danger-soft)]" : acknowledged ? "bg-[var(--color-ok-soft)]" : diverges ? "bg-[var(--color-warn-soft)]" : ""}`;
   const num = `${cell} text-right font-mono tabular-nums`;
   const key = rowKey(row);
   const match = matchPercent(row);
   const needsComment = rowNeedsComment(row, edit);
+  const isDuplicate = status === "duplicate";
 
   return (
     <>
@@ -296,6 +377,11 @@ function ReportRow({ row, edit, expanded, invalid, boxLabel, onToggle, onEdit })
         </td>
         <td className={cell}>
           <span className="block leading-snug font-medium">{displayName(row) || "—"}</span>
+          {isDuplicate && (
+            <span className={`mt-1 inline-flex rounded-md px-1.5 py-0.5 text-[12px] font-medium ${acknowledged ? TONE_CHIP.ok : TONE_CHIP.danger}`}>
+              {acknowledged ? "дубль подтверждён" : "дубль"}
+            </span>
+          )}
         </td>
         <td className={`${num} text-[var(--color-ink-soft)]`}>{row.blankUnit || "—"}</td>
         <td className={num}>{quantityDisplay(row.stock) || "—"}</td>
@@ -341,6 +427,29 @@ function ReportRow({ row, edit, expanded, invalid, boxLabel, onToggle, onEdit })
           )}
         </td>
       </tr>
+      {isDuplicate && (
+        <tr>
+          <td colSpan={10} className={`border-b border-[var(--color-line-soft)] px-4 py-3 ${acknowledged ? "bg-[var(--color-ok-soft)]" : "bg-[var(--color-danger-soft)]"}`}>
+            <div className="flex flex-wrap items-center justify-between gap-3 pl-8">
+              <div className="min-w-0 text-[14px]">
+                <div className="font-medium text-[var(--color-ink)]">Конфликт в таблице заказа</div>
+                <div className="mt-0.5 text-[13px] text-[var(--color-ink-soft)]">
+                  {duplicateDescription(row.duplicateCandidates) || "несколько строк с одним артикулом"}
+                </div>
+              </div>
+              <label className="flex cursor-pointer items-center gap-2 rounded-lg border border-[var(--color-line)] bg-[var(--color-surface)] px-3 py-2 text-[14px] font-medium text-[var(--color-ink)]">
+                <input
+                  type="checkbox"
+                  checked={acknowledged}
+                  onChange={(event) => onAcknowledge(event.target.checked)}
+                  className="h-4 w-4 rounded border-[var(--color-line)] accent-[var(--color-brand)]"
+                />
+                Оставляю как есть
+              </label>
+            </div>
+          </td>
+        </tr>
+      )}
       {expanded && (
         <tr>
           <td colSpan={10} className="border-b border-[var(--color-line-soft)] bg-[var(--color-ground)] px-3 py-3">
@@ -362,11 +471,6 @@ function ReportRow({ row, edit, expanded, invalid, boxLabel, onToggle, onEdit })
                   </span>
                 </Detail>
               ) : null}
-              {row.duplicate && (
-                <Detail label="Дубли в таблице">
-                  <span className="text-[var(--color-danger)]">{duplicateDescription(row.duplicateCandidates) || "есть совпадения"}</span>
-                </Detail>
-              )}
             </div>
           </td>
         </tr>

@@ -4,31 +4,38 @@ package config
 import (
 	"fmt"
 	"os"
+	"strconv"
 	"strings"
 )
 
 type Config struct {
-	HealthAddr  string
-	DatabaseURL string
-	QueueURL    string
-	QueueName   string
-	S3Endpoint  string
-	S3Bucket    string
-	S3AccessKey string
-	S3SecretKey string
+	HealthAddr        string
+	DatabaseURL       string
+	QueueURL          string
+	QueueName         string
+	WorkerConcurrency int
+	S3Endpoint        string
+	S3Bucket          string
+	S3AccessKey       string
+	S3SecretKey       string
 }
 
 // Load reads the configuration and fails fast when a required value is missing.
 func Load() (Config, error) {
+	workerConcurrency, err := getenvInt("WORKER_CONCURRENCY", 1)
+	if err != nil {
+		return Config{}, err
+	}
 	config := Config{
-		HealthAddr:  getenv("WORKER_HEALTH_ADDR", ":8081"),
-		DatabaseURL: os.Getenv("DATABASE_URL"),
-		QueueURL:    os.Getenv("QUEUE_URL"),
-		QueueName:   getenv("QUEUE_NAME", "order-fill:jobs"),
-		S3Endpoint:  os.Getenv("S3_ENDPOINT"),
-		S3Bucket:    getenv("S3_BUCKET", "order-fill"),
-		S3AccessKey: os.Getenv("S3_ACCESS_KEY"),
-		S3SecretKey: os.Getenv("S3_SECRET_KEY"),
+		HealthAddr:        getenv("WORKER_HEALTH_ADDR", ":8081"),
+		DatabaseURL:       os.Getenv("DATABASE_URL"),
+		QueueURL:          os.Getenv("QUEUE_URL"),
+		QueueName:         getenv("QUEUE_NAME", "order-fill:jobs"),
+		WorkerConcurrency: workerConcurrency,
+		S3Endpoint:        os.Getenv("S3_ENDPOINT"),
+		S3Bucket:          getenv("S3_BUCKET", "order-fill"),
+		S3AccessKey:       os.Getenv("S3_ACCESS_KEY"),
+		S3SecretKey:       os.Getenv("S3_SECRET_KEY"),
 	}
 
 	missing := make([]string, 0)
@@ -54,4 +61,16 @@ func getenv(key string, fallback string) string {
 		return value
 	}
 	return fallback
+}
+
+func getenvInt(key string, fallback int) (int, error) {
+	raw := strings.TrimSpace(os.Getenv(key))
+	if raw == "" {
+		return fallback, nil
+	}
+	value, err := strconv.Atoi(raw)
+	if err != nil || value < 1 {
+		return 0, fmt.Errorf("%s must be a positive integer", key)
+	}
+	return value, nil
 }

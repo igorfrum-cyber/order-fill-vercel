@@ -10,6 +10,7 @@ echo "==> toolchain"
 "$root/scripts/verify-toolchain.sh"
 
 echo "==> frontend"
+npm run test:load
 npm run verify --prefix frontend
 
 echo "==> api-service"

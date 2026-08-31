@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"os"
 	"strings"
 	"time"
 
@@ -15,13 +16,17 @@ import (
 	"order-fill/services/document-service/internal/app/port"
 )
 
-// DefaultStreamName is the Redis list both services agree on: api-service
-// LPUSHes, document-service BRPOPs, which makes the list a FIFO queue.
+// DefaultStreamName is the Redis stream both services agree on.
 const DefaultStreamName = "order-fill:jobs"
 
-const serviceName = "document-service"
+const (
+	DefaultGroupName    = "document-service"
+	messagePayloadField = "payload"
+	serviceName         = "document-service"
+	defaultClaimMinIdle = 5 * time.Minute
+)
 
-// pollTimeout keeps BRPOP short so the loop notices a cancelled context
+// pollTimeout keeps XREADGROUP short so the loop notices a cancelled context
 // promptly; errorBackoff stops a broken connection from spinning the loop.
 const (
 	pollTimeout  = 3 * time.Second
@@ -32,11 +37,14 @@ const (
 // use case has already recorded the failure on the job itself.
 type Handler func(ctx context.Context, message port.JobMessage) error
 
-// Consumer reads job messages off a Redis list.
+// Consumer reads job messages from a Redis stream consumer group.
 type Consumer struct {
-	client *redis.Client
-	stream string
-	logger *slog.Logger
+	client       *redis.Client
+	stream       string
+	group        string
+	consumer     string
+	claimMinIdle time.Duration
+	logger       *slog.Logger
 }
 
 // NewConsumer parses a QUEUE_URL like redis://redis:6379/0. An empty stream
@@ -52,7 +60,14 @@ func NewConsumer(queueURL string, stream string, logger *slog.Logger) (*Consumer
 	if logger == nil {
 		logger = slog.Default()
 	}
-	return &Consumer{client: redis.NewClient(options), stream: stream, logger: logger}, nil
+	return &Consumer{
+		client:       redis.NewClient(options),
+		stream:       stream,
+		group:        DefaultGroupName,
+		consumer:     consumerName(),
+		claimMinIdle: defaultClaimMinIdle,
+		logger:       logger,
+	}, nil
 }
 
 // Run polls the queue until the context is cancelled. A single bad message never
@@ -61,10 +76,18 @@ func (c *Consumer) Run(ctx context.Context, handle Handler) error {
 	if handle == nil {
 		return fmt.Errorf("queue consumer requires a handler")
 	}
+	if ctx.Err() != nil {
+		return nil
+	}
+	if err := c.ensureGroup(ctx); err != nil {
+		return err
+	}
 	c.logger.InfoContext(ctx, "queue consumer started",
 		"service", serviceName,
 		"event", "consumer_started",
 		"stream", c.stream,
+		"group", c.group,
+		"consumer", c.consumer,
 		"error_code", "",
 	)
 
@@ -74,13 +97,36 @@ func (c *Consumer) Run(ctx context.Context, handle Handler) error {
 				"service", serviceName,
 				"event", "consumer_stopped",
 				"stream", c.stream,
+				"group", c.group,
+				"consumer", c.consumer,
 				"error_code", "",
 			)
 			return nil
 		}
 
-		payload, err := c.poll(ctx)
+		message, ok, err := c.next(ctx)
 		if err != nil {
+			if ok {
+				c.logger.ErrorContext(ctx, "queue message rejected",
+					"service", serviceName,
+					"job_id", "",
+					"event", "message_rejected",
+					"error_code", "invalid_payload",
+					"message_id", message.id,
+					"error", err,
+				)
+				if ackErr := c.ack(ctx, message.id); ackErr != nil && ctx.Err() == nil {
+					c.logger.ErrorContext(ctx, "queue ack failed",
+						"service", serviceName,
+						"job_id", "",
+						"event", "queue_ack_failed",
+						"error_code", "queue_unavailable",
+						"message_id", message.id,
+						"error", ackErr,
+					)
+				}
+				continue
+			}
 			if ctx.Err() != nil {
 				continue
 			}
@@ -94,10 +140,24 @@ func (c *Consumer) Run(ctx context.Context, handle Handler) error {
 			wait(ctx, errorBackoff)
 			continue
 		}
-		if payload == "" {
+		if !ok {
 			continue
 		}
-		c.dispatch(ctx, payload, handle)
+		c.dispatch(ctx, message.payload, handle)
+		if err := c.ack(ctx, message.id); err != nil {
+			if ctx.Err() != nil {
+				continue
+			}
+			c.logger.ErrorContext(ctx, "queue ack failed",
+				"service", serviceName,
+				"job_id", "",
+				"event", "queue_ack_failed",
+				"error_code", "queue_unavailable",
+				"message_id", message.id,
+				"error", err,
+			)
+			wait(ctx, errorBackoff)
+		}
 	}
 }
 
@@ -108,19 +168,66 @@ func (c *Consumer) Close() error {
 	return nil
 }
 
-// poll returns an empty payload when the block timeout expired with no message.
-func (c *Consumer) poll(ctx context.Context) (string, error) {
-	values, err := c.client.BRPop(ctx, pollTimeout, c.stream).Result()
+type queuedMessage struct {
+	id      string
+	payload string
+}
+
+func (c *Consumer) ensureGroup(ctx context.Context) error {
+	err := c.client.XGroupCreateMkStream(ctx, c.stream, c.group, "0").Err()
+	if err != nil {
+		if isBusyGroupError(err) {
+			return nil
+		}
+		return fmt.Errorf("create consumer group %s for stream %s: %w", c.group, c.stream, err)
+	}
+	return nil
+}
+
+func (c *Consumer) next(ctx context.Context) (queuedMessage, bool, error) {
+	if message, ok, err := c.claim(ctx); err != nil || ok {
+		return message, ok, err
+	}
+	return c.poll(ctx)
+}
+
+func (c *Consumer) claim(ctx context.Context) (queuedMessage, bool, error) {
+	messages, _, err := c.client.XAutoClaim(ctx, &redis.XAutoClaimArgs{
+		Stream:   c.stream,
+		Group:    c.group,
+		Consumer: c.consumer,
+		MinIdle:  c.claimMinIdle,
+		Start:    "0-0",
+		Count:    1,
+	}).Result()
 	if err != nil {
 		if errors.Is(err, redis.Nil) {
-			return "", nil
+			return queuedMessage{}, false, nil
 		}
-		return "", fmt.Errorf("pop job from %s: %w", c.stream, err)
+		return queuedMessage{}, false, fmt.Errorf("claim pending job from %s/%s: %w", c.stream, c.group, err)
 	}
-	if len(values) < 2 {
-		return "", nil
+	return firstStreamMessage(messages)
+}
+
+// poll returns ok=false when the block timeout expired with no message.
+func (c *Consumer) poll(ctx context.Context) (queuedMessage, bool, error) {
+	streams, err := c.client.XReadGroup(ctx, &redis.XReadGroupArgs{
+		Group:    c.group,
+		Consumer: c.consumer,
+		Streams:  []string{c.stream, ">"},
+		Count:    1,
+		Block:    pollTimeout,
+	}).Result()
+	if err != nil {
+		if errors.Is(err, redis.Nil) {
+			return queuedMessage{}, false, nil
+		}
+		return queuedMessage{}, false, fmt.Errorf("read job from %s/%s: %w", c.stream, c.group, err)
 	}
-	return values[1], nil
+	if len(streams) == 0 {
+		return queuedMessage{}, false, nil
+	}
+	return firstStreamMessage(streams[0].Messages)
 }
 
 func (c *Consumer) dispatch(ctx context.Context, payload string, handle Handler) {
@@ -146,12 +253,63 @@ func (c *Consumer) dispatch(ctx context.Context, payload string, handle Handler)
 	}
 }
 
+func (c *Consumer) ack(ctx context.Context, messageID string) error {
+	if messageID == "" {
+		return nil
+	}
+	if err := c.client.XAck(ctx, c.stream, c.group, messageID).Err(); err != nil {
+		return fmt.Errorf("ack job message %s from %s/%s: %w", messageID, c.stream, c.group, err)
+	}
+	return nil
+}
+
+func firstStreamMessage(messages []redis.XMessage) (queuedMessage, bool, error) {
+	if len(messages) == 0 {
+		return queuedMessage{}, false, nil
+	}
+	payload, err := streamMessagePayload(messages[0])
+	if err != nil {
+		return queuedMessage{id: messages[0].ID}, true, err
+	}
+	return queuedMessage{id: messages[0].ID, payload: payload}, true, nil
+}
+
+func streamMessagePayload(message redis.XMessage) (string, error) {
+	value, ok := message.Values[messagePayloadField]
+	if !ok {
+		return "", fmt.Errorf("stream message %s missing %q field", message.ID, messagePayloadField)
+	}
+	switch payload := value.(type) {
+	case string:
+		return payload, nil
+	case []byte:
+		return string(payload), nil
+	default:
+		return "", fmt.Errorf("stream message %s %q field has type %T", message.ID, messagePayloadField, value)
+	}
+}
+
 func decodeMessage(payload []byte) (port.JobMessage, error) {
 	var message port.JobMessage
 	if err := json.Unmarshal(payload, &message); err != nil {
 		return port.JobMessage{}, fmt.Errorf("unmarshal job message: %w", err)
 	}
 	return message, nil
+}
+
+func consumerName() string {
+	host, err := os.Hostname()
+	if err != nil || strings.TrimSpace(host) == "" {
+		host = "unknown-host"
+	}
+	return fmt.Sprintf("%s-%d", host, os.Getpid())
+}
+
+func isBusyGroupError(err error) bool {
+	if err == nil {
+		return false
+	}
+	return strings.Contains(strings.ToUpper(err.Error()), "BUSYGROUP")
 }
 
 // wait sleeps for the delay unless the context is cancelled first.

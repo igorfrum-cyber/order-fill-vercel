@@ -162,7 +162,7 @@ export function OrderFillApp({ mode, onMode }) {
       return;
     }
     const warnings = qualityWarningSummary({ rows, results, edits });
-    const lines = qualityWarningLines(warnings);
+    const lines = qualityWarningLines(warnings, { skipDuplicates: true });
     if (lines.length) {
       setConfirmLines(lines);
       return;

@@ -12,6 +12,8 @@ import (
 	"syscall"
 	"time"
 
+	"golang.org/x/sync/errgroup"
+
 	"order-fill/services/document-service/internal/adapter/inbound/httpapi"
 	"order-fill/services/document-service/internal/adapter/inbound/queue"
 	"order-fill/services/document-service/internal/adapter/outbound/jobstore"
@@ -88,8 +90,9 @@ func run(logger *slog.Logger) error {
 			"event", "worker_started",
 			"addr", settings.HealthAddr,
 			"queue", settings.QueueName,
+			"worker_concurrency", settings.WorkerConcurrency,
 		)
-		consumerErrors <- consumer.Run(ctx, processor.Handle)
+		consumerErrors <- runConsumerPool(ctx, consumer, settings.WorkerConcurrency, processor.Handle)
 	}()
 
 	select {
@@ -108,4 +111,21 @@ func run(logger *slog.Logger) error {
 	defer cancel()
 	logger.Info("stopping document-service", "service", "document-service", "event", "worker_stopping")
 	return server.Shutdown(shutdownCtx)
+}
+
+type consumerRunner interface {
+	Run(context.Context, queue.Handler) error
+}
+
+func runConsumerPool(ctx context.Context, consumer consumerRunner, concurrency int, handle queue.Handler) error {
+	if concurrency < 1 {
+		concurrency = 1
+	}
+	group, groupCtx := errgroup.WithContext(ctx)
+	for i := 0; i < concurrency; i++ {
+		group.Go(func() error {
+			return consumer.Run(groupCtx, handle)
+		})
+	}
+	return group.Wait()
 }

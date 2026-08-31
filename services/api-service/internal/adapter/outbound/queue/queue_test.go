@@ -46,6 +46,36 @@ func TestEncodeMessage(t *testing.T) {
 	}
 }
 
+func TestStreamValuesCarriesEncodedMessagePayload(t *testing.T) {
+	message := port.JobMessage{
+		JobID:      "job-1",
+		Type:       "order_fill",
+		Stage:      port.StageProcess,
+		Brand:      "north",
+		OrderMonth: "2026-09",
+		Inputs: []port.MessageFile{
+			{Role: "source", Name: "source.xlsx", StorageKey: "jobs/job-1/inputs/0-source.xlsx"},
+		},
+	}
+
+	values, err := streamValues(message)
+	if err != nil {
+		t.Fatalf("streamValues(%+v) error = %v, want nil", message, err)
+	}
+	payload, ok := values[messagePayloadField].(string)
+	if !ok {
+		t.Fatalf("streamValues(%+v)[%q] = %#v, want string payload", message, messagePayloadField, values[messagePayloadField])
+	}
+
+	var decoded port.JobMessage
+	if err := json.Unmarshal([]byte(payload), &decoded); err != nil {
+		t.Fatalf("json.Unmarshal(stream payload) error = %v, want nil", err)
+	}
+	if decoded.JobID != message.JobID {
+		t.Errorf("decoded stream payload JobID = %q, want %q", decoded.JobID, message.JobID)
+	}
+}
+
 func TestEncodeMessageOmitsEmptyEdits(t *testing.T) {
 	payload, err := encodeMessage(port.JobMessage{
 		JobID:  "job-2",

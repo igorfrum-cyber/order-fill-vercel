@@ -2,12 +2,18 @@ import test from "node:test";
 import assert from "node:assert/strict";
 
 import {
+  canProceedPastDuplicates,
   countByTab,
   displayArticle,
   displayName,
+  FILL_COMPOSITION_ORDER,
+  fillReadiness,
+  matchLayerHint,
+  pairedRowCount,
   presentationStatus,
   rowMatchesQuery,
   rowMatchesTab,
+  visibleFillTabs,
   visibleReportRows,
 } from "./rowPresentation.js";
 
@@ -68,6 +74,60 @@ test("displayArticle and displayName fall back to source identity when the row i
 
   assert.equal(displayArticle(row), "A400");
   assert.equal(displayName(row), "Сыворотка");
+});
+
+test("fill composition excludes unmatched rows so the ring can reach 100%", () => {
+  assert.deepEqual(FILL_COMPOSITION_ORDER, ["filled", "empty", "check", "duplicate"]);
+
+  const counts = {
+    filled: 139,
+    empty: 91,
+    check: 0,
+    duplicate: 2,
+    not_in_table: 124,
+    not_in_blank: 36,
+    all: 392,
+  };
+
+  assert.equal(pairedRowCount(counts), 232);
+  assert.equal(fillReadiness(counts), 139 / 232);
+  assert.equal(pairedRowCount({}), 0);
+  assert.equal(fillReadiness({}), 0);
+});
+
+test("visibleFillTabs hides empty fill buckets but always keeps matching and all", () => {
+  const tabs = visibleFillTabs({
+    filled: 139,
+    empty: 91,
+    check: 0,
+    duplicate: 2,
+    not_in_table: 124,
+    not_in_blank: 0,
+    all: 356,
+  });
+
+  assert.deepEqual(tabs.map((tab) => tab.key), [
+    "empty",
+    "duplicate",
+    "not_in_table",
+    "not_in_blank",
+    "filled",
+    "all",
+  ]);
+});
+
+test("matchLayerHint explains unmatched tabs and stays quiet for fill tabs", () => {
+  assert.match(matchLayerHint("not_in_table"), /не нашлись в таблице заказа/i);
+  assert.match(matchLayerHint("not_in_blank"), /не нашлись в бланке/i);
+  assert.equal(matchLayerHint("empty"), "");
+  assert.equal(matchLayerHint("all"), "");
+});
+
+test("canProceedPastDuplicates requires every duplicate key to be acknowledged", () => {
+  assert.equal(canProceedPastDuplicates({ duplicateKeys: [], acknowledgedKeys: new Set() }), true);
+  assert.equal(canProceedPastDuplicates({ duplicateKeys: ["a", "b"], acknowledgedKeys: new Set() }), false);
+  assert.equal(canProceedPastDuplicates({ duplicateKeys: ["a", "b"], acknowledgedKeys: new Set(["a"]) }), false);
+  assert.equal(canProceedPastDuplicates({ duplicateKeys: ["a", "b"], acknowledgedKeys: new Set(["a", "b"]) }), true);
 });
 
 test("displayArticle and displayName keep blank identity when both sides exist", () => {

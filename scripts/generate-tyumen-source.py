@@ -94,14 +94,37 @@ def generate(src: Path, dest: Path, rows: int, slim: bool = False) -> None:
     print(f"wrote {dest} ({dest.stat().st_size} bytes, product rows={rows}, last_row={next_row - 1})")
 
 
+def benchmark_sizes(max_rows: int, step: int) -> list[int]:
+    if max_rows < 1:
+        raise SystemExit("--rows must be positive")
+    if step < 1:
+        raise SystemExit("--series-step must be positive")
+
+    sizes = [size for size in (1000, 5000) if size <= max_rows]
+    current = 10000
+    while current <= max_rows:
+        sizes.append(current)
+        current += step
+    if not sizes:
+        sizes.append(max_rows)
+    return sizes
+
+
 def main() -> None:
     root = Path(__file__).resolve().parents[1]
     parser = argparse.ArgumentParser()
     parser.add_argument("--source", type=Path, default=root / "testdata/private/Ангио Тюмень .xlsx")
     parser.add_argument("--out", type=Path, default=root / "testdata/private/source_100000.xlsx")
     parser.add_argument("--rows", type=int, default=100_000)
+    parser.add_argument("--series", action="store_true", help="generate benchmark files up to --rows")
+    parser.add_argument("--series-step", type=int, default=5000)
+    parser.add_argument("--out-dir", type=Path, default=root / "testdata/private")
     parser.add_argument("--slim", action="store_true", help="drop unused 1C month columns from product rows")
     args = parser.parse_args()
+    if args.series:
+        for rows in benchmark_sizes(args.rows, args.series_step):
+            generate(args.source, args.out_dir / f"source_{rows}.xlsx", rows, slim=args.slim)
+        return
     generate(args.source, args.out, args.rows, slim=args.slim)
 
 

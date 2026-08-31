@@ -6,14 +6,39 @@ import (
 	"log/slog"
 	"testing"
 
+	"github.com/redis/go-redis/v9"
+
 	"order-fill/services/document-service/internal/app/port"
 )
 
 func TestDefaultStreamName(t *testing.T) {
-	// api-service pushes onto this exact list; renaming it silently breaks the
+	// api-service publishes onto this exact stream; renaming it silently breaks the
 	// handover between the two services.
 	if DefaultStreamName != "order-fill:jobs" {
 		t.Fatalf("stream name: got %q", DefaultStreamName)
+	}
+}
+
+func TestStreamMessagePayload(t *testing.T) {
+	message := redis.XMessage{
+		ID:     "1710000000000-0",
+		Values: map[string]any{messagePayloadField: `{"job_id":"job-1","type":"order_fill","inputs":[]}`},
+	}
+
+	payload, err := streamMessagePayload(message)
+	if err != nil {
+		t.Fatalf("streamMessagePayload(%+v) error = %v, want nil", message, err)
+	}
+	if payload != `{"job_id":"job-1","type":"order_fill","inputs":[]}` {
+		t.Errorf("streamMessagePayload(%+v) = %q, want encoded job message", message, payload)
+	}
+}
+
+func TestStreamMessagePayloadRejectsMissingPayload(t *testing.T) {
+	message := redis.XMessage{ID: "1710000000000-0", Values: map[string]any{"other": "value"}}
+
+	if _, err := streamMessagePayload(message); err == nil {
+		t.Fatalf("streamMessagePayload(%+v) error = nil, want missing payload error", message)
 	}
 }
 
@@ -119,6 +144,15 @@ func TestNewConsumerFallsBackToDefaultStream(t *testing.T) {
 	if consumer.stream != DefaultStreamName {
 		t.Fatalf("stream: got %q want %q", consumer.stream, DefaultStreamName)
 	}
+	if consumer.group != DefaultGroupName {
+		t.Fatalf("group: got %q want %q", consumer.group, DefaultGroupName)
+	}
+	if consumer.claimMinIdle != defaultClaimMinIdle {
+		t.Fatalf("claimMinIdle: got %s want %s", consumer.claimMinIdle, defaultClaimMinIdle)
+	}
+	if consumer.consumer == "" {
+		t.Fatal("consumer name must not be empty")
+	}
 }
 
 func TestRunRequiresHandler(t *testing.T) {
@@ -157,6 +191,31 @@ func TestRunStopsOnCancelledContext(t *testing.T) {
 		t.Fatal("handler must not run for a cancelled context")
 	}
 }
+
+func TestIsBusyGroupError(t *testing.T) {
+	tests := []struct {
+		name string
+		err  error
+		want bool
+	}{
+		{name: "busy group", err: redisError("BUSYGROUP Consumer Group name already exists"), want: true},
+		{name: "lowercase busy group", err: redisError("busygroup Consumer Group name already exists"), want: true},
+		{name: "other", err: redisError("ERR wrong type"), want: false},
+		{name: "nil", err: nil, want: false},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			got := isBusyGroupError(test.err)
+			if got != test.want {
+				t.Errorf("isBusyGroupError(%v) = %t, want %t", test.err, got, test.want)
+			}
+		})
+	}
+}
+
+type redisError string
+
+func (e redisError) Error() string { return string(e) }
 
 func discardLogger() *slog.Logger {
 	return slog.New(slog.NewTextHandler(io.Discard, nil))

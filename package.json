@@ -5,10 +5,16 @@
   "scripts": {
     "dev": "npm run dev --prefix frontend",
     "build": "npm run build --prefix frontend",
-    "test": "npm run test --prefix frontend",
+    "test": "npm run test:load && npm run test --prefix frontend",
+    "test:load": "node --test \"scripts/**/*.test.mjs\"",
     "verify:frontend": "npm run verify --prefix frontend",
     "verify:api": "bash scripts/verify-go.sh services/api-service",
     "verify:document": "bash scripts/verify-go.sh services/document-service",
+    "generate:source:1k": "python3 scripts/generate-tyumen-source.py --rows 1000 --out \"testdata/private/source_1000.xlsx\"",
+    "generate:source:5k": "python3 scripts/generate-tyumen-source.py --rows 5000 --out \"testdata/private/source_5000.xlsx\"",
+    "generate:source:10k": "python3 scripts/generate-tyumen-source.py --rows 10000 --out \"testdata/private/source_10000.xlsx\"",
+    "generate:sources:bench": "python3 scripts/generate-tyumen-source.py --series",
+    "load:order-fill": "node scripts/load-order-fill.mjs",
     "verify": "bash scripts/verify.sh",
     "precommit": "bash scripts/verify.sh"
   },

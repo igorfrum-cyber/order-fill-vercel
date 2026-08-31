@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { qualityWarningSummary } from "./qualityWarnings.js";
+import { qualityWarningLines, qualityWarningSummary } from "./qualityWarnings.js";
 
 test("qualityWarningSummary counts issues that need a download confirmation", () => {
   const summary = qualityWarningSummary({
@@ -22,4 +22,33 @@ test("qualityWarningSummary counts issues that need a download confirmation", ()
   assert.equal(summary.blankDuplicateCount, 2);
   assert.equal(summary.manualCount, 0);
   assert.equal(summary.total, 6);
+});
+
+test("qualityWarningLines skip row duplicates once the fill stage already gated them", () => {
+  const lines = qualityWarningLines({
+    issueCount: 1,
+    duplicateCount: 2,
+    notInSourceCount: 1,
+    notInBlankCount: 0,
+    manualCount: 0,
+    blankDuplicateCount: 0,
+    total: 4,
+  }, { skipDuplicates: true });
+
+  assert.equal(lines.some((line) => line.includes("Дубли:")), false);
+  assert.match(lines[0], /Проверьте 2 /);
+});
+
+test("qualityWarningLines stay empty when only acknowledged row duplicates remain", () => {
+  const lines = qualityWarningLines({
+    issueCount: 0,
+    duplicateCount: 2,
+    notInSourceCount: 0,
+    notInBlankCount: 0,
+    manualCount: 0,
+    blankDuplicateCount: 0,
+    total: 2,
+  }, { skipDuplicates: true });
+
+  assert.deepEqual(lines, []);
 });

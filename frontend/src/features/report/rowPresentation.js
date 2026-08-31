@@ -10,7 +10,14 @@ export const FILL_TABS = [
   { key: "all", label: "Все" },
 ];
 
-export const FILL_COMPOSITION_ORDER = ["filled", "empty", "check", "duplicate", "not_in_table", "not_in_blank"];
+export const FILL_COMPOSITION_ORDER = ["filled", "empty", "check", "duplicate"];
+
+export const MATCH_LAYER_TABS = ["not_in_table", "not_in_blank"];
+
+const MATCH_LAYER_HINTS = {
+  not_in_table: "Эти позиции бланка не нашлись в таблице заказа. Если объединение не сработало — сверьте артикул и название или выгрузите отчёт для 1С.",
+  not_in_blank: "Эти позиции таблицы заказа не нашлись в бланке. Их не будет в файле поставщика, пока не появятся в бланке.",
+};
 
 const FILTER_BY_TAB = {
   filled: "filled",
@@ -78,8 +85,28 @@ export function boxStep(row) {
   return Number.isFinite(size) && size > 0 ? size : 1;
 }
 
-export function criticalOpenCount(counts) {
-  return (counts.check || 0) + (counts.duplicate || 0);
+export function pairedRowCount(counts) {
+  return FILL_COMPOSITION_ORDER.reduce((sum, key) => sum + (counts[key] || 0), 0);
+}
+
+export function fillReadiness(counts) {
+  const paired = pairedRowCount(counts);
+  return paired ? (counts.filled || 0) / paired : 0;
+}
+
+export function visibleFillTabs(counts) {
+  return FILL_TABS.filter((tab) => {
+    if (tab.key === "all" || MATCH_LAYER_TABS.includes(tab.key)) return true;
+    return (counts[tab.key] || 0) > 0;
+  });
+}
+
+export function matchLayerHint(tab) {
+  return MATCH_LAYER_HINTS[tab] || "";
+}
+
+export function canProceedPastDuplicates({ duplicateKeys = [], acknowledgedKeys = new Set() } = {}) {
+  return duplicateKeys.every((key) => acknowledgedKeys.has(key));
 }
 
 export function quantityDisplay(value) {

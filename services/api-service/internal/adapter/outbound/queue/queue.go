@@ -12,13 +12,14 @@ import (
 	"order-fill/services/api-service/internal/app/port"
 )
 
-// DefaultStreamName is the Redis list both services agree on: api-service
-// LPUSHes, document-service BRPOPs, which makes the list a FIFO queue.
+// DefaultStreamName is the Redis stream both services agree on.
 const DefaultStreamName = "order-fill:jobs"
+
+const messagePayloadField = "payload"
 
 var _ port.JobPublisher = (*Publisher)(nil)
 
-// Publisher publishes job messages onto a Redis list.
+// Publisher publishes job messages onto a Redis stream.
 type Publisher struct {
 	client *redis.Client
 	stream string
@@ -38,12 +39,12 @@ func NewPublisher(queueURL string, stream string) (*Publisher, error) {
 }
 
 func (p *Publisher) Publish(ctx context.Context, message port.JobMessage) error {
-	payload, err := encodeMessage(message)
+	values, err := streamValues(message)
 	if err != nil {
 		return err
 	}
-	if err := p.client.LPush(ctx, p.stream, payload).Err(); err != nil {
-		return fmt.Errorf("push job %s onto %s: %w", message.JobID, p.stream, err)
+	if err := p.client.XAdd(ctx, &redis.XAddArgs{Stream: p.stream, Values: values}).Err(); err != nil {
+		return fmt.Errorf("publish job %s to stream %s: %w", message.JobID, p.stream, err)
 	}
 	return nil
 }
@@ -61,4 +62,12 @@ func encodeMessage(message port.JobMessage) ([]byte, error) {
 		return nil, fmt.Errorf("marshal job message %s: %w", message.JobID, err)
 	}
 	return payload, nil
+}
+
+func streamValues(message port.JobMessage) (map[string]any, error) {
+	payload, err := encodeMessage(message)
+	if err != nil {
+		return nil, err
+	}
+	return map[string]any{messagePayloadField: string(payload)}, nil
 }

@@ -20,12 +20,14 @@ export function qualityWarningSummary({ rows, results = [], edits = new Map() })
   };
 }
 
-export function qualityWarningLines(summary) {
-  if (!summary.total) return [];
+export function qualityWarningLines(summary, { skipDuplicates = false } = {}) {
+  const duplicateCount = skipDuplicates ? 0 : summary.duplicateCount;
+  const total = (summary.total || 0) - (skipDuplicates ? summary.duplicateCount || 0 : 0);
+  if (!total) return [];
   return [
-    `Проверьте ${summary.total} спорных строк/ситуаций перед скачиванием.`,
+    `Проверьте ${total} спорных строк/ситуаций перед скачиванием.`,
     summary.issueCount ? `Проверить: ${summary.issueCount}` : "",
-    summary.duplicateCount ? `Дубли: ${summary.duplicateCount}` : "",
+    duplicateCount ? `Дубли: ${duplicateCount}` : "",
     summary.notInSourceCount ? `Нет в таблице: ${summary.notInSourceCount}` : "",
     summary.notInBlankCount ? `Нет в бланке: ${summary.notInBlankCount}` : "",
     summary.manualCount ? `Ручные отклонения: ${summary.manualCount}` : "",

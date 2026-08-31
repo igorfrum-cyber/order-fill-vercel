@@ -1,4 +1,4 @@
-.PHONY: verify lint test up down logs
+.PHONY: verify lint test up down logs load-order-fill
 
 verify:
 	bash scripts/verify.sh
@@ -22,3 +22,6 @@ down:
 
 logs:
 	docker compose -f deploy/docker-compose.yml logs -f
+
+load-order-fill:
+	node scripts/load-order-fill.mjs $(ARGS)
