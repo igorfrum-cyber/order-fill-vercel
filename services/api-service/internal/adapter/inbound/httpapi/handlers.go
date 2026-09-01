@@ -2,7 +2,6 @@ package httpapi
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -149,8 +148,7 @@ func (h jobHandler) submitEdits(w http.ResponseWriter, r *http.Request) {
 			Comment string `json:"comment"`
 		} `json:"edits"`
 	}
-	if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
-		writeError(w, http.StatusBadRequest, "bad_request", err.Error())
+	if !decodeJSON(w, r, &payload) {
 		return
 	}
 	edits := make([]job.ManualEdit, 0, len(payload.Edits))
