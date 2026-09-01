@@ -134,6 +134,11 @@ export function PreviewStage({ files = [], jobId, status, busy, onDownload, onBa
             headerRow={sheet.header_row}
             highlightRow={highlightRow}
             focusRow={focusRow}
+            columns={sheet.columns}
+            rowHeight={sheet.row_height}
+            rowHeights={sheet.row_heights}
+            styles={sheet.styles}
+            merges={sheet.merges}
           />
         )}
         {!error && !sheet && !meta && <div className="px-6 py-10 text-center text-[15px] text-[var(--color-ink-faint)]">Загружаю сетку...</div>}

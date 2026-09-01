@@ -85,6 +85,16 @@ go test ./...
 
 Local Node must be ≥ `engines.node` (24). Local Go must be ≥ the `go` line in both `go.mod` files, and those lines must match. `golangci-lint` v2 and `gosec` are installed on first run if missing.
 
+For vulnerability reachability checks, install and run the official Go scanner:
+
+```bash
+go install golang.org/x/vuln/cmd/govulncheck@latest
+cd services/api-service && go run golang.org/x/vuln/cmd/govulncheck@latest ./...
+cd services/document-service && go run golang.org/x/vuln/cmd/govulncheck@latest ./...
+```
+
+Prefer the `go run ...@latest` form in this repo so the scanner follows the module toolchain when `go.mod` requires a newer Go version than the locally installed default.
+
 `npm run precommit` is an alias for the same gate.
 
 `make lint` is the same checks without tests and Vite build.

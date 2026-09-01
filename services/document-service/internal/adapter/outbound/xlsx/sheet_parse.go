@@ -231,7 +231,7 @@ func indexRow(rowElement *etree.Element, shared []string, rows map[int]*etree.El
 		if !ok {
 			continue
 		}
-		cells[key] = &cell{element: cellElement, value: readCellValue(cellElement, shared)}
+		cells[key] = &cell{element: cellElement, value: readCellValue(cellElement, shared), xf: attrInt(cellElement, "s")}
 	}
 }
 

@@ -48,6 +48,10 @@ func previewMetaPayload() map[string]any {
 				"header_row":     1,
 				"article_column": 1,
 				"articles":       map[string]int{"RG01": 4, "CT02": 5},
+				"columns":        []float64{135, 91, 91, 91},
+				"row_height":     20,
+				"styles":         []map[string]any{{}, {"fill": "#1f4e79", "bold": true}},
+				"merges":         []map[string]int{{"row": 1, "column": 1, "height": 1, "width": 2}},
 			},
 		},
 	}
@@ -72,6 +76,7 @@ func seedPreview(t *testing.T, storage *fakeStorage) {
 			"start_row": 3,
 			"end_row":   4,
 			"rows":      [][]string{{"x"}, {"RG01", "Крем", "12", "коробка"}},
+			"styles":    [][]int{{}, {1}},
 		}),
 		ContentType: "application/gzip",
 	}
@@ -103,6 +108,9 @@ func TestPreviewMetaDoesNotLoadChunks(t *testing.T) {
 	if len(meta.Sheets) != 1 || meta.Sheets[0].Name != "Тюмень" || meta.Sheets[0].Articles["RG01"] != 4 {
 		t.Fatalf("meta %#v", meta)
 	}
+	if len(meta.Sheets[0].Columns) != 4 || meta.Sheets[0].RowHeight != 20 || len(meta.Sheets[0].Styles) != 2 {
+		t.Fatalf("appearance %#v", meta.Sheets[0])
+	}
 }
 
 func TestPreviewWindowLoadsOnlyOverlappingChunks(t *testing.T) {
@@ -127,6 +135,9 @@ func TestPreviewWindowLoadsOnlyOverlappingChunks(t *testing.T) {
 	}
 	if len(window.Rows[0]) != 4 {
 		t.Fatalf("rows must be padded to max_column, got %d", len(window.Rows[0]))
+	}
+	if len(window.Styles) != 2 || window.Styles[0][0] != 1 || len(window.Styles[0]) != 4 {
+		t.Fatalf("styles must follow rows, got %#v", window.Styles)
 	}
 	for _, key := range keys {
 		if key == "jobs/job-1/preview/output-2/s0/c0.json.gz" {

@@ -1,19 +1,42 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { getPreviewWindow } from "../../api/preview.js";
+import { cellCss, cellKey, mergeLayout, visibleMerges } from "../../features/preview/appearance.js";
 import { columnLetters } from "../../features/preview/columns.js";
 import {
-  PREVIEW_COL_WIDTH,
   PREVIEW_GUTTER_WIDTH,
   PREVIEW_HEADER_HEIGHT,
   PREVIEW_MAX_FETCH_ROWS,
   PREVIEW_ROW_HEIGHT,
+  buildRowOffsets,
+  columnOffsets,
+  columnSize,
+  gridContentWidth,
   missingRange,
+  parseCustomHeights,
   scrollTopForRow,
+  sheetHeight,
+  spanSize,
   visibleWindow,
 } from "../../features/preview/viewport.js";
 
-export function ExcelGrid({ jobId, fileId, sheetIndex = 0, maxRow, maxColumn, headerRow, highlightRow, focusRow }) {
+const GRID_LINE = "1px solid var(--color-line-soft)";
+
+export function ExcelGrid({
+  jobId,
+  fileId,
+  sheetIndex = 0,
+  maxRow,
+  maxColumn,
+  headerRow,
+  highlightRow,
+  focusRow,
+  columns,
+  rowHeight,
+  rowHeights,
+  styles: catalog,
+  merges,
+}) {
   const scrollerRef = useRef(null);
   const cacheRef = useRef(new Map());
   const fetchRef = useRef(0);
@@ -21,7 +44,16 @@ export function ExcelGrid({ jobId, fileId, sheetIndex = 0, maxRow, maxColumn, he
   const [cells, setCells] = useState(() => new Map());
   const [range, setRange] = useState({ fromRow: 1, toRow: 1 });
   const letters = columnLetters(maxColumn);
-  const gridWidth = PREVIEW_GUTTER_WIDTH + letters.length * PREVIEW_COL_WIDTH;
+  const defaultHeight = Number(rowHeight) > 0 ? Number(rowHeight) : PREVIEW_ROW_HEIGHT;
+  const customHeights = useMemo(() => parseCustomHeights(rowHeights), [rowHeights]);
+  const offsets = useMemo(
+    () => buildRowOffsets(maxRow, defaultHeight, customHeights),
+    [customHeights, defaultHeight, maxRow],
+  );
+  const colOffsets = useMemo(() => columnOffsets(maxColumn, columns), [columns, maxColumn]);
+  const mergeMap = useMemo(() => mergeLayout(merges), [merges]);
+  const gridWidth = gridContentWidth(maxColumn, columns);
+  const bodyHeight = sheetHeight(offsets, maxRow, defaultHeight);
 
   const syncWindow = useCallback(() => {
     const node = scrollerRef.current;
@@ -30,6 +62,8 @@ export function ExcelGrid({ jobId, fileId, sheetIndex = 0, maxRow, maxColumn, he
       scrollTop: node.scrollTop,
       viewportHeight: node.clientHeight || 640,
       maxRow,
+      offsets,
+      rowHeight: defaultHeight,
     });
     setRange((prev) => (prev.fromRow === next.fromRow && prev.toRow === next.toRow ? prev : next));
     const missing = missingRange(cacheRef.current, next.fromRow, next.toRow);
@@ -41,15 +75,16 @@ export function ExcelGrid({ jobId, fileId, sheetIndex = 0, maxRow, maxColumn, he
         if (requestId !== fetchRef.current) return;
         const from = payload.from_row;
         const rows = payload.rows || [];
+        const styleRows = payload.styles || [];
         for (let index = 0; index < rows.length; index += 1) {
-          cacheRef.current.set(from + index, rows[index]);
+          cacheRef.current.set(from + index, { values: rows[index], styles: styleRows[index] });
         }
         setCells(new Map(cacheRef.current));
       })
       .catch(() => {
         // Keep already painted rows; the next scroll retries the window.
       });
-  }, [fileId, jobId, maxRow, sheetIndex]);
+  }, [defaultHeight, fileId, jobId, maxRow, offsets, sheetIndex]);
 
   useEffect(() => {
     cacheRef.current = new Map();
@@ -69,9 +104,9 @@ export function ExcelGrid({ jobId, fileId, sheetIndex = 0, maxRow, maxColumn, he
 
   useEffect(() => {
     if (!focusRow || !scrollerRef.current) return;
-    scrollerRef.current.scrollTop = scrollTopForRow(focusRow);
+    scrollerRef.current.scrollTop = scrollTopForRow(focusRow, defaultHeight, offsets);
     syncWindow();
-  }, [focusRow, syncWindow]);
+  }, [defaultHeight, focusRow, offsets, syncWindow]);
 
   function onScroll() {
     window.clearTimeout(timerRef.current);
@@ -82,6 +117,7 @@ export function ExcelGrid({ jobId, fileId, sheetIndex = 0, maxRow, maxColumn, he
   for (let row = range.fromRow; row <= range.toRow; row += 1) {
     rows.push(row);
   }
+  const mergeBoxes = visibleMerges(mergeMap.list, range.fromRow, range.toRow);
 
   return (
     <div
@@ -89,72 +125,181 @@ export function ExcelGrid({ jobId, fileId, sheetIndex = 0, maxRow, maxColumn, he
       onScroll={onScroll}
       className="h-full overflow-auto bg-[var(--color-surface)]"
     >
-      <div style={{ width: gridWidth, minWidth: "100%" }}>
+      <div style={{ width: gridWidth, position: "relative" }}>
         <div
-          className="sticky top-0 z-20 flex border-b border-[var(--color-line)] bg-[var(--color-ground)]"
-          style={{ height: PREVIEW_HEADER_HEIGHT }}
+          className="sticky top-0 z-20 border-b border-[var(--color-line)] bg-[var(--color-ground)]"
+          style={{ height: PREVIEW_HEADER_HEIGHT, width: gridWidth }}
         >
           <div
-            className="sticky left-0 z-30 border-r border-[var(--color-line)] bg-[var(--color-ground)]"
-            style={{ width: PREVIEW_GUTTER_WIDTH, minWidth: PREVIEW_GUTTER_WIDTH }}
+            className="sticky left-0 z-30 box-border border-r border-[var(--color-line)] bg-[var(--color-ground)]"
+            style={{
+              position: "sticky",
+              left: 0,
+              top: 0,
+              width: PREVIEW_GUTTER_WIDTH,
+              height: PREVIEW_HEADER_HEIGHT,
+            }}
           />
-          {letters.map((letter) => (
-            <div
-              key={letter}
-              className="flex shrink-0 items-center justify-center border-r border-[var(--color-line-soft)] font-mono text-[11px] font-medium text-[var(--color-ink-faint)]"
-              style={{ width: PREVIEW_COL_WIDTH }}
-            >
-              {letter}
-            </div>
-          ))}
+          {letters.map((letter, index) => {
+            const width = columnSize(index, columns);
+            if (width <= 0) return null;
+            return (
+              <div
+                key={letter}
+                className="absolute top-0 box-border flex items-center justify-center border-r border-[var(--color-line-soft)] font-mono text-[11px] font-medium text-[var(--color-ink-faint)]"
+                style={{
+                  left: PREVIEW_GUTTER_WIDTH + colOffsets[index],
+                  width,
+                  height: PREVIEW_HEADER_HEIGHT,
+                }}
+              >
+                {letter}
+              </div>
+            );
+          })}
         </div>
-        <div className="relative" style={{ height: Math.max(maxRow, 1) * PREVIEW_ROW_HEIGHT }}>
+        <div
+          className="relative"
+          style={{ height: bodyHeight, width: gridWidth, fontFamily: "Calibri, Arial, sans-serif" }}
+        >
           {rows.map((row) => (
-            <GridRow
-              key={row}
+            <RowGutter
+              key={`g-${row}`}
               row={row}
-              values={cells.get(row)}
-              columns={letters.length}
-              headerRow={headerRow}
-              highlight={row === highlightRow}
+              top={offsets[row]}
+              height={rowHeightOfLocal(row, defaultHeight, customHeights)}
+              gridWidth={gridWidth}
             />
           ))}
+          {rows.map((row) => (
+            <GridRowCells
+              key={row}
+              row={row}
+              record={cells.get(row)}
+              columns={letters.length}
+              widths={columns}
+              colOffsets={colOffsets}
+              top={offsets[row]}
+              height={rowHeightOfLocal(row, defaultHeight, customHeights)}
+              headerRow={headerRow}
+              highlight={row === highlightRow}
+              covered={mergeMap.covered}
+              origins={mergeMap.origins}
+              catalog={catalog}
+            />
+          ))}
+          {mergeBoxes.map((merge) => {
+            const record = cells.get(merge.row);
+            const value = record?.values?.[merge.column - 1] ?? "";
+            const css = cellCss(catalog, record?.styles?.[merge.column - 1] ?? 0);
+            const highlighted = highlightRow >= merge.row && highlightRow < merge.row + merge.height;
+            const width = spanSize(colOffsets, merge.column - 1, merge.width);
+            const height = spanSize(offsets, merge.row, merge.height);
+            if (width <= 0 || height <= 0) return null;
+            return (
+              <GridCell
+                key={cellKey(merge.row, merge.column)}
+                left={PREVIEW_GUTTER_WIDTH + colOffsets[merge.column - 1]}
+                top={offsets[merge.row]}
+                width={width}
+                height={height}
+                value={value}
+                css={css}
+                highlight={highlighted}
+                header={merge.row === headerRow && !css?.backgroundColor}
+                z={2}
+              />
+            );
+          })}
         </div>
       </div>
     </div>
   );
 }
 
-function GridRow({ row, values, columns, headerRow, highlight }) {
-  const isHeader = row === headerRow;
+function rowHeightOfLocal(row, defaultHeight, customHeights) {
+  const custom = customHeights.get(row);
+  return custom > 0 ? custom : defaultHeight;
+}
+
+function RowGutter({ row, top, height, gridWidth }) {
   return (
     <div
-      className={`absolute left-0 flex border-b border-[var(--color-line-soft)] ${
-        highlight ? "bg-[var(--color-brand-soft)]" : isHeader ? "bg-[var(--color-line-soft)]" : "bg-[var(--color-surface)]"
-      }`}
-      style={{ top: (row - 1) * PREVIEW_ROW_HEIGHT, height: PREVIEW_ROW_HEIGHT, width: "100%" }}
+      className="pointer-events-none absolute left-0"
+      style={{ top, height, width: gridWidth }}
     >
       <div
-        className="sticky left-0 z-10 flex items-center justify-end border-r border-[var(--color-line)] bg-inherit px-2 font-mono text-[11px] text-[var(--color-ink-faint)]"
-        style={{ width: PREVIEW_GUTTER_WIDTH, minWidth: PREVIEW_GUTTER_WIDTH }}
+        className="pointer-events-auto sticky left-0 z-10 box-border flex items-center justify-end border-r border-b border-[var(--color-line)] bg-[var(--color-ground)] px-2 font-mono text-[11px] text-[var(--color-ink-faint)]"
+        style={{ width: PREVIEW_GUTTER_WIDTH, height }}
       >
         {row}
       </div>
-      {Array.from({ length: columns }, (_, index) => {
-        const value = values?.[index] ?? "";
-        return (
-          <div
-            key={index}
-            title={value}
-            className={`flex shrink-0 items-center overflow-hidden border-r border-[var(--color-line-soft)] px-2 text-[12px] leading-none ${
-              isHeader ? "font-semibold text-[var(--color-ink)]" : "text-[var(--color-ink-soft)]"
-            }`}
-            style={{ width: PREVIEW_COL_WIDTH }}
-          >
-            <span className="truncate">{value}</span>
-          </div>
-        );
-      })}
+    </div>
+  );
+}
+
+function GridRowCells({
+  row,
+  record,
+  columns,
+  widths,
+  colOffsets,
+  top,
+  height,
+  headerRow,
+  highlight,
+  covered,
+  origins,
+  catalog,
+}) {
+  const isHeader = row === headerRow;
+  const values = record?.values;
+  const styles = record?.styles;
+  const cells = [];
+  for (let index = 0; index < columns; index += 1) {
+    const key = cellKey(row, index + 1);
+    if (covered.has(key) || origins.has(key)) continue;
+    const width = columnSize(index, widths);
+    if (width <= 0) continue;
+    const css = cellCss(catalog, styles?.[index] ?? 0);
+    cells.push(
+      <GridCell
+        key={index}
+        left={PREVIEW_GUTTER_WIDTH + colOffsets[index]}
+        top={top}
+        width={width}
+        height={height}
+        value={values?.[index] ?? ""}
+        css={css}
+        highlight={highlight}
+        header={isHeader && !css?.backgroundColor}
+      />,
+    );
+  }
+  return cells;
+}
+
+function GridCell({ left, top, width, height, value, css, highlight, header, z = 0 }) {
+  return (
+    <div
+      title={value}
+      className={`absolute box-border flex items-center overflow-hidden px-2 text-[12px] leading-tight ${
+        header ? "font-semibold text-[var(--color-ink)]" : "text-[var(--color-ink-soft)]"
+      }`}
+      style={{
+        left,
+        top,
+        width,
+        height,
+        zIndex: z,
+        borderRight: GRID_LINE,
+        borderBottom: GRID_LINE,
+        backgroundColor: header ? "var(--color-line-soft)" : "var(--color-surface)",
+        boxShadow: highlight ? "inset 0 0 0 2px var(--color-brand)" : undefined,
+        ...css,
+      }}
+    >
+      <span className={css?.whiteSpace ? "w-full" : "truncate"}>{value}</span>
     </div>
   );
 }

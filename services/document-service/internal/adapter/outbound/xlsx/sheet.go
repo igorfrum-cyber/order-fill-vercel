@@ -35,14 +35,17 @@ type sheet struct {
 	maxRow    int
 	maxColumn int
 	modified  bool
+	styles    *styleBook
+	look      sheetAppearance
 }
 
 type cell struct {
 	element *etree.Element
 	value   string
+	xf      int
 }
 
-func newSheet(name string, entry *part, data []byte, shared []string, report func(float64)) (*sheet, error) {
+func newSheet(name string, entry *part, data []byte, shared []string, styles *styleBook, report func(float64)) (*sheet, error) {
 	document, rows, cells, err := parseSheetDocument(data, shared, report)
 	if err != nil {
 		return nil, err
@@ -58,6 +61,7 @@ func newSheet(name string, entry *part, data []byte, shared []string, report fun
 		sheetData: ensureChild(root, "sheetData", sheetDataFollowers...),
 		rows:      rows,
 		cells:     cells,
+		styles:    styles,
 	}
 	for key := range cells {
 		if key.row > loaded.maxRow {
@@ -67,7 +71,44 @@ func newSheet(name string, entry *part, data []byte, shared []string, report fun
 			loaded.maxColumn = key.column
 		}
 	}
+	loaded.look = parseSheetAppearance(root, loaded.rows, loaded.maxColumn)
 	return loaded, nil
+}
+
+func (s *sheet) Styles() []spreadsheet.Style {
+	if s == nil || s.styles == nil {
+		return []spreadsheet.Style{{}}
+	}
+	return s.styles.catalog
+}
+
+func (s *sheet) StyleIndex(row int, column int) int {
+	if s == nil {
+		return 0
+	}
+	if found, ok := s.cells[cellKey{row: row, column: column}]; ok {
+		return s.styles.catalogIndex(found.xf)
+	}
+	return 0
+}
+
+func (s *sheet) ColumnWidths() []float64 {
+	return s.look.columns
+}
+
+func (s *sheet) DefaultRowHeight() float64 {
+	if s.look.rowHeight <= 0 {
+		return rowHeightToPx(defaultRowHeightPt)
+	}
+	return s.look.rowHeight
+}
+
+func (s *sheet) CustomRowHeights() map[int]float64 {
+	return s.look.rowHeights
+}
+
+func (s *sheet) Merges() []spreadsheet.Merge {
+	return s.look.merges
 }
 
 func (s *sheet) Name() string {
@@ -193,6 +234,7 @@ func (s *sheet) DeleteRows(rows []int) {
 			s.maxColumn = key.column
 		}
 	}
+	s.look.rowHeights = customRowHeights(s.rows, s.look.rowHeight)
 }
 
 func (s *sheet) serialize() error {

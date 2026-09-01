@@ -12,6 +12,7 @@ const (
 	workbookPath      = "xl/workbook.xml"
 	workbookRelsPath  = "xl/_rels/workbook.xml.rels"
 	sharedStringsPath = "xl/sharedStrings.xml"
+	stylesPath        = "xl/styles.xml"
 	contentTypesPath  = "[Content_Types].xml"
 	calcChainPath     = "xl/calcChain.xml"
 )
@@ -56,6 +57,7 @@ func (c codec) LoadWithProgress(content []byte, report spreadsheet.LoadProgress)
 	if err != nil {
 		return nil, err
 	}
+	styles := parseStyleBook(partBytes(parts, stylesPath), readTheme(parts))
 	safe(0.12)
 
 	book := &workbook{parts: parts, document: workbookDocument, byName: map[string]*sheet{}}
@@ -137,7 +139,7 @@ func (c codec) LoadWithProgress(content []byte, report spreadsheet.LoadProgress)
 			return
 		}
 		setSheet(index, 0.2)
-		item, err := newSheet(spec.name, spec.part, data, shared, func(fraction float64) {
+		item, err := newSheet(spec.name, spec.part, data, shared, styles, func(fraction float64) {
 			setSheet(index, 0.2+0.8*fraction)
 		})
 		if err != nil {
@@ -228,6 +230,37 @@ func readSharedStrings(parts *archive) ([]string, error) {
 		values = append(values, builder.String())
 	}
 	return values, nil
+}
+
+func partBytes(parts *archive, path string) []byte {
+	entry, ok := parts.get(path)
+	if !ok {
+		return nil
+	}
+	data, err := entry.bytes()
+	if err != nil {
+		return nil
+	}
+	return data
+}
+
+func readTheme(parts *archive) []byte {
+	for _, name := range []string{"xl/theme/theme1.xml", "xl/theme/theme.xml"} {
+		if data := partBytes(parts, name); len(data) > 0 {
+			return data
+		}
+	}
+	for _, entry := range parts.parts {
+		name := entry.header.Name
+		if entry.removed || !strings.Contains(name, "/theme/") || !strings.HasSuffix(name, ".xml") {
+			continue
+		}
+		data, err := entry.bytes()
+		if err == nil && len(data) > 0 {
+			return data
+		}
+	}
+	return nil
 }
 
 func normalizeWorkbookTarget(target string) string {

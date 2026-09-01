@@ -1064,6 +1064,70 @@ components:
           type: integer
         article_column:
           type: integer
+        styles:
+          type: array
+          items:
+            $ref: "#/components/schemas/PreviewCellStyle"
+        columns:
+          type: array
+          items:
+            type: number
+          description: Column widths in CSS pixels, index 0 = column A.
+        row_height:
+          type: number
+          description: Default row height in CSS pixels.
+        row_heights:
+          type: object
+          additionalProperties:
+            type: number
+          description: Sparse 1-based row → height in CSS pixels.
+        merges:
+          type: array
+          items:
+            $ref: "#/components/schemas/PreviewMerge"
+    PreviewCellStyle:
+      type: object
+      properties:
+        fill:
+          type: string
+        color:
+          type: string
+        bold:
+          type: boolean
+        italic:
+          type: boolean
+        size:
+          type: integer
+        align:
+          type: string
+        valign:
+          type: string
+        wrap:
+          type: boolean
+        border_t:
+          type: boolean
+        border_r:
+          type: boolean
+        border_b:
+          type: boolean
+        border_l:
+          type: boolean
+    PreviewMerge:
+      type: object
+      required: [row, column, height, width]
+      properties:
+        row:
+          type: integer
+          minimum: 1
+        column:
+          type: integer
+          minimum: 1
+        height:
+          type: integer
+          minimum: 1
+        width:
+          type: integer
+          minimum: 1
     PreviewWindow:
       type: object
       required: [sheet_index, from_row, to_row, rows]
@@ -1083,6 +1147,13 @@ components:
             type: array
             items:
               type: string
+        styles:
+          type: array
+          items:
+            type: array
+            items:
+              type: integer
+            description: Catalog indexes aligned with rows, 0 = default.
     PreviewHit:
       type: object
       required: [found]

@@ -29,13 +29,42 @@ type Meta struct {
 
 // SheetMeta is the used range plus an article→row index for jump-to-SKU.
 type SheetMeta struct {
-	Name          string         `json:"name"`
-	Index         int            `json:"index"`
-	MaxRow        int            `json:"max_row"`
-	MaxColumn     int            `json:"max_column"`
-	HeaderRow     int            `json:"header_row,omitempty"`
-	ArticleColumn int            `json:"article_column,omitempty"`
-	Articles      map[string]int `json:"articles,omitempty"`
+	Name          string          `json:"name"`
+	Index         int             `json:"index"`
+	MaxRow        int             `json:"max_row"`
+	MaxColumn     int             `json:"max_column"`
+	HeaderRow     int             `json:"header_row,omitempty"`
+	ArticleColumn int             `json:"article_column,omitempty"`
+	Articles      map[string]int  `json:"articles,omitempty"`
+	Styles        []CellStyle     `json:"styles,omitempty"`
+	Columns       []float64       `json:"columns,omitempty"`
+	RowHeight     float64         `json:"row_height,omitempty"`
+	RowHeights    map[int]float64 `json:"row_heights,omitempty"`
+	Merges        []Merge         `json:"merges,omitempty"`
+}
+
+// CellStyle is one interned appearance. Empty fields mean Excel defaults.
+type CellStyle struct {
+	Fill    string `json:"fill,omitempty"`
+	Color   string `json:"color,omitempty"`
+	Bold    bool   `json:"bold,omitempty"`
+	Italic  bool   `json:"italic,omitempty"`
+	Size    int    `json:"size,omitempty"`
+	Align   string `json:"align,omitempty"`
+	Valign  string `json:"valign,omitempty"`
+	Wrap    bool   `json:"wrap,omitempty"`
+	BorderT bool   `json:"border_t,omitempty"`
+	BorderR bool   `json:"border_r,omitempty"`
+	BorderB bool   `json:"border_b,omitempty"`
+	BorderL bool   `json:"border_l,omitempty"`
+}
+
+// Merge is a 1-based rectangular span copied from the workbook.
+type Merge struct {
+	Row    int `json:"row"`
+	Column int `json:"column"`
+	Height int `json:"height"`
+	Width  int `json:"width"`
 }
 
 // Chunk is a contiguous row window. Rows[i] is sheet row StartRow+i; the inner
@@ -44,6 +73,7 @@ type Chunk struct {
 	StartRow int        `json:"start_row"`
 	EndRow   int        `json:"end_row"`
 	Rows     [][]string `json:"rows"`
+	Styles   [][]int    `json:"styles,omitempty"`
 }
 
 // Window is a slice of the grid returned to the browser.
@@ -51,6 +81,7 @@ type Window struct {
 	FromRow int        `json:"from_row"`
 	ToRow   int        `json:"to_row"`
 	Rows    [][]string `json:"rows"`
+	Styles  [][]int    `json:"styles,omitempty"`
 }
 
 // Hit is a cell matched by article search.
@@ -93,12 +124,24 @@ func captureSheet(sheet spreadsheet.Sheet, index int, chunkRows int) (SheetMeta,
 		HeaderRow:     headerRow,
 		ArticleColumn: articleCol,
 	}
+	styled, hasLook := sheet.(spreadsheet.Styled)
+	if hasLook {
+		meta.Columns = styled.ColumnWidths()
+		meta.RowHeight = styled.DefaultRowHeight()
+		meta.RowHeights = styled.CustomRowHeights()
+		meta.Merges = captureMerges(styled.Merges())
+		meta.Styles = captureStyles(styled.Styles())
+		if catalogIsDefault(meta.Styles) {
+			meta.Styles = nil
+		}
+	}
 	if articleCol > 0 && headerRow > 0 && bounds.MaxRow > headerRow {
 		meta.Articles = indexArticles(sheet, headerRow, articleCol, bounds.MaxRow)
 	}
 	if bounds.MaxRow == 0 {
 		return meta, nil
 	}
+	withStyles := hasLook && len(meta.Styles) > 0
 	chunkCount := (bounds.MaxRow + chunkRows - 1) / chunkRows
 	chunks := make([]Chunk, 0, chunkCount)
 	for start := 1; start <= bounds.MaxRow; start += chunkRows {
@@ -107,16 +150,32 @@ func captureSheet(sheet spreadsheet.Sheet, index int, chunkRows int) (SheetMeta,
 			end = bounds.MaxRow
 		}
 		rows := make([][]string, 0, end-start+1)
-		for row := start; row <= end; row++ {
-			rows = append(rows, captureRow(sheet, row, bounds.MaxColumn))
+		var styles [][]int
+		if withStyles {
+			styles = make([][]int, 0, end-start+1)
 		}
-		chunks = append(chunks, Chunk{StartRow: start, EndRow: end, Rows: rows})
+		for row := start; row <= end; row++ {
+			values, styleRow := captureRow(sheet, styled, withStyles, row, bounds.MaxColumn)
+			rows = append(rows, values)
+			if withStyles {
+				styles = append(styles, styleRow)
+			}
+		}
+		chunk := Chunk{StartRow: start, EndRow: end, Rows: rows}
+		if hasNonZero(styles) {
+			chunk.Styles = styles
+		}
+		chunks = append(chunks, chunk)
 	}
 	return meta, chunks
 }
 
-func captureRow(sheet spreadsheet.Sheet, row int, maxColumn int) []string {
+func captureRow(sheet spreadsheet.Sheet, styled spreadsheet.Styled, withStyles bool, row int, maxColumn int) ([]string, []int) {
 	cells := make([]string, maxColumn)
+	var styles []int
+	if withStyles {
+		styles = make([]int, maxColumn)
+	}
 	last := -1
 	for column := 1; column <= maxColumn; column++ {
 		value := sheet.Value(row, column)
@@ -124,11 +183,68 @@ func captureRow(sheet spreadsheet.Sheet, row int, maxColumn int) []string {
 		if value != "" {
 			last = column - 1
 		}
+		if withStyles {
+			index := styled.StyleIndex(row, column)
+			styles[column-1] = index
+			if index != 0 && column-1 > last {
+				last = column - 1
+			}
+		}
 	}
 	if last < 0 {
-		return []string{}
+		return []string{}, nil
 	}
-	return cells[:last+1]
+	if !withStyles {
+		return cells[:last+1], nil
+	}
+	return cells[:last+1], styles[:last+1]
+}
+
+func captureStyles(styles []spreadsheet.Style) []CellStyle {
+	out := make([]CellStyle, 0, len(styles))
+	for _, style := range styles {
+		out = append(out, CellStyle{
+			Fill:    style.Fill,
+			Color:   style.Color,
+			Bold:    style.Bold,
+			Italic:  style.Italic,
+			Size:    style.Size,
+			Align:   style.Align,
+			Valign:  style.Valign,
+			Wrap:    style.Wrap,
+			BorderT: style.BorderT,
+			BorderR: style.BorderR,
+			BorderB: style.BorderB,
+			BorderL: style.BorderL,
+		})
+	}
+	return out
+}
+
+func captureMerges(merges []spreadsheet.Merge) []Merge {
+	out := make([]Merge, 0, len(merges))
+	for _, merge := range merges {
+		out = append(out, Merge{Row: merge.Row, Column: merge.Column, Height: merge.Height, Width: merge.Width})
+	}
+	return out
+}
+
+func catalogIsDefault(styles []CellStyle) bool {
+	if len(styles) <= 1 {
+		return len(styles) == 0 || styles[0] == (CellStyle{})
+	}
+	return false
+}
+
+func hasNonZero(rows [][]int) bool {
+	for _, row := range rows {
+		for _, value := range row {
+			if value != 0 {
+				return true
+			}
+		}
+	}
+	return false
 }
 
 func detectHeader(sheet spreadsheet.Sheet, bounds spreadsheet.Bounds) (int, int) {
@@ -215,10 +331,18 @@ func (s Snapshot) Window(sheetIndex int, fromRow int, toRow int) (Window, error)
 	}
 	width := meta.MaxColumn
 	rows := make([][]string, 0, toRow-fromRow+1)
+	withStyles := len(meta.Styles) > 0
+	var styles [][]int
+	if withStyles {
+		styles = make([][]int, 0, toRow-fromRow+1)
+	}
 	for row := fromRow; row <= toRow; row++ {
 		rows = append(rows, denseRow(s.rowCells(sheetIndex, row), width))
+		if withStyles {
+			styles = append(styles, denseInts(s.rowStyles(sheetIndex, row), width))
+		}
 	}
-	return Window{FromRow: fromRow, ToRow: toRow, Rows: rows}, nil
+	return Window{FromRow: fromRow, ToRow: toRow, Rows: rows, Styles: styles}, nil
 }
 
 func (s Snapshot) rowCells(sheetIndex int, row int) []string {
@@ -242,11 +366,41 @@ func (s Snapshot) rowCells(sheetIndex int, row int) []string {
 	return chunk.Rows[offset]
 }
 
+func (s Snapshot) rowStyles(sheetIndex int, row int) []int {
+	if sheetIndex < 0 || sheetIndex >= len(s.Chunks) {
+		return nil
+	}
+	chunkRows := s.Meta.ChunkRows
+	if chunkRows < 1 {
+		chunkRows = DefaultChunkRows
+	}
+	index := (row - 1) / chunkRows
+	chunks := s.Chunks[sheetIndex]
+	if index < 0 || index >= len(chunks) {
+		return nil
+	}
+	chunk := chunks[index]
+	offset := row - chunk.StartRow
+	if offset < 0 || offset >= len(chunk.Styles) {
+		return nil
+	}
+	return chunk.Styles[offset]
+}
+
 func denseRow(cells []string, width int) []string {
 	if width < 1 {
 		return []string{}
 	}
 	out := make([]string, width)
+	copy(out, cells)
+	return out
+}
+
+func denseInts(cells []int, width int) []int {
+	if width < 1 {
+		return []int{}
+	}
+	out := make([]int, width)
 	copy(out, cells)
 	return out
 }

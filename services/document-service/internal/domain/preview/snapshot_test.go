@@ -95,6 +95,74 @@ func TestCaptureIndexesTheOrderTableArticleColumn(t *testing.T) {
 	}
 }
 
+func TestCaptureKeepsSheetAppearance(t *testing.T) {
+	sheet := &styledFakeSheet{
+		fakeSheet: fakeSheet{
+			name: "Бланк",
+			cells: map[[2]int]string{
+				{1, 1}: "Артикул",
+				{1, 2}: "Наименование",
+				{2, 1}: "A100",
+				{2, 3}: "",
+			},
+		},
+		styles: []spreadsheet.Style{{}, {Fill: "#1f4e79", Bold: true, Color: "#ffffff"}},
+		xf: map[[2]int]int{
+			{1, 1}: 1,
+			{1, 2}: 1,
+			{2, 3}: 1,
+		},
+		columns:    []float64{135, 91, 91},
+		rowHeight:  20,
+		rowHeights: map[int]float64{1: 40},
+		merges:     []spreadsheet.Merge{{Row: 1, Column: 1, Height: 1, Width: 2}},
+	}
+	snapshot := Capture(&fakeWorkbook{sheets: []spreadsheet.Sheet{sheet}})
+	meta := snapshot.Meta.Sheets[0]
+	if len(meta.Columns) != 3 || meta.Columns[0] != 135 || meta.RowHeight != 20 || meta.RowHeights[1] != 40 {
+		t.Fatalf("layout %#v", meta)
+	}
+	if len(meta.Merges) != 1 || meta.Merges[0].Width != 2 {
+		t.Fatalf("merges %#v", meta.Merges)
+	}
+	if len(meta.Styles) < 2 || meta.Styles[1].Fill != "#1f4e79" || !meta.Styles[1].Bold {
+		t.Fatalf("catalog %#v", meta.Styles)
+	}
+	header := snapshot.Chunks[0][0].Rows[0]
+	headerStyles := snapshot.Chunks[0][0].Styles[0]
+	if header[0] != "Артикул" || headerStyles[0] != 1 || headerStyles[1] != 1 {
+		t.Fatalf("header row=%#v styles=%#v", header, headerStyles)
+	}
+	dataStyles := snapshot.Chunks[0][0].Styles[1]
+	if len(dataStyles) < 3 || dataStyles[2] != 1 {
+		t.Fatalf("empty styled C2 must be kept, styles=%#v", dataStyles)
+	}
+	window, err := snapshot.Window(0, 1, 2)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(window.Styles) != 2 || window.Styles[0][0] != 1 || window.Styles[1][2] != 1 {
+		t.Fatalf("window styles %#v", window.Styles)
+	}
+}
+
+type styledFakeSheet struct {
+	fakeSheet
+	styles     []spreadsheet.Style
+	xf         map[[2]int]int
+	columns    []float64
+	rowHeight  float64
+	rowHeights map[int]float64
+	merges     []spreadsheet.Merge
+}
+
+func (s *styledFakeSheet) Styles() []spreadsheet.Style        { return s.styles }
+func (s *styledFakeSheet) StyleIndex(row int, column int) int { return s.xf[[2]int{row, column}] }
+func (s *styledFakeSheet) ColumnWidths() []float64            { return s.columns }
+func (s *styledFakeSheet) DefaultRowHeight() float64          { return s.rowHeight }
+func (s *styledFakeSheet) CustomRowHeights() map[int]float64  { return s.rowHeights }
+func (s *styledFakeSheet) Merges() []spreadsheet.Merge        { return s.merges }
+
 func TestCaptureSplitsRowsIntoChunks(t *testing.T) {
 	sheet := &fakeSheet{name: "Лист1", cells: map[[2]int]string{
 		{1, 1}: "Артикул",

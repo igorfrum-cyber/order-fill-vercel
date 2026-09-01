@@ -9,6 +9,7 @@ import (
 
 	"github.com/beevik/etree"
 
+	"order-fill/services/document-service/internal/domain/preview"
 	"order-fill/services/document-service/internal/domain/spreadsheet"
 )
 
@@ -47,6 +48,54 @@ func TestLoadReadsCellValues(t *testing.T) {
 				t.Fatalf("Value(%d, %d) = %q, want %q", testCase.row, testCase.column, got, testCase.want)
 			}
 		})
+	}
+}
+
+func TestLoadExposesSheetAppearance(t *testing.T) {
+	book := mustLoad(t, buildFixture(t))
+	sheet := mustSheet(t, book, priceSheetName)
+	styled, ok := sheet.(spreadsheet.Styled)
+	if !ok {
+		t.Fatal("xlsx sheet must expose appearance for preview")
+	}
+	widths := styled.ColumnWidths()
+	if len(widths) < 4 || widths[0] != 135 || widths[1] != 91 {
+		t.Fatalf("column widths %v", widths)
+	}
+	if styled.DefaultRowHeight() != 20 {
+		t.Fatalf("default row height %v", styled.DefaultRowHeight())
+	}
+	if styled.CustomRowHeights()[1] != 40 {
+		t.Fatalf("row 1 height %#v", styled.CustomRowHeights())
+	}
+	merges := styled.Merges()
+	if len(merges) != 1 || merges[0] != (spreadsheet.Merge{Row: 1, Column: 1, Height: 1, Width: 2}) {
+		t.Fatalf("merges %#v", merges)
+	}
+	index := styled.StyleIndex(1, 1)
+	if index == 0 {
+		t.Fatal("A1 should carry a non-default style")
+	}
+	style := styled.Styles()[index]
+	if style.Fill != "#1f4e79" || !style.Bold {
+		t.Fatalf("A1 style %#v", style)
+	}
+}
+
+func TestPreviewCaptureReadsFixtureAppearance(t *testing.T) {
+	snapshot := preview.Capture(mustLoad(t, buildFixture(t)))
+	meta := snapshot.Meta.Sheets[0]
+	if len(meta.Columns) < 4 || meta.Columns[0] != 135 || meta.RowHeight != 20 || meta.RowHeights[1] != 40 {
+		t.Fatalf("layout %#v", meta)
+	}
+	if len(meta.Merges) != 1 || meta.Merges[0].Width != 2 {
+		t.Fatalf("merges %#v", meta.Merges)
+	}
+	if len(meta.Styles) < 2 || meta.Styles[1].Fill != "#1f4e79" {
+		t.Fatalf("catalog %#v", meta.Styles)
+	}
+	if snapshot.Chunks[0][0].Styles[0][0] == 0 {
+		t.Fatalf("A1 should keep a style index, %#v", snapshot.Chunks[0][0].Styles)
 	}
 }
 
@@ -688,7 +737,7 @@ const sharedStringsXML = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?
 <sst xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" count="3" uniqueCount="3"><si><t>Артикул</t></si><si><r><rPr><b/></rPr><t>Пар</t></r><r><t>тия</t></r></si><si><t>Остаток</t></si></sst>`
 
 const stylesXML = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><numFmts count="1"><numFmt numFmtId="164" formatCode="#,##0.00\ &quot;шт&quot;"/></numFmts><fonts count="1"><font><sz val="11"/><name val="Calibri"/></font></fonts><fills count="1"><fill><patternFill patternType="none"/></fill></fills><borders count="1"><border/></borders><cellXfs count="8"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/><xf numFmtId="0" fontId="0" fillId="0" borderId="0" applyFont="1"/><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/><xf numFmtId="49" fontId="0" fillId="0" borderId="0"/><xf numFmtId="164" fontId="0" fillId="0" borderId="0"/><xf numFmtId="2" fontId="0" fillId="0" borderId="0"/><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/><xf numFmtId="1" fontId="0" fillId="0" borderId="0"/></cellXfs></styleSheet>`
+<styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><numFmts count="1"><numFmt numFmtId="164" formatCode="#,##0.00\ &quot;шт&quot;"/></numFmts><fonts count="2"><font><sz val="11"/><name val="Calibri"/></font><font><b/><sz val="11"/><name val="Calibri"/></font></fonts><fills count="2"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="solid"><fgColor rgb="FF1F4E79"/></patternFill></fill></fills><borders count="1"><border/></borders><cellXfs count="8"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/><xf numFmtId="0" fontId="1" fillId="1" borderId="0"/><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/><xf numFmtId="49" fontId="0" fillId="0" borderId="0"/><xf numFmtId="164" fontId="0" fillId="0" borderId="0"/><xf numFmtId="2" fontId="0" fillId="0" borderId="0"/><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/><xf numFmtId="1" fontId="0" fillId="0" borderId="0"/></cellXfs></styleSheet>`
 
 const sheet1XML = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><dimension ref="A1:D4"/><sheetViews><sheetView tabSelected="1" workbookViewId="0"><pane ySplit="1" topLeftCell="A2" state="frozen"/></sheetView></sheetViews><sheetFormatPr defaultRowHeight="15"/><cols><col min="1" max="1" width="18.5" customWidth="1"/><col min="2" max="4" width="12.25" customWidth="1"/></cols><sheetData><row r="1" spans="1:4" ht="30" customHeight="1"><c r="A1" s="1" t="s"><v>0</v></c><c r="B1" s="1" t="s"><v>1</v></c><c r="D1" s="2" t="inlineStr"><is><t>Заказ</t></is></c></row><row r="2" spans="1:4"><c r="A2" s="3" t="inlineStr"><is><t>АРТ-1</t></is></c><c r="B2" s="4"><v>12.5</v></c><c r="C2" s="5"><f>B2*2</f><v>25</v></c></row><row r="4" spans="1:4"><c r="A4" s="3" t="b"><v>1</v></c><c r="B4" s="7"><v>7</v></c><c r="C4" s="6" t="str"><v>Ок</v></c><c r="D4" s="6"/></row></sheetData><mergeCells count="1"><mergeCell ref="A1:B1"/></mergeCells><dataValidations count="1"><dataValidation type="whole" sqref="B2:B4" allowBlank="1"><formula1>0</formula1></dataValidation></dataValidations><pageMargins left="0.7" right="0.7" top="0.75" bottom="0.75" header="0.3" footer="0.3"/><drawing r:id="rId1"/></worksheet>`

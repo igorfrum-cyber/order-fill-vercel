@@ -226,6 +226,11 @@ func presentPreviewMeta(meta preview.Meta) previewMetaResponse {
 			MaxColumn:     sheet.MaxColumn,
 			HeaderRow:     sheet.HeaderRow,
 			ArticleColumn: sheet.ArticleColumn,
+			Styles:        presentCellStyles(sheet.Styles),
+			Columns:       sheet.Columns,
+			RowHeight:     sheet.RowHeight,
+			RowHeights:    sheet.RowHeights,
+			Merges:        presentMerges(sheet.Merges),
 		})
 	}
 	return previewMetaResponse{ChunkRows: meta.ChunkRows, Sheets: sheets}
@@ -237,6 +242,7 @@ func presentPreviewWindow(sheetIndex int, window preview.Window) previewWindowRe
 		FromRow:    window.FromRow,
 		ToRow:      window.ToRow,
 		Rows:       window.Rows,
+		Styles:     window.Styles,
 	}
 }
 
@@ -249,18 +255,80 @@ func presentPreviewHit(sheetIndex int, hit preview.Hit) previewHitResponse {
 	}
 }
 
+func presentCellStyles(styles []preview.CellStyle) []cellStyleResponse {
+	if len(styles) == 0 {
+		return nil
+	}
+	out := make([]cellStyleResponse, 0, len(styles))
+	for _, style := range styles {
+		out = append(out, cellStyleResponse{
+			Fill:    style.Fill,
+			Color:   style.Color,
+			Bold:    style.Bold,
+			Italic:  style.Italic,
+			Size:    style.Size,
+			Align:   style.Align,
+			Valign:  style.Valign,
+			Wrap:    style.Wrap,
+			BorderT: style.BorderT,
+			BorderR: style.BorderR,
+			BorderB: style.BorderB,
+			BorderL: style.BorderL,
+		})
+	}
+	return out
+}
+
+func presentMerges(merges []preview.Merge) []mergeResponse {
+	if len(merges) == 0 {
+		return nil
+	}
+	out := make([]mergeResponse, 0, len(merges))
+	for _, merge := range merges {
+		out = append(out, mergeResponse{Row: merge.Row, Column: merge.Column, Height: merge.Height, Width: merge.Width})
+	}
+	return out
+}
+
 type previewMetaResponse struct {
 	ChunkRows int                    `json:"chunk_rows"`
 	Sheets    []previewSheetResponse `json:"sheets"`
 }
 
 type previewSheetResponse struct {
-	Name          string `json:"name"`
-	Index         int    `json:"index"`
-	MaxRow        int    `json:"max_row"`
-	MaxColumn     int    `json:"max_column"`
-	HeaderRow     int    `json:"header_row,omitempty"`
-	ArticleColumn int    `json:"article_column,omitempty"`
+	Name          string              `json:"name"`
+	Index         int                 `json:"index"`
+	MaxRow        int                 `json:"max_row"`
+	MaxColumn     int                 `json:"max_column"`
+	HeaderRow     int                 `json:"header_row,omitempty"`
+	ArticleColumn int                 `json:"article_column,omitempty"`
+	Styles        []cellStyleResponse `json:"styles,omitempty"`
+	Columns       []float64           `json:"columns,omitempty"`
+	RowHeight     float64             `json:"row_height,omitempty"`
+	RowHeights    map[int]float64     `json:"row_heights,omitempty"`
+	Merges        []mergeResponse     `json:"merges,omitempty"`
+}
+
+type cellStyleResponse struct {
+	Fill    string `json:"fill,omitempty"`
+	Color   string `json:"color,omitempty"`
+	Bold    bool   `json:"bold,omitempty"`
+	Italic  bool   `json:"italic,omitempty"`
+	Size    int    `json:"size,omitempty"`
+	Align   string `json:"align,omitempty"`
+	Valign  string `json:"valign,omitempty"`
+	Wrap    bool   `json:"wrap,omitempty"`
+	BorderT bool   `json:"border_t,omitempty"`
+	BorderR bool   `json:"border_r,omitempty"`
+	BorderB bool   `json:"border_b,omitempty"`
+	BorderL bool   `json:"border_l,omitempty"`
+}
+
+type mergeResponse struct {
+	Row    int `json:"row"`
+	Column int `json:"column"`
+	Height int `json:"height"`
+	Width  int `json:"width"`
 }
 
 type previewWindowResponse struct {
@@ -268,6 +336,7 @@ type previewWindowResponse struct {
 	FromRow    int        `json:"from_row"`
 	ToRow      int        `json:"to_row"`
 	Rows       [][]string `json:"rows"`
+	Styles     [][]int    `json:"styles,omitempty"`
 }
 
 type previewHitResponse struct {
