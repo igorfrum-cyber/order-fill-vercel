@@ -28,6 +28,7 @@ services:
     restart: unless-stopped
     environment:
       API_ADDR: ":8080"
+      APP_ENV: ${APP_ENV:-local}
       API_ALLOWED_ORIGINS: ${API_ALLOWED_ORIGINS:-http://127.0.0.1:3200,http://localhost:3200}
       BOOTSTRAP_ADMIN_LOGIN: ${BOOTSTRAP_ADMIN_LOGIN:-admin}
       SESSION_COOKIE_SECURE: ${SESSION_COOKIE_SECURE:-false}

@@ -40,7 +40,12 @@ func (a *Auth) Login(ctx context.Context, login string, password string) (Sessio
 	if err := identity.VerifyPassword(user.PasswordHash, password); err != nil {
 		return Session{}, identity.ErrUnauthorized
 	}
-	return a.issueSession(ctx, user)
+	session, err := a.issueSession(ctx, user)
+	if err != nil {
+		return Session{}, err
+	}
+	a.recordAudit(ctx, user, port.AuditLoginSuccess, user.CompanyID, "")
+	return session, nil
 }
 
 func (a *Auth) AcceptInvite(ctx context.Context, rawToken string, password string) (Session, error) {
@@ -81,11 +86,22 @@ func (a *Auth) ChangePassword(ctx context.Context, actor identity.User, current 
 	if err != nil {
 		return err
 	}
-	return a.store.SetPasswordHash(ctx, user.ID, hash)
+	if err := a.store.SetPasswordHash(ctx, user.ID, hash); err != nil {
+		return err
+	}
+	a.recordAudit(ctx, user, port.AuditPasswordChanged, user.CompanyID, "")
+	return nil
 }
 
 func (a *Auth) Logout(ctx context.Context, tokenHash string) error {
-	return a.store.DeleteSession(ctx, tokenHash)
+	user, lookupErr := a.store.GetSessionUser(ctx, tokenHash, a.now())
+	if err := a.store.DeleteSession(ctx, tokenHash); err != nil {
+		return err
+	}
+	if lookupErr == nil {
+		a.recordAudit(ctx, user, port.AuditLogout, user.CompanyID, "")
+	}
+	return nil
 }
 
 func (a *Auth) SessionUser(ctx context.Context, tokenHash string) (identity.User, error) {
@@ -144,7 +160,12 @@ func (a *Auth) ResetAccess(ctx context.Context, actor identity.User, userID stri
 	if err := a.store.DeleteInvitesForUser(ctx, userID); err != nil {
 		return "", err
 	}
-	return a.createInvite(ctx, userID)
+	raw, err := a.createInvite(ctx, userID)
+	if err != nil {
+		return "", err
+	}
+	a.recordAudit(ctx, actor, port.AuditAccessReset, user.CompanyID, "")
+	return raw, nil
 }
 
 func (a *Auth) issueSession(ctx context.Context, user identity.User) (Session, error) {
@@ -168,6 +189,20 @@ func (a *Auth) createInvite(ctx context.Context, userID string) (string, error) 
 		return "", err
 	}
 	return raw, nil
+}
+
+func (a *Auth) recordAudit(ctx context.Context, actor identity.User, action string, companyID string, jobID string) {
+	if a.store == nil {
+		return
+	}
+	_ = a.store.InsertAudit(ctx, port.AuditEvent{
+		ID:        a.newID(),
+		At:        a.now().UTC(),
+		ActorID:   actor.ID,
+		Action:    action,
+		CompanyID: companyID,
+		JobID:     jobID,
+	})
 }
 
 func canManageUser(actor identity.User, target identity.User) bool {

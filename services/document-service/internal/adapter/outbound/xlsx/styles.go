@@ -275,20 +275,25 @@ func applyTint(hex string, tint float64) string {
 	if !ok {
 		return hex
 	}
-	for i := range rgb {
-		if tint < 0 {
-			rgb[i] *= 1 + tint
-		} else {
-			rgb[i] = rgb[i]*(1-tint) + tint
-		}
-		if rgb[i] < 0 {
-			rgb[i] = 0
-		}
-		if rgb[i] > 1 {
-			rgb[i] = 1
-		}
+	r := tintChannel(rgb[0], tint)
+	g := tintChannel(rgb[1], tint)
+	b := tintChannel(rgb[2], tint)
+	return fmt.Sprintf("#%02x%02x%02x", int(math.Round(r*255)), int(math.Round(g*255)), int(math.Round(b*255)))
+}
+
+func tintChannel(value float64, tint float64) float64 {
+	if tint < 0 {
+		value *= 1 + tint
+	} else {
+		value = value*(1-tint) + tint
 	}
-	return fmt.Sprintf("#%02x%02x%02x", int(math.Round(rgb[0]*255)), int(math.Round(rgb[1]*255)), int(math.Round(rgb[2]*255)))
+	if value < 0 {
+		return 0
+	}
+	if value > 1 {
+		return 1
+	}
+	return value
 }
 
 func parseHex(hex string) ([3]float64, bool) {

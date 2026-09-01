@@ -128,6 +128,8 @@ func setSecurityHeaders(w http.ResponseWriter) {
 	header.Set("X-Content-Type-Options", "nosniff")
 	header.Set("X-Frame-Options", "DENY")
 	header.Set("Referrer-Policy", "no-referrer")
+	header.Set("Permissions-Policy", "camera=(), microphone=(), geolocation=()")
+	header.Set("Content-Security-Policy", "default-src 'none'; frame-ancestors 'none'; base-uri 'none'")
 }
 
 type authHandler struct {
