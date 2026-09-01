@@ -45,3 +45,18 @@ func TestCanAccessJob(t *testing.T) {
 		})
 	}
 }
+
+func TestCanCreateJob(t *testing.T) {
+	purchaser := identity.User{ID: "user-a", CompanyID: "company-a", Role: identity.RolePurchaser}
+	admin := identity.User{ID: "admin-a", CompanyID: "company-a", Role: identity.RoleCompanyAdmin}
+	platform := identity.User{ID: "root", Role: identity.RolePlatformAdmin}
+	if !CanCreateJob(purchaser) || !CanCreateJob(admin) {
+		t.Fatal("company users should create jobs")
+	}
+	if CanCreateJob(platform) {
+		t.Fatal("platform admin should not create jobs")
+	}
+	if CanCreateJob(identity.User{ID: "x", Role: identity.RolePurchaser}) {
+		t.Fatal("purchaser without company should not create jobs")
+	}
+}

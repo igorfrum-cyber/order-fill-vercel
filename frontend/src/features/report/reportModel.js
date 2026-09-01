@@ -9,21 +9,34 @@ export function statusLabel(status) {
     not_in_blank: "Нет в бланке",
     source_duplicate: "Дубль в таблице",
   };
-  return labels[status] || status;
+  return labels[status] || "Другое";
+}
+
+const JOB_STATUS_LABELS = {
+  queued: "В очереди",
+  processing: "Обработка",
+  needs_review: "На проверке",
+  finalizing: "Готовлю файлы",
+  completed: "Готово",
+  failed: "Ошибка",
+};
+
+export function jobStatusLabel(status) {
+  return JOB_STATUS_LABELS[status] || "В работе";
 }
 
 export function jobStatusText(job) {
   const live = job?.progress_message || job?.progressMessage;
   if (live) return live;
-  const labels = {
+  if (job?.status === "failed") return job.error?.message || JOB_STATUS_LABELS.failed;
+  const liveLabels = {
     queued: "Задача в очереди...",
     processing: "Обработка...",
-    needs_review: "Проверьте расчет",
+    needs_review: "Проверьте расчёт",
     finalizing: "Готовлю файлы...",
     completed: "Готово",
-    failed: job.error?.message || "Ошибка обработки",
   };
-  return labels[job.status] || "Обработка...";
+  return liveLabels[job?.status] || jobStatusLabel(job?.status);
 }
 
 export function jobProgress(job) {

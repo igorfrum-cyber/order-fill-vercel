@@ -1,6 +1,7 @@
 import { useState } from "react";
-import { acceptInvite, login } from "../../api/auth.js";
-import { Field, PrimaryButton } from "../widgets.jsx";
+import { acceptInvite, changePassword, login } from "../../api/auth.js";
+import { isPasswordReady, passwordIssues } from "../../features/auth/password.js";
+import { Field, PasswordField, PrimaryButton } from "../widgets.jsx";
 
 export function LoginScreen({ onDone }) {
   const [name, setName] = useState("");
@@ -23,13 +24,11 @@ export function LoginScreen({ onDone }) {
 
   return (
     <AuthCard title="Вход">
-      <form className="space-y-4" onSubmit={submit}>
+      <form className="animate-enter space-y-4" onSubmit={submit}>
         <Field label="Логин">
           <input value={name} onChange={(event) => setName(event.target.value)} className="input" autoComplete="username" />
         </Field>
-        <Field label="Пароль">
-          <input type="password" value={password} onChange={(event) => setPassword(event.target.value)} className="input" autoComplete="current-password" />
-        </Field>
+        <PasswordField label="Пароль" value={password} onChange={setPassword} autoComplete="current-password" />
         {error ? <p className="text-[14px] text-[var(--color-danger)]">{error}</p> : null}
         <PrimaryButton type="submit" disabled={busy || !name || password.length < 10}>
           Войти
@@ -44,11 +43,12 @@ export function InviteScreen({ token, onDone }) {
   const [repeat, setRepeat] = useState("");
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
+  const ready = isPasswordReady(password, repeat);
 
   async function submit(event) {
     event.preventDefault();
-    if (password !== repeat) {
-      setError("Пароли не совпадают.");
+    if (!ready) {
+      setError(passwordIssues(password, repeat)[0] || "Проверьте пароль.");
       return;
     }
     setBusy(true);
@@ -58,7 +58,7 @@ export function InviteScreen({ token, onDone }) {
       window.history.replaceState({}, "", "/");
       onDone(user);
     } catch {
-      setError("Ссылка недействительна или пароль слишком короткий.");
+      setError("Ссылка недействительна или пароль не принят.");
     } finally {
       setBusy(false);
     }
@@ -66,15 +66,22 @@ export function InviteScreen({ token, onDone }) {
 
   return (
     <AuthCard title="Приглашение">
-      <form className="space-y-4" onSubmit={submit}>
-        <Field label="Новый пароль">
-          <input type="password" value={password} onChange={(event) => setPassword(event.target.value)} className="input" autoComplete="new-password" />
-        </Field>
-        <Field label="Ещё раз">
-          <input type="password" value={repeat} onChange={(event) => setRepeat(event.target.value)} className="input" autoComplete="new-password" />
-        </Field>
+      <p className="mb-5 text-[14px] leading-relaxed text-[var(--color-ink-soft)]">
+        Задайте свой пароль по одноразовой ссылке. Его можно сгенерировать и сразу скопировать.
+      </p>
+      <form className="animate-enter space-y-4" onSubmit={submit}>
+        <PasswordField
+          label="Новый пароль"
+          value={password}
+          onChange={setPassword}
+          autoComplete="new-password"
+          generate
+          onGenerated={setRepeat}
+        />
+        <PasswordField label="Ещё раз" value={repeat} onChange={setRepeat} autoComplete="new-password" />
+        <PasswordHints password={password} repeat={repeat} />
         {error ? <p className="text-[14px] text-[var(--color-danger)]">{error}</p> : null}
-        <PrimaryButton type="submit" disabled={busy || password.length < 10}>
+        <PrimaryButton type="submit" disabled={busy || !ready}>
           Сохранить пароль
         </PrimaryButton>
       </form>
@@ -82,10 +89,86 @@ export function InviteScreen({ token, onDone }) {
   );
 }
 
+export function AccountScreen({ me, onBack }) {
+  const [current, setCurrent] = useState("");
+  const [password, setPassword] = useState("");
+  const [repeat, setRepeat] = useState("");
+  const [error, setError] = useState("");
+  const [done, setDone] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const ready = Boolean(current) && isPasswordReady(password, repeat);
+
+  async function submit(event) {
+    event.preventDefault();
+    if (!ready) return;
+    setBusy(true);
+    setError("");
+    setDone(false);
+    try {
+      await changePassword(current, password);
+      setCurrent("");
+      setPassword("");
+      setRepeat("");
+      setDone(true);
+    } catch {
+      setError("Не удалось сменить пароль. Проверьте текущий.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <section className="animate-enter mx-auto max-w-lg space-y-5 p-6">
+      <button type="button" className="text-[14px] text-[var(--color-brand)]" onClick={onBack}>
+        ← Назад
+      </button>
+      <div>
+        <h1 className="text-[22px] font-semibold">Пароль</h1>
+        <p className="mt-1 text-[14px] text-[var(--color-ink-soft)]">
+          {me.login}. Смена пароля только для этой учётки. Других пользователей сбрасывайте ссылкой-приглашением.
+        </p>
+      </div>
+      <form className="space-y-4 rounded-2xl border border-[var(--color-line)] bg-[var(--color-surface)] p-6" onSubmit={submit}>
+        <PasswordField label="Текущий пароль" value={current} onChange={setCurrent} autoComplete="current-password" />
+        <PasswordField
+          label="Новый пароль"
+          value={password}
+          onChange={setPassword}
+          autoComplete="new-password"
+          generate
+          onGenerated={setRepeat}
+        />
+        <PasswordField label="Ещё раз" value={repeat} onChange={setRepeat} autoComplete="new-password" />
+        <PasswordHints password={password} repeat={repeat} />
+        {error ? <p className="text-[14px] text-[var(--color-danger)]">{error}</p> : null}
+        {done ? <p className="text-[14px] text-[var(--color-ok)]">Пароль обновлён.</p> : null}
+        <PrimaryButton type="submit" disabled={busy || !ready}>
+          Сохранить
+        </PrimaryButton>
+      </form>
+    </section>
+  );
+}
+
+export function PasswordHints({ password, repeat }) {
+  const issues = passwordIssues(password, repeat);
+  if (!password && !repeat) return null;
+  if (!issues.length) {
+    return <p className="text-[13px] text-[var(--color-ok)]">Пароль подходит.</p>;
+  }
+  return (
+    <ul className="space-y-1 text-[13px] text-[var(--color-danger)]">
+      {issues.map((issue) => (
+        <li key={issue}>{issue}</li>
+      ))}
+    </ul>
+  );
+}
+
 function AuthCard({ title, children }) {
   return (
     <div className="grid min-h-full place-items-center bg-[var(--color-ground)] p-6">
-      <div className="w-full max-w-md rounded-2xl border border-[var(--color-line)] bg-[var(--color-surface)] p-8 shadow-sm">
+      <div className="animate-enter w-full max-w-md rounded-2xl border border-[var(--color-line)] bg-[var(--color-surface)] p-8 shadow-sm">
         <h1 className="mb-6 text-[22px] font-semibold">{title}</h1>
         {children}
       </div>

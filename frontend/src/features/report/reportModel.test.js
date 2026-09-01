@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { combinedSummary, jobProgress, jobStatusText, reportSummaryFromRows, statusLabel } from "./reportModel.js";
+import { combinedSummary, jobProgress, jobStatusText, jobStatusLabel, reportSummaryFromRows, statusLabel } from "./reportModel.js";
 
 test("reportSummaryFromRows derives dashboard metrics from API report rows", () => {
   const rows = [
@@ -60,9 +60,19 @@ test("combinedSummary prefers the engine notInBlank count over sampled report ro
   assert.equal(summary.notInBlank, 12);
 });
 
-test("statusLabel falls back to raw status", () => {
+test("statusLabel never shows a raw API code", () => {
   assert.equal(statusLabel("matched"), "Заполнено");
-  assert.equal(statusLabel("custom"), "custom");
+  assert.equal(statusLabel("custom"), "Другое");
+});
+
+test("jobStatusLabel is Russian for every job status", () => {
+  assert.equal(jobStatusLabel("queued"), "В очереди");
+  assert.equal(jobStatusLabel("processing"), "Обработка");
+  assert.equal(jobStatusLabel("needs_review"), "На проверке");
+  assert.equal(jobStatusLabel("finalizing"), "Готовлю файлы");
+  assert.equal(jobStatusLabel("completed"), "Готово");
+  assert.equal(jobStatusLabel("failed"), "Ошибка");
+  assert.equal(jobStatusLabel("mystery_code"), "В работе");
 });
 
 test("jobStatusText maps terminal errors to their API message", () => {

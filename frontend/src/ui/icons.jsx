@@ -80,6 +80,32 @@ export function IconList({ className }) {
   );
 }
 
+export function IconEye({ className }) {
+  return (
+    <svg viewBox="0 0 24 24" className={className} {...stroke}>
+      <path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12Z" />
+      <circle cx="12" cy="12" r="3" />
+    </svg>
+  );
+}
+
+export function IconEyeOff({ className }) {
+  return (
+    <svg viewBox="0 0 24 24" className={className} {...stroke}>
+      <path d="M3 3l18 18M10.6 10.6A3 3 0 0 0 12 15a3 3 0 0 0 2.4-1.2M9.9 5.1A11 11 0 0 1 12 5c6 0 10 7 10 7a18 18 0 0 1-5.1 5.4M6.1 6.1C3.7 7.8 2 12 2 12a18 18 0 0 0 6.2 6.4" />
+    </svg>
+  );
+}
+
+export function IconCopy({ className }) {
+  return (
+    <svg viewBox="0 0 24 24" className={className} {...stroke}>
+      <rect x="9" y="9" width="11" height="11" rx="2" />
+      <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+    </svg>
+  );
+}
+
 export function IconPlus({ className }) {
   return (
     <svg viewBox="0 0 24 24" className={className} {...stroke}>

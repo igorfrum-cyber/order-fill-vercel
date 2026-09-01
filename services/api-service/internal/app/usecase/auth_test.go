@@ -93,6 +93,28 @@ func TestResetAccessInvalidatesSessions(t *testing.T) {
 	}
 }
 
+func TestChangePasswordRejectsWrongCurrent(t *testing.T) {
+	auth, store := newTestAuthStore(t)
+	user := seedPurchaser(t, store, "buyer", "correct-horse")
+	if err := auth.ChangePassword(context.Background(), user, "wrong-password-xx", "new-password-1"); !errors.Is(err, identity.ErrUnauthorized) {
+		t.Fatalf("got %v", err)
+	}
+}
+
+func TestChangePasswordUpdatesHash(t *testing.T) {
+	auth, store := newTestAuthStore(t)
+	user := seedPurchaser(t, store, "buyer", "correct-horse")
+	if err := auth.ChangePassword(context.Background(), user, "correct-horse", "new-password-1"); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := auth.Login(context.Background(), "buyer", "correct-horse"); !errors.Is(err, identity.ErrUnauthorized) {
+		t.Fatal("old password still worked")
+	}
+	if _, err := auth.Login(context.Background(), "buyer", "new-password-1"); err != nil {
+		t.Fatal(err)
+	}
+}
+
 func newTestAuth(t *testing.T) *Auth {
 	t.Helper()
 	auth, _ := newTestAuthStore(t)

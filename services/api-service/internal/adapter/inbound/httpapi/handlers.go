@@ -74,13 +74,17 @@ func (h jobHandler) createNorthMerge(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h jobHandler) create(w http.ResponseWriter, r *http.Request, jobType job.Type) {
-	if h.creator == nil {
-		writeError(w, http.StatusServiceUnavailable, "not_configured", "job creation is not configured")
-		return
-	}
 	user, ok := userFrom(r)
 	if !ok {
 		writeError(w, http.StatusUnauthorized, "unauthorized", "authentication is required")
+		return
+	}
+	if !authz.CanCreateJob(user) {
+		writeError(w, http.StatusNotFound, "not_found", "not found")
+		return
+	}
+	if h.creator == nil {
+		writeError(w, http.StatusServiceUnavailable, "not_configured", "job creation is not configured")
 		return
 	}
 	command, err := h.parseCreateRequest(r, jobType)
@@ -90,9 +94,6 @@ func (h jobHandler) create(w http.ResponseWriter, r *http.Request, jobType job.T
 	}
 	command.CreatedBy = user.ID
 	command.CompanyID = user.CompanyID
-	if user.Role == identity.RolePlatformAdmin {
-		command.CompanyID = strings.TrimSpace(r.FormValue("company_id"))
-	}
 	if command.CompanyID == "" {
 		writeError(w, http.StatusBadRequest, "bad_request", "company_id is required")
 		return

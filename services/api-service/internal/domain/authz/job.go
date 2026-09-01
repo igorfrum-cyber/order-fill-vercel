@@ -34,3 +34,15 @@ func CanManageCompany(actor identity.User, companyID string) bool {
 func CanCreatePlatformCompany(actor identity.User) bool {
 	return !actor.Disabled() && actor.Role == identity.RolePlatformAdmin
 }
+
+func CanCreateJob(actor identity.User) bool {
+	if actor.Disabled() {
+		return false
+	}
+	switch actor.Role {
+	case identity.RolePurchaser, identity.RoleCompanyAdmin:
+		return actor.CompanyID != ""
+	default:
+		return false
+	}
+}

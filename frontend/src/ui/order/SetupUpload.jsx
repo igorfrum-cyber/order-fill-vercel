@@ -8,9 +8,9 @@ export function SetupStage({ brand, month, onBrand, onMonth, onNext }) {
   const months = selectableOrderMonths();
   return (
     <div className="mx-auto flex h-full max-w-xl flex-col justify-center px-6">
-      <StageHeading index="01" kicker="Настройка" title="Новая сессия заполнения">
+      <StageHeading index="01" kicker="Бланк закупки" title="Новая сессия заполнения">
         <p className="mt-3 max-w-md text-[16px] leading-relaxed text-[var(--color-ink-soft)]">
-          Выберите бренд и месяц заказа — по ним подтянется нужный бланк для сверки. Прошедшие месяцы выбрать нельзя.
+          Заполнение бланка поставщика: выберите бренд и месяц заказа. Это не объединение северных городов. Прошедшие месяцы выбрать нельзя.
         </p>
       </StageHeading>
 
@@ -50,9 +50,9 @@ export function UploadStage({
   const ready = Boolean(sourceFile && slots.every((slot) => blankFiles[slot.id]));
   return (
     <div className="mx-auto flex h-full max-w-2xl flex-col justify-center px-6">
-      <StageHeading index="02" kicker="Загрузка файлов" title="Загрузите файлы">
+      <StageHeading index="02" kicker="Бланк закупки" title="Загрузите файлы">
         <p className="mt-3 max-w-lg text-[16px] leading-relaxed text-[var(--color-ink-soft)]">
-          Таблица заказа и текущий бланк для бренда{" "}
+          Таблица заказа и текущий бланк поставщика для{" "}
           <span className="font-medium text-[var(--color-ink)]">{brandLabel(brand)}</span>. Форматы .xlsx, .xlsm и .xls.
         </p>
       </StageHeading>

@@ -22,6 +22,13 @@ export function logout() {
   return apiClient.request("/api/v1/auth/logout", { method: "POST" });
 }
 
+export function changePassword(currentPassword, password) {
+  return apiClient.request("/api/v1/auth/password", {
+    method: "POST",
+    body: JSON.stringify({ current_password: currentPassword, password }),
+  });
+}
+
 export function listJobs(companyId = "") {
   const query = companyId ? `?company_id=${encodeURIComponent(companyId)}` : "";
   return apiClient.request(`/api/v1/jobs${query}`);

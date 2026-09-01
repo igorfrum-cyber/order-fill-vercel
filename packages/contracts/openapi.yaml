@@ -94,6 +94,30 @@ paths:
           description: Cookie cleared.
         "401":
           $ref: "#/components/responses/Unauthorized"
+  /api/v1/auth/password:
+    post:
+      operationId: changePassword
+      summary: Change the current user's password
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [current_password, password]
+              properties:
+                current_password:
+                  type: string
+                password:
+                  type: string
+                  minLength: 10
+      responses:
+        "204":
+          description: Password updated.
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
   /api/v1/auth/me:
     get:
       operationId: getMe
@@ -631,6 +655,9 @@ components:
           enum: [platform_admin, company_admin, purchaser]
         company_id:
           type: string
+        disabled_at:
+          type: string
+          format: date-time
     Company:
       type: object
       required: [id, name, created_at]

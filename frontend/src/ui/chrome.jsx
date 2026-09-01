@@ -1,6 +1,7 @@
 import { IconCheck, IconList } from "./icons.jsx";
 
-export function TopBar({ brandLabel, monthLabel, stage, mode, onMode, onHome }) {
+export function TopBar({ brandLabel, monthLabel, stage, format = "order", onHome }) {
+  const north = format === "north";
   return (
     <header className="flex items-center justify-between border-b border-[var(--color-line)] bg-[var(--color-surface)] px-6 py-3.5">
       <div className="flex items-center gap-2.5">
@@ -8,13 +9,12 @@ export function TopBar({ brandLabel, monthLabel, stage, mode, onMode, onHome }) 
           <IconList className="h-4 w-4" />
         </button>
         <div className="leading-tight">
-          <div className="text-[16px] font-semibold tracking-tight">Бланки закупки</div>
-          <div className="text-[13px] text-[var(--color-ink-faint)]">автозаполнение</div>
+          <div className="text-[16px] font-semibold tracking-tight">{north ? "Север" : "Бланки закупки"}</div>
+          <div className="text-[13px] text-[var(--color-ink-faint)]">{north ? "объединение городов" : "автозаполнение"}</div>
         </div>
-        <div className="ml-4 inline-flex gap-1 rounded-lg border border-[var(--color-line)] bg-[var(--color-ground)] p-1">
-          <ModeButton active={mode === "order"} onClick={() => onMode("order")}>Бланк</ModeButton>
-          <ModeButton active={mode === "north"} onClick={() => onMode("north")}>Север</ModeButton>
-        </div>
+        <span className="ml-4 rounded-full bg-[var(--color-brand-soft)] px-2.5 py-1 text-[12px] font-semibold text-[var(--color-brand-strong)]">
+          {north ? "Север" : "Бланк"}
+        </span>
       </div>
       {(stage === "fill" || stage === "preview") && (
         <div className="flex items-center gap-2 font-mono text-[13px] text-[var(--color-ink-soft)]">
@@ -26,21 +26,6 @@ export function TopBar({ brandLabel, monthLabel, stage, mode, onMode, onHome }) 
         </div>
       )}
     </header>
-  );
-}
-
-function ModeButton({ active, onClick, children }) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      aria-pressed={active}
-      className={`rounded-md px-3 py-1.5 text-[14px] font-semibold transition ${
-        active ? "bg-[var(--color-surface)] text-[var(--color-brand-strong)] shadow-sm" : "text-[var(--color-ink-faint)] hover:text-[var(--color-ink)]"
-      }`}
-    >
-      {children}
-    </button>
   );
 }
 

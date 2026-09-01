@@ -55,6 +55,20 @@ func TestPurchaserCannotReadPeerJob(t *testing.T) {
 	}
 }
 
+func TestPlatformAdminCannotCreateJob(t *testing.T) {
+	token := "root-token"
+	router := NewRouter(Config{
+		AllowedOrigins: []string{"http://127.0.0.1:3200"},
+		Auth: stubAuth{users: map[string]identity.User{
+			identity.HashSecret(token): {ID: "root", Role: identity.RolePlatformAdmin, Login: "admin"},
+		}},
+	})
+	response := doAuthed(router, http.MethodPost, "/api/v1/jobs/order-fill", token)
+	if response.Code != http.StatusNotFound {
+		t.Fatalf("expected 404, got %d body %s", response.Code, response.Body.String())
+	}
+}
+
 func TestOtherCompanyAdminCannotReadJob(t *testing.T) {
 	admin := identity.User{ID: "admin-b", CompanyID: "company-b", Role: identity.RoleCompanyAdmin, Login: "admin-b"}
 	entity := job.Job{ID: "job-1", CompanyID: "company-a", CreatedBy: "user-a", Status: job.StatusCompleted}
@@ -84,6 +98,10 @@ func (s stubAuth) Logout(context.Context, string) error { return nil }
 
 func (s stubAuth) AcceptInvite(context.Context, string, string) (usecase.Session, error) {
 	return usecase.Session{}, identity.ErrUnauthorized
+}
+
+func (s stubAuth) ChangePassword(context.Context, identity.User, string, string) error {
+	return nil
 }
 
 func (s stubAuth) SessionUser(_ context.Context, tokenHash string) (identity.User, error) {

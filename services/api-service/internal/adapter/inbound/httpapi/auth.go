@@ -24,6 +24,7 @@ type sessionAuthenticator interface {
 	Login(ctx context.Context, login string, password string) (usecase.Session, error)
 	Logout(ctx context.Context, tokenHash string) error
 	AcceptInvite(ctx context.Context, rawToken string, password string) (usecase.Session, error)
+	ChangePassword(ctx context.Context, actor identity.User, current string, next string) error
 	SessionUser(ctx context.Context, tokenHash string) (identity.User, error)
 }
 
@@ -184,6 +185,23 @@ func (h authHandler) logout(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNoContent)
 }
 
+func (h authHandler) changePassword(w http.ResponseWriter, r *http.Request) {
+	user, ok := userFrom(r)
+	if !ok || h.auth == nil {
+		writeError(w, http.StatusUnauthorized, "unauthorized", "authentication is required")
+		return
+	}
+	payload, decoded := decodeAuthJSON(w, r)
+	if !decoded {
+		return
+	}
+	if err := h.auth.ChangePassword(r.Context(), user, payload.CurrentPassword, payload.Password); err != nil {
+		writeDomainError(w, "change_password_failed", err)
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
+}
+
 func (h authHandler) me(w http.ResponseWriter, r *http.Request) {
 	user, ok := userFrom(r)
 	if !ok {
@@ -194,9 +212,10 @@ func (h authHandler) me(w http.ResponseWriter, r *http.Request) {
 }
 
 type authJSON struct {
-	Login    string `json:"login"`
-	Password string `json:"password"`
-	Token    string `json:"token"`
+	Login           string `json:"login"`
+	Password        string `json:"password"`
+	CurrentPassword string `json:"current_password"`
+	Token           string `json:"token"`
 }
 
 func decodeAuthJSON(w http.ResponseWriter, r *http.Request) (authJSON, bool) {
@@ -221,12 +240,18 @@ func clientIP(r *http.Request) string {
 }
 
 type userResponse struct {
-	ID        string `json:"id"`
-	Login     string `json:"login"`
-	Role      string `json:"role"`
-	CompanyID string `json:"company_id,omitempty"`
+	ID         string  `json:"id"`
+	Login      string  `json:"login"`
+	Role       string  `json:"role"`
+	CompanyID  string  `json:"company_id,omitempty"`
+	DisabledAt *string `json:"disabled_at,omitempty"`
 }
 
 func presentUser(user identity.User) userResponse {
-	return userResponse{ID: user.ID, Login: user.Login, Role: string(user.Role), CompanyID: user.CompanyID}
+	response := userResponse{ID: user.ID, Login: user.Login, Role: string(user.Role), CompanyID: user.CompanyID}
+	if user.DisabledAt != nil {
+		value := user.DisabledAt.UTC().Format("2006-01-02T15:04:05Z")
+		response.DisabledAt = &value
+	}
+	return response
 }

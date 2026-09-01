@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { login } from "./auth.js";
+import { changePassword, login } from "./auth.js";
 import { ApiClient, apiClient } from "./client.js";
 
 test("login posts credentials with CSRF header and cookies", async () => {
@@ -25,6 +25,26 @@ test("login posts credentials with CSRF header and cookies", async () => {
     assert.equal(calls[0].options.credentials, "include");
     assert.equal(calls[0].options.headers["X-Requested-With"], "fetch");
     assert.match(calls[0].options.body, /correct-horse/);
+  } finally {
+    apiClient.fetcher = originalFetcher;
+    apiClient.baseUrl = originalBase;
+  }
+});
+
+test("changePassword posts current and next password", async () => {
+  const calls = [];
+  const originalFetcher = apiClient.fetcher;
+  const originalBase = apiClient.baseUrl;
+  apiClient.baseUrl = "";
+  apiClient.fetcher = function fetcher(url, options) {
+    calls.push({ url, options });
+    return Promise.resolve({ ok: true, status: 204, headers: new Map() });
+  };
+  try {
+    await changePassword("old-password-1", "new-password-1");
+    assert.equal(calls[0].url, "/api/v1/auth/password");
+    assert.match(calls[0].options.body, /current_password/);
+    assert.match(calls[0].options.body, /new-password-1/);
   } finally {
     apiClient.fetcher = originalFetcher;
     apiClient.baseUrl = originalBase;

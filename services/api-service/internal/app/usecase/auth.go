@@ -68,6 +68,22 @@ func (a *Auth) AcceptInvite(ctx context.Context, rawToken string, password strin
 	return a.issueSession(ctx, user)
 }
 
+func (a *Auth) ChangePassword(ctx context.Context, actor identity.User, current string, next string) error {
+	user, err := a.store.GetUserByID(ctx, actor.ID)
+	if err != nil || user.Disabled() || user.PasswordHash == "" {
+		_ = identity.VerifyPassword(identity.DummyPasswordHash(), current)
+		return identity.ErrUnauthorized
+	}
+	if err := identity.VerifyPassword(user.PasswordHash, current); err != nil {
+		return identity.ErrUnauthorized
+	}
+	hash, err := identity.HashPassword(next)
+	if err != nil {
+		return err
+	}
+	return a.store.SetPasswordHash(ctx, user.ID, hash)
+}
+
 func (a *Auth) Logout(ctx context.Context, tokenHash string) error {
 	return a.store.DeleteSession(ctx, tokenHash)
 }

@@ -1,4 +1,6 @@
-import { IconChevron, IconPlus, IconX } from "./icons.jsx";
+import { useState } from "react";
+import { generatePassword } from "../features/auth/password.js";
+import { IconChevron, IconEye, IconEyeOff, IconPlus, IconX } from "./icons.jsx";
 
 export function Field({ label, children }) {
   return (
@@ -6,6 +8,46 @@ export function Field({ label, children }) {
       <span className="mb-2 block text-[14px] font-medium text-[var(--color-ink-soft)]">{label}</span>
       {children}
     </label>
+  );
+}
+
+export function PasswordField({ label, value, onChange, autoComplete, generate = false, onGenerated }) {
+  const [visible, setVisible] = useState(false);
+  return (
+    <Field label={label}>
+      <div className="relative">
+        <input
+          type={visible ? "text" : "password"}
+          value={value}
+          onChange={(event) => onChange(event.target.value)}
+          className={`input ${generate ? "pr-44" : "pr-24"}`}
+          autoComplete={autoComplete}
+        />
+        <div className="absolute inset-y-0 right-2 flex items-center gap-1">
+          {generate ? (
+            <button
+              type="button"
+              className="rounded-lg px-2 py-1 text-[12px] font-medium text-[var(--color-brand)] hover:bg-[var(--color-brand-soft)]"
+              onClick={() => {
+                const next = generatePassword();
+                onChange(next);
+                onGenerated?.(next);
+              }}
+            >
+              Сгенерировать
+            </button>
+          ) : null}
+          <button
+            type="button"
+            className="grid h-8 w-8 place-items-center rounded-lg text-[var(--color-ink-faint)] hover:bg-[var(--color-line-soft)] hover:text-[var(--color-ink)]"
+            onClick={() => setVisible((current) => !current)}
+            aria-label={visible ? "Скрыть пароль" : "Показать пароль"}
+          >
+            {visible ? <IconEyeOff className="h-4 w-4" /> : <IconEye className="h-4 w-4" />}
+          </button>
+        </div>
+      </div>
+    </Field>
   );
 }
 

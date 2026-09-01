@@ -22,7 +22,7 @@ import { IconCheck, IconChevron, IconDownload, IconFile, IconUpload, IconX } fro
 import { Field, GhostButton, Modal, PrimaryButton, Select } from "../widgets.jsx";
 import { TopBar } from "../chrome.jsx";
 
-export function NorthApp({ mode, onMode, companyId, onHome }) {
+export function NorthApp({ companyId, onHome }) {
   const [brand, setBrand] = useState("angiopharm");
   const [files, setFiles] = useState([]);
   const [homeFiles, setHomeFiles] = useState([]);
@@ -227,7 +227,7 @@ export function NorthApp({ mode, onMode, companyId, onHome }) {
 
   return (
     <div className="flex h-full flex-col bg-[var(--color-ground)]">
-      <TopBar brandLabel="" monthLabel="" stage="setup" mode={mode} onMode={onMode} onHome={onHome} />
+      <TopBar brandLabel="" monthLabel="" stage="setup" format="north" onHome={onHome} />
       <div className="flex-1 overflow-auto px-6 py-6">
         <div className="mx-auto max-w-6xl">
           <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
@@ -264,9 +264,9 @@ export function NorthApp({ mode, onMode, companyId, onHome }) {
           {error && <p className="mt-4 text-[13px] text-[var(--color-danger)]">{error}</p>}
 
           <div className="mt-6 flex items-center justify-between">
-            <GhostButton onClick={() => onMode("order")}>
+            <GhostButton onClick={onHome}>
               <IconChevron className="h-4 w-4 rotate-90" />
-              К бланку
+              К выгрузкам
             </GhostButton>
             <div className="flex items-center gap-3">
               <span className="font-mono text-[11px] text-[var(--color-ink-soft)]">{status}</span>

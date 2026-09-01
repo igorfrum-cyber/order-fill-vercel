@@ -1,13 +1,22 @@
 import { useEffect, useState } from "react";
 import { createCompany, createUser, disableCompany, disableUser, listCompanies, listJobs, listUsers, resetUser } from "../../api/auth.js";
-import { GhostButton, PrimaryButton } from "../widgets.jsx";
+import { brandLabel } from "../../features/brands/brandPresentation.js";
+import { jobStatusLabel } from "../../features/report/reportModel.js";
+import { IconCopy } from "../icons.jsx";
+import { GhostButton, Modal, PrimaryButton } from "../widgets.jsx";
+
+const ROLE_LABELS = {
+  purchaser: "закупщик",
+  company_admin: "админ компании",
+  platform_admin: "платформа",
+};
 
 export function JobHistory({ me, companyId, onCompany, onOpen, onNew }) {
   const [jobs, setJobs] = useState([]);
   const [companies, setCompanies] = useState([]);
   const [error, setError] = useState("");
   const platform = me.role === "platform_admin";
-  const canCreate = !platform || Boolean(companyId);
+  const canCreate = !platform;
 
   useEffect(() => {
     listJobs(platform ? companyId : "")
@@ -24,30 +33,40 @@ export function JobHistory({ me, companyId, onCompany, onOpen, onNew }) {
   }, [platform]);
 
   return (
-    <section className="mx-auto max-w-5xl p-6">
+    <section className="animate-enter mx-auto max-w-5xl p-6">
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
         <h1 className="text-[22px] font-semibold">Выгрузки</h1>
-        <div className="flex flex-wrap items-center gap-2">
-          {platform ? (
-            <select className="input" value={companyId} onChange={(event) => onCompany(event.target.value)}>
-              <option value="">Все компании</option>
-              {companies
-                .filter((company) => !company.disabled_at)
-                .map((company) => (
-                  <option key={company.id} value={company.id}>
-                    {company.name}
-                  </option>
-                ))}
-            </select>
-          ) : null}
-          <PrimaryButton onClick={onNew} disabled={!canCreate}>
-            Новая выгрузка
-          </PrimaryButton>
-        </div>
+        {platform ? (
+          <select className="input max-w-xs" value={companyId} onChange={(event) => onCompany(event.target.value)}>
+            <option value="">Все компании</option>
+            {companies
+              .filter((company) => !company.disabled_at)
+              .map((company) => (
+                <option key={company.id} value={company.id}>
+                  {company.name}
+                </option>
+              ))}
+          </select>
+        ) : null}
       </div>
-      {platform && !companyId ? (
-        <p className="mb-3 text-[14px] text-[var(--color-ink-faint)]">Чтобы создать выгрузку, выберите компанию.</p>
-      ) : null}
+      {canCreate ? (
+        <div className="mb-6 grid gap-3 sm:grid-cols-2">
+          <JobTypeCard
+            title="Бланк закупки"
+            hint="Таблица заказа и текущий бланк поставщика"
+            onClick={() => onNew("order")}
+          />
+          <JobTypeCard
+            title="Север"
+            hint="Объединение городских бланков и таблицы Тюмени"
+            onClick={() => onNew("north")}
+          />
+        </div>
+      ) : (
+        <p className="mb-4 text-[14px] text-[var(--color-ink-soft)]">
+          Здесь только просмотр: новую выгрузку создаёт закупщик или админ компании.
+        </p>
+      )}
       {error ? <p className="text-[var(--color-danger)]">{error}</p> : null}
       <div className="overflow-hidden rounded-xl border border-[var(--color-line)] bg-[var(--color-surface)]">
         <table className="w-full text-left text-[14px]">
@@ -63,10 +82,12 @@ export function JobHistory({ me, companyId, onCompany, onOpen, onNew }) {
           <tbody>
             {jobs.map((job) => (
               <tr key={job.id} className="cursor-pointer border-t border-[var(--color-line)] hover:bg-[var(--color-line-soft)]" onClick={() => onOpen(job)}>
-                <td className="px-4 py-3">{job.created_at?.slice(0, 16).replace("T", " ")}</td>
+                <td className="px-4 py-3">{formatJobWhen(job.created_at)}</td>
                 <td className="px-4 py-3">{job.type === "north_merge" ? "Север" : "Бланк"}</td>
-                <td className="px-4 py-3">{job.brand}</td>
-                <td className="px-4 py-3">{job.status}</td>
+                <td className="px-4 py-3">{brandLabel(job.brand)}</td>
+                <td className="px-4 py-3">
+                  <JobStatus status={job.status} />
+                </td>
                 <td className="px-4 py-3">{job.created_by_login || "—"}</td>
               </tr>
             ))}
@@ -84,6 +105,44 @@ export function JobHistory({ me, companyId, onCompany, onOpen, onNew }) {
   );
 }
 
+function formatJobWhen(iso) {
+  if (!iso) return "—";
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return "—";
+  return date.toLocaleString("ru-RU", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
+function JobStatus({ status }) {
+  const tone = {
+    completed: "bg-[var(--color-ok-soft)] text-[var(--color-ok)]",
+    needs_review: "bg-[var(--color-brand-soft)] text-[var(--color-brand-strong)]",
+    failed: "bg-[var(--color-danger-soft)] text-[var(--color-danger)]",
+    processing: "bg-[var(--color-neutral-soft)] text-[var(--color-ink-soft)]",
+    queued: "bg-[var(--color-neutral-soft)] text-[var(--color-ink-soft)]",
+    finalizing: "bg-[var(--color-neutral-soft)] text-[var(--color-ink-soft)]",
+  }[status] || "bg-[var(--color-neutral-soft)] text-[var(--color-ink-soft)]";
+  return <span className={`inline-flex rounded-full px-2.5 py-1 text-[13px] font-medium ${tone}`}>{jobStatusLabel(status)}</span>;
+}
+
+function JobTypeCard({ title, hint, onClick }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="rounded-2xl border border-[var(--color-line)] bg-[var(--color-surface)] p-5 text-left transition hover:border-[var(--color-brand)] hover:shadow-sm"
+    >
+      <div className="text-[16px] font-semibold">{title}</div>
+      <p className="mt-1 text-[13px] leading-relaxed text-[var(--color-ink-soft)]">{hint}</p>
+    </button>
+  );
+}
+
 export function CompaniesScreen({ selectedId, onSelect }) {
   const [companies, setCompanies] = useState([]);
   const [name, setName] = useState("");
@@ -96,7 +155,7 @@ export function CompaniesScreen({ selectedId, onSelect }) {
   useEffect(reload, []);
 
   return (
-    <section className="mx-auto max-w-3xl space-y-4 p-6">
+    <section className="animate-enter mx-auto max-w-3xl space-y-4 p-6">
       <h1 className="text-[22px] font-semibold">Компании</h1>
       <form
         className="flex gap-2"
@@ -125,8 +184,20 @@ export function CompaniesScreen({ selectedId, onSelect }) {
               onClick={() => onSelect(company.id)}
             >
               {company.name}
+              {company.disabled_at ? <span className="ml-2 text-[13px] font-normal text-[var(--color-ink-faint)]">выключена</span> : null}
             </button>
-            <GhostButton onClick={async () => { await disableCompany(company.id); reload(); }}>Выключить</GhostButton>
+            <GhostButton
+              onClick={async () => {
+                try {
+                  await disableCompany(company.id);
+                  reload();
+                } catch (err) {
+                  setError(err.message || "Не удалось выключить компанию.");
+                }
+              }}
+            >
+              Выключить
+            </GhostButton>
           </li>
         ))}
       </ul>
@@ -139,6 +210,9 @@ export function UsersScreen({ companyId }) {
   const [login, setLogin] = useState("");
   const [role, setRole] = useState("purchaser");
   const [invite, setInvite] = useState("");
+  const [copied, setCopied] = useState(false);
+  const [error, setError] = useState("");
+  const [resetTarget, setResetTarget] = useState(null);
 
   function reload() {
     if (!companyId) return;
@@ -147,21 +221,37 @@ export function UsersScreen({ companyId }) {
 
   useEffect(reload, [companyId]);
 
+  async function showInvite(urlPath) {
+    const url = `${window.location.origin}${urlPath}`;
+    setInvite(url);
+    setCopied(await copyText(url));
+  }
+
   if (!companyId) {
     return <p className="p-6 text-[var(--color-ink-faint)]">Сначала выберите компанию.</p>;
   }
 
   return (
-    <section className="mx-auto max-w-3xl space-y-4 p-6">
-      <h1 className="text-[22px] font-semibold">Пользователи</h1>
+    <section className="animate-enter mx-auto max-w-3xl space-y-4 p-6">
+      <div>
+        <h1 className="text-[22px] font-semibold">Пользователи</h1>
+        <p className="mt-1 text-[14px] text-[var(--color-ink-soft)]">
+          Новый человек входит только по ссылке-приглашению. Пароль ему не задаёте — он сам его поставит.
+        </p>
+      </div>
       <form
         className="flex flex-wrap gap-2"
         onSubmit={async (event) => {
           event.preventDefault();
-          const created = await createUser(companyId, login, role);
-          setInvite(`${window.location.origin}${created.invite_url}`);
-          setLogin("");
-          reload();
+          setError("");
+          try {
+            const created = await createUser(companyId, login, role);
+            await showInvite(created.invite_url);
+            setLogin("");
+            reload();
+          } catch (err) {
+            setError(err.message || "Не удалось пригласить пользователя.");
+          }
         }}
       >
         <input className="input flex-1" value={login} onChange={(event) => setLogin(event.target.value)} placeholder="Логин" />
@@ -171,31 +261,81 @@ export function UsersScreen({ companyId }) {
         </select>
         <PrimaryButton type="submit" disabled={!login.trim()}>Пригласить</PrimaryButton>
       </form>
-      {invite ? (
-        <p className="rounded-lg bg-[var(--color-brand-soft)] p-3 text-[14px] break-all">
-          Ссылка-приглашение (скопируйте сейчас): {invite}
-        </p>
-      ) : null}
+      {error ? <p className="text-[14px] text-[var(--color-danger)]">{error}</p> : null}
+      {invite ? <InviteBanner url={invite} copied={copied} onCopy={async () => setCopied(await copyText(invite))} /> : null}
       <ul className="divide-y divide-[var(--color-line)] rounded-xl border border-[var(--color-line)] bg-[var(--color-surface)]">
         {users.map((user) => (
           <li key={user.id} className="flex items-center justify-between gap-2 px-4 py-3">
             <span>
-              {user.login} · {user.role}
+              {user.login}
+              <span className="text-[var(--color-ink-faint)]"> · {ROLE_LABELS[user.role] || user.role}</span>
+              {user.disabled_at ? <span className="ml-2 text-[13px] text-[var(--color-ink-faint)]">выключен</span> : null}
             </span>
             <span className="flex gap-2">
+              <GhostButton onClick={() => setResetTarget(user)}>Сброс доступа</GhostButton>
               <GhostButton
                 onClick={async () => {
-                  const payload = await resetUser(user.id);
-                  setInvite(`${window.location.origin}${payload.invite_url}`);
+                  setError("");
+                  try {
+                    await disableUser(user.id);
+                    reload();
+                  } catch (err) {
+                    setError(err.message || "Не удалось выключить пользователя.");
+                  }
                 }}
               >
-                Сброс
+                Выключить
               </GhostButton>
-              <GhostButton onClick={async () => { await disableUser(user.id); reload(); }}>Выключить</GhostButton>
             </span>
           </li>
         ))}
       </ul>
+      {resetTarget ? (
+        <Modal
+          title={`Сбросить доступ ${resetTarget.login}?`}
+          cancelLabel="Отмена"
+          confirmLabel="Сбросить"
+          onCancel={() => setResetTarget(null)}
+          onConfirm={async () => {
+            setError("");
+            try {
+              const payload = await resetUser(resetTarget.id);
+              await showInvite(payload.invite_url);
+              setResetTarget(null);
+              reload();
+            } catch (err) {
+              setError(err.message || "Не удалось сбросить доступ.");
+              setResetTarget(null);
+            }
+          }}
+        >
+          Текущий пароль перестанет работать. Нужна новая ссылка-приглашение — скопируйте её и передайте человеку.
+        </Modal>
+      ) : null}
     </section>
   );
+}
+
+function InviteBanner({ url, copied, onCopy }) {
+  return (
+    <div className="flex items-start justify-between gap-3 rounded-xl bg-[var(--color-brand-soft)] p-3 text-[14px]">
+      <p className="min-w-0 break-all">
+        {copied ? "Ссылка скопирована. " : "Скопируйте ссылку сейчас: "}
+        {url}
+      </p>
+      <GhostButton onClick={onCopy}>
+        <IconCopy className="h-4 w-4" />
+        Копировать
+      </GhostButton>
+    </div>
+  );
+}
+
+async function copyText(value) {
+  try {
+    await navigator.clipboard.writeText(value);
+    return true;
+  } catch {
+    return false;
+  }
 }

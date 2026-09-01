@@ -36,7 +36,7 @@ function triggerBlobDownload(blob, fileName) {
   window.setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
-export function OrderFillApp({ mode, onMode, companyId, resumeJob, onHome }) {
+export function OrderFillApp({ companyId, resumeJob, onHome }) {
   const [stage, setStage] = useState(resumeJob ? (resumeJob.finalized ? "preview" : "fill") : "setup");
   const [brand, setBrand] = useState(resumeJob?.brand || "angiopharm");
   const [month, setMonth] = useState(() => resumeJob?.month || defaultOrderMonth());
@@ -227,8 +227,7 @@ export function OrderFillApp({ mode, onMode, companyId, resumeJob, onHome }) {
         brandLabel={brandLabel(brand)}
         monthLabel={monthLabel}
         stage={stage}
-        mode={mode}
-        onMode={onMode}
+        format="order"
         onHome={onHome}
       />
       <StageRail

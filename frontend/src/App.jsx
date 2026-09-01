@@ -3,7 +3,7 @@ import { getMe, logout } from "./api/auth.js";
 import { onAuthRequired } from "./api/client.js";
 import { getJob, getJobReport, listJobFiles } from "./api/jobs.js";
 import { CompaniesScreen, JobHistory, UsersScreen } from "./ui/admin/AdminScreens.jsx";
-import { InviteScreen, LoginScreen } from "./ui/auth/AuthScreens.jsx";
+import { AccountScreen, InviteScreen, LoginScreen } from "./ui/auth/AuthScreens.jsx";
 import { NorthApp } from "./ui/north/NorthApp.jsx";
 import { OrderFillApp } from "./ui/order/OrderFillApp.jsx";
 import { initialEditState } from "./features/order/reviewEdits.js";
@@ -12,7 +12,6 @@ export default function App() {
   const inviteToken = inviteTokenFromPath();
   const [me, setMe] = useState(undefined);
   const [screen, setScreen] = useState("history");
-  const [mode, setMode] = useState("order");
   const [companyId, setCompanyId] = useState("");
   const [resume, setResume] = useState(null);
 
@@ -57,11 +56,6 @@ export default function App() {
   if (screen === "order") {
     return (
       <OrderFillApp
-        mode={mode}
-        onMode={(next) => {
-          setMode(next);
-          setScreen(next === "north" ? "north" : "order");
-        }}
         companyId={companyId}
         resumeJob={resume}
         onHome={() => {
@@ -75,11 +69,6 @@ export default function App() {
   if (screen === "north") {
     return (
       <NorthApp
-        mode={mode}
-        onMode={(next) => {
-          setMode(next);
-          setScreen(next === "north" ? "north" : "order");
-        }}
         companyId={companyId}
         onHome={() => {
           setResume(null);
@@ -108,7 +97,13 @@ export default function App() {
           ) : null}
         </nav>
         <div className="flex items-center gap-3 text-[14px] text-[var(--color-ink-soft)]">
-          <span>{me.login}</span>
+          <button
+            type="button"
+            className={screen === "account" ? "font-medium text-[var(--color-brand-strong)]" : "hover:text-[var(--color-ink)]"}
+            onClick={() => setScreen("account")}
+          >
+            {me.login}
+          </button>
           <button
             type="button"
             className="text-[var(--color-brand)]"
@@ -127,26 +122,25 @@ export default function App() {
             me={me}
             companyId={companyId}
             onCompany={setCompanyId}
-            onNew={() => {
-              if (me.role === "platform_admin" && !companyId) return;
+            onNew={(kind) => {
+              if (me.role === "platform_admin") return;
               setResume(null);
-              setScreen("order");
+              setScreen(kind === "north" ? "north" : "order");
             }}
             onOpen={async (job) => {
               if (job.type === "north_merge") {
-                setMode("north");
                 setScreen("north");
                 return;
               }
               const loaded = await loadOrderResume(job.id);
               setResume(loaded);
-              setMode("order");
               setScreen("order");
             }}
           />
         ) : null}
         {screen === "companies" ? <CompaniesScreen selectedId={companyId} onSelect={setCompanyId} /> : null}
         {screen === "users" ? <UsersScreen companyId={me.role === "platform_admin" ? companyId : me.company_id} /> : null}
+        {screen === "account" ? <AccountScreen me={me} onBack={() => setScreen("history")} /> : null}
       </main>
     </div>
   );
