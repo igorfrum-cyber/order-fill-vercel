@@ -44,6 +44,51 @@ func TestLoginIssuesSession(t *testing.T) {
 	}
 }
 
+func TestVerifyLoginReturnsUserWithoutSession(t *testing.T) {
+	auth, store := newTestAuthStore(t)
+	seeded := seedPurchaser(t, store, "buyer", "correct-horse")
+	user, err := auth.verifyLogin(context.Background(), seeded.Login, "correct-horse")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if user.ID != seeded.ID {
+		t.Fatalf("got user %s", user.ID)
+	}
+	if len(store.sessions) != 0 {
+		t.Fatalf("verifyLogin issued a session: %d", len(store.sessions))
+	}
+}
+
+func TestVerifyLoginRejectsWrongPassword(t *testing.T) {
+	auth, store := newTestAuthStore(t)
+	seedPurchaser(t, store, "buyer", "correct-horse")
+	if _, err := auth.verifyLogin(context.Background(), "buyer", "wrong-password-xx"); !errors.Is(err, identity.ErrUnauthorized) {
+		t.Fatalf("got %v", err)
+	}
+	if len(store.sessions) != 0 {
+		t.Fatalf("failed verifyLogin issued a session: %d", len(store.sessions))
+	}
+}
+
+func TestIssueSessionCreatesLookupableToken(t *testing.T) {
+	auth, store := newTestAuthStore(t)
+	user := seedPurchaser(t, store, "buyer", "correct-horse")
+	session, err := auth.issueSession(context.Background(), user)
+	if err != nil {
+		t.Fatal(err)
+	}
+	got, err := auth.SessionUser(context.Background(), identity.HashSecret(session.RawToken))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.ID != user.ID {
+		t.Fatalf("got user %s", got.ID)
+	}
+	if len(store.sessions) != 1 {
+		t.Fatalf("expected one session, got %d", len(store.sessions))
+	}
+}
+
 func TestInviteIsSingleUse(t *testing.T) {
 	auth, store := newTestAuthStore(t)
 	user := identity.User{ID: "user-1", CompanyID: "co-1", Login: "buyer", Role: identity.RolePurchaser}

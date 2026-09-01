@@ -2,7 +2,6 @@ package usecase
 
 import (
 	"context"
-	"fmt"
 	"strings"
 	"time"
 
@@ -32,13 +31,9 @@ func NewAuth(store port.IdentityStore, newID port.IDGenerator, now port.Clock) *
 }
 
 func (a *Auth) Login(ctx context.Context, login string, password string) (Session, error) {
-	user, err := a.store.GetUserByLogin(ctx, strings.TrimSpace(login))
-	if err != nil || user.Disabled() || user.PasswordHash == "" {
-		_ = identity.VerifyPassword(identity.DummyPasswordHash(), password)
-		return Session{}, identity.ErrUnauthorized
-	}
-	if err := identity.VerifyPassword(user.PasswordHash, password); err != nil {
-		return Session{}, identity.ErrUnauthorized
+	user, err := a.verifyLogin(ctx, login, password)
+	if err != nil {
+		return Session{}, err
 	}
 	session, err := a.issueSession(ctx, user)
 	if err != nil {
@@ -166,18 +161,6 @@ func (a *Auth) ResetAccess(ctx context.Context, actor identity.User, userID stri
 	}
 	a.recordAudit(ctx, actor, port.AuditAccessReset, user.CompanyID, "")
 	return raw, nil
-}
-
-func (a *Auth) issueSession(ctx context.Context, user identity.User) (Session, error) {
-	raw, err := identity.NewSecret()
-	if err != nil {
-		return Session{}, err
-	}
-	expires := a.now().Add(sessionTTL)
-	if err := a.store.CreateSession(ctx, identity.HashSecret(raw), user.ID, expires); err != nil {
-		return Session{}, fmt.Errorf("create session: %w", err)
-	}
-	return Session{RawToken: raw, User: user, ExpiresAt: expires}, nil
 }
 
 func (a *Auth) createInvite(ctx context.Context, userID string) (string, error) {
