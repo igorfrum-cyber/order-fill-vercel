@@ -22,3 +22,27 @@ func TestAdjustQuantityForBrandAppliesBrandRounding(t *testing.T) {
 		t.Fatalf("expected KLAPP 10 to nearest multiple 9, got %#v", klapp)
 	}
 }
+
+func TestKeyFromNomenclatureGroupMaps1CFilterNames(t *testing.T) {
+	cases := map[string]string{
+		"Ангиофарм ":   "angiopharm",
+		"ANGIOPHARM":   "angiopharm",
+		"Кристина":     "christina",
+		"CHRISTINA":    "christina",
+		"KLAPP":        "klapp",
+		"SKIN SYNERGY": "skin_synergy",
+		"Skin Synergy": "skin_synergy",
+		"LeviSsime":    "levissime",
+		"SOTHYS":       "sothys",
+		"NOVACUTAN":    "novacutan",
+	}
+	for group, want := range cases {
+		got, ok := KeyFromNomenclatureGroup(group)
+		if !ok || got != want {
+			t.Fatalf("group %q: got (%q, %v), want %q", group, got, ok, want)
+		}
+	}
+	if _, ok := KeyFromNomenclatureGroup("Неизвестный бренд"); ok {
+		t.Fatal("unknown group must not map to a brand")
+	}
+}

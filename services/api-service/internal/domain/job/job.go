@@ -100,11 +100,8 @@ func NewJob(id string, jobType Type, brand string, orderMonth string, now time.T
 	if jobType != TypeOrderFill && jobType != TypeNorthMerge {
 		return Job{}, fmt.Errorf("%w: unsupported job type %q", ErrInvalid, jobType)
 	}
-	if strings.TrimSpace(brand) == "" {
+	if jobType != TypeOrderFill && strings.TrimSpace(brand) == "" {
 		return Job{}, fmt.Errorf("%w: brand is required", ErrInvalid)
-	}
-	if jobType == TypeOrderFill && strings.TrimSpace(orderMonth) == "" {
-		return Job{}, fmt.Errorf("%w: order_month is required", ErrInvalid)
 	}
 	if len(files) == 0 {
 		return Job{}, fmt.Errorf("%w: at least one file is required", ErrInvalid)
@@ -151,6 +148,9 @@ func ValidateUploads(jobType Type, uploads []Upload) error {
 	}
 	if blanks == 0 {
 		return fmt.Errorf("%w: blank_files is required", ErrInvalid)
+	}
+	if jobType == TypeOrderFill && blanks > 2 {
+		return fmt.Errorf("%w: order fill accepts at most two blank_files", ErrInvalid)
 	}
 	if jobType == TypeOrderFill && sources != 1 {
 		return fmt.Errorf("%w: exactly one source_file is required", ErrInvalid)

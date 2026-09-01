@@ -185,21 +185,39 @@ func (u *ProcessJob) process(ctx context.Context, message port.JobMessage) error
 		return err
 	}
 
+	progress.Set(ctx, 0.58, "Определяю бренд и месяц")
+	detectedBrand, orderMonth, err := resolveSourceIdentity(sourceLoaded.workbook)
+	if err != nil {
+		return err
+	}
+	if err := u.jobs.SetIdentity(ctx, message.JobID, detectedBrand, orderMonth, u.now()); err != nil {
+		return fmt.Errorf("save detected brand: %w", err)
+	}
+
+	blankNames := make([]string, len(blankInputs))
+	for index, blankInput := range blankInputs {
+		blankNames[index] = blankInput.Name
+	}
+	plans, err := orderfill.PlanBlanks(detectedBrand, blankNames)
+	if err != nil {
+		return err
+	}
+
 	outputs := make([]port.OutputFile, 0, len(blankInputs)+1)
 	rows := make([]orderfill.ReportRow, 0)
 	summary := orderfill.Summary{}
 
-	for index, blankInput := range blankInputs {
-		progress.Set(ctx, 0.58, "Сверяю с бланком")
+	for _, plan := range plans {
+		progress.Set(ctx, 0.60, "Сверяю с бланком")
 		result, err := orderfill.Fill(orderfill.FillCommand{
 			Source:     sourceLoaded.workbook,
-			Blank:      blanksLoaded[index].workbook,
-			OrderMonth: message.OrderMonth,
-			Brand:      message.Brand,
-			BlankID:    blankID(index),
-			BlankLabel: blankInput.Name,
+			Blank:      blanksLoaded[plan.Index].workbook,
+			OrderMonth: orderMonth,
+			Brand:      detectedBrand,
+			BlankID:    plan.ID,
+			BlankLabel: plan.Label,
 			OnProgress: func(fraction float64, text string) {
-				progress.Set(ctx, 0.58+0.24*fraction, text)
+				progress.Set(ctx, 0.60+0.22*fraction, text)
 			},
 		})
 		if err != nil {
@@ -291,12 +309,20 @@ func (u *ProcessJob) finalize(ctx context.Context, message port.JobMessage) erro
 		if err != nil {
 			return err
 		}
+		detectedBrand := message.Brand
+		if detectedBrand == "" {
+			detected, detectErr := orderfill.DetectBrand(sourceWorkbook)
+			if detectErr != nil {
+				return detectErr
+			}
+			detectedBrand = detected
+		}
 		if err := orderfill.ApplyFinalEdits(orderfill.FinalizeCommand{
 			Source: sourceWorkbook,
 			Blank:  blankWorkbook,
 			Rows:   rowsForBlank(rows, blankID(index)),
 			Edits:  edits,
-			Brand:  message.Brand,
+			Brand:  detectedBrand,
 		}); err != nil {
 			return err
 		}
@@ -423,6 +449,18 @@ func assignOutputIDs(outputs []port.OutputFile) []port.OutputFile {
 		outputs[index].ID = fmt.Sprintf("output-%d", index+1)
 	}
 	return outputs
+}
+
+func resolveSourceIdentity(workbook spreadsheet.Workbook) (string, string, error) {
+	detectedBrand, err := orderfill.DetectBrand(workbook)
+	if err != nil {
+		return "", "", err
+	}
+	orderMonth, _, err := orderfill.InferOrderMonth(workbook)
+	if err != nil {
+		return "", "", err
+	}
+	return detectedBrand, orderMonth, nil
 }
 
 func splitInputs(inputs []port.MessageFile) (port.MessageFile, []port.MessageFile, error) {

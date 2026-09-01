@@ -8,9 +8,9 @@ import {
   pollJob,
   submitJobEdits,
 } from "../../api/jobs.js";
-import { blankSlotsForBrand, brandLabel, usesChristinaSplitBlank } from "../../features/brands/brandPresentation.js";
+import { blankSlotsForSource, brandLabel } from "../../features/brands/brandPresentation.js";
 import { runOrderFillJob } from "../../features/jobs/orderJobWorkflow.js";
-import { defaultOrderMonth, formatOrderMonthLabel, sanitizeOrderMonth } from "../../features/order/monthPolicy.js";
+import { formatOrderMonthLabel } from "../../features/order/monthPolicy.js";
 import { collectReviewEdits, hasManualDeviations, initialEditState, patchEdit, rowKey, validateReviewEdits } from "../../features/order/reviewEdits.js";
 import { issueReportCsv } from "../../features/report/issueReport.js";
 import { combinedSummary, jobProgress, jobStatusText } from "../../features/report/reportModel.js";
@@ -19,7 +19,7 @@ import { StageRail, TopBar } from "../chrome.jsx";
 import { Modal } from "../widgets.jsx";
 import { FillStage } from "./FillStage.jsx";
 import { PreviewStage } from "./PreviewStage.jsx";
-import { SetupStage, UploadStage } from "./SetupUpload.jsx";
+import { UploadStage } from "./SetupUpload.jsx";
 
 function triggerDownload(url, fileName) {
   const anchor = document.createElement("a");
@@ -37,9 +37,9 @@ function triggerBlobDownload(blob, fileName) {
 }
 
 export function OrderFillApp({ companyId, resumeJob, onHome }) {
-  const [stage, setStage] = useState(resumeJob ? (resumeJob.finalized ? "preview" : "fill") : "setup");
-  const [brand, setBrand] = useState(resumeJob?.brand || "angiopharm");
-  const [month, setMonth] = useState(() => resumeJob?.month || defaultOrderMonth());
+  const [stage, setStage] = useState(resumeJob ? (resumeJob.finalized ? "preview" : "fill") : "upload");
+  const [brand, setBrand] = useState(resumeJob?.brand || "");
+  const [month, setMonth] = useState(resumeJob?.month || "");
   const [sourceFile, setSourceFile] = useState(null);
   const [blankFiles, setBlankFiles] = useState({});
   const [processing, setProcessing] = useState(false);
@@ -57,7 +57,8 @@ export function OrderFillApp({ companyId, resumeJob, onHome }) {
   const [finalized, setFinalized] = useState(Boolean(resumeJob?.finalized));
 
   const monthLabel = formatOrderMonthLabel(month);
-  const filesReady = Boolean(sourceFile && blankSlotsForBrand(brand).every((slot) => blankFiles[slot.id]));
+  const uploadSlots = blankSlotsForSource(sourceFile?.name);
+  const filesReady = Boolean(sourceFile && uploadSlots.filter((slot) => !slot.optional).every((slot) => blankFiles[slot.id]));
   const summary = useMemo(() => combinedSummary(results, rows), [results, rows]);
 
   function resetResult() {
@@ -74,25 +75,9 @@ export function OrderFillApp({ companyId, resumeJob, onHome }) {
     setProcessing(false);
   }
 
-  function changeBrand(next) {
-    setBrand(next);
-    setBlankFiles({});
-    resetResult();
-    if (stage === "fill" || stage === "preview") setStage("upload");
-  }
-
-  function changeMonth(next) {
-    setMonth(sanitizeOrderMonth(next));
-    resetResult();
-    if (stage === "fill" || stage === "preview") setStage("upload");
-  }
-
   async function processFiles() {
-    const slots = blankSlotsForBrand(brand);
-    const blanks = usesChristinaSplitBlank(brand)
-      ? slots.map((slot) => blankFiles[slot.id])
-      : [blankFiles.main];
-    if (!sourceFile || blanks.some((file) => !file)) return;
+    const blanks = uploadSlots.map((slot) => blankFiles[slot.id]).filter(Boolean);
+    if (!sourceFile || blanks.length < 1) return;
     if (!companyId) {
       setError("Сначала выберите компанию в ленте выгрузок.");
       return;
@@ -106,8 +91,6 @@ export function OrderFillApp({ companyId, resumeJob, onHome }) {
       const result = await runOrderFillJob({
         api: { createOrderFillJob, pollJob, getJobReport },
         command: {
-          brand,
-          orderMonth: month,
           sourceFile,
           blankFiles: blanks,
           companyId,
@@ -118,6 +101,8 @@ export function OrderFillApp({ companyId, resumeJob, onHome }) {
         },
       });
       setJobId(result.jobId);
+      setBrand(result.job?.brand || "");
+      setMonth(result.job?.order_month || "");
       setRows(result.rows);
       setResults(result.results);
       setEdits(initialEditState(result.rows));
@@ -241,29 +226,26 @@ export function OrderFillApp({ companyId, resumeJob, onHome }) {
         }}
       />
       <main className="flex-1 overflow-hidden">
-        {stage === "setup" && (
-          <SetupStage
-            brand={brand}
-            month={month}
-            onBrand={changeBrand}
-            onMonth={changeMonth}
-            onNext={() => setStage("upload")}
-          />
-        )}
         {(stage === "upload" || stage === "processing") && (
           <UploadStage
-            brand={brand}
             sourceFile={sourceFile}
             blankFiles={blankFiles}
             onSource={(file) => {
+              const previousSlots = blankSlotsForSource(sourceFile?.name)
+                .map((slot) => slot.id)
+                .join();
+              const nextSlots = blankSlotsForSource(file?.name)
+                .map((slot) => slot.id)
+                .join();
               setSourceFile(file);
+              if (previousSlots !== nextSlots) setBlankFiles({});
               resetResult();
             }}
             onBlank={(id, file) => {
               setBlankFiles((prev) => ({ ...prev, [id]: file }));
               resetResult();
             }}
-            onBack={() => setStage("setup")}
+            onHome={onHome}
             onProcess={processFiles}
             processing={processing}
             status={status}

@@ -159,6 +159,26 @@ func TestCreateJobStoresUploadsRecordsJobAndQueuesIt(t *testing.T) {
 	}
 }
 
+func TestCreateJobAllowsOrderFillWithoutBrandAndMonth(t *testing.T) {
+	repository := newFakeRepository()
+	publisher := &fakePublisher{}
+	useCase := NewCreateJob(repository, newFakeStorage(), publisher, func() string { return "job-1" }, fixedClock(), testLogger(), nil)
+	command := validCommand()
+	command.Brand = ""
+	command.OrderMonth = ""
+
+	entity, err := useCase.Execute(context.Background(), command)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if entity.Brand != "" || entity.OrderMonth != "" {
+		t.Fatalf("expected empty identity on create, got %+v", entity)
+	}
+	if publisher.messages[0].Brand != "" || publisher.messages[0].OrderMonth != "" {
+		t.Fatalf("queue message should not invent brand or month, got %+v", publisher.messages[0])
+	}
+}
+
 func TestCreateJobRejectsMissingBlank(t *testing.T) {
 	useCase := NewCreateJob(newFakeRepository(), newFakeStorage(), &fakePublisher{}, func() string { return "job-1" }, fixedClock(), testLogger(), nil)
 	command := validCommand()

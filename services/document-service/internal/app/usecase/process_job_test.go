@@ -131,12 +131,14 @@ func (s *fakeStorage) Put(_ context.Context, key string, _ string, content []byt
 }
 
 type fakeJobStore struct {
-	mu       sync.Mutex
-	statuses []string
-	outputs  []port.OutputFile
-	failCode string
-	failText string
-	progress []progressNote
+	mu         sync.Mutex
+	statuses   []string
+	outputs    []port.OutputFile
+	failCode   string
+	failText   string
+	progress   []progressNote
+	brand      string
+	orderMonth string
 }
 
 type progressNote struct {
@@ -157,6 +159,14 @@ func (s *fakeJobStore) MarkFailed(_ context.Context, _ string, code string, mess
 	s.statuses = append(s.statuses, "failed")
 	s.failCode = code
 	s.failText = message
+	return nil
+}
+
+func (s *fakeJobStore) SetIdentity(_ context.Context, _ string, brand string, orderMonth string, _ time.Time) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.brand = brand
+	s.orderMonth = orderMonth
 	return nil
 }
 
@@ -199,7 +209,7 @@ func (s *fakeReportStore) Load(context.Context, string) (orderfill.Summary, []or
 func testGrids() map[string][][]string {
 	return map[string][][]string{
 		"source": {
-			{"Период: 01.08.2025 - 31.07.2026"},
+			{"Период: 01.08.2025 - 31.07.2026", "", `Номенклатура В группе "Ангиофарм " И`},
 			{"Прошлый период: 01.08.2025 - 31.10.2025"},
 			{"Артикул", "Товар", "Рекомендуемый заказ", "Остаток", "В пути", "Заказано по факту", "Комментарий"},
 			{"A100", "Крем для лица 50 мл", "10", "0", "0", "", ""},
@@ -268,6 +278,9 @@ func TestProcessJobFillsTheBlankAndPublishesTheReport(t *testing.T) {
 	if reports.summary.Filled != 1 {
 		t.Fatalf("expected one filled position, got %d", reports.summary.Filled)
 	}
+	if jobs.brand != "angiopharm" || jobs.orderMonth != "2026-09" {
+		t.Fatalf("expected inferred identity angiopharm/2026-09, got %q/%q", jobs.brand, jobs.orderMonth)
+	}
 	if _, stored := storage.objects[preview.MetaKey("job-1", "output-1")]; !stored {
 		t.Fatal("fill must write a grid preview so the browser never parses xlsx")
 	}
@@ -293,10 +306,18 @@ func TestProcessJobFillsTheBlankAndPublishesTheReport(t *testing.T) {
 func TestProcessJobRecordsUserFacingFailureWithoutRetrying(t *testing.T) {
 	storage := newStorageWithInputs()
 	jobs := &fakeJobStore{}
-	message := processMessage()
-	message.OrderMonth = "2026-12"
+	grids := testGrids()
+	grids["source"] = [][]string{
+		{"Период: 01.08.2025 - 31.07.2026"},
+		{"Прошлый период: 01.08.2025 - 31.10.2025"},
+		{"Артикул", "Товар", "Рекомендуемый заказ", "Остаток", "В пути", "Заказано по факту", "Комментарий"},
+		{"A100", "Крем для лица 50 мл", "10", "0", "0", "", ""},
+	}
+	now := func() time.Time { return time.Date(2026, 9, 1, 12, 0, 0, 0, time.UTC) }
+	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
+	processor := NewProcessJob(fakeCodec{grids: grids}, storage, jobs, &fakeReportStore{}, now, logger, nil)
 
-	err := newProcessor(storage, jobs, &fakeReportStore{}).Handle(context.Background(), message)
+	err := processor.Handle(context.Background(), processMessage())
 	if err != nil {
 		t.Fatalf("a user error must not be returned for retry, got %v", err)
 	}

@@ -1,65 +1,33 @@
 import { useRef, useState } from "react";
-import { ORDER_BRANDS, blankSlotsForBrand, brandLabel } from "../../features/brands/brandPresentation.js";
-import { selectableOrderMonths } from "../../features/order/monthPolicy.js";
+import { blankSlotsForSource } from "../../features/brands/brandPresentation.js";
 import { IconCheck, IconChevron, IconFile, IconUpload } from "../icons.jsx";
-import { Field, PrimaryButton, ProgressBar, Select, StageHeading } from "../widgets.jsx";
-
-export function SetupStage({ brand, month, onBrand, onMonth, onNext }) {
-  const months = selectableOrderMonths();
-  return (
-    <div className="mx-auto flex h-full max-w-xl flex-col justify-center px-6">
-      <StageHeading index="01" kicker="Бланк закупки" title="Новая сессия заполнения">
-        <p className="mt-3 max-w-md text-[16px] leading-relaxed text-[var(--color-ink-soft)]">
-          Заполнение бланка поставщика: выберите бренд и месяц заказа. Это не объединение северных городов. Прошедшие месяцы выбрать нельзя.
-        </p>
-      </StageHeading>
-
-      <div className="mt-9 space-y-5">
-        <Field label="Бренд">
-          <Select value={brand} onChange={onBrand} options={ORDER_BRANDS.map((item) => ({ value: item.id, label: item.label }))} />
-        </Field>
-        <Field label="Месяц заказа">
-          <Select value={month} onChange={onMonth} options={months} />
-        </Field>
-      </div>
-
-      <div className="mt-8 flex justify-end">
-        <PrimaryButton onClick={onNext}>
-          Далее
-          <IconChevron className="h-4 w-4 -rotate-90" />
-        </PrimaryButton>
-      </div>
-    </div>
-  );
-}
+import { PrimaryButton, ProgressBar, StageHeading } from "../widgets.jsx";
 
 export function UploadStage({
-  brand,
   sourceFile,
   blankFiles,
   onSource,
   onBlank,
-  onBack,
+  onHome,
   onProcess,
   processing,
   status,
   progress,
   error,
 }) {
-  const slots = blankSlotsForBrand(brand);
-  const ready = Boolean(sourceFile && slots.every((slot) => blankFiles[slot.id]));
+  const slots = blankSlotsForSource(sourceFile?.name);
+  const ready = Boolean(sourceFile && slots.filter((slot) => !slot.optional).every((slot) => blankFiles[slot.id]));
   return (
     <div className="mx-auto flex h-full max-w-2xl flex-col justify-center px-6">
-      <StageHeading index="02" kicker="Бланк закупки" title="Загрузите файлы">
+      <StageHeading index="01" kicker="Бланк закупки" title="Загрузите файлы">
         <p className="mt-3 max-w-lg text-[16px] leading-relaxed text-[var(--color-ink-soft)]">
-          Таблица заказа и текущий бланк поставщика для{" "}
-          <span className="font-medium text-[var(--color-ink)]">{brandLabel(brand)}</span>. Форматы .xlsx, .xlsm и .xls.
+          Таблица продаж из 1С и бланк поставщика. Бренд и месяц заказа читаются из таблицы. Для CHRISTINA приложите HOME и PROFF.
         </p>
       </StageHeading>
 
       <div className={`mt-9 grid gap-4 ${slots.length > 1 ? "sm:grid-cols-3" : "sm:grid-cols-2"}`}>
         <Dropzone
-          title="Таблица заказа"
+          title="Таблица продаж"
           hint="Excel с остатками и рекомендациями"
           file={sourceFile}
           accept=".xlsx,.xlsm,.xls"
@@ -68,7 +36,7 @@ export function UploadStage({
         {slots.map((slot) => (
           <Dropzone
             key={slot.id}
-            title={slot.label}
+            title={slot.optional ? `${slot.label} (необязательно)` : slot.label}
             hint={slot.hint}
             file={blankFiles[slot.id] || null}
             accept={slot.accept}
@@ -83,12 +51,12 @@ export function UploadStage({
       <div className="mt-8 flex items-center justify-between">
         <button
           type="button"
-          onClick={onBack}
+          onClick={onHome}
           disabled={processing}
           className="flex items-center gap-1.5 rounded-xl px-4 py-2.5 text-[15px] font-medium text-[var(--color-ink-soft)] transition hover:bg-[var(--color-line-soft)] disabled:opacity-40"
         >
           <IconChevron className="h-4 w-4 rotate-90" />
-          Назад
+          К выгрузкам
         </button>
         <PrimaryButton onClick={onProcess} disabled={!ready || processing}>
           {processing ? status || "Обработка..." : "Обработать"}

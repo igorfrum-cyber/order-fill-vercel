@@ -20,7 +20,7 @@ test("runOrderFillJob creates a job, reports status updates, and returns normali
 
   const result = await runOrderFillJob({
     api,
-    command: { brand: "angiopharm", orderMonth: "2026-08", sourceFile: "source", blankFiles: ["blank"] },
+    command: { sourceFile: "source", blankFiles: ["blank"] },
     onStatus: (text) => statuses.push(text),
   });
 
@@ -42,7 +42,7 @@ test("runOrderFillJob throws failed job API message", async () => {
   await assert.rejects(
     runOrderFillJob({
       api,
-      command: { brand: "angiopharm", orderMonth: "2026-08", sourceFile: "source", blankFiles: ["blank"] },
+      command: { sourceFile: "source", blankFiles: ["blank"] },
     }),
     /Нет бланка/,
   );

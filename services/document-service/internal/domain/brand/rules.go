@@ -3,6 +3,7 @@ package brand
 import (
 	"math"
 	"strconv"
+	"strings"
 
 	"order-fill/services/document-service/internal/domain/normalize"
 )
@@ -107,6 +108,32 @@ func Rule(brand string) RuleConfig {
 		return rule
 	}
 	return rules["angiopharm"]
+}
+
+// KeyFromNomenclatureGroup maps the 1C filter caption "Номенклатура В группе …"
+// onto the brand key used by Rule.
+func KeyFromNomenclatureGroup(group string) (string, bool) {
+	value := strings.ToLower(strings.TrimSpace(strings.ReplaceAll(group, "ё", "е")))
+	switch {
+	case strings.Contains(value, "ангио") || strings.Contains(value, "angio"):
+		return "angiopharm", true
+	case strings.Contains(value, "кристин") || strings.Contains(value, "christina"):
+		return "christina", true
+	case strings.Contains(value, "klapp") || strings.Contains(value, "клапп"):
+		return "klapp", true
+	case strings.Contains(value, "skin") && strings.Contains(value, "synerg"):
+		return "skin_synergy", true
+	case strings.Contains(value, "скин") && strings.Contains(value, "синердж"):
+		return "skin_synergy", true
+	case strings.Contains(value, "levissim") || strings.Contains(value, "левисим"):
+		return "levissime", true
+	case strings.Contains(value, "sothys") || strings.Contains(value, "сотис"):
+		return "sothys", true
+	case strings.Contains(value, "novacutan") || strings.Contains(value, "новакутан"):
+		return "novacutan", true
+	default:
+		return "", false
+	}
 }
 
 func ArticleNormalizeOptions(rule RuleConfig) normalize.ArticleOptions {

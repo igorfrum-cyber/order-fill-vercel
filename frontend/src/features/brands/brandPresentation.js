@@ -81,3 +81,29 @@ export function blankSlotsForBrand(brand) {
     },
   ];
 }
+
+export function looksLikeChristinaSource(fileName) {
+  const value = String(fileName || "").toLowerCase();
+  return value.includes("кристин") || value.includes("christina");
+}
+
+export function blankSlotsForSource(fileName) {
+  if (looksLikeChristinaSource(fileName)) {
+    return blankSlotsForBrand("christina");
+  }
+  return [
+    {
+      id: "main",
+      label: "Бланк",
+      hint: "Бланк для заполнения количеств",
+      accept: ".xlsx,.xlsm,.xls",
+    },
+    {
+      id: "extra",
+      label: "Второй бланк",
+      hint: "Нужен только для CHRISTINA (HOME / PROFF)",
+      accept: ".xlsx,.xlsm",
+      optional: true,
+    },
+  ];
+}

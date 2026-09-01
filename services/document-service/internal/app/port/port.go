@@ -69,6 +69,7 @@ type JobStore interface {
 	MarkProcessing(ctx context.Context, jobID string, at time.Time) error
 	MarkFailed(ctx context.Context, jobID string, code string, message string, at time.Time) error
 	SaveResult(ctx context.Context, jobID string, status string, outputs []OutputFile, at time.Time) error
+	SetIdentity(ctx context.Context, jobID string, brand string, orderMonth string, at time.Time) error
 	SetProgress(ctx context.Context, jobID string, fraction float64, message string, at time.Time) error
 	Outputs(ctx context.Context, jobID string) ([]OutputFile, error)
 }

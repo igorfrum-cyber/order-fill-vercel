@@ -13,10 +13,8 @@ export const DEFAULT_POLL_TIMEOUT_MS = 600000;
 
 const absoluteUrl = (path) => apiClient.absoluteUrl(path);
 
-export function createOrderFillJob({ brand, orderMonth, sourceFile, blankFiles, companyId }) {
+export function createOrderFillJob({ sourceFile, blankFiles, companyId }) {
   const formData = new FormData();
-  formData.append("brand", brand);
-  formData.append("order_month", orderMonth);
   formData.append("source_file", sourceFile);
   for (const file of blankFiles) formData.append("blank_files", file);
   if (companyId) formData.append("company_id", companyId);

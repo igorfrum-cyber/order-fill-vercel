@@ -769,14 +769,16 @@ components:
       enum: [queued, processing, needs_review, finalizing, completed, failed]
     OrderFillRequest:
       type: object
-      required: [brand, order_month, source_file, blank_files]
+      required: [source_file, blank_files]
       properties:
         brand:
           type: string
           enum: [angiopharm, christina, levissime, sothys, novacutan, skin_synergy, klapp]
+          description: Optional. The worker reads the brand from the 1C nomenclature group filter.
         order_month:
           type: string
           pattern: "^\\d{4}-\\d{2}$"
+          description: Optional. The worker reconstructs the order month from the 1C period captions.
         source_file:
           type: string
           format: binary

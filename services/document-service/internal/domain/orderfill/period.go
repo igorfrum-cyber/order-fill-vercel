@@ -102,6 +102,22 @@ func FindSourcePeriods(workbook spreadsheet.Workbook) (main *Period, previous *P
 	return main, previous
 }
 
+// InferOrderMonth reconstructs the order month from the 1C period captions.
+// The main period always ends two months before the order month.
+func InferOrderMonth(workbook spreadsheet.Workbook) (string, PeriodInfo, error) {
+	actualMain, actualPrevious := FindSourcePeriods(workbook)
+	if actualMain == nil || actualPrevious == nil {
+		return "", PeriodInfo{}, fmt.Errorf("%w: не нашел в таблице параметры периода и прошлого периода. Проверьте выгрузку из 1С", ErrInvalidInput)
+	}
+	orderDate := addMonths(time.Date(actualMain.End.Year(), actualMain.End.Month(), 1, 0, 0, 0, 0, time.UTC), 2)
+	orderMonth := fmt.Sprintf("%04d-%02d", orderDate.Year(), int(orderDate.Month()))
+	info, err := ValidateSourcePeriods(workbook, orderMonth)
+	if err != nil {
+		return "", PeriodInfo{}, err
+	}
+	return orderMonth, info, nil
+}
+
 // ValidateSourcePeriods refuses exports built for a different order month.
 func ValidateSourcePeriods(workbook spreadsheet.Workbook, orderMonth string) (PeriodInfo, error) {
 	expectedMain, expectedPrevious, label, err := ExpectedPeriods(orderMonth)

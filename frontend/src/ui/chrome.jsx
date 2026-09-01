@@ -31,12 +31,11 @@ export function TopBar({ brandLabel, monthLabel, stage, format = "order", onHome
 
 export function StageRail({ stage, brandLabel, monthLabel, filesReady, onGoto }) {
   const steps = [
-    { key: "setup", n: 1, title: "Настройка", summary: `${brandLabel} · ${monthLabel}` },
-    { key: "upload", n: 2, title: "Загрузка файлов", summary: filesReady ? "файлы загружены" : undefined },
-    { key: "fill", n: 3, title: "Заполнение" },
-    { key: "preview", n: 4, title: "Проверка файлов" },
+    { key: "upload", n: 1, title: "Загрузка файлов", summary: filesReady ? "файлы загружены" : undefined },
+    { key: "fill", n: 2, title: "Заполнение", summary: brandLabel && monthLabel ? `${brandLabel} · ${monthLabel}` : undefined },
+    { key: "preview", n: 3, title: "Проверка файлов" },
   ];
-  const order = ["setup", "upload", "fill", "preview"];
+  const order = ["upload", "fill", "preview"];
   const currentIdx = Math.max(0, order.indexOf(stage === "processing" ? "upload" : stage));
 
   return (
@@ -44,7 +43,7 @@ export function StageRail({ stage, brandLabel, monthLabel, filesReady, onGoto })
       {steps.map((step, index) => {
         const idx = order.indexOf(step.key);
         const state = idx < currentIdx ? "done" : idx === currentIdx ? "active" : "todo";
-        const clickable = idx < currentIdx || (idx === 1 && (stage === "fill" || stage === "preview")) || (idx === 2 && stage === "preview");
+        const clickable = idx < currentIdx || (idx === 0 && (stage === "fill" || stage === "preview")) || (idx === 1 && stage === "preview");
         return (
           <div key={step.key} className="flex items-center">
             <button

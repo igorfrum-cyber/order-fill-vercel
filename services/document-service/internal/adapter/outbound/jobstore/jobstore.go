@@ -58,6 +58,18 @@ func (s *Store) MarkFailed(ctx context.Context, jobID string, code string, messa
 	return nil
 }
 
+func (s *Store) SetIdentity(ctx context.Context, jobID string, brand string, orderMonth string, at time.Time) error {
+	const query = `UPDATE jobs SET brand = $2, order_month = $3, updated_at = $4 WHERE id = $1`
+	tag, err := s.pool.Exec(ctx, query, jobID, brand, orderMonth, at.UTC())
+	if err != nil {
+		return fmt.Errorf("set identity for job %s: %w", jobID, err)
+	}
+	if tag.RowsAffected() == 0 {
+		return fmt.Errorf("set identity for job %s: job not found", jobID)
+	}
+	return nil
+}
+
 func (s *Store) SaveResult(ctx context.Context, jobID string, status string, outputs []port.OutputFile, at time.Time) error {
 	outputFiles, err := marshalJSON(outputFilesToDTO(outputs), "output_files")
 	if err != nil {
