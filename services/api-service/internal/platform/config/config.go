@@ -13,6 +13,7 @@ const defaultMaxUploadBytes int64 = 64 << 20
 
 type Config struct {
 	Addr                string
+	Environment         string
 	AllowedOrigins      string
 	DatabaseURL         string
 	QueueURL            string
@@ -31,6 +32,7 @@ type Config struct {
 func Load() (Config, error) {
 	config := Config{
 		Addr:                getenv("API_ADDR", ":8080"),
+		Environment:         getenv("APP_ENV", "local"),
 		AllowedOrigins:      getenv("API_ALLOWED_ORIGINS", "*"),
 		DatabaseURL:         os.Getenv("DATABASE_URL"),
 		QueueURL:            os.Getenv("QUEUE_URL"),
@@ -59,7 +61,32 @@ func Load() (Config, error) {
 	if len(missing) > 0 {
 		return Config{}, fmt.Errorf("missing required environment variables: %s", strings.Join(missing, ", "))
 	}
+	if err := config.validate(); err != nil {
+		return Config{}, err
+	}
 	return config, nil
+}
+
+func (c Config) validate() error {
+	if !strings.EqualFold(c.Environment, "production") {
+		return nil
+	}
+	if hasWildcardOrigin(c.AllowedOrigins) {
+		return fmt.Errorf("API_ALLOWED_ORIGINS must not be * when APP_ENV=production")
+	}
+	if !c.CookieSecure {
+		return fmt.Errorf("SESSION_COOKIE_SECURE must be true when APP_ENV=production")
+	}
+	return nil
+}
+
+func hasWildcardOrigin(value string) bool {
+	for _, entry := range strings.Split(value, ",") {
+		if strings.TrimSpace(entry) == "*" {
+			return true
+		}
+	}
+	return false
 }
 
 func getenv(key string, fallback string) string {
