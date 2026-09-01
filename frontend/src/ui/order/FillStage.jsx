@@ -13,9 +13,11 @@ import {
   visibleFillTabs,
   visibleReportRows,
 } from "../../features/report/rowPresentation.js";
-import { IconCheck, IconDownload, IconSearch, IconX } from "../icons.jsx";
+import { IconCheck, IconDownload } from "../icons.jsx";
 import { GhostButton, PrimaryButton, Ring } from "../widgets.jsx";
-import { ReportRow, STATUS_META } from "./review/ReportRow.jsx";
+import { STATUS_META } from "./review/ReportRow.jsx";
+import { ReviewTable } from "./review/ReviewTable.jsx";
+import { ReviewTabs } from "./review/ReviewTabs.jsx";
 
 const COMPOSITION = {
   filled: "bg-[var(--color-ok)]",
@@ -27,19 +29,6 @@ const COMPOSITION = {
 const MATCH_CARDS = [
   { key: "not_in_table", label: "Нет в таблице", detail: "бланк без пары в заказе", bar: "bg-[var(--color-neutral)]" },
   { key: "not_in_blank", label: "Нет в бланке", detail: "заказ без пары в бланке", bar: "bg-[color-mix(in_srgb,var(--color-neutral)_55%,white)]" },
-];
-
-const TABLE_HEADERS = [
-  { key: "bar", label: "", align: "left" },
-  { key: "article", label: "Артикул", align: "left" },
-  { key: "name", label: "Товар", align: "left" },
-  { key: "unit", label: "Объём", align: "right" },
-  { key: "stock", label: "Остаток", align: "right" },
-  { key: "transit", label: "В пути", align: "right" },
-  { key: "recommended", label: "Реком.", align: "right" },
-  { key: "inserted", label: "Вставлено", align: "right" },
-  { key: "match", label: "Совпад.", align: "right" },
-  { key: "comment", label: "Комментарий", align: "left" },
 ];
 
 export function FillStage({
@@ -194,110 +183,29 @@ export function FillStage({
         </div>
       </div>
 
-      <div className="flex flex-wrap items-center gap-3 border-b border-[var(--color-line)] bg-[var(--color-surface)] px-6 py-2.5">
-        <div className="flex flex-wrap gap-1">
-          {tabs.map((item) => {
-            const n = counts[item.key] ?? 0;
-            const active = activeTab === item.key;
-            return (
-              <button
-                key={item.key}
-                type="button"
-                onClick={() => setTab(item.key)}
-                className={`flex items-center gap-1.5 rounded-lg px-3 py-2 text-[14px] font-medium transition ${
-                  active ? "bg-[var(--color-brand)] text-white" : "text-[var(--color-ink-soft)] hover:bg-[var(--color-line-soft)]"
-                }`}
-              >
-                {item.label}
-                <span className={`rounded-full px-1.5 font-mono text-[12px] tabular-nums ${active ? "bg-white/20" : "bg-[var(--color-neutral-soft)] text-[var(--color-ink-faint)]"}`}>
-                  {n}
-                </span>
-              </button>
-            );
-          })}
-        </div>
-        <div className="relative ml-auto min-w-52">
-          <IconSearch className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--color-ink-faint)]" />
-          <input
-            value={query}
-            onChange={(event) => setQuery(event.target.value)}
-            placeholder="Артикул или наименование"
-            className="w-full rounded-lg border border-[var(--color-line)] bg-[var(--color-surface)] py-2 pl-8 pr-8 text-[14px] outline-none transition focus:border-[var(--color-brand)] focus:ring-4 focus:ring-[var(--color-brand-soft)]"
-          />
-          {query && (
-            <button type="button" onClick={() => setQuery("")} className="absolute right-2 top-1/2 -translate-y-1/2 text-[var(--color-ink-faint)] hover:text-[var(--color-ink)]">
-              <IconX className="h-4 w-4" />
-            </button>
-          )}
-        </div>
-      </div>
+      <ReviewTabs
+        tabs={tabs}
+        counts={counts}
+        activeTab={activeTab}
+        query={query}
+        onTab={setTab}
+        onQuery={setQuery}
+        duplicateCount={duplicateCount}
+        acknowledgedCount={acknowledgedCount}
+        hint={hint}
+      />
 
-      {activeTab === "duplicate" && duplicateCount > 0 ? (
-        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[color-mix(in_srgb,var(--color-danger)_25%,white)] bg-[var(--color-danger-soft)] px-6 py-2.5 text-[14px] text-[var(--color-ink)]">
-          <span>В таблице заказа несколько строк на одну позицию бланка. На каждой строке отметьте «оставляю», когда разобрали конфликт.</span>
-          <span className="font-mono text-[13px] tabular-nums text-[var(--color-ink-soft)]">
-            {acknowledgedCount} из {duplicateCount} подтверждены
-          </span>
-        </div>
-      ) : hint ? (
-        <div className="border-b border-[var(--color-line)] bg-[var(--color-neutral-soft)] px-6 py-2.5 text-[14px] text-[var(--color-ink-soft)]">
-          {hint}
-        </div>
-      ) : null}
-
-      <div className="flex-1 overflow-auto px-6 py-4">
-        <table className="w-full min-w-[1280px] table-fixed border-separate border-spacing-0">
-          <colgroup>
-            <col className="w-12" />
-            <col className="w-[11%]" />
-            <col />
-            <col className="w-[8%]" />
-            <col className="w-[8%]" />
-            <col className="w-[8%]" />
-            <col className="w-[9%]" />
-            <col className="w-[13%]" />
-            <col className="w-[8%]" />
-            <col className="w-[18%]" />
-          </colgroup>
-          <thead>
-            <tr className="text-left">
-              {TABLE_HEADERS.map((header) => (
-                <th
-                  key={header.key}
-                  className={`sticky top-0 z-10 whitespace-nowrap bg-[var(--color-ground)] px-4 pb-3.5 pt-2 text-[13px] font-medium tracking-wide text-[var(--color-ink-faint)] ${
-                    header.align === "right" ? "text-right" : ""
-                  }`}
-                >
-                  {header.label}
-                </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {visible.length === 0 && (
-              <tr>
-                <td colSpan={10} className="py-16 text-center text-[15px] text-[var(--color-ink-faint)]">
-                  Нет позиций в этой категории
-                </td>
-              </tr>
-            )}
-            {visible.map((row) => (
-              <ReportRow
-                key={rowKey(row)}
-                row={row}
-                edit={edits.get(rowKey(row))}
-                expanded={expanded === rowKey(row)}
-                invalid={invalidKeys.has(rowKey(row))}
-                acknowledged={acknowledgedDuplicates.has(rowKey(row))}
-                boxLabel={boxLabel}
-                onToggle={() => setExpanded(expanded === rowKey(row) ? null : rowKey(row))}
-                onEdit={onEdit}
-                onAcknowledge={(next) => toggleDuplicateAck(rowKey(row), next)}
-              />
-            ))}
-          </tbody>
-        </table>
-      </div>
+      <ReviewTable
+        rows={visible}
+        edits={edits}
+        expanded={expanded}
+        invalidKeys={invalidKeys}
+        acknowledgedDuplicates={acknowledgedDuplicates}
+        boxLabel={boxLabel}
+        onToggle={(key) => setExpanded(expanded === key ? null : key)}
+        onEdit={onEdit}
+        onAcknowledge={toggleDuplicateAck}
+      />
 
       <footer className="flex flex-wrap items-center gap-3 border-t border-[var(--color-line)] bg-[var(--color-surface)] px-6 py-3">
         <GhostButton onClick={onIssueReport} disabled={busy}>
