@@ -1,15 +1,10 @@
 import { useEffect, useState } from "react";
 import { createCompany, createUser, disableCompany, disableUser, listCompanies, listJobs, listUsers, resetUser } from "../../api/auth.js";
+import { inviteRoleOptions, roleLabel } from "../../features/auth/accessPresentation.js";
 import { brandLabel } from "../../features/brands/brandPresentation.js";
 import { jobStatusLabel } from "../../features/report/reportModel.js";
 import { IconCopy } from "../icons.jsx";
 import { GhostButton, Modal, PrimaryButton } from "../widgets.jsx";
-
-const ROLE_LABELS = {
-  purchaser: "закупщик",
-  company_admin: "админ компании",
-  platform_admin: "платформа",
-};
 
 export function JobHistory({ me, companyId, onCompany, onOpen, onNew }) {
   const [jobs, setJobs] = useState([]);
@@ -205,10 +200,11 @@ export function CompaniesScreen({ selectedId, onSelect }) {
   );
 }
 
-export function UsersScreen({ companyId }) {
+export function UsersScreen({ companyId, actorRole }) {
   const [users, setUsers] = useState([]);
   const [login, setLogin] = useState("");
-  const [role, setRole] = useState("purchaser");
+  const roles = inviteRoleOptions(actorRole);
+  const [role, setRole] = useState(roles[0] || "purchaser");
   const [invite, setInvite] = useState("");
   const [copied, setCopied] = useState(false);
   const [error, setError] = useState("");
@@ -256,8 +252,11 @@ export function UsersScreen({ companyId }) {
       >
         <input className="input flex-1" value={login} onChange={(event) => setLogin(event.target.value)} placeholder="Логин" />
         <select className="input" value={role} onChange={(event) => setRole(event.target.value)}>
-          <option value="purchaser">Закупщик</option>
-          <option value="company_admin">Админ компании</option>
+          {roles.map((value) => (
+            <option key={value} value={value}>
+              {roleLabel(value)}
+            </option>
+          ))}
         </select>
         <PrimaryButton type="submit" disabled={!login.trim()}>Пригласить</PrimaryButton>
       </form>
@@ -268,7 +267,7 @@ export function UsersScreen({ companyId }) {
           <li key={user.id} className="flex items-center justify-between gap-2 px-4 py-3">
             <span>
               {user.login}
-              <span className="text-[var(--color-ink-faint)]"> · {ROLE_LABELS[user.role] || user.role}</span>
+              <span className="text-[var(--color-ink-faint)]"> · {roleLabel(user.role)}</span>
               {user.disabled_at ? <span className="ml-2 text-[13px] text-[var(--color-ink-faint)]">выключен</span> : null}
             </span>
             <span className="flex gap-2">

@@ -139,7 +139,9 @@ export default function App() {
           />
         ) : null}
         {screen === "companies" ? <CompaniesScreen selectedId={companyId} onSelect={setCompanyId} /> : null}
-        {screen === "users" ? <UsersScreen companyId={me.role === "platform_admin" ? companyId : me.company_id} /> : null}
+        {screen === "users" ? (
+          <UsersScreen actorRole={me.role} companyId={me.role === "platform_admin" ? companyId : me.company_id} />
+        ) : null}
         {screen === "account" ? <AccountScreen me={me} onBack={() => setScreen("history")} /> : null}
       </main>
     </div>

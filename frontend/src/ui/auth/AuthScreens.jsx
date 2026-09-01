@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { acceptInvite, changePassword, login } from "../../api/auth.js";
+import { accessSummary } from "../../features/auth/accessPresentation.js";
 import { loginAccessHint, loginFailedMessage } from "../../features/help/copy.js";
 import { isPasswordReady, passwordIssues } from "../../features/auth/password.js";
 import { Field, PasswordField, PrimaryButton } from "../widgets.jsx";
@@ -127,7 +128,7 @@ export function AccountScreen({ me, onBack }) {
       <div>
         <h1 className="text-[22px] font-semibold">Пароль</h1>
         <p className="mt-1 text-[14px] text-[var(--color-ink-soft)]">
-          {me.login}. Смена пароля только для этой учётки. Других пользователей сбрасывайте ссылкой-приглашением.
+          {me.login}. {accessSummary(me.role)} Смена пароля только для этой учётки. Других пользователей сбрасывайте ссылкой-приглашением.
         </p>
       </div>
       <form className="space-y-4 rounded-2xl border border-[var(--color-line)] bg-[var(--color-surface)] p-6" onSubmit={submit}>
