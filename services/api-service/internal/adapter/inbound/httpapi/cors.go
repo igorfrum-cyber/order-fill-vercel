@@ -7,7 +7,7 @@ import (
 
 const (
 	corsAllowedMethods = "GET, POST, OPTIONS"
-	corsAllowedHeaders = "Content-Type"
+	corsAllowedHeaders = "Content-Type, X-Requested-With"
 	corsMaxAgeSeconds  = "600"
 )
 
@@ -51,6 +51,9 @@ func (m corsMiddleware) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		header.Set("Access-Control-Allow-Methods", corsAllowedMethods)
 		header.Set("Access-Control-Allow-Headers", corsAllowedHeaders)
 		header.Set("Access-Control-Max-Age", corsMaxAgeSeconds)
+		if allowed != "*" {
+			header.Set("Access-Control-Allow-Credentials", "true")
+		}
 		header.Add("Vary", "Origin")
 	}
 	if r.Method == http.MethodOptions && r.Header.Get("Access-Control-Request-Method") != "" {
@@ -68,7 +71,7 @@ func (m corsMiddleware) resolveOrigin(origin string) (string, bool) {
 		if allowed == "*" {
 			return "*", true
 		}
-		if strings.EqualFold(allowed, origin) {
+		if originsMatch(strings.TrimRight(allowed, "/"), origin) {
 			return origin, true
 		}
 	}

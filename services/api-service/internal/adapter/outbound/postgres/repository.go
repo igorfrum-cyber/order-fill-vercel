@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/jackc/pgx/v5"
@@ -16,10 +17,15 @@ import (
 var (
 	_ port.JobRepository = (*Repository)(nil)
 	_ port.ReportReader  = (*Repository)(nil)
+	_ port.IdentityStore = (*Repository)(nil)
 )
 
-const jobColumns = `id, type, status, brand, order_month, created_at, updated_at,
-		error_code, error_message, input_files, output_files, progress, progress_message`
+const jobInsertColumns = `id, type, status, brand, order_month, created_at, updated_at,
+		error_code, error_message, input_files, output_files, progress, progress_message, company_id, created_by`
+
+const jobSelectColumns = `id, type, status, brand, order_month, created_at, updated_at,
+		error_code, error_message, input_files, output_files, progress, progress_message,
+		COALESCE(company_id, ''), COALESCE(created_by, '')`
 
 // Repository is the PostgreSQL backed job store. api-service owns this schema;
 // document-service only updates existing rows.
@@ -32,8 +38,8 @@ func NewRepository(pool *pgxpool.Pool) *Repository {
 }
 
 // Migrate creates the schema. It is idempotent and safe to run on every start.
-func (r *Repository) Migrate(ctx context.Context) error {
-	statements := []string{
+func migrateStatements() []string {
+	return []string{
 		`CREATE TABLE IF NOT EXISTS jobs (
 			id TEXT PRIMARY KEY,
 			type TEXT NOT NULL,
@@ -51,6 +57,41 @@ func (r *Repository) Migrate(ctx context.Context) error {
 		)`,
 		`ALTER TABLE jobs ADD COLUMN IF NOT EXISTS progress DOUBLE PRECISION NOT NULL DEFAULT 0`,
 		`ALTER TABLE jobs ADD COLUMN IF NOT EXISTS progress_message TEXT NOT NULL DEFAULT ''`,
+		`CREATE TABLE IF NOT EXISTS companies (
+			id TEXT PRIMARY KEY,
+			name TEXT NOT NULL,
+			created_at TIMESTAMPTZ NOT NULL,
+			disabled_at TIMESTAMPTZ
+		)`,
+		`CREATE TABLE IF NOT EXISTS users (
+			id TEXT PRIMARY KEY,
+			company_id TEXT REFERENCES companies(id),
+			login TEXT NOT NULL UNIQUE,
+			password_hash TEXT NOT NULL DEFAULT '',
+			role TEXT NOT NULL,
+			created_at TIMESTAMPTZ NOT NULL,
+			disabled_at TIMESTAMPTZ
+		)`,
+		`CREATE TABLE IF NOT EXISTS sessions (
+			token_hash TEXT PRIMARY KEY,
+			user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+			expires_at TIMESTAMPTZ NOT NULL
+		)`,
+		`CREATE TABLE IF NOT EXISTS invite_tokens (
+			token_hash TEXT PRIMARY KEY,
+			user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+			expires_at TIMESTAMPTZ NOT NULL
+		)`,
+		`CREATE TABLE IF NOT EXISTS audit_events (
+			id TEXT PRIMARY KEY,
+			at TIMESTAMPTZ NOT NULL,
+			actor_id TEXT NOT NULL,
+			action TEXT NOT NULL,
+			company_id TEXT,
+			job_id TEXT
+		)`,
+		`ALTER TABLE jobs ADD COLUMN IF NOT EXISTS company_id TEXT`,
+		`ALTER TABLE jobs ADD COLUMN IF NOT EXISTS created_by TEXT`,
 		`CREATE TABLE IF NOT EXISTS job_reports (
 			job_id TEXT PRIMARY KEY REFERENCES jobs(id) ON DELETE CASCADE,
 			summary JSONB NOT NULL DEFAULT '{}',
@@ -58,6 +99,10 @@ func (r *Repository) Migrate(ctx context.Context) error {
 			updated_at TIMESTAMPTZ NOT NULL
 		)`,
 	}
+}
+
+func (r *Repository) Migrate(ctx context.Context) error {
+	statements := migrateStatements()
 
 	tx, err := r.pool.Begin(ctx)
 	if err != nil {
@@ -92,8 +137,8 @@ func (r *Repository) Create(ctx context.Context, entity job.Job) error {
 		errorMessage = &entity.Failure.Message
 	}
 
-	const query = `INSERT INTO jobs (` + jobColumns + `)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)`
+	const query = `INSERT INTO jobs (` + jobInsertColumns + `)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)`
 	_, err = r.pool.Exec(ctx, query,
 		entity.ID,
 		string(entity.Type),
@@ -108,6 +153,8 @@ func (r *Repository) Create(ctx context.Context, entity job.Job) error {
 		outputFiles,
 		entity.Progress,
 		entity.ProgressMessage,
+		nullIfEmpty(entity.CompanyID),
+		nullIfEmpty(entity.CreatedBy),
 	)
 	if err != nil {
 		return fmt.Errorf("insert job %s: %w", entity.ID, err)
@@ -116,7 +163,7 @@ func (r *Repository) Create(ctx context.Context, entity job.Job) error {
 }
 
 func (r *Repository) Get(ctx context.Context, id string) (job.Job, error) {
-	const query = `SELECT ` + jobColumns + ` FROM jobs WHERE id = $1`
+	const query = `SELECT ` + jobSelectColumns + ` FROM jobs WHERE id = $1`
 	entity, err := scanJob(r.pool.QueryRow(ctx, query, id))
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
@@ -129,7 +176,7 @@ func (r *Repository) Get(ctx context.Context, id string) (job.Job, error) {
 
 func (r *Repository) UpdateStatus(ctx context.Context, id string, status job.Status, updatedAt time.Time) (job.Job, error) {
 	const query = `UPDATE jobs SET status = $2, updated_at = $3 WHERE id = $1
-		RETURNING ` + jobColumns
+		RETURNING ` + jobSelectColumns
 	entity, err := scanJob(r.pool.QueryRow(ctx, query, id, string(status), updatedAt.UTC()))
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
@@ -188,11 +235,53 @@ func scanJob(row pgx.Row) (job.Job, error) {
 		&outputFiles,
 		&entity.Progress,
 		&entity.ProgressMessage,
+		&entity.CompanyID,
+		&entity.CreatedBy,
 	)
 	if err != nil {
 		return job.Job{}, err
 	}
 
+	return finishJobScan(entity, jobType, status, errorCode, errorMessage, inputFiles, outputFiles)
+}
+
+func scanListedJob(row pgx.Row) (job.Job, string, error) {
+	var (
+		entity                  job.Job
+		jobType, status         string
+		errorCode, errorMessage *string
+		inputFiles, outputFiles []byte
+		login                   string
+	)
+	err := row.Scan(
+		&entity.ID,
+		&jobType,
+		&status,
+		&entity.Brand,
+		&entity.OrderMonth,
+		&entity.CreatedAt,
+		&entity.UpdatedAt,
+		&errorCode,
+		&errorMessage,
+		&inputFiles,
+		&outputFiles,
+		&entity.Progress,
+		&entity.ProgressMessage,
+		&entity.CompanyID,
+		&entity.CreatedBy,
+		&login,
+	)
+	if err != nil {
+		return job.Job{}, "", err
+	}
+	entity, err = finishJobScan(entity, jobType, status, errorCode, errorMessage, inputFiles, outputFiles)
+	if err != nil {
+		return job.Job{}, "", err
+	}
+	return entity, login, nil
+}
+
+func finishJobScan(entity job.Job, jobType string, status string, errorCode *string, errorMessage *string, inputFiles []byte, outputFiles []byte) (job.Job, error) {
 	entity.Type = job.Type(jobType)
 	entity.Status = job.Status(status)
 	entity.CreatedAt = entity.CreatedAt.UTC()
@@ -203,7 +292,6 @@ func scanJob(row pgx.Row) (job.Job, error) {
 			Message: derefString(errorMessage),
 		}
 	}
-
 	var inputDTOs []inputFileDTO
 	if err := unmarshalJSON(inputFiles, &inputDTOs, "input_files"); err != nil {
 		return job.Job{}, err
@@ -214,8 +302,40 @@ func scanJob(row pgx.Row) (job.Job, error) {
 	}
 	entity.InputFiles = inputFilesToDomain(inputDTOs)
 	entity.OutputFiles = outputFilesToDomain(outputDTOs)
-
 	return entity, nil
+}
+
+func (r *Repository) List(ctx context.Context, filter port.JobListFilter) ([]port.JobListRow, error) {
+	limit := filter.Limit
+	if limit <= 0 {
+		limit = 200
+	}
+	const query = `SELECT j.id, j.type, j.status, j.brand, j.order_month, j.created_at, j.updated_at,
+		j.error_code, j.error_message, j.input_files, j.output_files, j.progress, j.progress_message,
+		COALESCE(j.company_id, ''), COALESCE(j.created_by, ''), COALESCE(u.login, '')
+		FROM jobs j
+		LEFT JOIN users u ON u.id = j.created_by
+		WHERE ($1 = '' OR j.company_id = $1)
+		  AND ($2 = '' OR j.created_by = $2)
+		ORDER BY j.created_at DESC
+		LIMIT $3`
+	rows, err := r.pool.Query(ctx, query, filter.CompanyID, filter.CreatedBy, limit)
+	if err != nil {
+		return nil, fmt.Errorf("list jobs: %w", err)
+	}
+	defer rows.Close()
+	items := make([]port.JobListRow, 0)
+	for rows.Next() {
+		entity, login, err := scanListedJob(rows)
+		if err != nil {
+			return nil, err
+		}
+		items = append(items, port.JobListRow{Job: entity, CreatedByLogin: login})
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("list jobs: %w", err)
+	}
+	return items, nil
 }
 
 func derefString(value *string) string {
@@ -223,4 +343,11 @@ func derefString(value *string) string {
 		return ""
 	}
 	return *value
+}
+
+func nullIfEmpty(value string) any {
+	if strings.TrimSpace(value) == "" {
+		return nil
+	}
+	return value
 }

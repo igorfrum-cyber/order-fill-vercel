@@ -1,0 +1,57 @@
+package port
+
+import (
+	"context"
+	"time"
+
+	"order-fill/services/api-service/internal/domain/identity"
+	"order-fill/services/api-service/internal/domain/job"
+)
+
+type JobListFilter struct {
+	CompanyID string
+	CreatedBy string
+	Limit     int
+}
+
+type JobListRow struct {
+	Job            job.Job
+	CreatedByLogin string
+}
+
+type AuditEvent struct {
+	ID        string
+	At        time.Time
+	ActorID   string
+	Action    string
+	CompanyID string
+	JobID     string
+}
+
+type IdentityStore interface {
+	CountUsers(ctx context.Context) (int, error)
+	CreateCompany(ctx context.Context, company identity.Company) error
+	GetCompany(ctx context.Context, id string) (identity.Company, error)
+	ListCompanies(ctx context.Context) ([]identity.Company, error)
+	DisableCompany(ctx context.Context, id string, at time.Time) error
+
+	CreateUser(ctx context.Context, user identity.User) error
+	GetUserByID(ctx context.Context, id string) (identity.User, error)
+	GetUserByLogin(ctx context.Context, login string) (identity.User, error)
+	ListUsers(ctx context.Context, companyID string) ([]identity.User, error)
+	SetPasswordHash(ctx context.Context, userID string, hash string) error
+	ClearPasswordHash(ctx context.Context, userID string) error
+	DisableUser(ctx context.Context, id string, at time.Time) error
+
+	CreateSession(ctx context.Context, tokenHash string, userID string, expiresAt time.Time) error
+	GetSessionUser(ctx context.Context, tokenHash string, now time.Time) (identity.User, error)
+	DeleteSession(ctx context.Context, tokenHash string) error
+	DeleteSessionsForUser(ctx context.Context, userID string) error
+
+	CreateInvite(ctx context.Context, tokenHash string, userID string, expiresAt time.Time) error
+	DeleteInvitesForUser(ctx context.Context, userID string) error
+	ConsumeInvite(ctx context.Context, tokenHash string, now time.Time) (string, error)
+
+	InsertAudit(ctx context.Context, event AuditEvent) error
+	ListAudit(ctx context.Context, limit int) ([]AuditEvent, error)
+}

@@ -1,6 +1,6 @@
 import { fileNameFromContentDisposition } from "../features/downloads/downloadLinks.js";
 
-const DEFAULT_API_BASE_URL = "http://127.0.0.1:8080";
+const DEFAULT_API_BASE_URL = "";
 
 export class ApiClient {
   constructor({ baseUrl = apiBaseUrl(), fetcher = globalThis.fetch } = {}) {
@@ -17,13 +17,12 @@ export class ApiClient {
   async request(path, options = {}) {
     const response = await this.fetcher.call(globalThis, `${this.baseUrl}${path}`, {
       cache: "no-store",
+      credentials: "include",
       ...options,
-      headers: {
-        ...(options.body instanceof FormData ? {} : { "Content-Type": "application/json" }),
-        ...(options.headers || {}),
-      },
+      headers: requestHeaders(options),
     });
     if (!response.ok) {
+      emitAuthRequired(path, response.status);
       throw new ApiError(response.status, await parseError(response));
     }
     return parseResponse(response);
@@ -32,8 +31,11 @@ export class ApiClient {
   async requestDownload(path) {
     const response = await this.fetcher.call(globalThis, `${this.baseUrl}${path}`, {
       cache: "no-store",
+      credentials: "include",
+      headers: { "X-Requested-With": "fetch" },
     });
     if (!response.ok) {
+      emitAuthRequired(path, response.status);
       throw new ApiError(response.status, await parseError(response));
     }
     const contentType = response.headers.get("Content-Type") || "application/octet-stream";
@@ -73,3 +75,24 @@ async function parseError(response) {
 }
 
 export const apiClient = new ApiClient();
+
+const authRequiredListeners = new Set();
+
+export function onAuthRequired(listener) {
+  authRequiredListeners.add(listener);
+  return () => authRequiredListeners.delete(listener);
+}
+
+function emitAuthRequired(path, status) {
+  if (status !== 401) return;
+  if (path.startsWith("/api/v1/auth/login") || path.startsWith("/api/v1/auth/invite")) return;
+  for (const listener of authRequiredListeners) listener();
+}
+
+function requestHeaders(options) {
+  const headers = { "X-Requested-With": "fetch", ...(options.headers || {}) };
+  if (!(options.body instanceof FormData) && !headers["Content-Type"]) {
+    headers["Content-Type"] = "application/json";
+  }
+  return headers;
+}

@@ -15,6 +15,7 @@ type JobRepository interface {
 	Create(ctx context.Context, entity job.Job) error
 	Get(ctx context.Context, id string) (job.Job, error)
 	UpdateStatus(ctx context.Context, id string, status job.Status, updatedAt time.Time) (job.Job, error)
+	List(ctx context.Context, filter JobListFilter) ([]JobListRow, error)
 }
 
 // ReportReader reads the review report produced by document-service.

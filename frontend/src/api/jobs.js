@@ -13,23 +13,25 @@ export const DEFAULT_POLL_TIMEOUT_MS = 600000;
 
 const absoluteUrl = (path) => apiClient.absoluteUrl(path);
 
-export function createOrderFillJob({ brand, orderMonth, sourceFile, blankFiles }) {
+export function createOrderFillJob({ brand, orderMonth, sourceFile, blankFiles, companyId }) {
   const formData = new FormData();
   formData.append("brand", brand);
   formData.append("order_month", orderMonth);
   formData.append("source_file", sourceFile);
   for (const file of blankFiles) formData.append("blank_files", file);
+  if (companyId) formData.append("company_id", companyId);
   return apiClient.request("/api/v1/jobs/order-fill", {
     method: "POST",
     body: formData,
   });
 }
 
-export function createNorthMergeJob({ brand, blankFiles, tyumenSourceFile = null }) {
+export function createNorthMergeJob({ brand, blankFiles, tyumenSourceFile = null, companyId }) {
   const formData = new FormData();
   formData.append("brand", brand);
   for (const entry of blankFiles) formData.append("blank_files", entry.file || entry);
   if (tyumenSourceFile) formData.append("tyumen_source_file", tyumenSourceFile);
+  if (companyId) formData.append("company_id", companyId);
   return apiClient.request("/api/v1/jobs/north-merge", {
     method: "POST",
     body: formData,

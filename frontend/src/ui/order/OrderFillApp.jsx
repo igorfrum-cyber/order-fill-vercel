@@ -36,25 +36,25 @@ function triggerBlobDownload(blob, fileName) {
   window.setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
-export function OrderFillApp({ mode, onMode }) {
-  const [stage, setStage] = useState("setup");
-  const [brand, setBrand] = useState("angiopharm");
-  const [month, setMonth] = useState(() => defaultOrderMonth());
+export function OrderFillApp({ mode, onMode, companyId, resumeJob, onHome }) {
+  const [stage, setStage] = useState(resumeJob ? (resumeJob.finalized ? "preview" : "fill") : "setup");
+  const [brand, setBrand] = useState(resumeJob?.brand || "angiopharm");
+  const [month, setMonth] = useState(() => resumeJob?.month || defaultOrderMonth());
   const [sourceFile, setSourceFile] = useState(null);
   const [blankFiles, setBlankFiles] = useState({});
   const [processing, setProcessing] = useState(false);
   const [progress, setProgress] = useState(0);
   const [status, setStatus] = useState("");
   const [error, setError] = useState("");
-  const [jobId, setJobId] = useState(null);
-  const [rows, setRows] = useState([]);
-  const [results, setResults] = useState([]);
-  const [edits, setEdits] = useState(new Map());
+  const [jobId, setJobId] = useState(resumeJob?.jobId || null);
+  const [rows, setRows] = useState(resumeJob?.rows || []);
+  const [results, setResults] = useState(resumeJob?.results || []);
+  const [edits, setEdits] = useState(() => resumeJob?.edits || new Map());
   const [invalidKeys, setInvalidKeys] = useState(new Set());
   const [busy, setBusy] = useState(false);
   const [confirmLines, setConfirmLines] = useState(null);
-  const [outputFiles, setOutputFiles] = useState([]);
-  const [finalized, setFinalized] = useState(false);
+  const [outputFiles, setOutputFiles] = useState(resumeJob?.outputFiles || []);
+  const [finalized, setFinalized] = useState(Boolean(resumeJob?.finalized));
 
   const monthLabel = formatOrderMonthLabel(month);
   const filesReady = Boolean(sourceFile && blankSlotsForBrand(brand).every((slot) => blankFiles[slot.id]));
@@ -93,6 +93,10 @@ export function OrderFillApp({ mode, onMode }) {
       ? slots.map((slot) => blankFiles[slot.id])
       : [blankFiles.main];
     if (!sourceFile || blanks.some((file) => !file)) return;
+    if (!companyId) {
+      setError("Сначала выберите компанию в ленте выгрузок.");
+      return;
+    }
 
     setProcessing(true);
     setError("");
@@ -106,6 +110,7 @@ export function OrderFillApp({ mode, onMode }) {
           orderMonth: month,
           sourceFile,
           blankFiles: blanks,
+          companyId,
         },
         onStatus: (text, job) => {
           setStatus(text);
@@ -224,6 +229,7 @@ export function OrderFillApp({ mode, onMode }) {
         stage={stage}
         mode={mode}
         onMode={onMode}
+        onHome={onHome}
       />
       <StageRail
         stage={stage}

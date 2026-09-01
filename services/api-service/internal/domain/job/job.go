@@ -50,6 +50,8 @@ type Job struct {
 	Status          Status
 	Brand           string
 	OrderMonth      string
+	CompanyID       string
+	CreatedBy       string
 	CreatedAt       time.Time
 	UpdatedAt       time.Time
 	Failure         *Failure

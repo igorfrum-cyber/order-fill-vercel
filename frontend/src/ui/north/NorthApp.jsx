@@ -22,7 +22,7 @@ import { IconCheck, IconChevron, IconDownload, IconFile, IconUpload, IconX } fro
 import { Field, GhostButton, Modal, PrimaryButton, Select } from "../widgets.jsx";
 import { TopBar } from "../chrome.jsx";
 
-export function NorthApp({ mode, onMode }) {
+export function NorthApp({ mode, onMode, companyId, onHome }) {
   const [brand, setBrand] = useState("angiopharm");
   const [files, setFiles] = useState([]);
   const [homeFiles, setHomeFiles] = useState([]);
@@ -105,6 +105,10 @@ export function NorthApp({ mode, onMode }) {
       window.alert("Добавьте хотя бы один бланк города.");
       return;
     }
+    if (!companyId) {
+      setError("Сначала выберите компанию в ленте выгрузок.");
+      return;
+    }
     setBusy(true);
     setError("");
     setStatus("Проверяю бланки...");
@@ -112,7 +116,7 @@ export function NorthApp({ mode, onMode }) {
     try {
       const jobResult = await runNorthMergeJob({
         api: { createNorthMergeJob, pollJob, getJobReport },
-        command: { brand, blankFiles: entries, tyumenSourceFile: tyumenFile },
+        command: { brand, blankFiles: entries, tyumenSourceFile: tyumenFile, companyId },
         onStatus: (text) => setStatus(text),
       });
       setMergePrompt({ entries, result: jobResult });
@@ -223,7 +227,7 @@ export function NorthApp({ mode, onMode }) {
 
   return (
     <div className="flex h-full flex-col bg-[var(--color-ground)]">
-      <TopBar brandLabel="" monthLabel="" stage="setup" mode={mode} onMode={onMode} />
+      <TopBar brandLabel="" monthLabel="" stage="setup" mode={mode} onMode={onMode} onHome={onHome} />
       <div className="flex-1 overflow-auto px-6 py-6">
         <div className="mx-auto max-w-6xl">
           <div className="mb-6 flex flex-wrap items-end justify-between gap-4">

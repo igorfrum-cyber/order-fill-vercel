@@ -18,6 +18,8 @@ type jobResponse struct {
 	Status          string               `json:"status"`
 	Brand           string               `json:"brand,omitempty"`
 	OrderMonth      string               `json:"order_month,omitempty"`
+	CompanyID       string               `json:"company_id,omitempty"`
+	CreatedBy       string               `json:"created_by,omitempty"`
 	CreatedAt       time.Time            `json:"created_at"`
 	UpdatedAt       time.Time            `json:"updated_at"`
 	Error           *errorResponse       `json:"error,omitempty"`
@@ -129,6 +131,8 @@ func presentJob(entity job.Job) jobResponse {
 		Status:          string(entity.Status),
 		Brand:           entity.Brand,
 		OrderMonth:      entity.OrderMonth,
+		CompanyID:       entity.CompanyID,
+		CreatedBy:       entity.CreatedBy,
 		CreatedAt:       entity.CreatedAt,
 		UpdatedAt:       entity.UpdatedAt,
 		InputFiles:      make([]inputFileResponse, 0, len(entity.InputFiles)),

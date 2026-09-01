@@ -1,12 +1,12 @@
 import { IconCheck, IconList } from "./icons.jsx";
 
-export function TopBar({ brandLabel, monthLabel, stage, mode, onMode }) {
+export function TopBar({ brandLabel, monthLabel, stage, mode, onMode, onHome }) {
   return (
     <header className="flex items-center justify-between border-b border-[var(--color-line)] bg-[var(--color-surface)] px-6 py-3.5">
       <div className="flex items-center gap-2.5">
-        <div className="grid h-9 w-9 place-items-center rounded-md bg-[var(--color-brand)] text-white">
+        <button type="button" className="grid h-9 w-9 place-items-center rounded-md bg-[var(--color-brand)] text-white" onClick={onHome}>
           <IconList className="h-4 w-4" />
-        </div>
+        </button>
         <div className="leading-tight">
           <div className="text-[16px] font-semibold tracking-tight">Бланки закупки</div>
           <div className="text-[13px] text-[var(--color-ink-faint)]">автозаполнение</div>

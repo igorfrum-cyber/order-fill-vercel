@@ -13,6 +13,8 @@ import (
 	"strings"
 
 	"order-fill/services/api-service/internal/app/usecase"
+	"order-fill/services/api-service/internal/domain/authz"
+	"order-fill/services/api-service/internal/domain/identity"
 	"order-fill/services/api-service/internal/domain/job"
 	"order-fill/services/api-service/internal/domain/preview"
 )
@@ -60,6 +62,7 @@ type jobHandler struct {
 	editor     editSubmitter
 	previews   previewReader
 	maxUploads int64
+	admin      adminAPI
 }
 
 func (h jobHandler) createOrderFill(w http.ResponseWriter, r *http.Request) {
@@ -75,9 +78,23 @@ func (h jobHandler) create(w http.ResponseWriter, r *http.Request, jobType job.T
 		writeError(w, http.StatusServiceUnavailable, "not_configured", "job creation is not configured")
 		return
 	}
+	user, ok := userFrom(r)
+	if !ok {
+		writeError(w, http.StatusUnauthorized, "unauthorized", "authentication is required")
+		return
+	}
 	command, err := h.parseCreateRequest(r, jobType)
 	if err != nil {
 		writeError(w, http.StatusBadRequest, "bad_request", err.Error())
+		return
+	}
+	command.CreatedBy = user.ID
+	command.CompanyID = user.CompanyID
+	if user.Role == identity.RolePlatformAdmin {
+		command.CompanyID = strings.TrimSpace(r.FormValue("company_id"))
+	}
+	if command.CompanyID == "" {
+		writeError(w, http.StatusBadRequest, "bad_request", "company_id is required")
 		return
 	}
 	entity, err := h.creator.Execute(r.Context(), command)
@@ -89,32 +106,37 @@ func (h jobHandler) create(w http.ResponseWriter, r *http.Request, jobType job.T
 }
 
 func (h jobHandler) getJob(w http.ResponseWriter, r *http.Request) {
-	if h.finder == nil {
-		writeError(w, http.StatusNotFound, "not_found", "job was not found")
-		return
-	}
-	entity, err := h.finder.Execute(r.Context(), r.PathValue("job_id"))
-	if err != nil {
-		writeDomainError(w, "read_job_failed", err)
+	entity, _, ok := h.accessibleJob(w, r)
+	if !ok {
 		return
 	}
 	writeJSON(w, http.StatusOK, presentJob(entity))
 }
 
 func (h jobHandler) getReport(w http.ResponseWriter, r *http.Request) {
+	entity, user, ok := h.accessibleJob(w, r)
+	if !ok {
+		return
+	}
 	if h.reports == nil {
 		writeError(w, http.StatusNotFound, "not_found", "report was not found")
 		return
 	}
-	report, err := h.reports.Execute(r.Context(), r.PathValue("job_id"))
+	report, err := h.reports.Execute(r.Context(), entity.ID)
 	if err != nil {
 		writeDomainError(w, "read_report_failed", err)
 		return
+	}
+	if h.admin != nil && user.Role == identity.RolePlatformAdmin {
+		h.admin.RecordAudit(r.Context(), user, "job_view", entity.CompanyID, entity.ID)
 	}
 	writeJSON(w, http.StatusOK, presentReport(report))
 }
 
 func (h jobHandler) submitEdits(w http.ResponseWriter, r *http.Request) {
+	if _, _, ok := h.accessibleJob(w, r); !ok {
+		return
+	}
 	if h.editor == nil {
 		writeError(w, http.StatusNotFound, "not_found", "job was not found")
 		return
@@ -143,28 +165,38 @@ func (h jobHandler) submitEdits(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h jobHandler) listFiles(w http.ResponseWriter, r *http.Request) {
+	entity, _, ok := h.accessibleJob(w, r)
+	if !ok {
+		return
+	}
 	if h.files == nil {
 		writeError(w, http.StatusNotFound, "not_found", "job was not found")
 		return
 	}
-	jobID := r.PathValue("job_id")
-	files, err := h.files.Execute(r.Context(), jobID)
+	files, err := h.files.Execute(r.Context(), entity.ID)
 	if err != nil {
 		writeDomainError(w, "read_files_failed", err)
 		return
 	}
-	writeJSON(w, http.StatusOK, map[string][]outputFileResponse{"files": presentOutputFiles(jobID, files)})
+	writeJSON(w, http.StatusOK, map[string][]outputFileResponse{"files": presentOutputFiles(entity.ID, files)})
 }
 
 func (h jobHandler) downloadFile(w http.ResponseWriter, r *http.Request) {
+	entity, user, ok := h.accessibleJob(w, r)
+	if !ok {
+		return
+	}
 	if h.downloads == nil {
 		writeError(w, http.StatusNotFound, "not_found", "file was not found")
 		return
 	}
-	download, err := h.downloads.Execute(r.Context(), r.PathValue("job_id"), r.PathValue("file_id"))
+	download, err := h.downloads.Execute(r.Context(), entity.ID, r.PathValue("file_id"))
 	if err != nil {
 		writeDomainError(w, "download_failed", err)
 		return
+	}
+	if h.admin != nil {
+		h.admin.RecordAudit(r.Context(), user, "file_download", entity.CompanyID, entity.ID)
 	}
 	w.Header().Set("Content-Type", download.ContentType)
 	w.Header().Set("Content-Disposition", contentDisposition(download.Name))
@@ -174,11 +206,15 @@ func (h jobHandler) downloadFile(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h jobHandler) previewMeta(w http.ResponseWriter, r *http.Request) {
+	entity, _, ok := h.accessibleJob(w, r)
+	if !ok {
+		return
+	}
 	if h.previews == nil {
 		writeError(w, http.StatusNotFound, "not_found", "preview was not found")
 		return
 	}
-	meta, err := h.previews.Meta(r.Context(), r.PathValue("job_id"), r.PathValue("file_id"))
+	meta, err := h.previews.Meta(r.Context(), entity.ID, r.PathValue("file_id"))
 	if err != nil {
 		writeDomainError(w, "read_preview_failed", err)
 		return
@@ -187,13 +223,17 @@ func (h jobHandler) previewMeta(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h jobHandler) previewWindow(w http.ResponseWriter, r *http.Request) {
+	entity, _, ok := h.accessibleJob(w, r)
+	if !ok {
+		return
+	}
 	if h.previews == nil {
 		writeError(w, http.StatusNotFound, "not_found", "preview was not found")
 		return
 	}
 	fromRow := queryInt(r, "from_row", 1)
 	window, err := h.previews.Window(r.Context(), usecase.PreviewWindowQuery{
-		JobID:      r.PathValue("job_id"),
+		JobID:      entity.ID,
 		FileID:     r.PathValue("file_id"),
 		SheetIndex: queryInt(r, "sheet", 0),
 		FromRow:    fromRow,
@@ -207,12 +247,16 @@ func (h jobHandler) previewWindow(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h jobHandler) previewFind(w http.ResponseWriter, r *http.Request) {
+	entity, _, ok := h.accessibleJob(w, r)
+	if !ok {
+		return
+	}
 	if h.previews == nil {
 		writeError(w, http.StatusNotFound, "not_found", "preview was not found")
 		return
 	}
 	sheet := queryInt(r, "sheet", 0)
-	hit, err := h.previews.Find(r.Context(), r.PathValue("job_id"), r.PathValue("file_id"), sheet, r.URL.Query().Get("q"))
+	hit, err := h.previews.Find(r.Context(), entity.ID, r.PathValue("file_id"), sheet, r.URL.Query().Get("q"))
 	if err != nil {
 		writeDomainError(w, "read_preview_failed", err)
 		return
@@ -221,14 +265,21 @@ func (h jobHandler) previewFind(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h jobHandler) downloadArchive(w http.ResponseWriter, r *http.Request) {
+	entity, user, ok := h.accessibleJob(w, r)
+	if !ok {
+		return
+	}
 	if h.archive == nil {
 		writeError(w, http.StatusNotFound, "not_found", "file was not found")
 		return
 	}
-	download, err := h.archive.Execute(r.Context(), r.PathValue("job_id"))
+	download, err := h.archive.Execute(r.Context(), entity.ID)
 	if err != nil {
 		writeDomainError(w, "download_archive_failed", err)
 		return
+	}
+	if h.admin != nil {
+		h.admin.RecordAudit(r.Context(), user, "archive_download", entity.CompanyID, entity.ID)
 	}
 	w.Header().Set("Content-Type", download.ContentType)
 	w.Header().Set("Content-Disposition", contentDisposition(download.Name))
@@ -323,11 +374,33 @@ func multipartUploads(form *multipart.Form, field string, role job.Role, require
 	return uploads, nil
 }
 
+func (h jobHandler) accessibleJob(w http.ResponseWriter, r *http.Request) (job.Job, identity.User, bool) {
+	user, ok := userFrom(r)
+	if !ok {
+		writeError(w, http.StatusUnauthorized, "unauthorized", "authentication is required")
+		return job.Job{}, identity.User{}, false
+	}
+	if h.finder == nil {
+		writeError(w, http.StatusNotFound, "not_found", "job was not found")
+		return job.Job{}, identity.User{}, false
+	}
+	entity, err := h.finder.Execute(r.Context(), r.PathValue("job_id"))
+	if err != nil || !authz.CanAccessJob(user, entity) {
+		writeError(w, http.StatusNotFound, "not_found", "job was not found")
+		return job.Job{}, identity.User{}, false
+	}
+	return entity, user, true
+}
+
 func writeDomainError(w http.ResponseWriter, code string, err error) {
 	switch {
-	case errors.Is(err, job.ErrNotFound):
+	case errors.Is(err, job.ErrNotFound), errors.Is(err, identity.ErrNotFound):
 		writeError(w, http.StatusNotFound, "not_found", err.Error())
-	case errors.Is(err, job.ErrInvalid):
+	case errors.Is(err, identity.ErrUnauthorized):
+		writeError(w, http.StatusUnauthorized, "unauthorized", "authentication is required")
+	case errors.Is(err, identity.ErrConflict):
+		writeError(w, http.StatusConflict, "conflict", err.Error())
+	case errors.Is(err, job.ErrInvalid), errors.Is(err, identity.ErrPassword):
 		writeError(w, http.StatusBadRequest, "bad_request", err.Error())
 	default:
 		writeError(w, http.StatusInternalServerError, code, err.Error())

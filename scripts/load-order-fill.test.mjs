@@ -15,7 +15,10 @@ test("parseArgs applies conservative defaults for a local load run", () => {
   assert.equal(options.jobs, 20);
   assert.equal(options.concurrency, 5);
   assert.equal(options.brand, "angiopharm");
-  assert.equal(options.orderMonth, "2026-09");
+  const now = new Date();
+  const next = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 1));
+  const expectedMonth = `${next.getUTCFullYear()}-${String(next.getUTCMonth() + 1).padStart(2, "0")}`;
+  assert.equal(options.orderMonth, expectedMonth);
   assert.equal(options.sourcePath, "testdata/private/source_100000.xlsx");
   assert.deepEqual(options.blankPaths, ["testdata/private/blank_100000.xlsx"]);
   assert.equal(options.pollIntervalMs, 1000);

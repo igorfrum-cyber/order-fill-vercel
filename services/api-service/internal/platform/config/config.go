@@ -12,32 +12,36 @@ import (
 const defaultMaxUploadBytes int64 = 64 << 20
 
 type Config struct {
-	Addr           string
-	AllowedOrigins string
-	DatabaseURL    string
-	QueueURL       string
-	QueueName      string
-	S3Endpoint     string
-	S3Bucket       string
-	S3AccessKey    string
-	S3SecretKey    string
-	MaxUploadBytes int64
+	Addr                string
+	AllowedOrigins      string
+	DatabaseURL         string
+	QueueURL            string
+	QueueName           string
+	S3Endpoint          string
+	S3Bucket            string
+	S3AccessKey         string
+	S3SecretKey         string
+	CookieSecure        bool
+	BootstrapAdminLogin string
+	MaxUploadBytes      int64
 }
 
 // Load reads the configuration and fails fast when a required value is missing,
 // because a half-configured service is worse than one that refuses to start.
 func Load() (Config, error) {
 	config := Config{
-		Addr:           getenv("API_ADDR", ":8080"),
-		AllowedOrigins: getenv("API_ALLOWED_ORIGINS", "*"),
-		DatabaseURL:    os.Getenv("DATABASE_URL"),
-		QueueURL:       os.Getenv("QUEUE_URL"),
-		QueueName:      getenv("QUEUE_NAME", "order-fill:jobs"),
-		S3Endpoint:     os.Getenv("S3_ENDPOINT"),
-		S3Bucket:       getenv("S3_BUCKET", "order-fill"),
-		S3AccessKey:    os.Getenv("S3_ACCESS_KEY"),
-		S3SecretKey:    os.Getenv("S3_SECRET_KEY"),
-		MaxUploadBytes: getenvInt64("API_MAX_UPLOAD_BYTES", defaultMaxUploadBytes),
+		Addr:                getenv("API_ADDR", ":8080"),
+		AllowedOrigins:      getenv("API_ALLOWED_ORIGINS", "*"),
+		DatabaseURL:         os.Getenv("DATABASE_URL"),
+		QueueURL:            os.Getenv("QUEUE_URL"),
+		QueueName:           getenv("QUEUE_NAME", "order-fill:jobs"),
+		S3Endpoint:          os.Getenv("S3_ENDPOINT"),
+		S3Bucket:            getenv("S3_BUCKET", "order-fill"),
+		S3AccessKey:         os.Getenv("S3_ACCESS_KEY"),
+		S3SecretKey:         os.Getenv("S3_SECRET_KEY"),
+		MaxUploadBytes:      getenvInt64("API_MAX_UPLOAD_BYTES", defaultMaxUploadBytes),
+		CookieSecure:        getenvBool("SESSION_COOKIE_SECURE"),
+		BootstrapAdminLogin: getenv("BOOTSTRAP_ADMIN_LOGIN", "admin"),
 	}
 
 	missing := make([]string, 0)
@@ -63,6 +67,11 @@ func getenv(key string, fallback string) string {
 		return value
 	}
 	return fallback
+}
+
+func getenvBool(key string) bool {
+	value := strings.ToLower(strings.TrimSpace(os.Getenv(key)))
+	return value == "1" || value == "true" || value == "yes"
 }
 
 func getenvInt64(key string, fallback int64) int64 {

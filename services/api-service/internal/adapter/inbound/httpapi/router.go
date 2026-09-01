@@ -1,15 +1,20 @@
-// Package httpapi is the driving adapter: it translates HTTP into use case
-// calls and domain results back into JSON.
 package httpapi
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
+
+	"order-fill/services/api-service/internal/domain/identity"
 )
 
 // MetricsReader exposes a counters snapshot for the /metrics endpoint.
 type MetricsReader interface {
 	Snapshot() map[string]int64
+}
+
+type accessResetter interface {
+	ResetAccess(ctx context.Context, actor identity.User, userID string) (string, error)
 }
 
 // Config wires the router. Every dependency is optional so the router can be
@@ -23,9 +28,16 @@ type Config struct {
 	DownloadArchive archiveDownloader
 	SubmitEdits     editSubmitter
 	Preview         previewReader
+	ListJobs        lister
+	Auth            sessionAuthenticator
+	Admin           adminAPI
+	Reset           accessResetter
 	Metrics         MetricsReader
 	AllowedOrigins  []string
 	MaxUploadBytes  int64
+	CookieSecure    bool
+	LoginLimiter    *Limiter
+	CreateLimiter   *Limiter
 }
 
 func NewRouter(config Config) http.Handler {
@@ -34,6 +46,12 @@ func NewRouter(config Config) http.Handler {
 	if config.Metrics != nil {
 		mux.Handle("GET /metrics", metricsHandler{metrics: config.Metrics})
 	}
+
+	auth := authHandler{auth: config.Auth, cookieSecure: config.CookieSecure, loginLimiter: config.LoginLimiter}
+	mux.HandleFunc("POST /api/v1/auth/login", auth.login)
+	mux.HandleFunc("POST /api/v1/auth/invite", auth.invite)
+	mux.HandleFunc("POST /api/v1/auth/logout", auth.logout)
+	mux.HandleFunc("GET /api/v1/auth/me", auth.me)
 
 	handler := jobHandler{
 		creator:    config.CreateJob,
@@ -45,6 +63,7 @@ func NewRouter(config Config) http.Handler {
 		editor:     config.SubmitEdits,
 		previews:   config.Preview,
 		maxUploads: config.MaxUploadBytes,
+		admin:      config.Admin,
 	}
 	mux.HandleFunc("POST /api/v1/jobs/order-fill", handler.createOrderFill)
 	mux.HandleFunc("POST /api/v1/jobs/north-merge", handler.createNorthMerge)
@@ -58,7 +77,25 @@ func NewRouter(config Config) http.Handler {
 	mux.HandleFunc("GET /api/v1/jobs/{job_id}/files/{file_id}/preview/window", handler.previewWindow)
 	mux.HandleFunc("GET /api/v1/jobs/{job_id}/files/{file_id}/preview/find", handler.previewFind)
 
-	return withCORS(mux, config.AllowedOrigins)
+	admin := adminHandler{admin: config.Admin, reset: config.Reset, lister: config.ListJobs}
+	mux.HandleFunc("GET /api/v1/jobs", admin.listJobs)
+	mux.HandleFunc("GET /api/v1/companies", admin.listCompanies)
+	mux.HandleFunc("POST /api/v1/companies", admin.createCompany)
+	mux.HandleFunc("POST /api/v1/companies/{company_id}/disable", admin.disableCompany)
+	mux.HandleFunc("GET /api/v1/companies/{company_id}/users", admin.listUsers)
+	mux.HandleFunc("POST /api/v1/companies/{company_id}/users", admin.createUser)
+	mux.HandleFunc("POST /api/v1/users/{user_id}/disable", admin.disableUser)
+	mux.HandleFunc("POST /api/v1/users/{user_id}/reset", admin.resetUser)
+	mux.HandleFunc("GET /api/v1/audit", admin.listAudit)
+
+	protected := gate{
+		next:           mux,
+		auth:           config.Auth,
+		allowedOrigins: config.AllowedOrigins,
+		loginLimiter:   config.LoginLimiter,
+		createLimiter:  config.CreateLimiter,
+	}
+	return withCORS(protected, config.AllowedOrigins)
 }
 
 type healthHandler struct{}

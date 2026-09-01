@@ -6,6 +6,7 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"strings"
 	"time"
 
 	"order-fill/services/api-service/internal/app/port"
@@ -17,6 +18,8 @@ type CreateJobCommand struct {
 	Type       job.Type
 	Brand      string
 	OrderMonth string
+	CompanyID  string
+	CreatedBy  string
 	Uploads    []job.Upload
 }
 
@@ -95,6 +98,13 @@ func (u *CreateJob) Execute(ctx context.Context, command CreateJobCommand) (job.
 		u.observeFailure(ctx, id, "create_job_invalid", startedAt, "invalid_job", err)
 		return job.Job{}, err
 	}
+	if strings.TrimSpace(command.CompanyID) == "" || strings.TrimSpace(command.CreatedBy) == "" {
+		err := fmt.Errorf("%w: job owner is required", job.ErrInvalid)
+		u.observeFailure(ctx, id, "create_job_invalid", startedAt, "invalid_job", err)
+		return job.Job{}, err
+	}
+	entity.CompanyID = strings.TrimSpace(command.CompanyID)
+	entity.CreatedBy = strings.TrimSpace(command.CreatedBy)
 	if err := u.repository.Create(ctx, entity); err != nil {
 		u.observeFailure(ctx, id, "save_job_failed", startedAt, "repository_error", err)
 		return job.Job{}, fmt.Errorf("save job: %w", err)

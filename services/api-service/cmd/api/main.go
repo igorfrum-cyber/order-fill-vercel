@@ -69,6 +69,21 @@ func run(logger *slog.Logger) error {
 
 	metrics := observability.NewMetrics()
 	now := func() time.Time { return time.Now().UTC() }
+	auth := usecase.NewAuth(repository, uuid.NewString, now)
+	admin := usecase.NewAdmin(repository, uuid.NewString, now)
+
+	invite, created, err := auth.Bootstrap(ctx, settings.BootstrapAdminLogin)
+	if err != nil {
+		return err
+	}
+	if created {
+		logger.Info("bootstrap admin invite created",
+			"service", "api-service",
+			"event", "bootstrap_admin",
+			"login", settings.BootstrapAdminLogin,
+			"invite_url", "/invite/"+invite,
+		)
+	}
 
 	router := httpapi.NewRouter(httpapi.Config{
 		CreateJob:       usecase.NewCreateJob(repository, storage, publisher, uuid.NewString, now, logger, metrics),
@@ -79,15 +94,26 @@ func run(logger *slog.Logger) error {
 		DownloadArchive: usecase.NewDownloadArchive(repository, storage),
 		SubmitEdits:     usecase.NewSubmitEdits(repository, publisher, now, logger),
 		Preview:         usecase.NewPreviewReader(repository, storage),
+		ListJobs:        usecase.NewListJobs(repository),
+		Auth:            auth,
+		Admin:           admin,
+		Reset:           auth,
 		Metrics:         metrics,
 		AllowedOrigins:  httpapi.ParseAllowedOrigins(settings.AllowedOrigins),
 		MaxUploadBytes:  settings.MaxUploadBytes,
+		CookieSecure:    settings.CookieSecure,
+		LoginLimiter:    httpapi.NewLimiter(15*time.Minute, 10),
+		CreateLimiter:   httpapi.NewLimiter(time.Hour, 30),
 	})
 
 	server := &http.Server{
 		Addr:              settings.Addr,
 		Handler:           router,
 		ReadHeaderTimeout: 10 * time.Second,
+		ReadTimeout:       60 * time.Second,
+		WriteTimeout:      120 * time.Second,
+		IdleTimeout:       90 * time.Second,
+		MaxHeaderBytes:    1 << 20,
 	}
 
 	serverErrors := make(chan error, 1)

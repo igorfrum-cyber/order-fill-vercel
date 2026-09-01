@@ -52,6 +52,20 @@ func (r *fakeRepository) UpdateStatus(_ context.Context, id string, status job.S
 	return entity, nil
 }
 
+func (r *fakeRepository) List(_ context.Context, filter port.JobListFilter) ([]port.JobListRow, error) {
+	rows := make([]port.JobListRow, 0)
+	for _, entity := range r.stored {
+		if filter.CompanyID != "" && entity.CompanyID != filter.CompanyID {
+			continue
+		}
+		if filter.CreatedBy != "" && entity.CreatedBy != filter.CreatedBy {
+			continue
+		}
+		rows = append(rows, port.JobListRow{Job: entity})
+	}
+	return rows, nil
+}
+
 type fakeStorage struct {
 	objects  map[string]port.Object
 	failWith error
@@ -104,6 +118,8 @@ func validCommand() CreateJobCommand {
 		Type:       job.TypeOrderFill,
 		Brand:      "angiopharm",
 		OrderMonth: "2026-09",
+		CompanyID:  "company-1",
+		CreatedBy:  "user-1",
 		Uploads: []job.Upload{
 			{Role: job.RoleSource, Name: "Заказ.xlsx", ContentType: "application/xlsx", Content: []byte("source")},
 			{Role: job.RoleBlank, Name: "Бланк.xlsx", ContentType: "application/xlsx", Content: []byte("blank")},

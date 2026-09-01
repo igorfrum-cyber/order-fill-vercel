@@ -44,11 +44,11 @@ doc_go=$(go_mod_version services/document-service/go.mod)
 
 go_mm=$(go_major_minor "$api_go")
 for dockerfile in services/api-service/Dockerfile services/document-service/Dockerfile; do
-  grep -Eq "^FROM golang:${go_mm}([.-]|$)" "$dockerfile" ||
+  grep -Eq "^FROM (mirror\.gcr\.io/library/)?golang:${go_mm}([.-]|$)" "$dockerfile" ||
     fail "$dockerfile must use golang:${go_mm} to match go.mod ${api_go}"
 done
 
-local_go=$(go env GOVERSION | sed 's/^go//')
+local_go=$(cd "$root/services/api-service" && go env GOVERSION | sed 's/^go//')
 local_go=${local_go%%-*}
 version_ge "$local_go" "$api_go" ||
   fail "local Go ${local_go} is older than go.mod ${api_go}"
@@ -58,7 +58,7 @@ frontend_node=$(read_json_engines_major frontend/package.json)
 [[ $root_node == "$frontend_node" ]] ||
   fail "engines.node major differs: root=$root_node frontend=$frontend_node"
 
-grep -Eq "^FROM node:${frontend_node}([.-]|$)" frontend/Dockerfile ||
+grep -Eq "^FROM (mirror\.gcr\.io/library/)?node:${frontend_node}([.-]|$)" frontend/Dockerfile ||
   fail "frontend/Dockerfile must use node:${frontend_node}"
 
 grep -Eq "node-version:[[:space:]]*\"${frontend_node}\"" .github/workflows/verify.yml ||

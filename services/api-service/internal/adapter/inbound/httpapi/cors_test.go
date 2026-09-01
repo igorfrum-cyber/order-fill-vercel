@@ -39,6 +39,19 @@ func TestRouterAnswersPreflight(t *testing.T) {
 	}
 }
 
+func TestRouterAcceptsLocalhostWhenLoopbackIsListed(t *testing.T) {
+	router := NewRouter(Config{AllowedOrigins: []string{"http://127.0.0.1:3200"}})
+	request := httptest.NewRequest(http.MethodGet, "/healthz", nil)
+	request.Header.Set("Origin", "http://localhost:3200")
+	response := httptest.NewRecorder()
+
+	router.ServeHTTP(response, request)
+
+	if got := response.Header().Get("Access-Control-Allow-Origin"); got != "http://localhost:3200" {
+		t.Fatalf("expected localhost echo, got %q", got)
+	}
+}
+
 func TestRouterRejectsUnknownOrigin(t *testing.T) {
 	router := NewRouter(Config{AllowedOrigins: []string{"http://localhost:3200"}})
 	request := httptest.NewRequest(http.MethodGet, "/healthz", nil)

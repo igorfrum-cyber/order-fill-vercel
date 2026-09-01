@@ -1,6 +1,6 @@
 module order-fill/services/document-service
 
-go 1.25.5
+go 1.26.7
 
 require (
 	github.com/beevik/etree v1.7.1

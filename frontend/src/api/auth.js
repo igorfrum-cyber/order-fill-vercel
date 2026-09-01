@@ -1,0 +1,71 @@
+import { apiClient } from "./client.js";
+
+export function getMe() {
+  return apiClient.request("/api/v1/auth/me");
+}
+
+export function login(login, password) {
+  return apiClient.request("/api/v1/auth/login", {
+    method: "POST",
+    body: JSON.stringify({ login, password }),
+  });
+}
+
+export function acceptInvite(token, password) {
+  return apiClient.request("/api/v1/auth/invite", {
+    method: "POST",
+    body: JSON.stringify({ token, password }),
+  });
+}
+
+export function logout() {
+  return apiClient.request("/api/v1/auth/logout", { method: "POST" });
+}
+
+export function listJobs(companyId = "") {
+  const query = companyId ? `?company_id=${encodeURIComponent(companyId)}` : "";
+  return apiClient.request(`/api/v1/jobs${query}`);
+}
+
+export function listCompanies() {
+  return apiClient.request("/api/v1/companies");
+}
+
+export function createCompany(name) {
+  return apiClient.request("/api/v1/companies", {
+    method: "POST",
+    body: JSON.stringify({ name }),
+  });
+}
+
+export function disableCompany(companyId) {
+  return apiClient.request(`/api/v1/companies/${encodeURIComponent(companyId)}/disable`, {
+    method: "POST",
+    body: JSON.stringify({}),
+  });
+}
+
+export function listUsers(companyId) {
+  return apiClient.request(`/api/v1/companies/${encodeURIComponent(companyId)}/users`);
+}
+
+export function createUser(companyId, login, role) {
+  return apiClient.request(`/api/v1/companies/${encodeURIComponent(companyId)}/users`, {
+    method: "POST",
+    body: JSON.stringify({ login, role }),
+  });
+}
+
+export function disableUser(userId) {
+  return apiClient.request(`/api/v1/users/${encodeURIComponent(userId)}/disable`, {
+    method: "POST",
+    body: JSON.stringify({}),
+  });
+}
+
+export function resetUser(userId) {
+  return apiClient.request(`/api/v1/users/${encodeURIComponent(userId)}/reset`, {
+    method: "POST",
+    body: JSON.stringify({}),
+  });
+}
