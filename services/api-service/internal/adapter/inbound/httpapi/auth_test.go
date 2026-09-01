@@ -68,6 +68,30 @@ func TestCSRFRejectsDifferentPortLoopback(t *testing.T) {
 	}
 }
 
+func TestSecurityHeadersOnResponses(t *testing.T) {
+	router := NewRouter(Config{AllowedOrigins: []string{"http://127.0.0.1:3200"}})
+	request := httptest.NewRequest(http.MethodGet, "/healthz", nil)
+	response := httptest.NewRecorder()
+	router.ServeHTTP(response, request)
+
+	header := response.Header()
+	if got := header.Get("X-Content-Type-Options"); got != "nosniff" {
+		t.Fatalf("X-Content-Type-Options: got %q", got)
+	}
+	if got := header.Get("X-Frame-Options"); got != "DENY" {
+		t.Fatalf("X-Frame-Options: got %q", got)
+	}
+	if got := header.Get("Referrer-Policy"); got != "no-referrer" {
+		t.Fatalf("Referrer-Policy: got %q", got)
+	}
+	if header.Get("Permissions-Policy") == "" {
+		t.Fatal("Permissions-Policy must be present")
+	}
+	if header.Get("Content-Security-Policy") == "" {
+		t.Fatal("Content-Security-Policy must be present")
+	}
+}
+
 func TestSubmitEditsRejectsOversizedBody(t *testing.T) {
 	owner := identity.User{ID: "user-a", CompanyID: "company-a", Role: identity.RolePurchaser, Login: "a"}
 	entity := job.Job{ID: "job-1", CompanyID: "company-a", CreatedBy: owner.ID, Status: job.StatusNeedsReview}
