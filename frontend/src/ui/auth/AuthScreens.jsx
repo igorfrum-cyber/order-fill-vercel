@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { acceptInvite, changePassword, login } from "../../api/auth.js";
+import { loginAccessHint, loginFailedMessage } from "../../features/help/copy.js";
 import { isPasswordReady, passwordIssues } from "../../features/auth/password.js";
 import { Field, PasswordField, PrimaryButton } from "../widgets.jsx";
 
@@ -16,7 +17,7 @@ export function LoginScreen({ onDone }) {
     try {
       onDone(await login(name, password));
     } catch {
-      setError("Неверный логин или пароль.");
+      setError(loginFailedMessage);
     } finally {
       setBusy(false);
     }
@@ -30,6 +31,7 @@ export function LoginScreen({ onDone }) {
         </Field>
         <PasswordField label="Пароль" value={password} onChange={setPassword} autoComplete="current-password" />
         {error ? <p className="text-[14px] text-[var(--color-danger)]">{error}</p> : null}
+        <p className="text-[13px] leading-relaxed text-[var(--color-ink-soft)]">{loginAccessHint}</p>
         <PrimaryButton type="submit" disabled={busy || !name || password.length < 10}>
           Войти
         </PrimaryButton>
