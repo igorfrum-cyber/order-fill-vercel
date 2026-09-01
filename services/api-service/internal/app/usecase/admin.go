@@ -47,7 +47,11 @@ func (a *Admin) DisableCompany(ctx context.Context, actor identity.User, company
 	if !authz.CanCreatePlatformCompany(actor) {
 		return identity.ErrNotFound
 	}
-	return a.store.DisableCompany(ctx, companyID, a.now())
+	if err := a.store.DisableCompany(ctx, companyID, a.now()); err != nil {
+		return err
+	}
+	a.RecordAudit(ctx, actor, port.AuditCompanyDisabled, companyID, "")
+	return nil
 }
 
 func (a *Admin) CreateUser(ctx context.Context, actor identity.User, companyID string, login string, role identity.Role) (identity.User, string, error) {
@@ -84,6 +88,7 @@ func (a *Admin) CreateUser(ctx context.Context, actor identity.User, companyID s
 	if err := a.store.CreateInvite(ctx, identity.HashSecret(raw), user.ID, a.now().Add(inviteTTL)); err != nil {
 		return identity.User{}, "", err
 	}
+	a.RecordAudit(ctx, actor, port.AuditInviteCreated, companyID, "")
 	return user, raw, nil
 }
 
@@ -105,7 +110,11 @@ func (a *Admin) DisableUser(ctx context.Context, actor identity.User, userID str
 	if !canManageUser(actor, user) {
 		return identity.ErrNotFound
 	}
-	return a.store.DisableUser(ctx, userID, a.now())
+	if err := a.store.DisableUser(ctx, userID, a.now()); err != nil {
+		return err
+	}
+	a.RecordAudit(ctx, actor, port.AuditUserDisabled, user.CompanyID, "")
+	return nil
 }
 
 func (a *Admin) ListAudit(ctx context.Context, actor identity.User) ([]port.AuditEvent, error) {

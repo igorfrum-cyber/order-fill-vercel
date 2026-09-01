@@ -115,6 +115,127 @@ func TestChangePasswordUpdatesHash(t *testing.T) {
 	}
 }
 
+func TestLoginRecordsSuccessAudit(t *testing.T) {
+	auth, store := newTestAuthStore(t)
+	user := seedPurchaser(t, store, "buyer", "correct-horse")
+	if _, err := auth.Login(context.Background(), user.Login, "correct-horse"); err != nil {
+		t.Fatal(err)
+	}
+	assertAudit(t, store, "login_success", user.ID, user.CompanyID)
+}
+
+func TestLoginFailureDoesNotRecordSuccess(t *testing.T) {
+	auth, store := newTestAuthStore(t)
+	user := seedPurchaser(t, store, "buyer", "correct-horse")
+	if _, err := auth.Login(context.Background(), user.Login, "wrong-password-xx"); !errors.Is(err, identity.ErrUnauthorized) {
+		t.Fatalf("got %v", err)
+	}
+	if hasAudit(store, "login_success") {
+		t.Fatal("failed login must not record login_success")
+	}
+}
+
+func TestLogoutRecordsAudit(t *testing.T) {
+	auth, store := newTestAuthStore(t)
+	user := seedPurchaser(t, store, "buyer", "correct-horse")
+	session, err := auth.Login(context.Background(), user.Login, "correct-horse")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := auth.Logout(context.Background(), identity.HashSecret(session.RawToken)); err != nil {
+		t.Fatal(err)
+	}
+	assertAudit(t, store, "logout", user.ID, user.CompanyID)
+}
+
+func TestChangePasswordRecordsAudit(t *testing.T) {
+	auth, store := newTestAuthStore(t)
+	user := seedPurchaser(t, store, "buyer", "correct-horse")
+	if err := auth.ChangePassword(context.Background(), user, "correct-horse", "new-password-1"); err != nil {
+		t.Fatal(err)
+	}
+	assertAudit(t, store, "password_changed", user.ID, user.CompanyID)
+}
+
+func TestResetAccessRecordsAudit(t *testing.T) {
+	auth, store := newTestAuthStore(t)
+	user := seedPurchaser(t, store, "buyer", "correct-horse")
+	admin := identity.User{ID: "admin-1", CompanyID: user.CompanyID, Role: identity.RoleCompanyAdmin}
+	if _, err := auth.ResetAccess(context.Background(), admin, user.ID); err != nil {
+		t.Fatal(err)
+	}
+	assertAudit(t, store, "access_reset", admin.ID, user.CompanyID)
+}
+
+func TestCreateUserRecordsInviteCreated(t *testing.T) {
+	_, store := newTestAuthStore(t)
+	admin := NewAdmin(store, func() string { return "new-id" }, func() time.Time {
+		return time.Date(2026, 9, 1, 12, 0, 0, 0, time.UTC)
+	})
+	actor := identity.User{ID: "root", Role: identity.RolePlatformAdmin}
+	if err := store.CreateCompany(context.Background(), identity.Company{ID: "co-2", Name: "Beta"}); err != nil {
+		t.Fatal(err)
+	}
+	if _, _, err := admin.CreateUser(context.Background(), actor, "co-2", "buyer-2", identity.RolePurchaser); err != nil {
+		t.Fatal(err)
+	}
+	assertAudit(t, store, "invite_created", actor.ID, "co-2")
+}
+
+func TestDisableUserRecordsAudit(t *testing.T) {
+	_, store := newTestAuthStore(t)
+	user := seedPurchaser(t, store, "buyer", "correct-horse")
+	admin := NewAdmin(store, func() string { return "new-id" }, func() time.Time {
+		return time.Date(2026, 9, 1, 12, 0, 0, 0, time.UTC)
+	})
+	actor := identity.User{ID: "admin-1", CompanyID: user.CompanyID, Role: identity.RoleCompanyAdmin}
+	if err := admin.DisableUser(context.Background(), actor, user.ID); err != nil {
+		t.Fatal(err)
+	}
+	assertAudit(t, store, "user_disabled", actor.ID, user.CompanyID)
+}
+
+func TestDisableCompanyRecordsAudit(t *testing.T) {
+	_, store := newTestAuthStore(t)
+	if err := store.CreateCompany(context.Background(), identity.Company{ID: "co-1", Name: "Acme"}); err != nil {
+		t.Fatal(err)
+	}
+	admin := NewAdmin(store, func() string { return "new-id" }, func() time.Time {
+		return time.Date(2026, 9, 1, 12, 0, 0, 0, time.UTC)
+	})
+	actor := identity.User{ID: "root", Role: identity.RolePlatformAdmin}
+	if err := admin.DisableCompany(context.Background(), actor, "co-1"); err != nil {
+		t.Fatal(err)
+	}
+	assertAudit(t, store, "company_disabled", actor.ID, "co-1")
+}
+
+func assertAudit(t *testing.T, store *memoryIdentity, action string, actorID string, companyID string) {
+	t.Helper()
+	for _, event := range store.audits {
+		if event.Action != action {
+			continue
+		}
+		if event.ActorID != actorID {
+			t.Fatalf("action %s actor: got %q want %q", action, event.ActorID, actorID)
+		}
+		if event.CompanyID != companyID {
+			t.Fatalf("action %s company: got %q want %q", action, event.CompanyID, companyID)
+		}
+		return
+	}
+	t.Fatalf("missing audit action %s in %+v", action, store.audits)
+}
+
+func hasAudit(store *memoryIdentity, action string) bool {
+	for _, event := range store.audits {
+		if event.Action == action {
+			return true
+		}
+	}
+	return false
+}
+
 func newTestAuth(t *testing.T) *Auth {
 	t.Helper()
 	auth, _ := newTestAuthStore(t)

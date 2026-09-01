@@ -11,6 +11,7 @@ import (
 	"strconv"
 	"strings"
 
+	"order-fill/services/api-service/internal/app/port"
 	"order-fill/services/api-service/internal/app/usecase"
 	"order-fill/services/api-service/internal/domain/authz"
 	"order-fill/services/api-service/internal/domain/identity"
@@ -128,7 +129,7 @@ func (h jobHandler) getReport(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if h.admin != nil && user.Role == identity.RolePlatformAdmin {
-		h.admin.RecordAudit(r.Context(), user, "job_view", entity.CompanyID, entity.ID)
+		h.admin.RecordAudit(r.Context(), user, port.AuditJobView, entity.CompanyID, entity.ID)
 	}
 	writeJSON(w, http.StatusOK, presentReport(report))
 }
@@ -195,7 +196,7 @@ func (h jobHandler) downloadFile(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if h.admin != nil {
-		h.admin.RecordAudit(r.Context(), user, "file_download", entity.CompanyID, entity.ID)
+		h.admin.RecordAudit(r.Context(), user, port.AuditFileDownload, entity.CompanyID, entity.ID)
 	}
 	w.Header().Set("Content-Type", download.ContentType)
 	w.Header().Set("Content-Disposition", contentDisposition(download.Name))
@@ -278,7 +279,7 @@ func (h jobHandler) downloadArchive(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if h.admin != nil {
-		h.admin.RecordAudit(r.Context(), user, "archive_download", entity.CompanyID, entity.ID)
+		h.admin.RecordAudit(r.Context(), user, port.AuditArchiveDownload, entity.CompanyID, entity.ID)
 	}
 	w.Header().Set("Content-Type", download.ContentType)
 	w.Header().Set("Content-Disposition", contentDisposition(download.Name))

@@ -28,6 +28,19 @@ type AuditEvent struct {
 	JobID     string
 }
 
+const (
+	AuditLoginSuccess    = "login_success"
+	AuditLogout          = "logout"
+	AuditPasswordChanged = "password_changed"
+	AuditInviteCreated   = "invite_created"
+	AuditAccessReset     = "access_reset"
+	AuditUserDisabled    = "user_disabled"
+	AuditCompanyDisabled = "company_disabled"
+	AuditJobView         = "job_view"
+	AuditFileDownload    = "file_download"
+	AuditArchiveDownload = "archive_download"
+)
+
 type IdentityStore interface {
 	CountUsers(ctx context.Context) (int, error)
 	CreateCompany(ctx context.Context, company identity.Company) error
