@@ -29,7 +29,7 @@ export function JobHistory({ me, companyId, onCompany, onOpen, onNew }) {
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
         <h1 className="text-[22px] font-semibold">Выгрузки</h1>
         {platform ? (
-          <select className="input max-w-xs" value={companyId} onChange={(event) => onCompany(event.target.value)}>
+          <select data-tour="company-select" className="input max-w-xs" value={companyId} onChange={(event) => onCompany(event.target.value)}>
             <option value="">Все компании</option>
             {companies
               .filter((company) => !company.disabled_at)
@@ -44,11 +44,13 @@ export function JobHistory({ me, companyId, onCompany, onOpen, onNew }) {
       {canCreate ? (
         <div className="mb-6 grid gap-3 sm:grid-cols-2">
           <JobTypeCard
+            tour="order"
             title="Бланк закупки"
             hint="Таблица заказа и текущий бланк поставщика"
             onClick={() => onNew("order")}
           />
           <JobTypeCard
+            tour="north"
             title="Север"
             hint="Объединение городских бланков и таблицы Тюмени"
             onClick={() => onNew("north")}
@@ -60,7 +62,7 @@ export function JobHistory({ me, companyId, onCompany, onOpen, onNew }) {
         </p>
       )}
       {error ? <p className="text-[var(--color-danger)]">{error}</p> : null}
-      <div className="overflow-hidden rounded-xl border border-[var(--color-line)] bg-[var(--color-surface)]">
+      <div data-tour="jobs" className="overflow-hidden rounded-xl border border-[var(--color-line)] bg-[var(--color-surface)]">
         <table className="w-full text-left text-[14px]">
           <thead className="bg-[var(--color-ground)] text-[var(--color-ink-faint)]">
             <tr>
@@ -122,10 +124,11 @@ function JobStatus({ status }) {
   return <span className={`inline-flex rounded-full px-2.5 py-1 text-[13px] font-medium ${tone}`}>{jobStatusLabel(status)}</span>;
 }
 
-function JobTypeCard({ title, hint, onClick }) {
+function JobTypeCard({ title, hint, onClick, tour }) {
   return (
     <button
       type="button"
+      data-tour={tour}
       onClick={onClick}
       className="rounded-2xl border border-[var(--color-line)] bg-[var(--color-surface)] p-5 text-left transition hover:border-[var(--color-brand)] hover:shadow-sm"
     >

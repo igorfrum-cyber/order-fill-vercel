@@ -2,7 +2,7 @@ import { useEffect } from "react";
 import { helpSections } from "../../features/help/copy.js";
 import { IconX } from "../icons.jsx";
 
-export function HelpDrawer({ onClose }) {
+export function HelpDrawer({ onClose, onReplay }) {
   useEffect(() => {
     function onKey(event) {
       if (event.key === "Escape") onClose();
@@ -13,14 +13,14 @@ export function HelpDrawer({ onClose }) {
 
   return (
     <div
-      className="fixed inset-0 z-40 flex justify-end bg-slate-900/45"
+      className="help-backdrop fixed inset-0 z-40 flex justify-end bg-slate-900/45"
       role="dialog"
       aria-modal="true"
       aria-labelledby="help-title"
       onClick={onClose}
     >
       <aside
-        className="flex h-full w-full max-w-md flex-col overflow-hidden bg-[var(--color-surface)] shadow-xl"
+        className="help-drawer flex h-full w-full max-w-md flex-col overflow-hidden bg-[var(--color-surface)] shadow-xl"
         onClick={(event) => event.stopPropagation()}
       >
         <div className="flex items-center justify-between border-b border-[var(--color-line)] px-5 py-4">
@@ -43,6 +43,15 @@ export function HelpDrawer({ onClose }) {
               <p className="mt-1 text-[14px] leading-relaxed text-[var(--color-ink-soft)]">{section.body}</p>
             </section>
           ))}
+          {onReplay ? (
+            <button
+              type="button"
+              className="mt-2 text-[14px] font-medium text-[var(--color-brand)]"
+              onClick={onReplay}
+            >
+              Показать подсказки по экрану
+            </button>
+          ) : null}
         </div>
       </aside>
     </div>

@@ -194,8 +194,8 @@ export function Stepper({ value, disabled, onChange, step }) {
 
 export function Modal({ title, children, onCancel, onConfirm, cancelLabel = "Назад", confirmLabel = "Продолжить", confirmDisabled }) {
   return (
-    <div className="fixed inset-0 z-20 grid place-items-center bg-slate-900/45 p-5" role="dialog" aria-modal="true">
-      <div className="w-full max-w-lg rounded-xl border border-[var(--color-line)] bg-[var(--color-surface)] p-6 shadow-xl">
+    <div className="help-modal-backdrop fixed inset-0 z-20 grid place-items-center bg-slate-900/45 p-5" role="dialog" aria-modal="true">
+      <div className="help-modal-card w-full max-w-lg rounded-xl border border-[var(--color-line)] bg-[var(--color-surface)] p-6 shadow-xl">
         <h2 className="text-[18px] font-semibold tracking-tight">{title}</h2>
         <div className="mt-3 max-h-64 overflow-auto text-[14px] leading-relaxed text-[var(--color-ink-soft)] whitespace-pre-line">
           {children}

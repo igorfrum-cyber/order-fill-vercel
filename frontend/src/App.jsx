@@ -87,12 +87,12 @@ export default function App() {
                 Выгрузки
               </NavButton>
               {me.role === "platform_admin" ? (
-                <NavButton active={screen === "companies"} onClick={() => setScreen("companies")}>
+                <NavButton dataTour="companies" active={screen === "companies"} onClick={() => setScreen("companies")}>
                   Компании
                 </NavButton>
               ) : null}
               {me.role !== "purchaser" ? (
-                <NavButton active={screen === "users"} onClick={() => setScreen("users")}>
+                <NavButton dataTour="users" active={screen === "users"} onClick={() => setScreen("users")}>
                   Пользователи
                 </NavButton>
               ) : null}
@@ -158,17 +158,27 @@ export default function App() {
           ) : null}
         </div>
       )}
-      {helpOpen ? <HelpDrawer onClose={() => setHelpOpen(false)} /> : null}
+      {helpOpen ? (
+        <HelpDrawer
+          onClose={() => setHelpOpen(false)}
+          onReplay={() => {
+            setHelpOpen(false);
+            setScreen("history");
+            setQuickStartOpen(true);
+          }}
+        />
+      ) : null}
     </>
   );
 }
 
-function NavButton({ active, onClick, children }) {
+function NavButton({ active, onClick, children, dataTour }) {
   return (
     <button
       type="button"
+      data-tour={dataTour}
       onClick={onClick}
-      className={`rounded-lg px-3 py-1.5 ${active ? "bg-[var(--color-brand-soft)] text-[var(--color-brand-strong)]" : "text-[var(--color-ink-faint)]"}`}
+      className={`rounded-lg px-3 py-1.5 transition-colors duration-200 ${active ? "bg-[var(--color-brand-soft)] text-[var(--color-brand-strong)]" : "text-[var(--color-ink-faint)]"}`}
     >
       {children}
     </button>

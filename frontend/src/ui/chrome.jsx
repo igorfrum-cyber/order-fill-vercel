@@ -4,8 +4,9 @@ export function HelpButton({ onClick }) {
   return (
     <button
       type="button"
+      data-tour="help"
       aria-label="Справка"
-      className="grid h-9 w-9 place-items-center rounded-lg text-[var(--color-ink-faint)] hover:bg-[var(--color-line-soft)] hover:text-[var(--color-ink)]"
+      className="grid h-9 w-9 place-items-center rounded-lg text-[var(--color-ink-faint)] transition-colors duration-200 hover:bg-[var(--color-line-soft)] hover:text-[var(--color-ink)]"
       onClick={onClick}
     >
       <IconHelp className="h-4 w-4" />
