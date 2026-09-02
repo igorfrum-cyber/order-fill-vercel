@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { getMe, logout } from "./api/auth.js";
 import { onAuthRequired } from "./api/client.js";
 import { getJob, getJobReport, listJobFiles } from "./api/jobs.js";
+import { resolveUsersCompanyId } from "./features/auth/accessPresentation.js";
 import { dismissQuickStart, shouldShowQuickStart } from "./features/help/firstRun.js";
 import { initialEditState } from "./features/order/reviewEdits.js";
 import { CompaniesScreen, JobHistory, UsersScreen } from "./ui/admin/AdminScreens.jsx";
@@ -142,7 +143,11 @@ export default function App() {
             ) : null}
             {screen === "companies" ? <CompaniesScreen selectedId={companyId} onSelect={setCompanyId} /> : null}
             {screen === "users" ? (
-              <UsersScreen actorRole={me.role} companyId={me.role === "platform_admin" ? companyId : me.company_id} />
+              <UsersScreen
+                actorRole={me.role}
+                companyId={resolveUsersCompanyId(me.role, companyId, me.company_id)}
+                onCompany={setCompanyId}
+              />
             ) : null}
             {screen === "account" ? <AccountScreen me={me} onBack={() => setScreen("history")} /> : null}
           </main>

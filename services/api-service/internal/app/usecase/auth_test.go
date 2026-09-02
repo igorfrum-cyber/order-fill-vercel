@@ -8,6 +8,7 @@ import (
 
 	"order-fill/services/api-service/internal/app/port"
 	"order-fill/services/api-service/internal/domain/identity"
+	"order-fill/services/api-service/internal/domain/job"
 )
 
 func TestLoginRejectsUnknownUser(t *testing.T) {
@@ -221,10 +222,27 @@ func TestCreateUserRecordsInviteCreated(t *testing.T) {
 	if err := store.CreateCompany(context.Background(), identity.Company{ID: "co-2", Name: "Beta"}); err != nil {
 		t.Fatal(err)
 	}
-	if _, _, err := admin.CreateUser(context.Background(), actor, "co-2", "buyer-2", identity.RolePurchaser); err != nil {
+	if _, _, err := admin.CreateUser(context.Background(), actor, "co-2", "admin-2", identity.RoleCompanyAdmin); err != nil {
 		t.Fatal(err)
 	}
 	assertAudit(t, store, "invite_created", actor.ID, "co-2")
+}
+
+func TestCreateUserPlatformCannotInvitePurchaser(t *testing.T) {
+	_, store := newTestAuthStore(t)
+	admin := NewAdmin(store, func() string { return "new-id" }, func() time.Time {
+		return time.Date(2026, 9, 1, 12, 0, 0, 0, time.UTC)
+	})
+	actor := identity.User{ID: "root", Role: identity.RolePlatformAdmin}
+	if err := store.CreateCompany(context.Background(), identity.Company{ID: "co-2", Name: "Beta"}); err != nil {
+		t.Fatal(err)
+	}
+	if _, _, err := admin.CreateUser(context.Background(), actor, "co-2", "buyer-2", identity.RolePurchaser); !errors.Is(err, job.ErrInvalid) {
+		t.Fatalf("platform purchaser invite: got %v", err)
+	}
+	if _, _, err := admin.CreateUser(context.Background(), actor, "co-2", "admin-2", identity.RoleCompanyAdmin); err != nil {
+		t.Fatal(err)
+	}
 }
 
 func TestDisableUserRecordsAudit(t *testing.T) {

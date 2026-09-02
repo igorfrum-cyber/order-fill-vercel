@@ -34,7 +34,7 @@ export function tourForRole(role) {
         target: "users",
         placement: "bottom",
         title: "Пользователи",
-        body: "Пригласите владельца или администратора компании по ссылке.",
+        body: "Выберите компанию и пригласите администратора по ссылке.",
       },
       {
         target: "jobs",

@@ -59,14 +59,14 @@ func (a *Admin) CreateUser(ctx context.Context, actor identity.User, companyID s
 	if login == "" {
 		return identity.User{}, "", fmt.Errorf("%w: login is required", job.ErrInvalid)
 	}
-	if role != identity.RoleCompanyAdmin && role != identity.RolePurchaser {
-		return identity.User{}, "", fmt.Errorf("%w: unsupported role", job.ErrInvalid)
-	}
 	if actor.Role == identity.RoleCompanyAdmin {
 		companyID = actor.CompanyID
 	}
 	if !authz.CanManageCompany(actor, companyID) || companyID == "" {
 		return identity.User{}, "", identity.ErrNotFound
+	}
+	if !authz.CanInviteRole(actor, role) {
+		return identity.User{}, "", fmt.Errorf("%w: unsupported role", job.ErrInvalid)
 	}
 	if _, err := a.store.GetCompany(ctx, companyID); err != nil {
 		return identity.User{}, "", identity.ErrNotFound

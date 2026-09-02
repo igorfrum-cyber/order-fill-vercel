@@ -46,6 +46,28 @@ func TestCanAccessJob(t *testing.T) {
 	}
 }
 
+func TestCanInviteRole(t *testing.T) {
+	platform := identity.User{ID: "root", Role: identity.RolePlatformAdmin}
+	admin := identity.User{ID: "admin-a", CompanyID: "company-a", Role: identity.RoleCompanyAdmin}
+	purchaser := identity.User{ID: "user-a", CompanyID: "company-a", Role: identity.RolePurchaser}
+
+	if !CanInviteRole(platform, identity.RoleCompanyAdmin) {
+		t.Fatal("platform should invite company admin")
+	}
+	if CanInviteRole(platform, identity.RolePurchaser) {
+		t.Fatal("platform should not invite purchaser")
+	}
+	if CanInviteRole(platform, identity.RolePlatformAdmin) {
+		t.Fatal("nobody should invite platform admin")
+	}
+	if !CanInviteRole(admin, identity.RolePurchaser) || !CanInviteRole(admin, identity.RoleCompanyAdmin) {
+		t.Fatal("company admin should invite staff of the firm")
+	}
+	if CanInviteRole(purchaser, identity.RolePurchaser) {
+		t.Fatal("purchaser should not invite")
+	}
+}
+
 func TestCanCreateJob(t *testing.T) {
 	purchaser := identity.User{ID: "user-a", CompanyID: "company-a", Role: identity.RolePurchaser}
 	admin := identity.User{ID: "admin-a", CompanyID: "company-a", Role: identity.RoleCompanyAdmin}
