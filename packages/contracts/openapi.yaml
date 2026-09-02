@@ -438,7 +438,7 @@ paths:
                   type: string
                 role:
                   type: string
-                  enum: [purchaser, company_admin]
+                  enum: [purchaser, company_admin, company_owner]
       responses:
         "201":
           description: User created with a one-time invite URL.
@@ -840,7 +840,7 @@ components:
           type: string
         role:
           type: string
-          enum: [platform_admin, company_admin, purchaser]
+          enum: [platform_admin, company_owner, company_admin, purchaser]
         company_id:
           type: string
         company_name:
