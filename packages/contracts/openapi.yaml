@@ -189,6 +189,37 @@ paths:
                     type: string
                   login_slug:
                     type: string
+                  has_logo:
+                    type: boolean
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /api/v1/public/companies/{slug}/logo:
+    get:
+      operationId: getCompanyLogo
+      summary: Public company logo for the login screen
+      security: []
+      parameters:
+        - name: slug
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: PNG, JPEG or WebP image.
+          content:
+            image/png:
+              schema:
+                type: string
+                format: binary
+            image/jpeg:
+              schema:
+                type: string
+                format: binary
+            image/webp:
+              schema:
+                type: string
+                format: binary
         "404":
           $ref: "#/components/responses/NotFound"
   /api/v1/companies:
@@ -246,7 +277,7 @@ paths:
   /api/v1/companies/{company_id}/login-slug:
     post:
       operationId: setCompanyLoginSlug
-      summary: Set the public latin login address for a company (platform admin)
+      summary: Set the public latin login address for a company (company admin)
       parameters:
         - $ref: "#/components/parameters/CompanyId"
       requestBody:
@@ -274,6 +305,86 @@ paths:
           $ref: "#/components/responses/NotFound"
         "409":
           $ref: "#/components/responses/Conflict"
+  /api/v1/companies/{company_id}/profile:
+    post:
+      operationId: updateCompany
+      summary: Update company name and public login address (company admin)
+      parameters:
+        - $ref: "#/components/parameters/CompanyId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name, login_slug]
+              properties:
+                name:
+                  type: string
+                login_slug:
+                  type: string
+      responses:
+        "200":
+          description: Company updated.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Company"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+  /api/v1/companies/{company_id}/logo:
+    post:
+      operationId: setCompanyLogo
+      summary: Upload a company logo for the login screen (company admin)
+      parameters:
+        - $ref: "#/components/parameters/CompanyId"
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [logo]
+              properties:
+                logo:
+                  type: string
+                  format: binary
+      responses:
+        "200":
+          description: Company updated.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Company"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /api/v1/companies/{company_id}/logo/clear:
+    post:
+      operationId: clearCompanyLogo
+      summary: Remove the company login logo (company admin)
+      parameters:
+        - $ref: "#/components/parameters/CompanyId"
+      responses:
+        "200":
+          description: Company updated.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Company"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
   /api/v1/companies/{company_id}/disable:
     post:
       operationId: disableCompany
@@ -734,6 +845,10 @@ components:
           type: string
         company_name:
           type: string
+        login_slug:
+          type: string
+        has_logo:
+          type: boolean
         disabled_at:
           type: string
           format: date-time
@@ -750,6 +865,8 @@ components:
           format: date-time
         login_slug:
           type: string
+        has_logo:
+          type: boolean
         disabled_at:
           type: string
           format: date-time

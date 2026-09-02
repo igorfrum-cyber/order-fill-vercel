@@ -21,3 +21,9 @@ export function dismissQuickStart(user, storage = localStorage) {
     // Preference storage is optional; the session can still hide the dialog.
   }
 }
+
+export function consumeQuickStart(user, storage = localStorage) {
+  if (!shouldShowQuickStart(user, storage)) return false;
+  dismissQuickStart(user, storage);
+  return true;
+}

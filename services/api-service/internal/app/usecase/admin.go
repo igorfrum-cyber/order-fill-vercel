@@ -14,12 +14,18 @@ import (
 
 type Admin struct {
 	store port.IdentityStore
+	files port.ObjectStore
 	newID port.IDGenerator
 	now   port.Clock
 }
 
 func NewAdmin(store port.IdentityStore, newID port.IDGenerator, now port.Clock) *Admin {
 	return &Admin{store: store, newID: newID, now: now}
+}
+
+func (a *Admin) WithFiles(files port.ObjectStore) *Admin {
+	a.files = files
+	return a
 }
 
 func (a *Admin) CreateCompany(ctx context.Context, actor identity.User, name string, loginSlug string) (identity.Company, error) {
@@ -45,7 +51,10 @@ func (a *Admin) CreateCompany(ctx context.Context, actor identity.User, name str
 }
 
 func (a *Admin) SetCompanyLoginSlug(ctx context.Context, actor identity.User, companyID string, loginSlug string) (identity.Company, error) {
-	if !authz.CanCreatePlatformCompany(actor) {
+	if actor.Role == identity.RoleCompanyAdmin {
+		companyID = actor.CompanyID
+	}
+	if !authz.CanManageCompany(actor, companyID) || companyID == "" {
 		return identity.Company{}, identity.ErrNotFound
 	}
 	slug, err := identity.ParseLoginSlug(loginSlug)
@@ -63,6 +72,99 @@ func (a *Admin) SetCompanyLoginSlug(ctx context.Context, actor identity.User, co
 		return identity.Company{}, err
 	}
 	company.LoginSlug = slug
+	return company, nil
+}
+
+func (a *Admin) UpdateCompany(ctx context.Context, actor identity.User, companyID string, name string, loginSlug string) (identity.Company, error) {
+	if actor.Role == identity.RoleCompanyAdmin {
+		companyID = actor.CompanyID
+	}
+	if !authz.CanManageCompany(actor, companyID) || companyID == "" {
+		return identity.Company{}, identity.ErrNotFound
+	}
+	name = strings.TrimSpace(name)
+	if name == "" {
+		return identity.Company{}, fmt.Errorf("%w: company name is required", job.ErrInvalid)
+	}
+	slug, err := identity.ParseLoginSlug(loginSlug)
+	if err != nil {
+		return identity.Company{}, fmt.Errorf("%w: %s", job.ErrInvalid, err.Error())
+	}
+	company, err := a.store.GetCompany(ctx, companyID)
+	if err != nil {
+		return identity.Company{}, identity.ErrNotFound
+	}
+	if err := a.ensureLoginSlugFree(ctx, company.ID, slug); err != nil {
+		return identity.Company{}, err
+	}
+	if err := a.store.SetCompanyProfile(ctx, company.ID, name, slug); err != nil {
+		return identity.Company{}, err
+	}
+	company.Name = name
+	company.LoginSlug = slug
+	return company, nil
+}
+
+func (a *Admin) SetCompanyLogo(ctx context.Context, actor identity.User, companyID string, content []byte) (identity.Company, error) {
+	company, err := a.companyForManager(ctx, actor, companyID)
+	if err != nil {
+		return identity.Company{}, err
+	}
+	contentType, err := identity.ParseLogo(content)
+	if err != nil {
+		return identity.Company{}, fmt.Errorf("%w: %s", job.ErrInvalid, err.Error())
+	}
+	if a.files == nil {
+		return identity.Company{}, identity.ErrNotFound
+	}
+	if err := a.files.Put(ctx, identity.CompanyLogoKey(company.ID), contentType, content); err != nil {
+		return identity.Company{}, err
+	}
+	if err := a.store.SetCompanyLogoType(ctx, company.ID, contentType); err != nil {
+		return identity.Company{}, err
+	}
+	company.LogoContentType = contentType
+	return company, nil
+}
+
+func (a *Admin) ClearCompanyLogo(ctx context.Context, actor identity.User, companyID string) (identity.Company, error) {
+	company, err := a.companyForManager(ctx, actor, companyID)
+	if err != nil {
+		return identity.Company{}, err
+	}
+	if err := a.store.SetCompanyLogoType(ctx, company.ID, ""); err != nil {
+		return identity.Company{}, err
+	}
+	company.LogoContentType = ""
+	return company, nil
+}
+
+func (a *Admin) PublicCompanyLogo(ctx context.Context, slug string) (port.Object, error) {
+	company, err := a.PublicCompanyLogin(ctx, slug)
+	if err != nil {
+		return port.Object{}, err
+	}
+	if !company.HasLogo() || a.files == nil {
+		return port.Object{}, identity.ErrNotFound
+	}
+	object, err := a.files.Get(ctx, identity.CompanyLogoKey(company.ID))
+	if err != nil {
+		return port.Object{}, identity.ErrNotFound
+	}
+	return object, nil
+}
+
+func (a *Admin) companyForManager(ctx context.Context, actor identity.User, companyID string) (identity.Company, error) {
+	if actor.Role == identity.RoleCompanyAdmin {
+		companyID = actor.CompanyID
+	}
+	if !authz.CanManageCompany(actor, companyID) || companyID == "" {
+		return identity.Company{}, identity.ErrNotFound
+	}
+	company, err := a.store.GetCompany(ctx, companyID)
+	if err != nil {
+		return identity.Company{}, identity.ErrNotFound
+	}
 	return company, nil
 }
 

@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { createCompany, disableCompany, listCompanies, setCompanyLoginSlug } from "../../api/auth.js";
+import { createCompany, disableCompany, listCompanies } from "../../api/auth.js";
 import { companyLoginURL, loginSlugIssue, normalizeLoginSlug } from "../../features/auth/accessPresentation.js";
 import { GhostButton, PrimaryButton } from "../widgets.jsx";
 
@@ -7,16 +7,11 @@ export function CompaniesScreen({ selectedId, onSelect }) {
   const [companies, setCompanies] = useState([]);
   const [name, setName] = useState("");
   const [loginSlug, setLoginSlug] = useState("");
-  const [drafts, setDrafts] = useState({});
   const [error, setError] = useState("");
 
   function reload() {
     listCompanies()
-      .then((payload) => {
-        const items = payload.companies || [];
-        setCompanies(items);
-        setDrafts(Object.fromEntries(items.map((company) => [company.id, company.login_slug || ""])));
-      })
+      .then((payload) => setCompanies(payload.companies || []))
       .catch(() => setCompanies([]));
   }
 
@@ -65,72 +60,42 @@ export function CompaniesScreen({ selectedId, onSelect }) {
             )}
           </p>
         ) : (
-          <p className="text-[13px] text-[var(--color-ink-faint)]">Адрес входа обязателен. Латиницей, откроется как kristail.localhost.</p>
+          <p className="text-[13px] text-[var(--color-ink-faint)]">Первый адрес задаёте вы. Потом его меняет администратор компании.</p>
         )}
       </form>
       {error ? <p className="text-[14px] text-[var(--color-danger)]">{error}</p> : null}
       <ul className="divide-y divide-[var(--color-line)] rounded-xl border border-[var(--color-line)] bg-[var(--color-surface)]">
-        {companies.map((company) => {
-          const draft = drafts[company.id] ?? company.login_slug ?? "";
-          const issue = loginSlugIssue(draft);
-          const unchanged = normalizeLoginSlug(draft) === (company.login_slug || "");
-          return (
-            <li key={company.id} className="space-y-2 px-4 py-3">
-              <div className="flex items-center justify-between gap-3">
-                <button
-                  type="button"
-                  className={`text-left font-medium ${company.id === selectedId ? "text-[var(--color-brand-strong)]" : ""}`}
-                  onClick={() => onSelect(company.id)}
-                >
-                  {company.name}
-                  {company.disabled_at ? <span className="ml-2 text-[13px] font-normal text-[var(--color-ink-faint)]">выключена</span> : null}
-                </button>
-                <GhostButton
-                  onClick={async () => {
-                    try {
-                      await disableCompany(company.id);
-                      reload();
-                    } catch (err) {
-                      setError(err.message || "Не удалось выключить компанию.");
-                    }
-                  }}
-                >
-                  Выключить
-                </GhostButton>
-              </div>
-              {company.login_slug ? (
-                <a className="block font-mono text-[13px] text-[var(--color-brand)]" href={companyLoginURL(company.login_slug)}>
-                  {companyLoginURL(company.login_slug)}
-                </a>
-              ) : null}
-              <form
-                className="flex gap-2"
-                onSubmit={async (event) => {
-                  event.preventDefault();
-                  setError("");
+        {companies.map((company) => (
+          <li key={company.id} className="space-y-2 px-4 py-3">
+            <div className="flex items-center justify-between gap-3">
+              <button
+                type="button"
+                className={`text-left font-medium ${company.id === selectedId ? "text-[var(--color-brand-strong)]" : ""}`}
+                onClick={() => onSelect(company.id)}
+              >
+                {company.name}
+                {company.disabled_at ? <span className="ml-2 text-[13px] font-normal text-[var(--color-ink-faint)]">выключена</span> : null}
+              </button>
+              <GhostButton
+                onClick={async () => {
                   try {
-                    await setCompanyLoginSlug(company.id, normalizeLoginSlug(draft));
+                    await disableCompany(company.id);
                     reload();
                   } catch (err) {
-                    setError(err.message || "Не удалось сохранить адрес входа.");
+                    setError(err.message || "Не удалось выключить компанию.");
                   }
                 }}
               >
-                <input
-                  className="input flex-1 font-mono text-[14px]"
-                  value={draft}
-                  onChange={(event) => setDrafts((current) => ({ ...current, [company.id]: event.target.value }))}
-                  autoComplete="off"
-                  spellCheck={false}
-                />
-                <GhostButton type="submit" disabled={Boolean(issue) || unchanged}>
-                  Сохранить
-                </GhostButton>
-              </form>
-              {issue && !unchanged ? <p className="text-[13px] text-[var(--color-danger)]">{issue}</p> : null}
-            </li>
-          );
-        })}
+                Выключить
+              </GhostButton>
+            </div>
+            {company.login_slug ? (
+              <a className="block font-mono text-[13px] text-[var(--color-brand)]" href={companyLoginURL(company.login_slug)}>
+                {companyLoginURL(company.login_slug)}
+              </a>
+            ) : null}
+          </li>
+        ))}
       </ul>
     </section>
   );

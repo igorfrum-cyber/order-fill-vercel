@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { changePassword, createCompany, getCompanyLogin, login, logoutEverywhere, setCompanyLoginSlug } from "./auth.js";
+import { changePassword, createCompany, getCompanyLogin, login, logoutEverywhere, setCompanyLogo, setCompanyLoginSlug, updateCompany } from "./auth.js";
 import { ApiClient, apiClient } from "./client.js";
 
 test("getCompanyLogin requests public company metadata and encodes the slug", async () => {
@@ -73,6 +73,60 @@ test("setCompanyLoginSlug posts the new latin address", async () => {
     assert.equal(calls[0].url, "/api/v1/companies/c1/login-slug");
     assert.equal(calls[0].options.method, "POST");
     assert.match(calls[0].options.body, /kristail/);
+  } finally {
+    apiClient.fetcher = originalFetcher;
+    apiClient.baseUrl = originalBase;
+  }
+});
+
+test("updateCompany posts name and latin login slug", async () => {
+  const calls = [];
+  const originalFetcher = apiClient.fetcher;
+  const originalBase = apiClient.baseUrl;
+  apiClient.baseUrl = "";
+  apiClient.fetcher = function fetcher(url, options) {
+    calls.push({ url, options });
+    return Promise.resolve({
+      ok: true,
+      status: 200,
+      headers: new Map([["Content-Type", "application/json"]]),
+      json: async () => ({ id: "c1", name: "Кристайл", login_slug: "kristail" }),
+    });
+  };
+  try {
+    const company = await updateCompany("c1", "Кристайл", "kristail");
+    assert.equal(company.name, "Кристайл");
+    assert.equal(calls[0].url, "/api/v1/companies/c1/profile");
+    assert.equal(calls[0].options.method, "POST");
+    assert.match(calls[0].options.body, /Кристайл/);
+    assert.match(calls[0].options.body, /kristail/);
+  } finally {
+    apiClient.fetcher = originalFetcher;
+    apiClient.baseUrl = originalBase;
+  }
+});
+
+test("setCompanyLogo posts the image as multipart", async () => {
+  const calls = [];
+  const originalFetcher = apiClient.fetcher;
+  const originalBase = apiClient.baseUrl;
+  apiClient.baseUrl = "";
+  apiClient.fetcher = function fetcher(url, options) {
+    calls.push({ url, options });
+    return Promise.resolve({
+      ok: true,
+      status: 200,
+      headers: new Map([["Content-Type", "application/json"]]),
+      json: async () => ({ id: "c1", has_logo: true }),
+    });
+  };
+  try {
+    const file = new File([new Uint8Array([0x89, 0x50, 0x4e, 0x47])], "logo.png", { type: "image/png" });
+    const company = await setCompanyLogo("c1", file);
+    assert.equal(company.has_logo, true);
+    assert.equal(calls[0].url, "/api/v1/companies/c1/logo");
+    assert.equal(calls[0].options.method, "POST");
+    assert.equal(calls[0].options.body instanceof FormData, true);
   } finally {
     apiClient.fetcher = originalFetcher;
     apiClient.baseUrl = originalBase;

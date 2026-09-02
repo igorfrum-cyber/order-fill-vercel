@@ -7,4 +7,5 @@ var (
 	ErrNotFound         = errors.New("not found")
 	ErrConflict         = errors.New("conflict")
 	ErrInvalidLoginSlug = errors.New("invalid login slug")
+	ErrInvalidLogo      = errors.New("invalid logo")
 )

@@ -22,6 +22,10 @@ export function canInviteRole(actorRole, targetRole) {
   return inviteRoleOptions(actorRole).includes(targetRole);
 }
 
+export function canEditCompanyProfile(role) {
+  return role === "company_admin";
+}
+
 export function needsUsersCompanyPicker(role) {
   return role === "platform_admin";
 }
@@ -56,6 +60,12 @@ export function companyLoginCopy(company) {
     title: `Вход для сотрудников «${company.name}»`,
     lead: "Работайте только с файлами своей компании.",
   };
+}
+
+export function companyLoginLogoURL(slug) {
+  const normalized = normalizeLoginSlug(slug);
+  if (loginSlugIssue(normalized)) return "";
+  return `/api/v1/public/companies/${encodeURIComponent(normalized)}/logo`;
 }
 
 const RESERVED_LOGIN_SLUGS = new Set([

@@ -60,6 +60,29 @@ export function setCompanyLoginSlug(companyId, loginSlug) {
   });
 }
 
+export function updateCompany(companyId, name, loginSlug) {
+  return apiClient.request(`/api/v1/companies/${encodeURIComponent(companyId)}/profile`, {
+    method: "POST",
+    body: JSON.stringify({ name, login_slug: loginSlug }),
+  });
+}
+
+export function setCompanyLogo(companyId, file) {
+  const body = new FormData();
+  body.append("logo", file);
+  return apiClient.request(`/api/v1/companies/${encodeURIComponent(companyId)}/logo`, {
+    method: "POST",
+    body,
+  });
+}
+
+export function clearCompanyLogo(companyId) {
+  return apiClient.request(`/api/v1/companies/${encodeURIComponent(companyId)}/logo/clear`, {
+    method: "POST",
+    body: JSON.stringify({}),
+  });
+}
+
 export function disableCompany(companyId) {
   return apiClient.request(`/api/v1/companies/${encodeURIComponent(companyId)}/disable`, {
     method: "POST",

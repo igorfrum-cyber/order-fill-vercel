@@ -34,6 +34,9 @@ func TestPublicCompanyLoginReturnsNameAndSlug(t *testing.T) {
 	if payload["name"] != "Acme" || payload["login_slug"] != "acme" {
 		t.Fatalf("payload %#v", payload)
 	}
+	if payload["has_logo"] != false {
+		t.Fatalf("has_logo: got %#v", payload["has_logo"])
+	}
 	if _, ok := payload["id"]; ok {
 		t.Fatal("public login must not return company id")
 	}
@@ -49,6 +52,27 @@ func TestPublicCompanyLoginUnknownSlugIsNotFound(t *testing.T) {
 	router.ServeHTTP(response, request)
 	if response.Code != http.StatusNotFound {
 		t.Fatalf("expected 404, got %d body %s", response.Code, response.Body.String())
+	}
+}
+
+func TestPublicCompanyLogoServesImage(t *testing.T) {
+	router := NewRouter(Config{
+		AllowedOrigins: []string{"http://127.0.0.1:3200"},
+		Admin: stubPublicCompany{
+			company: identity.Company{Name: "Acme", LoginSlug: "acme", LogoContentType: "image/png"},
+		},
+	})
+	request := httptest.NewRequest(http.MethodGet, "/api/v1/public/companies/acme/logo", nil)
+	response := httptest.NewRecorder()
+	router.ServeHTTP(response, request)
+	if response.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d body %s", response.Code, response.Body.String())
+	}
+	if got := response.Header().Get("Content-Type"); got != "image/png" {
+		t.Fatalf("content type: got %q", got)
+	}
+	if response.Body.String() != "png-bytes" {
+		t.Fatalf("body: got %q", response.Body.String())
 	}
 }
 
@@ -79,6 +103,15 @@ func (s stubPublicCompany) ListCompanies(context.Context, identity.User) ([]iden
 func (s stubPublicCompany) SetCompanyLoginSlug(context.Context, identity.User, string, string) (identity.Company, error) {
 	return identity.Company{}, identity.ErrNotFound
 }
+func (s stubPublicCompany) UpdateCompany(context.Context, identity.User, string, string, string) (identity.Company, error) {
+	return identity.Company{}, identity.ErrNotFound
+}
+func (s stubPublicCompany) SetCompanyLogo(context.Context, identity.User, string, []byte) (identity.Company, error) {
+	return identity.Company{}, identity.ErrNotFound
+}
+func (s stubPublicCompany) ClearCompanyLogo(context.Context, identity.User, string) (identity.Company, error) {
+	return identity.Company{}, identity.ErrNotFound
+}
 func (s stubPublicCompany) DisableCompany(context.Context, identity.User, string) error {
 	return identity.ErrNotFound
 }
@@ -100,6 +133,12 @@ func (s stubPublicCompany) PublicCompanyLogin(context.Context, string) (identity
 		return identity.Company{}, identity.ErrNotFound
 	}
 	return s.company, nil
+}
+func (s stubPublicCompany) PublicCompanyLogo(context.Context, string) (port.Object, error) {
+	if s.missing || !s.company.HasLogo() {
+		return port.Object{}, identity.ErrNotFound
+	}
+	return port.Object{Content: []byte("png-bytes"), ContentType: "image/png"}, nil
 }
 
 func TestJobCreateRequiresAuthentication(t *testing.T) {
@@ -236,6 +275,37 @@ func TestMeIncludesCompanyName(t *testing.T) {
 	}
 	if payload["company_name"] != "Acme" {
 		t.Fatalf("company_name: got %#v", payload["company_name"])
+	}
+}
+
+func TestMeIncludesCompanyLoginSlug(t *testing.T) {
+	token := "owner-token"
+	router := NewRouter(Config{
+		AllowedOrigins: []string{"http://127.0.0.1:3200"},
+		Auth: stubAuth{users: map[string]identity.User{
+			identity.HashSecret(token): {
+				ID:               "user-a",
+				Login:            "admin",
+				Role:             identity.RoleCompanyAdmin,
+				CompanyID:        "company-a",
+				CompanyName:      "Acme",
+				CompanyLoginSlug: "acme",
+			},
+		}},
+	})
+	request := httptest.NewRequest(http.MethodGet, "/api/v1/auth/me", nil)
+	request.AddCookie(&http.Cookie{Name: sessionCookieName, Value: token})
+	response := httptest.NewRecorder()
+	router.ServeHTTP(response, request)
+	if response.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d body %s", response.Code, response.Body.String())
+	}
+	var payload map[string]string
+	if err := json.NewDecoder(response.Body).Decode(&payload); err != nil {
+		t.Fatal(err)
+	}
+	if payload["login_slug"] != "acme" {
+		t.Fatalf("login_slug: got %#v", payload["login_slug"])
 	}
 }
 

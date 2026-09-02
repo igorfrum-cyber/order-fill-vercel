@@ -23,7 +23,7 @@ export function accessSummaryForRole(role) {
     return "Вы управляете доступом сотрудников и видите выгрузки своей компании.";
   }
   if (role === "company_admin") {
-    return "Вы приглашаете сотрудников, сбрасываете доступ и видите выгрузки своей компании.";
+    return "Вы приглашаете сотрудников, правите данные компании, сбрасываете доступ и видите выгрузки своей компании.";
   }
   return "Вы создаёте выгрузки, проверяете строки и скачиваете готовые файлы.";
 }
@@ -86,6 +86,12 @@ export function tourForRole(role) {
   }
   if (role === "company_owner" || role === "company_admin") {
     return [
+      {
+        target: "company",
+        placement: "bottom",
+        title: "Компания",
+        body: "Здесь название и латинский адрес входа. По этой ссылке входят сотрудники.",
+      },
       {
         target: "users",
         placement: "bottom",

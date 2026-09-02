@@ -12,15 +12,17 @@ const (
 
 // User is an authenticated account. CompanyID is empty for platform admins.
 type User struct {
-	ID              string
-	CompanyID       string
-	CompanyName     string
-	Login           string
-	PasswordHash    string
-	Role            Role
-	CreatedAt       time.Time
-	DisabledAt      *time.Time
-	CompanyDisabled bool
+	ID               string
+	CompanyID        string
+	CompanyName      string
+	CompanyLoginSlug string
+	CompanyHasLogo   bool
+	Login            string
+	PasswordHash     string
+	Role             Role
+	CreatedAt        time.Time
+	DisabledAt       *time.Time
+	CompanyDisabled  bool
 }
 
 func (u User) Disabled() bool {
@@ -28,11 +30,12 @@ func (u User) Disabled() bool {
 }
 
 type Company struct {
-	ID         string
-	Name       string
-	LoginSlug  string
-	CreatedAt  time.Time
-	DisabledAt *time.Time
+	ID              string
+	Name            string
+	LoginSlug       string
+	LogoContentType string
+	CreatedAt       time.Time
+	DisabledAt      *time.Time
 }
 
 func (c Company) Disabled() bool {

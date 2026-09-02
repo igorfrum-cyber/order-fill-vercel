@@ -44,7 +44,7 @@ test("quickStartForRole returns non-technical steps", () => {
 });
 
 test("tourForRole points at on-screen controls without jargon", () => {
-  const known = new Set(["order", "north", "jobs", "help", "users", "companies", "company-select"]);
+  const known = new Set(["order", "north", "jobs", "help", "users", "companies", "company", "company-select"]);
   const purchaser = tourForRole("purchaser");
   assert.deepEqual(
     purchaser.map((step) => step.target),

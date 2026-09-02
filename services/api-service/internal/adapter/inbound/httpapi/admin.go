@@ -3,6 +3,8 @@ package httpapi
 import (
 	"context"
 	"encoding/json"
+	"fmt"
+	"io"
 	"net/http"
 
 	"order-fill/services/api-service/internal/app/port"
@@ -13,6 +15,9 @@ type adminAPI interface {
 	CreateCompany(ctx context.Context, actor identity.User, name string, loginSlug string) (identity.Company, error)
 	ListCompanies(ctx context.Context, actor identity.User) ([]identity.Company, error)
 	SetCompanyLoginSlug(ctx context.Context, actor identity.User, companyID string, loginSlug string) (identity.Company, error)
+	UpdateCompany(ctx context.Context, actor identity.User, companyID string, name string, loginSlug string) (identity.Company, error)
+	SetCompanyLogo(ctx context.Context, actor identity.User, companyID string, content []byte) (identity.Company, error)
+	ClearCompanyLogo(ctx context.Context, actor identity.User, companyID string) (identity.Company, error)
 	DisableCompany(ctx context.Context, actor identity.User, companyID string) error
 	CreateUser(ctx context.Context, actor identity.User, companyID string, login string, role identity.Role) (identity.User, string, error)
 	ListUsers(ctx context.Context, actor identity.User, companyID string) ([]identity.User, error)
@@ -20,6 +25,7 @@ type adminAPI interface {
 	ListAudit(ctx context.Context, actor identity.User) ([]port.AuditEvent, error)
 	RecordAudit(ctx context.Context, actor identity.User, action string, companyID string, jobID string)
 	PublicCompanyLogin(ctx context.Context, slug string) (identity.Company, error)
+	PublicCompanyLogo(ctx context.Context, slug string) (port.Object, error)
 }
 
 type lister interface {
@@ -142,6 +148,83 @@ func (h adminHandler) setCompanyLoginSlug(w http.ResponseWriter, r *http.Request
 	writeJSON(w, http.StatusOK, presentCompany(company))
 }
 
+func (h adminHandler) updateCompany(w http.ResponseWriter, r *http.Request) {
+	user, ok := userFrom(r)
+	if !ok {
+		writeError(w, http.StatusUnauthorized, "unauthorized", "authentication is required")
+		return
+	}
+	if h.admin == nil {
+		writeError(w, http.StatusNotFound, "not_found", "not found")
+		return
+	}
+	var payload struct {
+		Name      string `json:"name"`
+		LoginSlug string `json:"login_slug"`
+	}
+	if !decodeJSON(w, r, &payload) {
+		return
+	}
+	company, err := h.admin.UpdateCompany(r.Context(), user, r.PathValue("company_id"), payload.Name, payload.LoginSlug)
+	if err != nil {
+		writeDomainError(w, "update_company_failed", err)
+		return
+	}
+	writeJSON(w, http.StatusOK, presentCompany(company))
+}
+
+func (h adminHandler) setCompanyLogo(w http.ResponseWriter, r *http.Request) {
+	user, ok := userFrom(r)
+	if !ok {
+		writeError(w, http.StatusUnauthorized, "unauthorized", "authentication is required")
+		return
+	}
+	if h.admin == nil {
+		writeError(w, http.StatusNotFound, "not_found", "not found")
+		return
+	}
+	r.Body = http.MaxBytesReader(w, r.Body, identity.LogoMaxBytes+64<<10)
+	if err := r.ParseMultipartForm(identity.LogoMaxBytes + 64<<10); err != nil {
+		writeError(w, http.StatusBadRequest, "bad_request", "invalid logo")
+		return
+	}
+	file, _, err := r.FormFile("logo")
+	if err != nil {
+		writeError(w, http.StatusBadRequest, "bad_request", "logo is required")
+		return
+	}
+	defer func() { _ = file.Close() }()
+	content, err := io.ReadAll(io.LimitReader(file, identity.LogoMaxBytes+1))
+	if err != nil {
+		writeError(w, http.StatusBadRequest, "bad_request", "invalid logo")
+		return
+	}
+	company, err := h.admin.SetCompanyLogo(r.Context(), user, r.PathValue("company_id"), content)
+	if err != nil {
+		writeDomainError(w, "set_company_logo_failed", err)
+		return
+	}
+	writeJSON(w, http.StatusOK, presentCompany(company))
+}
+
+func (h adminHandler) clearCompanyLogo(w http.ResponseWriter, r *http.Request) {
+	user, ok := userFrom(r)
+	if !ok {
+		writeError(w, http.StatusUnauthorized, "unauthorized", "authentication is required")
+		return
+	}
+	if h.admin == nil {
+		writeError(w, http.StatusNotFound, "not_found", "not found")
+		return
+	}
+	company, err := h.admin.ClearCompanyLogo(r.Context(), user, r.PathValue("company_id"))
+	if err != nil {
+		writeDomainError(w, "clear_company_logo_failed", err)
+		return
+	}
+	writeJSON(w, http.StatusOK, presentCompany(company))
+}
+
 func (h adminHandler) listUsers(w http.ResponseWriter, r *http.Request) {
 	user, ok := userFrom(r)
 	if !ok {
@@ -255,10 +338,28 @@ func (h adminHandler) publicCompanyLogin(w http.ResponseWriter, r *http.Request)
 		writeDomainError(w, "company_login_failed", err)
 		return
 	}
-	writeJSON(w, http.StatusOK, map[string]string{
+	writeJSON(w, http.StatusOK, map[string]any{
 		"name":       company.Name,
 		"login_slug": company.LoginSlug,
+		"has_logo":   company.HasLogo(),
 	})
+}
+
+func (h adminHandler) publicCompanyLogo(w http.ResponseWriter, r *http.Request) {
+	if h.admin == nil {
+		writeError(w, http.StatusNotFound, "not_found", "not found")
+		return
+	}
+	object, err := h.admin.PublicCompanyLogo(r.Context(), r.PathValue("slug"))
+	if err != nil {
+		writeDomainError(w, "company_logo_failed", err)
+		return
+	}
+	w.Header().Set("Content-Type", object.ContentType)
+	w.Header().Set("Cache-Control", "private, max-age=300")
+	w.Header().Set("Content-Length", fmt.Sprint(len(object.Content)))
+	w.WriteHeader(http.StatusOK)
+	_, _ = w.Write(object.Content)
 }
 
 func decodeJSON(w http.ResponseWriter, r *http.Request, dest any) bool {
@@ -274,6 +375,7 @@ type companyResponse struct {
 	ID         string  `json:"id"`
 	Name       string  `json:"name"`
 	LoginSlug  string  `json:"login_slug,omitempty"`
+	HasLogo    bool    `json:"has_logo"`
 	CreatedAt  string  `json:"created_at"`
 	DisabledAt *string `json:"disabled_at,omitempty"`
 }
@@ -283,6 +385,7 @@ func presentCompany(company identity.Company) companyResponse {
 		ID:        company.ID,
 		Name:      company.Name,
 		LoginSlug: company.LoginSlug,
+		HasLogo:   company.HasLogo(),
 		CreatedAt: company.CreatedAt.UTC().Format("2006-01-02T15:04:05Z"),
 	}
 	if company.DisabledAt != nil {

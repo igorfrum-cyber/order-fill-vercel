@@ -433,6 +433,32 @@ func (m *memoryIdentity) SetCompanyLoginSlug(_ context.Context, id string, slug 
 	return nil
 }
 
+func (m *memoryIdentity) SetCompanyProfile(_ context.Context, id string, name string, slug string) error {
+	company, ok := m.companies[id]
+	if !ok {
+		return identity.ErrNotFound
+	}
+	for _, existing := range m.companies {
+		if existing.ID != id && existing.LoginSlug == slug {
+			return identity.ErrConflict
+		}
+	}
+	company.Name = name
+	company.LoginSlug = slug
+	m.companies[id] = company
+	return nil
+}
+
+func (m *memoryIdentity) SetCompanyLogoType(_ context.Context, id string, contentType string) error {
+	company, ok := m.companies[id]
+	if !ok {
+		return identity.ErrNotFound
+	}
+	company.LogoContentType = contentType
+	m.companies[id] = company
+	return nil
+}
+
 func (m *memoryIdentity) ListCompanies(context.Context) ([]identity.Company, error) {
 	out := make([]identity.Company, 0, len(m.companies))
 	for _, company := range m.companies {
@@ -467,6 +493,8 @@ func (m *memoryIdentity) hydrate(user identity.User) identity.User {
 	}
 	if company, ok := m.companies[user.CompanyID]; ok {
 		user.CompanyName = company.Name
+		user.CompanyLoginSlug = company.LoginSlug
+		user.CompanyHasLogo = company.HasLogo()
 		user.CompanyDisabled = company.Disabled()
 	}
 	return user

@@ -15,6 +15,7 @@ func TestMigrateStatementsIncludeUsers(t *testing.T) {
 		"created_by",
 		"login_slug",
 		"companies_login_slug_uidx",
+		"logo_content_type",
 	} {
 		if !strings.Contains(joined, needle) {
 			t.Fatalf("missing %s", needle)

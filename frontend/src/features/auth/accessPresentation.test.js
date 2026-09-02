@@ -3,7 +3,9 @@ import test from "node:test";
 
 import {
   accessSummary,
+  canEditCompanyProfile,
   canInviteRole,
+  companyLoginLogoURL,
   companyLoginCopy,
   companyLoginPath,
   companyLoginURL,
@@ -50,6 +52,12 @@ test("accessSummary explains what each role can do", () => {
   assert.match(accessSummary("purchaser"), /выгрузк/i);
 });
 
+test("only company admin edits the company profile", () => {
+  assert.equal(canEditCompanyProfile("company_admin"), true);
+  assert.equal(canEditCompanyProfile("platform_admin"), false);
+  assert.equal(canEditCompanyProfile("purchaser"), false);
+});
+
 test("platform admin must pick a company to manage users", () => {
   assert.equal(needsUsersCompanyPicker("platform_admin"), true);
   assert.equal(needsUsersCompanyPicker("company_admin"), false);
@@ -91,6 +99,10 @@ test("companySlugFromPath reads /c/:slug and leaves invite routes alone", () => 
   assert.equal(companySlugFromPath("/c/acme%20co"), "acme co");
   assert.equal(companySlugFromPath("/invite/token-1"), "");
   assert.equal(companySlugFromPath("/"), "");
+});
+
+test("companyLoginLogoURL is a public slug path", () => {
+  assert.equal(companyLoginLogoURL("kristail"), "/api/v1/public/companies/kristail/logo");
 });
 
 test("companyLoginCopy personalizes the login screen without leaking ids", () => {

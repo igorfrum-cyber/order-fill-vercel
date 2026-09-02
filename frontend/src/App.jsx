@@ -2,10 +2,10 @@ import { useEffect, useState } from "react";
 import { getCompanyLogin, getMe, logout } from "./api/auth.js";
 import { onAuthRequired } from "./api/client.js";
 import { getJob, getJobReport, listJobFiles } from "./api/jobs.js";
-import { companyLoginURL, companySlugFromHost, companySlugFromPath, resolveUsersCompanyId } from "./features/auth/accessPresentation.js";
-import { dismissQuickStart, shouldShowQuickStart } from "./features/help/firstRun.js";
+import { canEditCompanyProfile, companyLoginURL, companySlugFromHost, companySlugFromPath, resolveUsersCompanyId } from "./features/auth/accessPresentation.js";
+import { consumeQuickStart } from "./features/help/firstRun.js";
 import { initialEditState } from "./features/order/reviewEdits.js";
-import { CompaniesScreen, JobHistory, UsersScreen } from "./ui/admin/AdminScreens.jsx";
+import { CompaniesScreen, CompanyScreen, JobHistory, UsersScreen } from "./ui/admin/AdminScreens.jsx";
 import { AccountScreen, InviteScreen, LoginScreen } from "./ui/auth/AuthScreens.jsx";
 import { HelpButton } from "./ui/chrome.jsx";
 import { HelpDrawer } from "./ui/help/HelpDrawer.jsx";
@@ -60,14 +60,15 @@ export default function App() {
       .catch(() => setCompanyLogin(null));
   }, [companySlug]);
 
+  const userId = me?.id;
   useEffect(() => {
-    if (!me) {
+    if (!userId) {
       setQuickStartOpen(false);
       setHelpOpen(false);
       return;
     }
-    setQuickStartOpen(shouldShowQuickStart(me));
-  }, [me]);
+    setQuickStartOpen(consumeQuickStart({ id: userId }));
+  }, [userId]);
 
   if (me === undefined) {
     return <div className="grid min-h-full place-items-center text-[var(--color-ink-faint)]">Загрузка…</div>;
@@ -123,6 +124,11 @@ export default function App() {
                   Компании
                 </NavButton>
               ) : null}
+              {canEditCompanyProfile(me.role) ? (
+                <NavButton dataTour="company" active={screen === "company"} onClick={() => setScreen("company")}>
+                  Компания
+                </NavButton>
+              ) : null}
               {me.role !== "purchaser" ? (
                 <NavButton dataTour="users" active={screen === "users"} onClick={() => setScreen("users")}>
                   Пользователи
@@ -173,6 +179,19 @@ export default function App() {
               />
             ) : null}
             {screen === "companies" ? <CompaniesScreen selectedId={companyId} onSelect={setCompanyId} /> : null}
+            {screen === "company" ? (
+              <CompanyScreen
+                me={me}
+                onSaved={(company) =>
+                  setMe((current) => ({
+                    ...current,
+                    company_name: company.name,
+                    login_slug: company.login_slug,
+                    has_logo: Boolean(company.has_logo),
+                  }))
+                }
+              />
+            ) : null}
             {screen === "users" ? (
               <UsersScreen
                 actorRole={me.role}
@@ -188,10 +207,7 @@ export default function App() {
             <QuickStart
               me={me}
               onLater={() => setQuickStartOpen(false)}
-              onDismiss={() => {
-                dismissQuickStart(me);
-                setQuickStartOpen(false);
-              }}
+              onDismiss={() => setQuickStartOpen(false)}
             />
           ) : null}
         </div>

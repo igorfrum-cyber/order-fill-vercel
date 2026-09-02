@@ -13,7 +13,7 @@ import (
 	"order-fill/services/api-service/internal/domain/identity"
 )
 
-const userSelect = `u.id, COALESCE(u.company_id, ''), COALESCE(c.name, ''), u.login, u.password_hash, u.role, u.created_at, u.disabled_at,
+const userSelect = `u.id, COALESCE(u.company_id, ''), COALESCE(c.name, ''), COALESCE(c.login_slug, ''), COALESCE(c.logo_content_type, '') <> '', u.login, u.password_hash, u.role, u.created_at, u.disabled_at,
 		COALESCE(c.disabled_at IS NOT NULL, false)`
 
 func (r *Repository) CountUsers(ctx context.Context) (int, error) {
@@ -36,7 +36,7 @@ func (r *Repository) CreateCompany(ctx context.Context, company identity.Company
 
 func (r *Repository) GetCompany(ctx context.Context, id string) (identity.Company, error) {
 	company, err := scanCompany(r.pool.QueryRow(ctx,
-		`SELECT id, name, created_at, disabled_at, COALESCE(login_slug, '') FROM companies WHERE id = $1`, id))
+		`SELECT id, name, created_at, disabled_at, COALESCE(login_slug, ''), COALESCE(logo_content_type, '') FROM companies WHERE id = $1`, id))
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return identity.Company{}, identity.ErrNotFound
@@ -48,7 +48,7 @@ func (r *Repository) GetCompany(ctx context.Context, id string) (identity.Compan
 
 func (r *Repository) ListCompanies(ctx context.Context) ([]identity.Company, error) {
 	rows, err := r.pool.Query(ctx,
-		`SELECT id, name, created_at, disabled_at, COALESCE(login_slug, '') FROM companies ORDER BY created_at DESC`)
+		`SELECT id, name, created_at, disabled_at, COALESCE(login_slug, ''), COALESCE(logo_content_type, '') FROM companies ORDER BY created_at DESC`)
 	if err != nil {
 		return nil, fmt.Errorf("list companies: %w", err)
 	}
@@ -66,7 +66,7 @@ func (r *Repository) ListCompanies(ctx context.Context) ([]identity.Company, err
 
 func scanCompany(row pgx.Row) (identity.Company, error) {
 	var company identity.Company
-	if err := row.Scan(&company.ID, &company.Name, &company.CreatedAt, &company.DisabledAt, &company.LoginSlug); err != nil {
+	if err := row.Scan(&company.ID, &company.Name, &company.CreatedAt, &company.DisabledAt, &company.LoginSlug, &company.LogoContentType); err != nil {
 		return identity.Company{}, err
 	}
 	company.CreatedAt = company.CreatedAt.UTC()
@@ -75,7 +75,7 @@ func scanCompany(row pgx.Row) (identity.Company, error) {
 
 func (r *Repository) GetCompanyByLoginSlug(ctx context.Context, slug string) (identity.Company, error) {
 	company, err := scanCompany(r.pool.QueryRow(ctx,
-		`SELECT id, name, created_at, disabled_at, COALESCE(login_slug, '') FROM companies WHERE login_slug = $1`, slug))
+		`SELECT id, name, created_at, disabled_at, COALESCE(login_slug, ''), COALESCE(logo_content_type, '') FROM companies WHERE login_slug = $1`, slug))
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return identity.Company{}, identity.ErrNotFound
@@ -89,6 +89,28 @@ func (r *Repository) SetCompanyLoginSlug(ctx context.Context, id string, slug st
 	tag, err := r.pool.Exec(ctx, `UPDATE companies SET login_slug = $2 WHERE id = $1`, id, slug)
 	if err != nil {
 		return fmt.Errorf("set company login slug: %w", mapConflict(err))
+	}
+	if tag.RowsAffected() == 0 {
+		return identity.ErrNotFound
+	}
+	return nil
+}
+
+func (r *Repository) SetCompanyProfile(ctx context.Context, id string, name string, slug string) error {
+	tag, err := r.pool.Exec(ctx, `UPDATE companies SET name = $2, login_slug = $3 WHERE id = $1`, id, name, slug)
+	if err != nil {
+		return fmt.Errorf("set company profile: %w", mapConflict(err))
+	}
+	if tag.RowsAffected() == 0 {
+		return identity.ErrNotFound
+	}
+	return nil
+}
+
+func (r *Repository) SetCompanyLogoType(ctx context.Context, id string, contentType string) error {
+	tag, err := r.pool.Exec(ctx, `UPDATE companies SET logo_content_type = NULLIF($2, '') WHERE id = $1`, id, contentType)
+	if err != nil {
+		return fmt.Errorf("set company logo type: %w", err)
 	}
 	if tag.RowsAffected() == 0 {
 		return identity.ErrNotFound
@@ -286,7 +308,7 @@ func scanUserRow(row pgx.Row) (identity.User, error) {
 		user identity.User
 		role string
 	)
-	err := row.Scan(&user.ID, &user.CompanyID, &user.CompanyName, &user.Login, &user.PasswordHash, &role, &user.CreatedAt, &user.DisabledAt, &user.CompanyDisabled)
+	err := row.Scan(&user.ID, &user.CompanyID, &user.CompanyName, &user.CompanyLoginSlug, &user.CompanyHasLogo, &user.Login, &user.PasswordHash, &role, &user.CreatedAt, &user.DisabledAt, &user.CompanyDisabled)
 	if err != nil {
 		return identity.User{}, err
 	}

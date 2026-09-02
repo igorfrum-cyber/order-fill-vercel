@@ -131,7 +131,7 @@ func publicCompanyLoginPath(path string) bool {
 		return false
 	}
 	slug, suffix, found := strings.Cut(rest, "/")
-	return found && slug != "" && suffix == "login"
+	return found && slug != "" && (suffix == "login" || suffix == "logo")
 }
 
 func setSecurityHeaders(w http.ResponseWriter) {
@@ -272,6 +272,8 @@ type userResponse struct {
 	Role        string  `json:"role"`
 	CompanyID   string  `json:"company_id,omitempty"`
 	CompanyName string  `json:"company_name,omitempty"`
+	LoginSlug   string  `json:"login_slug,omitempty"`
+	HasLogo     bool    `json:"has_logo,omitempty"`
 	DisabledAt  *string `json:"disabled_at,omitempty"`
 }
 
@@ -282,6 +284,8 @@ func presentUser(user identity.User) userResponse {
 		Role:        string(user.Role),
 		CompanyID:   user.CompanyID,
 		CompanyName: user.CompanyName,
+		LoginSlug:   user.CompanyLoginSlug,
+		HasLogo:     user.CompanyHasLogo,
 	}
 	if user.DisabledAt != nil {
 		value := user.DisabledAt.UTC().Format("2006-01-02T15:04:05Z")

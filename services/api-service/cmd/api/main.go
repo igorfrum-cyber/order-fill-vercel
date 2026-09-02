@@ -70,7 +70,7 @@ func run(logger *slog.Logger) error {
 	metrics := observability.NewMetrics()
 	now := func() time.Time { return time.Now().UTC() }
 	auth := usecase.NewAuth(repository, uuid.NewString, now)
-	admin := usecase.NewAdmin(repository, uuid.NewString, now)
+	admin := usecase.NewAdmin(repository, uuid.NewString, now).WithFiles(storage)
 
 	invite, created, err := auth.Bootstrap(ctx, settings.BootstrapAdminLogin)
 	if err != nil {
