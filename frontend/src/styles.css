@@ -76,6 +76,14 @@ body {
   outline: none;
 }
 
+.app-header {
+  min-width: 0;
+}
+
+.app-header-context {
+  min-width: 0;
+}
+
 @keyframes enter {
   from {
     opacity: 0;

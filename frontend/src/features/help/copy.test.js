@@ -9,6 +9,7 @@ import {
   loginFailedMessage,
   logoutEverywhereConfirm,
   logoutEverywhereLabel,
+  headerContext,
   profileCompanyLabel,
   profileFields,
   quickStartForRole,
@@ -92,6 +93,27 @@ test("profileCompanyLabel prefers the company name and keeps platform admin at t
   assert.equal(profileCompanyLabel({ role: "platform_admin" }), "Сервис");
   assert.equal(profileCompanyLabel({ role: "purchaser", company_id: "c-1", company_name: "Acme" }), "Acme");
   assert.equal(profileCompanyLabel({ role: "purchaser", company_id: "c-1" }), "Ваша компания");
+});
+
+test("headerContext shows company and role for company users", () => {
+  assert.deepEqual(headerContext({ role: "company_owner", company_name: "Сияние" }), {
+    companyLine: "Компания: Сияние",
+    roleLine: "Владелец компании",
+  });
+});
+
+test("headerContext keeps platform admin at the service", () => {
+  assert.deepEqual(headerContext({ role: "platform_admin" }), {
+    companyLine: "Сервис",
+    roleLine: "Администратор сервиса",
+  });
+});
+
+test("headerContext falls back when the company name is missing", () => {
+  assert.deepEqual(headerContext({ role: "purchaser" }), {
+    companyLine: "Компания",
+    roleLine: "Закупщик",
+  });
 });
 
 test("profileFields show login company and access as read-only", () => {

@@ -4,11 +4,11 @@ import { onAuthRequired } from "./api/client.js";
 import { getJob, getJobReport, listJobFiles } from "./api/jobs.js";
 import { canEditCompanyProfile, companyLoginURL, companySlugFromHost, companySlugFromPath, needsSecurityNudge, resolveUsersCompanyId } from "./features/auth/accessPresentation.js";
 import { consumeQuickStart } from "./features/help/firstRun.js";
-import { securitySetupLabel, twoFactorRequiredHint } from "./features/help/copy.js";
+import { headerContext, roleLabel, securitySetupLabel, twoFactorRequiredHint } from "./features/help/copy.js";
 import { initialEditState } from "./features/order/reviewEdits.js";
 import { CompaniesScreen, CompanyScreen, JobHistory, UsersScreen } from "./ui/admin/AdminScreens.jsx";
 import { AccountScreen, InviteScreen, LoginScreen } from "./ui/auth/AuthScreens.jsx";
-import { HelpButton } from "./ui/chrome.jsx";
+import { HelpButton, ProfileMenu } from "./ui/chrome.jsx";
 import { HelpDrawer } from "./ui/help/HelpDrawer.jsx";
 import { QuickStart } from "./ui/help/QuickStart.jsx";
 import { NorthApp } from "./ui/north/NorthApp.jsx";
@@ -107,6 +107,8 @@ export default function App() {
     setScreen("history");
   }
 
+  const shell = headerContext(me);
+
   return (
     <>
       {screen === "order" ? (
@@ -115,8 +117,8 @@ export default function App() {
         <NorthApp companyId={companyId} onHome={goHome} onHelp={() => setHelpOpen(true)} />
       ) : (
         <div className="flex h-full flex-col bg-[var(--color-ground)]">
-          <header className="flex flex-wrap items-center justify-between gap-2 border-b border-[var(--color-line)] bg-[var(--color-surface)] px-4 py-3 sm:px-6">
-            <nav className="flex gap-2 text-[14px] font-medium">
+          <header className="app-header flex flex-wrap items-center gap-2 border-b border-[var(--color-line)] bg-[var(--color-surface)] px-4 py-3 sm:px-6">
+            <nav className="flex min-w-0 flex-wrap gap-1 text-[14px] font-medium sm:gap-2">
               <NavButton active={screen === "history"} onClick={() => setScreen("history")}>
                 Выгрузки
               </NavButton>
@@ -136,25 +138,22 @@ export default function App() {
                 </NavButton>
               ) : null}
             </nav>
-            <div className="flex items-center gap-3 text-[14px] text-[var(--color-ink-soft)]">
+            <div className="ml-auto flex min-w-0 items-center justify-end gap-2 sm:gap-3">
+              <div className="app-header-context min-w-0 max-w-[7.5rem] leading-tight sm:max-w-[16rem]">
+                <div className="truncate text-[13px] font-medium text-[var(--color-ink)]">{shell.companyLine}</div>
+                <div className="truncate text-[12px] text-[var(--color-ink-faint)]">{shell.roleLine}</div>
+              </div>
               <HelpButton onClick={() => setHelpOpen(true)} />
-              <button
-                type="button"
-                className={screen === "account" ? "font-medium text-[var(--color-brand-strong)]" : "hover:text-[var(--color-ink)]"}
-                onClick={() => setScreen("account")}
-              >
-                {me.login}
-              </button>
-              <button
-                type="button"
-                className="text-[var(--color-brand)]"
-                onClick={async () => {
+              <ProfileMenu
+                login={me.login}
+                roleLabel={roleLabel(me.role)}
+                active={screen === "account"}
+                onProfile={() => setScreen("account")}
+                onLogout={async () => {
                   await logout();
                   setMe(null);
                 }}
-              >
-                Выйти
-              </button>
+              />
             </div>
           </header>
           {needsSecurityNudge(me) ? (
@@ -252,7 +251,7 @@ function NavButton({ active, onClick, children, dataTour }) {
       type="button"
       data-tour={dataTour}
       onClick={onClick}
-      className={`rounded-lg px-3 py-1.5 transition-colors duration-200 ${active ? "bg-[var(--color-brand-soft)] text-[var(--color-brand-strong)]" : "text-[var(--color-ink-faint)]"}`}
+      className={`rounded-lg px-3 py-1.5 transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-brand)] ${active ? "bg-[var(--color-brand-soft)] text-[var(--color-brand-strong)]" : "text-[var(--color-ink-faint)]"}`}
     >
       {children}
     </button>

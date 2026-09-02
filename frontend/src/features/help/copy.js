@@ -33,6 +33,16 @@ export function profileCompanyLabel(me) {
   return me.company_name || "Ваша компания";
 }
 
+export function headerContext(me) {
+  if (me?.role === "platform_admin") {
+    return { companyLine: "Сервис", roleLine: roleLabel(me.role) };
+  }
+  return {
+    companyLine: me?.company_name ? `Компания: ${me.company_name}` : "Компания",
+    roleLine: roleLabel(me?.role),
+  };
+}
+
 export function profileFields(me) {
   return [
     { label: "Логин", value: me.login, editable: false },

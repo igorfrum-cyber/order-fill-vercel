@@ -1,4 +1,5 @@
-import { IconCheck, IconHelp, IconList } from "./icons.jsx";
+import { useEffect, useRef, useState } from "react";
+import { IconCheck, IconChevron, IconHelp, IconList } from "./icons.jsx";
 
 export function HelpButton({ onClick }) {
   return (
@@ -6,11 +7,86 @@ export function HelpButton({ onClick }) {
       type="button"
       data-tour="help"
       aria-label="Справка"
-      className="grid h-9 w-9 place-items-center rounded-lg text-[var(--color-ink-faint)] transition-colors duration-200 hover:bg-[var(--color-line-soft)] hover:text-[var(--color-ink)]"
+      className="grid h-9 w-9 shrink-0 place-items-center rounded-lg text-[var(--color-ink-faint)] transition-colors duration-200 hover:bg-[var(--color-line-soft)] hover:text-[var(--color-ink)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-brand)]"
       onClick={onClick}
     >
       <IconHelp className="h-4 w-4" />
     </button>
+  );
+}
+
+export function ProfileMenu({ login, roleLabel, active, onProfile, onLogout }) {
+  const [open, setOpen] = useState(false);
+  const rootRef = useRef(null);
+
+  useEffect(() => {
+    function onPointerDown(event) {
+      if (!rootRef.current?.contains(event.target)) setOpen(false);
+    }
+    function onKey(event) {
+      if (event.key === "Escape") setOpen(false);
+    }
+    window.addEventListener("pointerdown", onPointerDown);
+    window.addEventListener("keydown", onKey);
+    return () => {
+      window.removeEventListener("pointerdown", onPointerDown);
+      window.removeEventListener("keydown", onKey);
+    };
+  }, []);
+
+  const initial = String(login || "?").slice(0, 1).toUpperCase();
+
+  return (
+    <div className="relative shrink-0" ref={rootRef}>
+      <button
+        type="button"
+        aria-haspopup="menu"
+        aria-expanded={open}
+        aria-label={login}
+        className={`flex max-w-[11rem] items-center gap-2 rounded-lg px-1.5 py-1 text-left sm:max-w-[14rem] ${
+          active ? "bg-[var(--color-brand-soft)] text-[var(--color-brand-strong)]" : "hover:bg-[var(--color-line-soft)]"
+        }`}
+        onClick={() => setOpen((current) => !current)}
+      >
+        <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-[var(--color-neutral-soft)] text-[12px] font-semibold text-[var(--color-ink-soft)]">
+          {initial}
+        </span>
+        <span className="hidden min-w-0 sm:block">
+          <span className="block truncate text-[13px] font-medium text-[var(--color-ink)]">{login}</span>
+          <span className="block truncate text-[12px] text-[var(--color-ink-faint)]">{roleLabel}</span>
+        </span>
+        <IconChevron className={`hidden h-4 w-4 shrink-0 text-[var(--color-ink-faint)] sm:block ${open ? "rotate-180" : ""}`} />
+      </button>
+      {open ? (
+        <div
+          role="menu"
+          className="absolute right-0 z-20 mt-1 min-w-44 overflow-hidden rounded-lg border border-[var(--color-line)] bg-[var(--color-surface)] py-1 shadow-lg"
+        >
+          <button
+            type="button"
+            role="menuitem"
+            className="block w-full px-3 py-2 text-left text-[14px] hover:bg-[var(--color-line-soft)]"
+            onClick={() => {
+              setOpen(false);
+              onProfile();
+            }}
+          >
+            Мой профиль
+          </button>
+          <button
+            type="button"
+            role="menuitem"
+            className="block w-full px-3 py-2 text-left text-[14px] text-[var(--color-danger)] hover:bg-[var(--color-danger-soft)]"
+            onClick={() => {
+              setOpen(false);
+              onLogout();
+            }}
+          >
+            Выйти
+          </button>
+        </div>
+      ) : null}
+    </div>
   );
 }
 
