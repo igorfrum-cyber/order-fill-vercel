@@ -51,6 +51,7 @@ func NewRouter(config Config) http.Handler {
 	mux.HandleFunc("POST /api/v1/auth/login", auth.login)
 	mux.HandleFunc("POST /api/v1/auth/invite", auth.invite)
 	mux.HandleFunc("POST /api/v1/auth/logout", auth.logout)
+	mux.HandleFunc("POST /api/v1/auth/logout-everywhere", auth.logoutEverywhere)
 	mux.HandleFunc("POST /api/v1/auth/password", auth.changePassword)
 	mux.HandleFunc("GET /api/v1/auth/me", auth.me)
 

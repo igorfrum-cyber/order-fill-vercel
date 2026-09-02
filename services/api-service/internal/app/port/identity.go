@@ -29,16 +29,17 @@ type AuditEvent struct {
 }
 
 const (
-	AuditLoginSuccess    = "login_success"
-	AuditLogout          = "logout"
-	AuditPasswordChanged = "password_changed"
-	AuditInviteCreated   = "invite_created"
-	AuditAccessReset     = "access_reset"
-	AuditUserDisabled    = "user_disabled"
-	AuditCompanyDisabled = "company_disabled"
-	AuditJobView         = "job_view"
-	AuditFileDownload    = "file_download"
-	AuditArchiveDownload = "archive_download"
+	AuditLoginSuccess     = "login_success"
+	AuditLogout           = "logout"
+	AuditLogoutEverywhere = "logout_everywhere"
+	AuditPasswordChanged  = "password_changed"
+	AuditInviteCreated    = "invite_created"
+	AuditAccessReset      = "access_reset"
+	AuditUserDisabled     = "user_disabled"
+	AuditCompanyDisabled  = "company_disabled"
+	AuditJobView          = "job_view"
+	AuditFileDownload     = "file_download"
+	AuditArchiveDownload  = "archive_download"
 )
 
 type IdentityStore interface {

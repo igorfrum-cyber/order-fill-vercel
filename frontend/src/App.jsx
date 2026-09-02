@@ -149,7 +149,9 @@ export default function App() {
                 onCompany={setCompanyId}
               />
             ) : null}
-            {screen === "account" ? <AccountScreen me={me} onBack={() => setScreen("history")} /> : null}
+            {screen === "account" ? (
+              <AccountScreen me={me} onBack={() => setScreen("history")} onSignedOut={() => setMe(null)} />
+            ) : null}
           </main>
           {quickStartOpen ? (
             <QuickStart

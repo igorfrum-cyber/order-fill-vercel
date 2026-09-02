@@ -139,6 +139,31 @@ func TestResetAccessInvalidatesSessions(t *testing.T) {
 	}
 }
 
+func TestLogoutEverywhereInvalidatesAllSessions(t *testing.T) {
+	auth, store := newTestAuthStore(t)
+	user := seedPurchaser(t, store, "buyer", "correct-horse")
+	first, err := auth.Login(context.Background(), user.Login, "correct-horse")
+	if err != nil {
+		t.Fatal(err)
+	}
+	second, err := auth.Login(context.Background(), user.Login, "correct-horse")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if err := auth.LogoutEverywhere(context.Background(), user); err != nil {
+		t.Fatal(err)
+	}
+
+	if _, err := auth.SessionUser(context.Background(), identity.HashSecret(first.RawToken)); !errors.Is(err, identity.ErrUnauthorized) {
+		t.Fatalf("first session still valid: %v", err)
+	}
+	if _, err := auth.SessionUser(context.Background(), identity.HashSecret(second.RawToken)); !errors.Is(err, identity.ErrUnauthorized) {
+		t.Fatalf("second session still valid: %v", err)
+	}
+	assertAudit(t, store, "logout_everywhere", user.ID, user.CompanyID)
+}
+
 func TestChangePasswordRejectsWrongCurrent(t *testing.T) {
 	auth, store := newTestAuthStore(t)
 	user := seedPurchaser(t, store, "buyer", "correct-horse")

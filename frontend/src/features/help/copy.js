@@ -44,6 +44,11 @@ export function profileFields(me) {
 export const accountPasswordHint =
   "Ваш пароль знаете только вы. Если доступ нужен другому человеку, создайте отдельного пользователя.";
 
+export const logoutEverywhereLabel = "Выйти со всех устройств";
+
+export const logoutEverywhereConfirm =
+  "Вы выйдете здесь и на других устройствах. Войти снова можно будет по логину и паролю.";
+
 export function tourForRole(role) {
   if (role === "platform_admin") {
     return [

@@ -87,7 +87,8 @@ func TestOtherCompanyAdminCannotReadJob(t *testing.T) {
 }
 
 type stubAuth struct {
-	users map[string]identity.User
+	users            map[string]identity.User
+	logoutEverywhere func(identity.User) error
 }
 
 func (s stubAuth) Login(context.Context, string, string) (usecase.Session, error) {
@@ -95,6 +96,13 @@ func (s stubAuth) Login(context.Context, string, string) (usecase.Session, error
 }
 
 func (s stubAuth) Logout(context.Context, string) error { return nil }
+
+func (s stubAuth) LogoutEverywhere(_ context.Context, actor identity.User) error {
+	if s.logoutEverywhere != nil {
+		return s.logoutEverywhere(actor)
+	}
+	return nil
+}
 
 func (s stubAuth) AcceptInvite(context.Context, string, string) (usecase.Session, error) {
 	return usecase.Session{}, identity.ErrUnauthorized

@@ -7,6 +7,8 @@ import {
   helpSections,
   loginAccessHint,
   loginFailedMessage,
+  logoutEverywhereConfirm,
+  logoutEverywhereLabel,
   profileCompanyLabel,
   profileFields,
   quickStartForRole,
@@ -94,6 +96,14 @@ test("accountPasswordHint tells the user not to share the password", () => {
   assert.equal(
     accountPasswordHint,
     "Ваш пароль знаете только вы. Если доступ нужен другому человеку, создайте отдельного пользователя.",
+  );
+});
+
+test("logoutEverywhere copy explains that every device will be signed out", () => {
+  assert.equal(logoutEverywhereLabel, "Выйти со всех устройств");
+  assert.equal(
+    logoutEverywhereConfirm,
+    "Вы выйдете здесь и на других устройствах. Войти снова можно будет по логину и паролю.",
   );
 });
 

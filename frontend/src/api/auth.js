@@ -22,6 +22,10 @@ export function logout() {
   return apiClient.request("/api/v1/auth/logout", { method: "POST" });
 }
 
+export function logoutEverywhere() {
+  return apiClient.request("/api/v1/auth/logout-everywhere", { method: "POST" });
+}
+
 export function changePassword(currentPassword, password) {
   return apiClient.request("/api/v1/auth/password", {
     method: "POST",

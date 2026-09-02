@@ -94,6 +94,15 @@ paths:
           description: Cookie cleared.
         "401":
           $ref: "#/components/responses/Unauthorized"
+  /api/v1/auth/logout-everywhere:
+    post:
+      operationId: logoutEverywhere
+      summary: End every session for the current user
+      responses:
+        "204":
+          description: All sessions removed and cookie cleared.
+        "401":
+          $ref: "#/components/responses/Unauthorized"
   /api/v1/auth/password:
     post:
       operationId: changePassword

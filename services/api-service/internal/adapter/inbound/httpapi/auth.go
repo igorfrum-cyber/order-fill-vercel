@@ -23,6 +23,7 @@ type userContextKey struct{}
 type sessionAuthenticator interface {
 	Login(ctx context.Context, login string, password string) (usecase.Session, error)
 	Logout(ctx context.Context, tokenHash string) error
+	LogoutEverywhere(ctx context.Context, actor identity.User) error
 	AcceptInvite(ctx context.Context, rawToken string, password string) (usecase.Session, error)
 	ChangePassword(ctx context.Context, actor identity.User, current string, next string) error
 	SessionUser(ctx context.Context, tokenHash string) (identity.User, error)
@@ -182,6 +183,20 @@ func (h authHandler) invite(w http.ResponseWriter, r *http.Request) {
 func (h authHandler) logout(w http.ResponseWriter, r *http.Request) {
 	if hash := sessionTokenHash(r); hash != "" && h.auth != nil {
 		_ = h.auth.Logout(r.Context(), hash)
+	}
+	clearSessionCookie(w, h.cookieSecure)
+	w.WriteHeader(http.StatusNoContent)
+}
+
+func (h authHandler) logoutEverywhere(w http.ResponseWriter, r *http.Request) {
+	user, ok := userFrom(r)
+	if !ok || h.auth == nil {
+		writeError(w, http.StatusUnauthorized, "unauthorized", "authentication is required")
+		return
+	}
+	if err := h.auth.LogoutEverywhere(r.Context(), user); err != nil {
+		writeDomainError(w, "logout_everywhere_failed", err)
+		return
 	}
 	clearSessionCookie(w, h.cookieSecure)
 	w.WriteHeader(http.StatusNoContent)

@@ -99,6 +99,14 @@ func (a *Auth) Logout(ctx context.Context, tokenHash string) error {
 	return nil
 }
 
+func (a *Auth) LogoutEverywhere(ctx context.Context, actor identity.User) error {
+	if err := a.store.DeleteSessionsForUser(ctx, actor.ID); err != nil {
+		return err
+	}
+	a.recordAudit(ctx, actor, port.AuditLogoutEverywhere, actor.CompanyID, "")
+	return nil
+}
+
 func (a *Auth) SessionUser(ctx context.Context, tokenHash string) (identity.User, error) {
 	user, err := a.store.GetSessionUser(ctx, tokenHash, a.now())
 	if err != nil {

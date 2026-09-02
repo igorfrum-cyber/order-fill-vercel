@@ -123,6 +123,43 @@ func TestMeIncludesCompanyName(t *testing.T) {
 	}
 }
 
+func TestLogoutEverywhereClearsCookie(t *testing.T) {
+	token := "owner-token"
+	user := identity.User{ID: "user-a", Login: "buyer", Role: identity.RolePurchaser, CompanyID: "company-a"}
+	var got identity.User
+	router := NewRouter(Config{
+		AllowedOrigins: []string{"http://127.0.0.1:3200"},
+		Auth: stubAuth{
+			users: map[string]identity.User{identity.HashSecret(token): user},
+			logoutEverywhere: func(actor identity.User) error {
+				got = actor
+				return nil
+			},
+		},
+	})
+	request := httptest.NewRequest(http.MethodPost, "/api/v1/auth/logout-everywhere", strings.NewReader("{}"))
+	request.Header.Set("X-Requested-With", "fetch")
+	request.Header.Set("Origin", "http://127.0.0.1:3200")
+	request.AddCookie(&http.Cookie{Name: sessionCookieName, Value: token})
+	response := httptest.NewRecorder()
+	router.ServeHTTP(response, request)
+	if response.Code != http.StatusNoContent {
+		t.Fatalf("expected 204, got %d body %s", response.Code, response.Body.String())
+	}
+	if got.ID != user.ID {
+		t.Fatalf("logout everywhere actor: got %#v", got)
+	}
+	cleared := false
+	for _, cookie := range response.Result().Cookies() {
+		if cookie.Name == sessionCookieName && cookie.MaxAge < 0 {
+			cleared = true
+		}
+	}
+	if !cleared {
+		t.Fatal("expected cleared session cookie")
+	}
+}
+
 func TestSubmitEditsRejectsOversizedBody(t *testing.T) {
 	owner := identity.User{ID: "user-a", CompanyID: "company-a", Role: identity.RolePurchaser, Login: "a"}
 	entity := job.Job{ID: "job-1", CompanyID: "company-a", CreatedBy: owner.ID, Status: job.StatusNeedsReview}

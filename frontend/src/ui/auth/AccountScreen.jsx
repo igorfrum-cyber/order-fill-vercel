@@ -1,21 +1,26 @@
 import { useState } from "react";
-import { changePassword } from "../../api/auth.js";
+import { changePassword, logoutEverywhere } from "../../api/auth.js";
 import { isPasswordReady } from "../../features/auth/password.js";
 import {
   accessSummaryForRole,
   accountPasswordHint,
+  logoutEverywhereConfirm,
+  logoutEverywhereLabel,
   profileFields,
 } from "../../features/help/copy.js";
-import { PasswordField, PrimaryButton } from "../widgets.jsx";
+import { GhostButton, Modal, PasswordField, PrimaryButton } from "../widgets.jsx";
 import { PasswordHints } from "./AuthShared.jsx";
 
-export function AccountScreen({ me, onBack }) {
+export function AccountScreen({ me, onBack, onSignedOut }) {
   const [current, setCurrent] = useState("");
   const [password, setPassword] = useState("");
   const [repeat, setRepeat] = useState("");
   const [error, setError] = useState("");
   const [done, setDone] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [confirmEverywhere, setConfirmEverywhere] = useState(false);
+  const [everywhereBusy, setEverywhereBusy] = useState(false);
+  const [everywhereError, setEverywhereError] = useState("");
   const ready = Boolean(current) && isPasswordReady(password, repeat);
   const fields = profileFields(me);
 
@@ -35,6 +40,20 @@ export function AccountScreen({ me, onBack }) {
       setError("Не удалось сменить пароль. Проверьте текущий.");
     } finally {
       setBusy(false);
+    }
+  }
+
+  async function signOutEverywhere() {
+    setEverywhereBusy(true);
+    setEverywhereError("");
+    try {
+      await logoutEverywhere();
+      onSignedOut?.();
+    } catch {
+      setEverywhereError("Не удалось выйти со всех устройств.");
+      setConfirmEverywhere(false);
+    } finally {
+      setEverywhereBusy(false);
     }
   }
 
@@ -58,6 +77,10 @@ export function AccountScreen({ me, onBack }) {
       <div className="space-y-3">
         <h2 className="text-[16px] font-semibold">Безопасность</h2>
         <p className="text-[14px] leading-relaxed text-[var(--color-ink-soft)]">{accountPasswordHint}</p>
+        {everywhereError ? <p className="text-[14px] text-[var(--color-danger)]">{everywhereError}</p> : null}
+        <GhostButton onClick={() => setConfirmEverywhere(true)} disabled={everywhereBusy}>
+          {logoutEverywhereLabel}
+        </GhostButton>
       </div>
       <form className="space-y-4 rounded-2xl border border-[var(--color-line)] bg-[var(--color-surface)] p-6" onSubmit={submit}>
         <h2 className="text-[16px] font-semibold">Сменить пароль</h2>
@@ -78,6 +101,18 @@ export function AccountScreen({ me, onBack }) {
           Сохранить
         </PrimaryButton>
       </form>
+      {confirmEverywhere ? (
+        <Modal
+          title={logoutEverywhereLabel}
+          cancelLabel="Отмена"
+          confirmLabel="Выйти"
+          confirmDisabled={everywhereBusy}
+          onCancel={() => setConfirmEverywhere(false)}
+          onConfirm={signOutEverywhere}
+        >
+          {logoutEverywhereConfirm}
+        </Modal>
+      ) : null}
     </section>
   );
 }
