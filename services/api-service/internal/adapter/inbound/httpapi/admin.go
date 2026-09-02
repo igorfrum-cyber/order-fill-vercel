@@ -18,6 +18,7 @@ type adminAPI interface {
 	DisableUser(ctx context.Context, actor identity.User, userID string) error
 	ListAudit(ctx context.Context, actor identity.User) ([]port.AuditEvent, error)
 	RecordAudit(ctx context.Context, actor identity.User, action string, companyID string, jobID string)
+	PublicCompanyLogin(ctx context.Context, slug string) (identity.Company, error)
 }
 
 type lister interface {
@@ -218,6 +219,22 @@ func (h adminHandler) listAudit(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, map[string]any{"events": presentAudit(events)})
 }
 
+func (h adminHandler) publicCompanyLogin(w http.ResponseWriter, r *http.Request) {
+	if h.admin == nil {
+		writeError(w, http.StatusNotFound, "not_found", "not found")
+		return
+	}
+	company, err := h.admin.PublicCompanyLogin(r.Context(), r.PathValue("slug"))
+	if err != nil {
+		writeDomainError(w, "company_login_failed", err)
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]string{
+		"name":       company.Name,
+		"login_slug": company.LoginSlug,
+	})
+}
+
 func decodeJSON(w http.ResponseWriter, r *http.Request, dest any) bool {
 	r.Body = http.MaxBytesReader(w, r.Body, authJSONLimit)
 	if err := json.NewDecoder(r.Body).Decode(dest); err != nil {
@@ -230,12 +247,18 @@ func decodeJSON(w http.ResponseWriter, r *http.Request, dest any) bool {
 type companyResponse struct {
 	ID         string  `json:"id"`
 	Name       string  `json:"name"`
+	LoginSlug  string  `json:"login_slug,omitempty"`
 	CreatedAt  string  `json:"created_at"`
 	DisabledAt *string `json:"disabled_at,omitempty"`
 }
 
 func presentCompany(company identity.Company) companyResponse {
-	response := companyResponse{ID: company.ID, Name: company.Name, CreatedAt: company.CreatedAt.UTC().Format("2006-01-02T15:04:05Z")}
+	response := companyResponse{
+		ID:        company.ID,
+		Name:      company.Name,
+		LoginSlug: company.LoginSlug,
+		CreatedAt: company.CreatedAt.UTC().Format("2006-01-02T15:04:05Z"),
+	}
 	if company.DisabledAt != nil {
 		value := company.DisabledAt.UTC().Format("2006-01-02T15:04:05Z")
 		response.DisabledAt = &value

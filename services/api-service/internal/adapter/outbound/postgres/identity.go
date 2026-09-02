@@ -73,6 +73,18 @@ func scanCompany(row pgx.Row) (identity.Company, error) {
 	return company, nil
 }
 
+func (r *Repository) GetCompanyByLoginSlug(ctx context.Context, slug string) (identity.Company, error) {
+	company, err := scanCompany(r.pool.QueryRow(ctx,
+		`SELECT id, name, created_at, disabled_at, COALESCE(login_slug, '') FROM companies WHERE login_slug = $1`, slug))
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return identity.Company{}, identity.ErrNotFound
+		}
+		return identity.Company{}, fmt.Errorf("select company by login slug: %w", err)
+	}
+	return company, nil
+}
+
 func (r *Repository) DisableCompany(ctx context.Context, id string, at time.Time) error {
 	tag, err := r.pool.Exec(ctx, `UPDATE companies SET disabled_at = $2 WHERE id = $1`, id, at.UTC())
 	if err != nil {

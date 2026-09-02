@@ -46,6 +46,7 @@ type IdentityStore interface {
 	CountUsers(ctx context.Context) (int, error)
 	CreateCompany(ctx context.Context, company identity.Company) error
 	GetCompany(ctx context.Context, id string) (identity.Company, error)
+	GetCompanyByLoginSlug(ctx context.Context, slug string) (identity.Company, error)
 	ListCompanies(ctx context.Context) ([]identity.Company, error)
 	DisableCompany(ctx context.Context, id string, at time.Time) error
 

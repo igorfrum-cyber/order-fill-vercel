@@ -88,7 +88,7 @@ func (g gate) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		g.next.ServeHTTP(w, r)
 		return
 	}
-	if r.URL.Path == "/api/v1/auth/login" || r.URL.Path == "/api/v1/auth/invite" {
+	if r.URL.Path == "/api/v1/auth/login" || r.URL.Path == "/api/v1/auth/invite" || publicCompanyLoginPath(r.URL.Path) {
 		g.next.ServeHTTP(w, r)
 		return
 	}
@@ -122,6 +122,16 @@ func (g gate) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	g.next.ServeHTTP(w, r.WithContext(withUser(r.Context(), user)))
+}
+
+func publicCompanyLoginPath(path string) bool {
+	const prefix = "/api/v1/public/companies/"
+	rest, ok := strings.CutPrefix(path, prefix)
+	if !ok {
+		return false
+	}
+	slug, suffix, found := strings.Cut(rest, "/")
+	return found && slug != "" && suffix == "login"
 }
 
 func setSecurityHeaders(w http.ResponseWriter) {

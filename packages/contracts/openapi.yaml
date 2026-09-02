@@ -165,6 +165,32 @@ paths:
                       $ref: "#/components/schemas/JobListItem"
         "401":
           $ref: "#/components/responses/Unauthorized"
+  /api/v1/public/companies/{slug}/login:
+    get:
+      operationId: getCompanyLogin
+      summary: Public login screen metadata for a company slug
+      security: []
+      parameters:
+        - name: slug
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Active company login screen metadata. Does not include company id or users.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [name, login_slug]
+                properties:
+                  name:
+                    type: string
+                  login_slug:
+                    type: string
+        "404":
+          $ref: "#/components/responses/NotFound"
   /api/v1/companies:
     get:
       operationId: listCompanies
@@ -680,6 +706,8 @@ components:
         created_at:
           type: string
           format: date-time
+        login_slug:
+          type: string
         disabled_at:
           type: string
           format: date-time

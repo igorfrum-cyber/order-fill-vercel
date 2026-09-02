@@ -58,6 +58,21 @@ func (a *Admin) uniqueLoginSlug(ctx context.Context, name string, companyID stri
 	}), nil
 }
 
+func (a *Admin) PublicCompanyLogin(ctx context.Context, slug string) (identity.Company, error) {
+	slug = strings.ToLower(strings.TrimSpace(slug))
+	if slug == "" {
+		return identity.Company{}, identity.ErrNotFound
+	}
+	company, err := a.store.GetCompanyByLoginSlug(ctx, slug)
+	if err != nil {
+		return identity.Company{}, identity.ErrNotFound
+	}
+	if company.Disabled() {
+		return identity.Company{}, identity.ErrNotFound
+	}
+	return company, nil
+}
+
 func (a *Admin) ListCompanies(ctx context.Context, actor identity.User) ([]identity.Company, error) {
 	if !authz.CanCreatePlatformCompany(actor) {
 		return nil, identity.ErrNotFound

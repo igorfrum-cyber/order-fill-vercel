@@ -48,6 +48,41 @@ func TestCreateCompanyMakesDuplicateNamesUnique(t *testing.T) {
 	}
 }
 
+func TestPublicCompanyLoginReturnsActiveCompany(t *testing.T) {
+	store := newMemoryIdentity()
+	admin := NewAdmin(store, func() string { return "id-1" }, func() time.Time {
+		return time.Date(2026, 9, 1, 12, 0, 0, 0, time.UTC)
+	})
+	if err := store.CreateCompany(context.Background(), identity.Company{ID: "co-1", Name: "Acme", LoginSlug: "acme"}); err != nil {
+		t.Fatal(err)
+	}
+	company, err := admin.PublicCompanyLogin(context.Background(), "acme")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if company.Name != "Acme" || company.LoginSlug != "acme" {
+		t.Fatalf("got %+v", company)
+	}
+}
+
+func TestPublicCompanyLoginHidesDisabledAndUnknown(t *testing.T) {
+	store := newMemoryIdentity()
+	now := time.Date(2026, 9, 1, 12, 0, 0, 0, time.UTC)
+	admin := NewAdmin(store, func() string { return "id-1" }, func() time.Time { return now })
+	if err := store.CreateCompany(context.Background(), identity.Company{ID: "co-1", Name: "Gone", LoginSlug: "gone"}); err != nil {
+		t.Fatal(err)
+	}
+	if err := store.DisableCompany(context.Background(), "co-1", now); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := admin.PublicCompanyLogin(context.Background(), "gone"); err != identity.ErrNotFound {
+		t.Fatalf("disabled: %v", err)
+	}
+	if _, err := admin.PublicCompanyLogin(context.Background(), "missing"); err != identity.ErrNotFound {
+		t.Fatalf("unknown: %v", err)
+	}
+}
+
 func TestListJobsScopesByRole(t *testing.T) {
 	repo := &listJobRepo{}
 	lister := NewListJobs(repo)

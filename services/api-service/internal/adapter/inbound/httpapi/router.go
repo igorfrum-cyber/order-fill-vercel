@@ -89,6 +89,7 @@ func NewRouter(config Config) http.Handler {
 	mux.HandleFunc("POST /api/v1/users/{user_id}/disable", admin.disableUser)
 	mux.HandleFunc("POST /api/v1/users/{user_id}/reset", admin.resetUser)
 	mux.HandleFunc("GET /api/v1/audit", admin.listAudit)
+	mux.HandleFunc("GET /api/v1/public/companies/{slug}/login", admin.publicCompanyLogin)
 
 	protected := gate{
 		next:           mux,

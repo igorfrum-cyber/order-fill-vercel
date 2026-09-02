@@ -409,6 +409,15 @@ func (m *memoryIdentity) GetCompany(_ context.Context, id string) (identity.Comp
 	return company, nil
 }
 
+func (m *memoryIdentity) GetCompanyByLoginSlug(_ context.Context, slug string) (identity.Company, error) {
+	for _, company := range m.companies {
+		if company.LoginSlug == slug {
+			return company, nil
+		}
+	}
+	return identity.Company{}, identity.ErrNotFound
+}
+
 func (m *memoryIdentity) ListCompanies(context.Context) ([]identity.Company, error) {
 	out := make([]identity.Company, 0, len(m.companies))
 	for _, company := range m.companies {

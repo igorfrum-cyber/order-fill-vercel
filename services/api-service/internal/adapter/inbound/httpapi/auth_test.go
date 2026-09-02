@@ -9,9 +9,95 @@ import (
 	"testing"
 	"time"
 
+	"order-fill/services/api-service/internal/app/port"
 	"order-fill/services/api-service/internal/domain/identity"
 	"order-fill/services/api-service/internal/domain/job"
 )
+
+func TestPublicCompanyLoginReturnsNameAndSlug(t *testing.T) {
+	router := NewRouter(Config{
+		AllowedOrigins: []string{"http://127.0.0.1:3200"},
+		Admin: stubPublicCompany{
+			company: identity.Company{Name: "Acme", LoginSlug: "acme"},
+		},
+	})
+	request := httptest.NewRequest(http.MethodGet, "/api/v1/public/companies/acme/login", nil)
+	response := httptest.NewRecorder()
+	router.ServeHTTP(response, request)
+	if response.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d body %s", response.Code, response.Body.String())
+	}
+	var payload map[string]any
+	if err := json.NewDecoder(response.Body).Decode(&payload); err != nil {
+		t.Fatal(err)
+	}
+	if payload["name"] != "Acme" || payload["login_slug"] != "acme" {
+		t.Fatalf("payload %#v", payload)
+	}
+	if _, ok := payload["id"]; ok {
+		t.Fatal("public login must not return company id")
+	}
+}
+
+func TestPublicCompanyLoginUnknownSlugIsNotFound(t *testing.T) {
+	router := NewRouter(Config{
+		AllowedOrigins: []string{"http://127.0.0.1:3200"},
+		Admin:          stubPublicCompany{missing: true},
+	})
+	request := httptest.NewRequest(http.MethodGet, "/api/v1/public/companies/missing/login", nil)
+	response := httptest.NewRecorder()
+	router.ServeHTTP(response, request)
+	if response.Code != http.StatusNotFound {
+		t.Fatalf("expected 404, got %d body %s", response.Code, response.Body.String())
+	}
+}
+
+func TestPublicCompanyLoginDisabledCompanyIsNotFound(t *testing.T) {
+	router := NewRouter(Config{
+		AllowedOrigins: []string{"http://127.0.0.1:3200"},
+		Admin:          stubPublicCompany{missing: true},
+	})
+	request := httptest.NewRequest(http.MethodGet, "/api/v1/public/companies/gone/login", nil)
+	response := httptest.NewRecorder()
+	router.ServeHTTP(response, request)
+	if response.Code != http.StatusNotFound {
+		t.Fatalf("expected 404, got %d body %s", response.Code, response.Body.String())
+	}
+}
+
+type stubPublicCompany struct {
+	company identity.Company
+	missing bool
+}
+
+func (s stubPublicCompany) CreateCompany(context.Context, identity.User, string) (identity.Company, error) {
+	return identity.Company{}, identity.ErrNotFound
+}
+func (s stubPublicCompany) ListCompanies(context.Context, identity.User) ([]identity.Company, error) {
+	return nil, identity.ErrNotFound
+}
+func (s stubPublicCompany) DisableCompany(context.Context, identity.User, string) error {
+	return identity.ErrNotFound
+}
+func (s stubPublicCompany) CreateUser(context.Context, identity.User, string, string, identity.Role) (identity.User, string, error) {
+	return identity.User{}, "", identity.ErrNotFound
+}
+func (s stubPublicCompany) ListUsers(context.Context, identity.User, string) ([]identity.User, error) {
+	return nil, identity.ErrNotFound
+}
+func (s stubPublicCompany) DisableUser(context.Context, identity.User, string) error {
+	return identity.ErrNotFound
+}
+func (s stubPublicCompany) ListAudit(context.Context, identity.User) ([]port.AuditEvent, error) {
+	return nil, identity.ErrNotFound
+}
+func (s stubPublicCompany) RecordAudit(context.Context, identity.User, string, string, string) {}
+func (s stubPublicCompany) PublicCompanyLogin(context.Context, string) (identity.Company, error) {
+	if s.missing {
+		return identity.Company{}, identity.ErrNotFound
+	}
+	return s.company, nil
+}
 
 func TestJobCreateRequiresAuthentication(t *testing.T) {
 	router := NewRouter(Config{AllowedOrigins: []string{"http://127.0.0.1:3200"}})
