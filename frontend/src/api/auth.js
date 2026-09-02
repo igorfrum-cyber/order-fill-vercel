@@ -4,6 +4,10 @@ export function getMe() {
   return apiClient.request("/api/v1/auth/me");
 }
 
+export function getCompanyLogin(slug) {
+  return apiClient.request(`/api/v1/public/companies/${encodeURIComponent(slug)}/login`);
+}
+
 export function login(login, password) {
   return apiClient.request("/api/v1/auth/login", {
     method: "POST",

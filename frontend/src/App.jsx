@@ -1,8 +1,8 @@
 import { useEffect, useState } from "react";
-import { getMe, logout } from "./api/auth.js";
+import { getCompanyLogin, getMe, logout } from "./api/auth.js";
 import { onAuthRequired } from "./api/client.js";
 import { getJob, getJobReport, listJobFiles } from "./api/jobs.js";
-import { resolveUsersCompanyId } from "./features/auth/accessPresentation.js";
+import { companySlugFromPath, resolveUsersCompanyId } from "./features/auth/accessPresentation.js";
 import { dismissQuickStart, shouldShowQuickStart } from "./features/help/firstRun.js";
 import { initialEditState } from "./features/order/reviewEdits.js";
 import { CompaniesScreen, JobHistory, UsersScreen } from "./ui/admin/AdminScreens.jsx";
@@ -15,7 +15,9 @@ import { OrderFillApp } from "./ui/order/OrderFillApp.jsx";
 
 export default function App() {
   const inviteToken = inviteTokenFromPath();
+  const companySlug = companySlugFromPath(window.location.pathname);
   const [me, setMe] = useState(undefined);
+  const [companyLogin, setCompanyLogin] = useState(companySlug ? undefined : null);
   const [screen, setScreen] = useState("history");
   const [companyId, setCompanyId] = useState("");
   const [resume, setResume] = useState(null);
@@ -32,6 +34,16 @@ export default function App() {
   }, []);
 
   useEffect(() => onAuthRequired(() => setMe(null)), []);
+
+  useEffect(() => {
+    if (!companySlug) {
+      setCompanyLogin(null);
+      return;
+    }
+    getCompanyLogin(companySlug)
+      .then(setCompanyLogin)
+      .catch(() => setCompanyLogin(null));
+  }, [companySlug]);
 
   useEffect(() => {
     if (!me) {
@@ -59,8 +71,12 @@ export default function App() {
   }
 
   if (!me) {
+    if (companySlug && companyLogin === undefined) {
+      return <div className="grid min-h-full place-items-center text-[var(--color-ink-faint)]">Загрузка…</div>;
+    }
     return (
       <LoginScreen
+        company={companyLogin}
         onDone={(user) => {
           setMe(user);
           if (user.company_id) setCompanyId(user.company_id);

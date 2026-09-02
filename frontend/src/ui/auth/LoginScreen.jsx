@@ -1,14 +1,16 @@
 import { useState } from "react";
 import { login } from "../../api/auth.js";
+import { companyLoginCopy } from "../../features/auth/accessPresentation.js";
 import { loginAccessHint, loginFailedMessage } from "../../features/help/copy.js";
 import { Field, PasswordField, PrimaryButton } from "../widgets.jsx";
 import { AuthCard } from "./AuthShared.jsx";
 
-export function LoginScreen({ onDone }) {
+export function LoginScreen({ onDone, company }) {
   const [name, setName] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
+  const copy = companyLoginCopy(company);
 
   async function submit(event) {
     event.preventDefault();
@@ -24,7 +26,7 @@ export function LoginScreen({ onDone }) {
   }
 
   return (
-    <AuthCard title="Вход">
+    <AuthCard title={copy.title} lead={copy.lead}>
       <form className="animate-enter space-y-4" onSubmit={submit}>
         <Field label="Логин">
           <input value={name} onChange={(event) => setName(event.target.value)} className="input" autoComplete="username" />

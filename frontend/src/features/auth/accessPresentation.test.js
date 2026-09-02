@@ -4,6 +4,8 @@ import test from "node:test";
 import {
   accessSummary,
   canInviteRole,
+  companyLoginCopy,
+  companySlugFromPath,
   inviteRoleOptions,
   needsUsersCompanyPicker,
   pickDefaultCompanyId,
@@ -78,4 +80,19 @@ test("usersCompanyPrompt tells platform admin why the list is empty", () => {
     usersCompanyPrompt("", [{ id: "a", disabled_at: "" }]),
     "Выберите компанию, чтобы увидеть сотрудников.",
   );
+});
+
+test("companySlugFromPath reads /c/:slug and leaves invite routes alone", () => {
+  assert.equal(companySlugFromPath("/c/acme"), "acme");
+  assert.equal(companySlugFromPath("/c/acme%20co"), "acme co");
+  assert.equal(companySlugFromPath("/invite/token-1"), "");
+  assert.equal(companySlugFromPath("/"), "");
+});
+
+test("companyLoginCopy personalizes the login screen without leaking ids", () => {
+  assert.deepEqual(companyLoginCopy(null), { title: "Вход", lead: "" });
+  assert.deepEqual(companyLoginCopy({ name: "Acme" }), {
+    title: "Вход для сотрудников «Acme»",
+    lead: "Работайте только с файлами своей компании.",
+  });
 });

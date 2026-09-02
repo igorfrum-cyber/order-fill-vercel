@@ -1,8 +1,32 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { changePassword, login, logoutEverywhere } from "./auth.js";
+import { changePassword, getCompanyLogin, login, logoutEverywhere } from "./auth.js";
 import { ApiClient, apiClient } from "./client.js";
+
+test("getCompanyLogin requests public company metadata and encodes the slug", async () => {
+  const calls = [];
+  const originalFetcher = apiClient.fetcher;
+  const originalBase = apiClient.baseUrl;
+  apiClient.baseUrl = "";
+  apiClient.fetcher = function fetcher(url, options) {
+    calls.push({ url, options });
+    return Promise.resolve({
+      ok: true,
+      status: 200,
+      headers: new Map([["Content-Type", "application/json"]]),
+      json: async () => ({ name: "Acme", login_slug: "acme" }),
+    });
+  };
+  try {
+    const company = await getCompanyLogin("acme/x");
+    assert.equal(company.name, "Acme");
+    assert.equal(calls[0].url, "/api/v1/public/companies/acme%2Fx/login");
+  } finally {
+    apiClient.fetcher = originalFetcher;
+    apiClient.baseUrl = originalBase;
+  }
+});
 
 test("login posts credentials with CSRF header and cookies", async () => {
   const calls = [];

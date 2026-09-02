@@ -42,3 +42,18 @@ export function usersCompanyPrompt(companyId, companies = []) {
   }
   return "Выберите компанию, чтобы увидеть сотрудников.";
 }
+
+export function companySlugFromPath(pathname) {
+  const match = pathname.match(/^\/c\/([^/]+)/);
+  return match ? decodeURIComponent(match[1]) : "";
+}
+
+export function companyLoginCopy(company) {
+  if (!company?.name) {
+    return { title: "Вход", lead: "" };
+  }
+  return {
+    title: `Вход для сотрудников «${company.name}»`,
+    lead: "Работайте только с файлами своей компании.",
+  };
+}
