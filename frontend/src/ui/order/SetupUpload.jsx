@@ -1,5 +1,6 @@
 import { useRef, useState } from "react";
 import { blankSlotsForSource } from "../../features/brands/brandPresentation.js";
+import { excelAcceptHint, orderSelectedCount, orderUploadSteps, selectedFileCountLabel } from "../../features/jobs/uploadCopy.js";
 import { IconCheck, IconChevron, IconFile, IconUpload } from "../icons.jsx";
 import { PrimaryButton, ProgressBar, StageHeading } from "../widgets.jsx";
 
@@ -16,28 +17,37 @@ export function UploadStage({
   error,
 }) {
   const slots = blankSlotsForSource(sourceFile?.name);
+  const steps = orderUploadSteps();
   const ready = Boolean(sourceFile && slots.filter((slot) => !slot.optional).every((slot) => blankFiles[slot.id]));
+  const selectedCount = orderSelectedCount(sourceFile, blankFiles);
   return (
     <div className="mx-auto flex h-full max-w-2xl flex-col justify-center px-6">
       <StageHeading index="01" kicker="Бланк закупки" title="Загрузите файлы">
-        <p className="mt-3 max-w-lg text-[16px] leading-relaxed text-[var(--color-ink-soft)]">
-          Таблица продаж из 1С и бланк поставщика. Бренд и месяц заказа читаются из таблицы. Для CHRISTINA приложите HOME и PROFF.
+        <ol className="mt-3 max-w-lg list-none text-[16px] leading-relaxed text-[var(--color-ink-soft)]">
+          {steps.map((step) => (
+            <li key={step.n}>
+              {step.n}. {step.title}
+            </li>
+          ))}
+        </ol>
+        <p className="mt-2 text-[14px] text-[var(--color-ink-faint)]">
+          {excelAcceptHint} {selectedFileCountLabel(selectedCount)}
         </p>
       </StageHeading>
 
       <div className={`mt-9 grid gap-4 ${slots.length > 1 ? "sm:grid-cols-3" : "sm:grid-cols-2"}`}>
         <Dropzone
-          title="Таблица продаж"
-          hint="Excel с остатками и рекомендациями"
+          title={`${steps[0].n}. ${steps[0].title}`}
+          hint={excelAcceptHint}
           file={sourceFile}
           accept=".xlsx,.xlsm,.xls"
           onPick={onSource}
         />
-        {slots.map((slot) => (
+        {slots.map((slot, index) => (
           <Dropzone
             key={slot.id}
-            title={slot.optional ? `${slot.label} (необязательно)` : slot.label}
-            hint={slot.hint}
+            title={`${index + 2}. ${slot.optional ? `${slot.label} (необязательно)` : slot.label}`}
+            hint={excelAcceptHint}
             file={blankFiles[slot.id] || null}
             accept={slot.accept}
             onPick={(file) => onBlank(slot.id, file)}
@@ -45,7 +55,11 @@ export function UploadStage({
         ))}
       </div>
 
-      {error && <p className="mt-4 text-[15px] text-[var(--color-danger)]">{error}</p>}
+      {error ? (
+        <div role="alert" className="mt-4 rounded-lg border border-[var(--color-danger)]/25 bg-[var(--color-danger-soft)] px-4 py-3 text-[15px] text-[var(--color-danger)]">
+          {error}
+        </div>
+      ) : null}
       {processing && <ProgressBar value={progress} label={status || "Обработка..."} />}
 
       <div className="mt-8 flex items-center justify-between">

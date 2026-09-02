@@ -1,18 +1,20 @@
 import { useRef } from "react";
+import { excelAcceptHint, northUploadSteps } from "../../features/jobs/uploadCopy.js";
 import { IconCheck, IconFile, IconUpload, IconX } from "../icons.jsx";
 
 export function NorthUploadPanel({ christina, files, homeFiles, proffFiles, tyumenFile, onAdd, onRemove, onPickTyumen }) {
+  const steps = northUploadSteps();
   return (
     <div className="grid gap-4 lg:grid-cols-2">
       {christina ? (
         <>
-          <MultiDropzone title="Бланки HOME" hint="HOME-бланки городов" files={homeFiles} onAdd={(incoming) => onAdd("home", incoming)} onRemove={(index) => onRemove("home", index)} />
-          <MultiDropzone title="Бланки PROFF" hint="PROFF-бланки городов" files={proffFiles} onAdd={(incoming) => onAdd("proff", incoming)} onRemove={(index) => onRemove("proff", index)} />
+          <MultiDropzone title={`1. Бланки HOME`} hint={excelAcceptHint} files={homeFiles} onAdd={(incoming) => onAdd("home", incoming)} onRemove={(index) => onRemove("home", index)} />
+          <MultiDropzone title={`1. Бланки PROFF`} hint={excelAcceptHint} files={proffFiles} onAdd={(incoming) => onAdd("proff", incoming)} onRemove={(index) => onRemove("proff", index)} />
         </>
       ) : (
-        <MultiDropzone title="Бланк города" hint="Один или несколько заполненных бланков" files={files} onAdd={(incoming) => onAdd("default", incoming)} onRemove={(index) => onRemove("default", index)} />
+        <MultiDropzone title={`${steps[0].n}. ${steps[0].title}`} hint={excelAcceptHint} files={files} onAdd={(incoming) => onAdd("default", incoming)} onRemove={(index) => onRemove("default", index)} />
       )}
-      <SingleDropzone title="Заполненная таблица Тюмени" hint="Для учета остатков и в пути" file={tyumenFile} onPick={onPickTyumen} />
+      <SingleDropzone title={`${steps[1].n}. ${steps[1].title}`} hint={excelAcceptHint} file={tyumenFile} onPick={onPickTyumen} />
     </div>
   );
 }

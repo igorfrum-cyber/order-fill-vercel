@@ -12,6 +12,14 @@ import { runNorthMergeJob } from "../../features/jobs/northJobWorkflow.js";
 import { sameNorthFile, uniqueNorthFiles } from "../../features/north/northFiles.js";
 import { defaultNorthActual, recalculateNorthRow } from "../../features/north/northPlan.js";
 import { jobStatusText } from "../../features/report/reportModel.js";
+import {
+  excelAcceptHint,
+  northDuplicateFileMessage,
+  northMissingCityBlankMessage,
+  northSelectedCount,
+  northUploadSteps,
+  selectedFileCountLabel,
+} from "../../features/jobs/uploadCopy.js";
 import { IconChevron } from "../icons.jsx";
 import { Field, GhostButton, PrimaryButton, Select } from "../widgets.jsx";
 import { TopBar } from "../chrome.jsx";
@@ -70,9 +78,10 @@ export function NorthApp({ companyId, onHome, onHelp }) {
       added += 1;
     }
     if (!added) {
-      window.alert("Все выбранные бланки уже добавлены.");
+      setError(northDuplicateFileMessage);
       return;
     }
+    setError("");
     if (group === "home") setHomeFiles(next);
     else if (group === "proff") setProffFiles(next);
     else setFiles(next);
@@ -99,7 +108,7 @@ export function NorthApp({ companyId, onHome, onHelp }) {
   async function startMerge() {
     const entries = entriesForMerge();
     if (!entries.length) {
-      window.alert("Добавьте хотя бы один бланк города.");
+      setError(northMissingCityBlankMessage);
       return;
     }
     if (!companyId) {
@@ -175,7 +184,7 @@ export function NorthApp({ companyId, onHome, onHelp }) {
 
   async function downloadPlan() {
     if (!plan || !jobId) {
-      window.alert("Сначала соедините бланки.");
+      setError("Сначала соедините бланки.");
       return;
     }
     const warnings = shortOrderWarnings();
@@ -213,7 +222,7 @@ export function NorthApp({ companyId, onHome, onHelp }) {
       setStatus("Файлы готовы");
     } catch (err) {
       setStatus("Ошибка");
-      window.alert(err.message || "Не удалось подготовить файлы.");
+      setError(err.message || "Не удалось подготовить файлы.");
     } finally {
       setBusy(false);
     }
@@ -235,8 +244,15 @@ export function NorthApp({ companyId, onHome, onHelp }) {
                 Объединение бланков городов
               </div>
               <h1 className="text-[28px] font-semibold tracking-tight">Соединить бланки</h1>
-              <p className="mt-2 max-w-xl text-[14px] text-[var(--color-ink-soft)]">
-                Загрузите заполненные бланки северных городов и таблицу Тюмени — сервис посчитает перемещения и заказ у поставщика.
+              <ol className="mt-2 max-w-xl list-none text-[14px] leading-relaxed text-[var(--color-ink-soft)]">
+                {northUploadSteps().map((step) => (
+                  <li key={step.n}>
+                    {step.n}. {step.title}
+                  </li>
+                ))}
+              </ol>
+              <p className="mt-2 text-[13px] text-[var(--color-ink-faint)]">
+                {excelAcceptHint} {selectedFileCountLabel(northSelectedCount({ files, homeFiles, proffFiles, tyumenFile }))}
               </p>
             </div>
             <div className="w-64">
@@ -260,7 +276,11 @@ export function NorthApp({ companyId, onHome, onHelp }) {
             }}
           />
 
-          {error && <p className="mt-4 text-[13px] text-[var(--color-danger)]">{error}</p>}
+          {error ? (
+            <div role="alert" className="mt-4 rounded-lg border border-[var(--color-danger)]/25 bg-[var(--color-danger-soft)] px-4 py-3 text-[14px] text-[var(--color-danger)]">
+              {error}
+            </div>
+          ) : null}
 
           <div className="mt-6 flex items-center justify-between">
             <GhostButton onClick={onHome}>
