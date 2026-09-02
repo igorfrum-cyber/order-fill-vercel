@@ -18,6 +18,15 @@ func TestLoginRejectsUnknownUser(t *testing.T) {
 	}
 }
 
+func TestNeedsTwoFactorNudgeFollowsAccessManagerPolicy(t *testing.T) {
+	if !NeedsTwoFactorNudge(identity.User{Role: identity.RoleCompanyOwner}) {
+		t.Fatal("owner without 2FA should be nudged")
+	}
+	if NeedsTwoFactorNudge(identity.User{Role: identity.RolePurchaser}) {
+		t.Fatal("purchaser should not be nudged")
+	}
+}
+
 func TestLoginRejectsWrongPassword(t *testing.T) {
 	auth, store := newTestAuthStore(t)
 	user := seedPurchaser(t, store, "buyer", "correct-horse")

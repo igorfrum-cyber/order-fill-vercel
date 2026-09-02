@@ -2,8 +2,9 @@ import { useEffect, useState } from "react";
 import { getCompanyLogin, getMe, logout } from "./api/auth.js";
 import { onAuthRequired } from "./api/client.js";
 import { getJob, getJobReport, listJobFiles } from "./api/jobs.js";
-import { canEditCompanyProfile, companyLoginURL, companySlugFromHost, companySlugFromPath, resolveUsersCompanyId } from "./features/auth/accessPresentation.js";
+import { canEditCompanyProfile, companyLoginURL, companySlugFromHost, companySlugFromPath, needsTwoFactorNudge, resolveUsersCompanyId } from "./features/auth/accessPresentation.js";
 import { consumeQuickStart } from "./features/help/firstRun.js";
+import { twoFactorEnableLabel, twoFactorRequiredHint } from "./features/help/copy.js";
 import { initialEditState } from "./features/order/reviewEdits.js";
 import { CompaniesScreen, CompanyScreen, JobHistory, UsersScreen } from "./ui/admin/AdminScreens.jsx";
 import { AccountScreen, InviteScreen, LoginScreen } from "./ui/auth/AuthScreens.jsx";
@@ -156,6 +157,20 @@ export default function App() {
               </button>
             </div>
           </header>
+          {needsTwoFactorNudge(me) ? (
+            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[var(--color-line)] bg-[var(--color-brand-soft)] px-4 py-3 sm:px-6">
+              <p className="text-[14px] leading-relaxed text-[var(--color-ink)]">{twoFactorRequiredHint}</p>
+              {screen !== "account" ? (
+                <button
+                  type="button"
+                  className="text-[14px] font-medium text-[var(--color-brand)]"
+                  onClick={() => setScreen("account")}
+                >
+                  {twoFactorEnableLabel}
+                </button>
+              ) : null}
+            </div>
+          ) : null}
           <main className="flex-1 overflow-auto">
             {screen === "history" ? (
               <JobHistory

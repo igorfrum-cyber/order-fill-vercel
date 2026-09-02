@@ -309,6 +309,10 @@ type ListJobs struct {
 	}
 }
 
+func (a *Admin) NeedsTwoFactorNudge(actor identity.User) bool {
+	return authz.NeedsTwoFactorNudge(actor)
+}
+
 func NewListJobs(repository interface {
 	List(ctx context.Context, filter port.JobListFilter) ([]port.JobListRow, error)
 }) *ListJobs {

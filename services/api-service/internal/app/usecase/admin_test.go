@@ -318,3 +318,20 @@ func (r *listJobRepo) List(_ context.Context, filter port.JobListFilter) ([]port
 	r.last = filter
 	return []port.JobListRow{{Job: job.Job{ID: "job-1"}}}, nil
 }
+
+func TestOwnerWithoutTwoFactorCanStillInvite(t *testing.T) {
+	store := newMemoryIdentity()
+	admin := NewAdmin(store, func() string { return "new-id" }, func() time.Time {
+		return time.Date(2026, 9, 1, 12, 0, 0, 0, time.UTC)
+	})
+	if err := store.CreateCompany(context.Background(), identity.Company{ID: "co-2", Name: "Beta"}); err != nil {
+		t.Fatal(err)
+	}
+	actor := identity.User{ID: "owner-1", CompanyID: "co-2", Role: identity.RoleCompanyOwner}
+	if !admin.NeedsTwoFactorNudge(actor) {
+		t.Fatal("owner without 2FA should be nudged")
+	}
+	if _, _, err := admin.CreateUser(context.Background(), actor, "co-2", "buyer-5", identity.RolePurchaser); err != nil {
+		t.Fatalf("first rollout must not block invites: %v", err)
+	}
+}

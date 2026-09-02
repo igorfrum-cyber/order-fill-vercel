@@ -85,3 +85,15 @@ func CanManageUser(actor identity.User, target identity.User) bool {
 func companyActor(actor identity.User) bool {
 	return actor.Role == identity.RoleCompanyOwner || actor.Role == identity.RoleCompanyAdmin
 }
+
+func NeedsTwoFactorNudge(actor identity.User) bool {
+	if actor.Disabled() || actor.TwoFactorEnabled {
+		return false
+	}
+	switch actor.Role {
+	case identity.RolePlatformAdmin, identity.RoleCompanyOwner, identity.RoleCompanyAdmin:
+		return true
+	default:
+		return false
+	}
+}

@@ -260,3 +260,7 @@ func (a *Auth) recordAudit(ctx context.Context, actor identity.User, action stri
 func canManageUser(actor identity.User, target identity.User) bool {
 	return authz.CanManageUser(actor, target)
 }
+
+func NeedsTwoFactorNudge(user identity.User) bool {
+	return authz.NeedsTwoFactorNudge(user)
+}
