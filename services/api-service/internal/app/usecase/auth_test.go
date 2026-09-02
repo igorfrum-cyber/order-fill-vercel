@@ -29,12 +29,60 @@ func TestLoginRejectsWrongPassword(t *testing.T) {
 func TestLoginIssuesSession(t *testing.T) {
 	auth, store := newTestAuthStore(t)
 	user := seedPurchaser(t, store, "buyer", "correct-horse")
-	session, err := auth.Login(context.Background(), user.Login, "correct-horse")
+	result, err := auth.Login(context.Background(), user.Login, "correct-horse")
 	if err != nil {
 		t.Fatal(err)
 	}
-	if session.RawToken == "" {
+	if result.TwoFactorRequired || result.ChallengeID != "" {
+		t.Fatal("password-only login must not require two-factor")
+	}
+	if result.Session.RawToken == "" {
 		t.Fatal("expected raw token")
+	}
+	got, err := auth.SessionUser(context.Background(), identity.HashSecret(result.Session.RawToken))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.ID != user.ID {
+		t.Fatalf("got user %s", got.ID)
+	}
+}
+
+func TestLoginWithTOTPDoesNotIssueSession(t *testing.T) {
+	auth, store := newTestAuthStore(t)
+	user := seedTwoFactorUser(t, store, "buyer", "correct-horse")
+	result, err := auth.Login(context.Background(), user.Login, "correct-horse")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !result.TwoFactorRequired || result.ChallengeID == "" {
+		t.Fatal("expected two-factor challenge")
+	}
+	if result.Session.RawToken != "" {
+		t.Fatal("2FA login must not issue a session after password")
+	}
+	if len(store.sessions) != 0 {
+		t.Fatalf("password step issued a session: %d", len(store.sessions))
+	}
+	if hasAudit(store, "login_success") {
+		t.Fatal("password step must not record login_success")
+	}
+}
+
+func TestCompleteTwoFactorIssuesSession(t *testing.T) {
+	auth, store := newTestAuthStore(t)
+	user, settings := seedTwoFactorUserWithSettings(t, store, "buyer", "correct-horse")
+	result, err := auth.Login(context.Background(), user.Login, "correct-horse")
+	if err != nil {
+		t.Fatal(err)
+	}
+	code, err := identity.CurrentTOTPCode(settings.Secret, time.Date(2026, 9, 1, 12, 0, 0, 0, time.UTC))
+	if err != nil {
+		t.Fatal(err)
+	}
+	session, err := auth.CompleteTwoFactor(context.Background(), result.ChallengeID, code)
+	if err != nil {
+		t.Fatal(err)
 	}
 	got, err := auth.SessionUser(context.Background(), identity.HashSecret(session.RawToken))
 	if err != nil {
@@ -42,6 +90,98 @@ func TestLoginIssuesSession(t *testing.T) {
 	}
 	if got.ID != user.ID {
 		t.Fatalf("got user %s", got.ID)
+	}
+	assertAudit(t, store, "login_success", user.ID, user.CompanyID)
+}
+
+func TestCompleteTwoFactorChallengeIsSingleUse(t *testing.T) {
+	auth, store := newTestAuthStore(t)
+	user, settings := seedTwoFactorUserWithSettings(t, store, "buyer", "correct-horse")
+	result, err := auth.Login(context.Background(), user.Login, "correct-horse")
+	if err != nil {
+		t.Fatal(err)
+	}
+	code, err := identity.CurrentTOTPCode(settings.Secret, time.Date(2026, 9, 1, 12, 0, 0, 0, time.UTC))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := auth.CompleteTwoFactor(context.Background(), result.ChallengeID, code); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := auth.CompleteTwoFactor(context.Background(), result.ChallengeID, code); !errors.Is(err, identity.ErrUnauthorized) {
+		t.Fatalf("reuse: %v", err)
+	}
+}
+
+func TestCompleteTwoFactorRejectsExpiredChallenge(t *testing.T) {
+	store := newMemoryIdentity()
+	now := time.Date(2026, 9, 1, 12, 0, 0, 0, time.UTC)
+	current := now
+	auth := NewAuth(store, func() string { return "id-1" }, func() time.Time { return current })
+	user, settings := seedTwoFactorUserWithSettings(t, store, "buyer", "correct-horse")
+	result, err := auth.Login(context.Background(), user.Login, "correct-horse")
+	if err != nil {
+		t.Fatal(err)
+	}
+	code, err := identity.CurrentTOTPCode(settings.Secret, now)
+	if err != nil {
+		t.Fatal(err)
+	}
+	current = now.Add(6 * time.Minute)
+	if _, err := auth.CompleteTwoFactor(context.Background(), result.ChallengeID, code); !errors.Is(err, identity.ErrUnauthorized) {
+		t.Fatalf("expired: %v", err)
+	}
+}
+
+func TestCompleteTwoFactorWrongCodeIsUnauthorized(t *testing.T) {
+	auth, store := newTestAuthStore(t)
+	user := seedTwoFactorUser(t, store, "buyer", "correct-horse")
+	result, err := auth.Login(context.Background(), user.Login, "correct-horse")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := auth.CompleteTwoFactor(context.Background(), result.ChallengeID, "000000"); !errors.Is(err, identity.ErrUnauthorized) {
+		t.Fatalf("got %v", err)
+	}
+	if len(store.sessions) != 0 {
+		t.Fatalf("wrong code issued a session: %d", len(store.sessions))
+	}
+}
+
+func TestCompleteTwoFactorAcceptsRecoveryCodeOnce(t *testing.T) {
+	auth, store := newTestAuthStore(t)
+	user := seedPurchaser(t, store, "buyer", "correct-horse")
+	secret, err := identity.NewTOTPSecret()
+	if err != nil {
+		t.Fatal(err)
+	}
+	raw, hashes, err := identity.GenerateRecoveryCodes(8)
+	if err != nil {
+		t.Fatal(err)
+	}
+	enabled := time.Date(2026, 9, 1, 11, 0, 0, 0, time.UTC)
+	if err := store.SaveTOTPSetup(context.Background(), identity.TOTP{
+		UserID: user.ID, Secret: secret, EnabledAt: &enabled, RecoveryCodeHashes: hashes,
+	}); err != nil {
+		t.Fatal(err)
+	}
+	result, err := auth.Login(context.Background(), user.Login, "correct-horse")
+	if err != nil {
+		t.Fatal(err)
+	}
+	session, err := auth.CompleteTwoFactor(context.Background(), result.ChallengeID, raw[0])
+	if err != nil {
+		t.Fatal(err)
+	}
+	if session.RawToken == "" {
+		t.Fatal("expected session")
+	}
+	result, err = auth.Login(context.Background(), user.Login, "correct-horse")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := auth.CompleteTwoFactor(context.Background(), result.ChallengeID, raw[0]); !errors.Is(err, identity.ErrUnauthorized) {
+		t.Fatalf("reused recovery code: %v", err)
 	}
 }
 
@@ -126,7 +266,7 @@ func TestBootstrapOnlyWhenEmpty(t *testing.T) {
 func TestResetAccessInvalidatesSessions(t *testing.T) {
 	auth, store := newTestAuthStore(t)
 	user := seedPurchaser(t, store, "buyer", "correct-horse")
-	session, err := auth.Login(context.Background(), "buyer", "correct-horse")
+	result, err := auth.Login(context.Background(), "buyer", "correct-horse")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -134,7 +274,7 @@ func TestResetAccessInvalidatesSessions(t *testing.T) {
 	if _, err := auth.ResetAccess(context.Background(), admin, user.ID); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := auth.SessionUser(context.Background(), identity.HashSecret(session.RawToken)); !errors.Is(err, identity.ErrUnauthorized) {
+	if _, err := auth.SessionUser(context.Background(), identity.HashSecret(result.Session.RawToken)); !errors.Is(err, identity.ErrUnauthorized) {
 		t.Fatalf("session still valid: %v", err)
 	}
 }
@@ -155,10 +295,10 @@ func TestLogoutEverywhereInvalidatesAllSessions(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if _, err := auth.SessionUser(context.Background(), identity.HashSecret(first.RawToken)); !errors.Is(err, identity.ErrUnauthorized) {
+	if _, err := auth.SessionUser(context.Background(), identity.HashSecret(first.Session.RawToken)); !errors.Is(err, identity.ErrUnauthorized) {
 		t.Fatalf("first session still valid: %v", err)
 	}
-	if _, err := auth.SessionUser(context.Background(), identity.HashSecret(second.RawToken)); !errors.Is(err, identity.ErrUnauthorized) {
+	if _, err := auth.SessionUser(context.Background(), identity.HashSecret(second.Session.RawToken)); !errors.Is(err, identity.ErrUnauthorized) {
 		t.Fatalf("second session still valid: %v", err)
 	}
 	assertAudit(t, store, "logout_everywhere", user.ID, user.CompanyID)
@@ -209,11 +349,11 @@ func TestLoginFailureDoesNotRecordSuccess(t *testing.T) {
 func TestLogoutRecordsAudit(t *testing.T) {
 	auth, store := newTestAuthStore(t)
 	user := seedPurchaser(t, store, "buyer", "correct-horse")
-	session, err := auth.Login(context.Background(), user.Login, "correct-horse")
+	result, err := auth.Login(context.Background(), user.Login, "correct-horse")
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := auth.Logout(context.Background(), identity.HashSecret(session.RawToken)); err != nil {
+	if err := auth.Logout(context.Background(), identity.HashSecret(result.Session.RawToken)); err != nil {
 		t.Fatal(err)
 	}
 	assertAudit(t, store, "logout", user.ID, user.CompanyID)
@@ -433,13 +573,44 @@ func seedPurchaser(t *testing.T, store *memoryIdentity, login string, password s
 	return user
 }
 
+func seedTwoFactorUser(t *testing.T, store *memoryIdentity, login string, password string) identity.User {
+	t.Helper()
+	user, _ := seedTwoFactorUserWithSettings(t, store, login, password)
+	return user
+}
+
+func seedTwoFactorUserWithSettings(t *testing.T, store *memoryIdentity, login string, password string) (identity.User, identity.TOTP) {
+	t.Helper()
+	user := seedPurchaser(t, store, login, password)
+	secret, err := identity.NewTOTPSecret()
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, hashes, err := identity.GenerateRecoveryCodes(8)
+	if err != nil {
+		t.Fatal(err)
+	}
+	enabled := time.Date(2026, 9, 1, 11, 0, 0, 0, time.UTC)
+	settings := identity.TOTP{
+		UserID:             user.ID,
+		Secret:             secret,
+		EnabledAt:          &enabled,
+		RecoveryCodeHashes: hashes,
+	}
+	if err := store.SaveTOTPSetup(context.Background(), settings); err != nil {
+		t.Fatal(err)
+	}
+	return user, settings
+}
+
 type memoryIdentity struct {
-	companies map[string]identity.Company
-	users     map[string]identity.User
-	sessions  map[string]memorySession
-	invites   map[string]memoryInvite
-	totp      map[string]identity.TOTP
-	audits    []port.AuditEvent
+	companies  map[string]identity.Company
+	users      map[string]identity.User
+	sessions   map[string]memorySession
+	invites    map[string]memoryInvite
+	totp       map[string]identity.TOTP
+	challenges map[string]memoryInvite
+	audits     []port.AuditEvent
 }
 
 type memorySession struct {
@@ -454,11 +625,12 @@ type memoryInvite struct {
 
 func newMemoryIdentity() *memoryIdentity {
 	return &memoryIdentity{
-		companies: map[string]identity.Company{},
-		users:     map[string]identity.User{},
-		sessions:  map[string]memorySession{},
-		invites:   map[string]memoryInvite{},
-		totp:      map[string]identity.TOTP{},
+		companies:  map[string]identity.Company{},
+		users:      map[string]identity.User{},
+		sessions:   map[string]memorySession{},
+		invites:    map[string]memoryInvite{},
+		totp:       map[string]identity.TOTP{},
+		challenges: map[string]memoryInvite{},
 	}
 }
 
@@ -728,6 +900,28 @@ func (m *memoryIdentity) ReplaceRecoveryCodes(_ context.Context, userID string, 
 	settings.RecoveryCodeHashes = append([]string{}, hashes...)
 	m.totp[userID] = settings
 	return nil
+}
+
+func (m *memoryIdentity) CreateLoginChallenge(_ context.Context, tokenHash string, userID string, expiresAt time.Time) error {
+	m.challenges[tokenHash] = memoryInvite{userID: userID, expiresAt: expiresAt}
+	return nil
+}
+
+func (m *memoryIdentity) GetLoginChallenge(_ context.Context, tokenHash string, now time.Time) (string, error) {
+	challenge, ok := m.challenges[tokenHash]
+	if !ok || !challenge.expiresAt.After(now) {
+		return "", identity.ErrUnauthorized
+	}
+	return challenge.userID, nil
+}
+
+func (m *memoryIdentity) ConsumeLoginChallenge(_ context.Context, tokenHash string, now time.Time) (string, error) {
+	challenge, ok := m.challenges[tokenHash]
+	if !ok || !challenge.expiresAt.After(now) {
+		return "", identity.ErrUnauthorized
+	}
+	delete(m.challenges, tokenHash)
+	return challenge.userID, nil
 }
 
 func (m *memoryIdentity) InsertAudit(_ context.Context, event port.AuditEvent) error {

@@ -76,6 +76,10 @@ type IdentityStore interface {
 	DisableTOTP(ctx context.Context, userID string) error
 	ReplaceRecoveryCodes(ctx context.Context, userID string, hashes []string) error
 
+	CreateLoginChallenge(ctx context.Context, tokenHash string, userID string, expiresAt time.Time) error
+	GetLoginChallenge(ctx context.Context, tokenHash string, now time.Time) (string, error)
+	ConsumeLoginChallenge(ctx context.Context, tokenHash string, now time.Time) (string, error)
+
 	InsertAudit(ctx context.Context, event AuditEvent) error
 	ListAudit(ctx context.Context, limit int) ([]AuditEvent, error)
 }

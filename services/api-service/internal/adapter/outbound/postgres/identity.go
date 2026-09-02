@@ -338,6 +338,44 @@ func (r *Repository) ReplaceRecoveryCodes(ctx context.Context, userID string, ha
 	return nil
 }
 
+func (r *Repository) CreateLoginChallenge(ctx context.Context, tokenHash string, userID string, expiresAt time.Time) error {
+	_, err := r.pool.Exec(ctx,
+		`INSERT INTO login_challenges (token_hash, user_id, expires_at) VALUES ($1, $2, $3)`,
+		tokenHash, userID, expiresAt.UTC())
+	if err != nil {
+		return fmt.Errorf("insert login challenge: %w", err)
+	}
+	return nil
+}
+
+func (r *Repository) GetLoginChallenge(ctx context.Context, tokenHash string, now time.Time) (string, error) {
+	var userID string
+	err := r.pool.QueryRow(ctx,
+		`SELECT user_id FROM login_challenges WHERE token_hash = $1 AND expires_at > $2`,
+		tokenHash, now.UTC()).Scan(&userID)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return "", identity.ErrUnauthorized
+		}
+		return "", fmt.Errorf("select login challenge: %w", err)
+	}
+	return userID, nil
+}
+
+func (r *Repository) ConsumeLoginChallenge(ctx context.Context, tokenHash string, now time.Time) (string, error) {
+	var userID string
+	err := r.pool.QueryRow(ctx,
+		`DELETE FROM login_challenges WHERE token_hash = $1 AND expires_at > $2 RETURNING user_id`,
+		tokenHash, now.UTC()).Scan(&userID)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return "", identity.ErrUnauthorized
+		}
+		return "", fmt.Errorf("consume login challenge: %w", err)
+	}
+	return userID, nil
+}
+
 func recoveryHashes(hashes []string) []string {
 	if hashes == nil {
 		return []string{}

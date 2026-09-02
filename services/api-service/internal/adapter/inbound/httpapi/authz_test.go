@@ -91,7 +91,11 @@ type stubAuth struct {
 	logoutEverywhere func(identity.User) error
 }
 
-func (s stubAuth) Login(context.Context, string, string) (usecase.Session, error) {
+func (s stubAuth) Login(context.Context, string, string) (usecase.LoginResult, error) {
+	return usecase.LoginResult{}, identity.ErrUnauthorized
+}
+
+func (s stubAuth) CompleteTwoFactor(context.Context, string, string) (usecase.Session, error) {
 	return usecase.Session{}, identity.ErrUnauthorized
 }
 

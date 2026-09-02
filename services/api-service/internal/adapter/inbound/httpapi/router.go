@@ -49,6 +49,7 @@ func NewRouter(config Config) http.Handler {
 
 	auth := authHandler{auth: config.Auth, cookieSecure: config.CookieSecure, loginLimiter: config.LoginLimiter}
 	mux.HandleFunc("POST /api/v1/auth/login", auth.login)
+	mux.HandleFunc("POST /api/v1/auth/login/2fa", auth.login2FA)
 	mux.HandleFunc("POST /api/v1/auth/invite", auth.invite)
 	mux.HandleFunc("POST /api/v1/auth/logout", auth.logout)
 	mux.HandleFunc("POST /api/v1/auth/logout-everywhere", auth.logoutEverywhere)

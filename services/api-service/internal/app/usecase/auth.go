@@ -2,6 +2,7 @@ package usecase
 
 import (
 	"context"
+	"errors"
 	"strings"
 	"time"
 
@@ -11,14 +12,21 @@ import (
 )
 
 const (
-	sessionTTL = 7 * 24 * time.Hour
-	inviteTTL  = 72 * time.Hour
+	sessionTTL   = 7 * 24 * time.Hour
+	inviteTTL    = 72 * time.Hour
+	challengeTTL = 5 * time.Minute
 )
 
 type Session struct {
 	RawToken  string
 	User      identity.User
 	ExpiresAt time.Time
+}
+
+type LoginResult struct {
+	Session           Session
+	TwoFactorRequired bool
+	ChallengeID       string
 }
 
 type Auth struct {
@@ -31,10 +39,62 @@ func NewAuth(store port.IdentityStore, newID port.IDGenerator, now port.Clock) *
 	return &Auth{store: store, newID: newID, now: now}
 }
 
-func (a *Auth) Login(ctx context.Context, login string, password string) (Session, error) {
+func (a *Auth) Login(ctx context.Context, login string, password string) (LoginResult, error) {
 	user, err := a.verifyLogin(ctx, login, password)
 	if err != nil {
-		return Session{}, err
+		return LoginResult{}, err
+	}
+	settings, err := a.store.GetTOTP(ctx, user.ID)
+	if err != nil && !errors.Is(err, identity.ErrNotFound) {
+		return LoginResult{}, err
+	}
+	if err == nil && settings.Enabled() {
+		raw, err := identity.NewSecret()
+		if err != nil {
+			return LoginResult{}, err
+		}
+		if err := a.store.CreateLoginChallenge(ctx, identity.HashSecret(raw), user.ID, a.now().Add(challengeTTL)); err != nil {
+			return LoginResult{}, err
+		}
+		return LoginResult{TwoFactorRequired: true, ChallengeID: raw}, nil
+	}
+	session, err := a.issueSession(ctx, user)
+	if err != nil {
+		return LoginResult{}, err
+	}
+	a.recordAudit(ctx, user, port.AuditLoginSuccess, user.CompanyID, "")
+	return LoginResult{Session: session}, nil
+}
+
+func (a *Auth) CompleteTwoFactor(ctx context.Context, challengeID string, code string) (Session, error) {
+	challengeID = strings.TrimSpace(challengeID)
+	if challengeID == "" {
+		return Session{}, identity.ErrUnauthorized
+	}
+	hash := identity.HashSecret(challengeID)
+	userID, err := a.store.GetLoginChallenge(ctx, hash, a.now())
+	if err != nil {
+		return Session{}, identity.ErrUnauthorized
+	}
+	user, err := a.store.GetUserByID(ctx, userID)
+	if err != nil || user.Disabled() {
+		return Session{}, identity.ErrUnauthorized
+	}
+	settings, err := a.store.GetTOTP(ctx, user.ID)
+	if err != nil || !settings.Enabled() {
+		return Session{}, identity.ErrUnauthorized
+	}
+	if err := identity.VerifyTOTP(settings.Secret, code, a.now()); err != nil {
+		remaining, recErr := identity.ConsumeRecoveryCode(settings.RecoveryCodeHashes, code)
+		if recErr != nil {
+			return Session{}, identity.ErrUnauthorized
+		}
+		if err := a.store.ReplaceRecoveryCodes(ctx, user.ID, remaining); err != nil {
+			return Session{}, err
+		}
+	}
+	if _, err := a.store.ConsumeLoginChallenge(ctx, hash, a.now()); err != nil {
+		return Session{}, identity.ErrUnauthorized
 	}
 	session, err := a.issueSession(ctx, user)
 	if err != nil {

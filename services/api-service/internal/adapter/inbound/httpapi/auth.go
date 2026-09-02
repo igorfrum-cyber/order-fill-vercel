@@ -21,7 +21,8 @@ const (
 type userContextKey struct{}
 
 type sessionAuthenticator interface {
-	Login(ctx context.Context, login string, password string) (usecase.Session, error)
+	Login(ctx context.Context, login string, password string) (usecase.LoginResult, error)
+	CompleteTwoFactor(ctx context.Context, challengeID string, code string) (usecase.Session, error)
 	Logout(ctx context.Context, tokenHash string) error
 	LogoutEverywhere(ctx context.Context, actor identity.User) error
 	AcceptInvite(ctx context.Context, rawToken string, password string) (usecase.Session, error)
@@ -88,7 +89,7 @@ func (g gate) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		g.next.ServeHTTP(w, r)
 		return
 	}
-	if r.URL.Path == "/api/v1/auth/login" || r.URL.Path == "/api/v1/auth/invite" || publicCompanyLoginPath(r.URL.Path) {
+	if r.URL.Path == "/api/v1/auth/login" || r.URL.Path == "/api/v1/auth/login/2fa" || r.URL.Path == "/api/v1/auth/invite" || publicCompanyLoginPath(r.URL.Path) {
 		g.next.ServeHTTP(w, r)
 		return
 	}
@@ -168,6 +169,36 @@ func (h authHandler) login(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusUnauthorized, "unauthorized", "authentication is required")
 		return
 	}
+	if session.TwoFactorRequired {
+		writeJSON(w, http.StatusOK, twoFactorChallengeResponse{
+			TwoFactorRequired: true,
+			ChallengeID:       session.ChallengeID,
+		})
+		return
+	}
+	writeSessionCookie(w, session.Session, h.cookieSecure)
+	writeJSON(w, http.StatusOK, presentUser(session.Session.User))
+}
+
+func (h authHandler) login2FA(w http.ResponseWriter, r *http.Request) {
+	if h.auth == nil {
+		writeError(w, http.StatusUnauthorized, "unauthorized", "authentication is required")
+		return
+	}
+	payload, ok := decodeAuthJSON(w, r)
+	if !ok {
+		return
+	}
+	key := clientIP(r) + "\x00" + payload.ChallengeID
+	if h.loginLimiter != nil && !h.loginLimiter.Allow(key) {
+		writeError(w, http.StatusTooManyRequests, "rate_limited", "too many requests")
+		return
+	}
+	session, err := h.auth.CompleteTwoFactor(r.Context(), payload.ChallengeID, payload.Code)
+	if err != nil {
+		writeError(w, http.StatusUnauthorized, "unauthorized", "authentication is required")
+		return
+	}
 	writeSessionCookie(w, session, h.cookieSecure)
 	writeJSON(w, http.StatusOK, presentUser(session.User))
 }
@@ -243,6 +274,8 @@ type authJSON struct {
 	Password        string `json:"password"`
 	CurrentPassword string `json:"current_password"`
 	Token           string `json:"token"`
+	ChallengeID     string `json:"challenge_id"`
+	Code            string `json:"code"`
 }
 
 func decodeAuthJSON(w http.ResponseWriter, r *http.Request) (authJSON, bool) {
@@ -275,6 +308,11 @@ type userResponse struct {
 	LoginSlug   string  `json:"login_slug,omitempty"`
 	HasLogo     bool    `json:"has_logo,omitempty"`
 	DisabledAt  *string `json:"disabled_at,omitempty"`
+}
+
+type twoFactorChallengeResponse struct {
+	TwoFactorRequired bool   `json:"two_factor_required"`
+	ChallengeID       string `json:"challenge_id"`
 }
 
 func presentUser(user identity.User) userResponse {

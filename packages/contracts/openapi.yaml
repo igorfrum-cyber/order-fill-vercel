@@ -51,6 +51,34 @@ paths:
                   minLength: 10
       responses:
         "200":
+          description: Session cookie set, or a two-factor challenge when 2FA is enabled.
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: "#/components/schemas/User"
+                  - $ref: "#/components/schemas/TwoFactorChallenge"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+  /api/v1/auth/login/2fa:
+    post:
+      operationId: completeTwoFactorLogin
+      summary: Complete login with a TOTP or recovery code
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [challenge_id, code]
+              properties:
+                challenge_id:
+                  type: string
+                code:
+                  type: string
+      responses:
+        "200":
           description: Session cookie set.
           content:
             application/json:
@@ -852,6 +880,15 @@ components:
         disabled_at:
           type: string
           format: date-time
+    TwoFactorChallenge:
+      type: object
+      required: [two_factor_required, challenge_id]
+      properties:
+        two_factor_required:
+          type: boolean
+          enum: [true]
+        challenge_id:
+          type: string
     Company:
       type: object
       required: [id, name, created_at]
