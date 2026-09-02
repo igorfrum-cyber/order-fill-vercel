@@ -1,0 +1,61 @@
+package identity
+
+import (
+	"bytes"
+	"errors"
+	"testing"
+)
+
+var png1x1 = []byte{
+	0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a,
+	0x00, 0x00, 0x00, 0x0d, 0x49, 0x48, 0x44, 0x52,
+	0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x01,
+	0x08, 0x06, 0x00, 0x00, 0x00, 0x1f, 0x15, 0xc4,
+	0x89, 0x00, 0x00, 0x00, 0x0a, 0x49, 0x44, 0x41,
+	0x54, 0x78, 0x9c, 0x63, 0x00, 0x01, 0x00, 0x00,
+	0x05, 0x00, 0x01, 0x0d, 0x0a, 0x2d, 0xb4, 0x00,
+	0x00, 0x00, 0x00, 0x49, 0x45, 0x4e, 0x44, 0xae,
+	0x42, 0x60, 0x82,
+}
+
+func TestParseLogoAcceptsPNG(t *testing.T) {
+	kind, err := ParseLogo(png1x1)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if kind != "image/png" {
+		t.Fatalf("got %q", kind)
+	}
+}
+
+func TestParseLogoAcceptsJPEGMagic(t *testing.T) {
+	kind, err := ParseLogo([]byte{0xff, 0xd8, 0xff, 0xe0, 0x00, 0x10})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if kind != "image/jpeg" {
+		t.Fatalf("got %q", kind)
+	}
+}
+
+func TestParseLogoRejectsEmptyAndUnknown(t *testing.T) {
+	if _, err := ParseLogo(nil); !errors.Is(err, ErrInvalidLogo) {
+		t.Fatalf("empty: got %v", err)
+	}
+	if _, err := ParseLogo([]byte("PK\x03\x04not-an-image")); !errors.Is(err, ErrInvalidLogo) {
+		t.Fatalf("zip: got %v", err)
+	}
+}
+
+func TestParseLogoRejectsOversized(t *testing.T) {
+	payload := bytes.Repeat([]byte{0x89, 0x50, 0x4e, 0x47}, LogoMaxBytes/4+1)
+	if _, err := ParseLogo(payload); !errors.Is(err, ErrInvalidLogo) {
+		t.Fatalf("got %v", err)
+	}
+}
+
+func TestCompanyLogoKeyIsStable(t *testing.T) {
+	if got := CompanyLogoKey("co-1"); got != "companies/co-1/logo" {
+		t.Fatalf("got %q", got)
+	}
+}

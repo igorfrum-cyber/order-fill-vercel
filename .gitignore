@@ -1,5 +1,12 @@
+.env
+deploy/certs/
+deploy/Caddyfile.lan
 node_modules/
 dist/
+.cache/
 test-output/
+testdata/private/
+.worktrees/
 .vercel/
 .DS_Store
+.gocache

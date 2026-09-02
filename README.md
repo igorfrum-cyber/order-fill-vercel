@@ -1,52 +1,42 @@
-# Заполнение бланка заказа — Vercel версия
+# Заполнение бланка заказа
 
-Это frontend-only версия инструмента. Excel-файлы обрабатываются прямо в браузере:
+Сервисная схема:
 
-- файлы не отправляются на сервер;
-- backend не нужен;
-- подходит для бесплатного деплоя на Vercel;
-- сохраняет `.xlsx`, меняя только нужные ячейки количества;
-- скачивает два файла: заполненный бланк и заполненную таблицу заказа товара.
+- `frontend/` — загрузка файлов, отчёт и ручные правки;
+- `services/api-service/` — jobs, метаданные, статус;
+- `services/document-service/` — Excel-логика и отчёты;
+- Redis — очередь, PostgreSQL — метаданные, MinIO — файлы.
 
-## Что делает
-
-- находит колонки по заголовкам, а не по буквам;
-- показывает объем, остаток, товар в пути, рекомендацию и вставленное количество;
-- округляет заказ до целой коробки, если добавка не больше 15% или уменьшение не больше 5%;
-- автоматически пишет комментарий `до коробки` при таком округлении;
-- требует новый комментарий, если менеджер вручную меняет значение в колонке `Вставлено`;
-- заполняет в таблице заказа товара колонки `Заказано по факту` и `Комментарий`.
+Браузер Excel не разбирает.
 
 ## Локальный запуск
 
 ```bash
-npm install
-npm run dev
+cp .env.example .env
+docker compose -f deploy/docker-compose.yml up --build
 ```
 
-Открыть:
+- frontend: http://127.0.0.1:3200
+- api-service: http://127.0.0.1:8080/healthz
+- document-service: http://127.0.0.1:8081/healthz
+- MinIO console: http://127.0.0.1:9001
 
-```text
-http://127.0.0.1:3200
-```
-
-## Проверка
+Только UI:
 
 ```bash
-npm run test:workbook
-npm run build
+npm ci --prefix frontend
+npm run dev --prefix frontend
 ```
 
-## Деплой на Vercel
+## Проверка перед коммитом
 
-1. Загрузите папку `order-fill-vercel` в GitHub-репозиторий.
-2. В Vercel создайте новый проект из этого репозитория.
-3. Vercel сам подхватит настройки из `vercel.json`:
+Тот же набор шагов, что в GitHub Actions:
 
-```text
-Build Command: npm run build
-Output Directory: dist
-Install Command: npm ci
+```bash
+make verify
 ```
 
-После деплоя Vercel выдаст прямую ссылку для закупщика.
+`make lint` — только версии, ESLint, gofmt, vet, golangci-lint, gosec и `go mod tidy`.
+
+Контракт API: `packages/contracts/openapi.yaml`.
+Правила для агентов: `CLAUDE.md`.

@@ -1,0 +1,167 @@
+services:
+  frontend:
+    build:
+      context: ../frontend
+      dockerfile: Dockerfile
+      args:
+        VITE_API_BASE_URL: ""
+    restart: unless-stopped
+    ports:
+      - "3200:80"
+    depends_on:
+      api-service:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost/"]
+      interval: 10s
+      timeout: 3s
+      retries: 10
+    deploy:
+      resources:
+        limits:
+          cpus: "0.50"
+          memory: 128M
+
+  api-service:
+    build:
+      context: ../services/api-service
+    restart: unless-stopped
+    environment:
+      API_ADDR: ":8080"
+      APP_ENV: ${APP_ENV:-local}
+      API_ALLOWED_ORIGINS: ${API_ALLOWED_ORIGINS:-*}
+      BOOTSTRAP_ADMIN_LOGIN: ${BOOTSTRAP_ADMIN_LOGIN:-admin}
+      SESSION_COOKIE_SECURE: ${SESSION_COOKIE_SECURE:-false}
+      SESSION_COOKIE_DOMAIN: ${SESSION_COOKIE_DOMAIN:-}
+      WEBAUTHN_RP_DISPLAY_NAME: ${WEBAUTHN_RP_DISPLAY_NAME:-Order Fill}
+      WEBAUTHN_RP_ID: ${WEBAUTHN_RP_ID:-}
+      DOCUMENT_HEALTH_URL: ${DOCUMENT_HEALTH_URL:-http://document-service:8081/healthz}
+      DATABASE_URL: ${DATABASE_URL:-postgres://order_fill:order_fill@postgres:5432/order_fill?sslmode=disable}
+      QUEUE_URL: ${QUEUE_URL:-redis://redis:6379/0}
+      S3_ENDPOINT: ${S3_ENDPOINT:-http://minio:9000}
+      S3_BUCKET: ${S3_BUCKET:-order-fill}
+      S3_ACCESS_KEY: ${S3_ACCESS_KEY:-minioadmin}
+      S3_SECRET_KEY: ${S3_SECRET_KEY:-minioadmin}
+    ports:
+      - "127.0.0.1:8080:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8080/healthz"]
+      interval: 10s
+      timeout: 3s
+      retries: 10
+    deploy:
+      resources:
+        limits:
+          cpus: "1.00"
+          memory: 256M
+
+  document-service:
+    build:
+      context: ../services/document-service
+    restart: unless-stopped
+    environment:
+      WORKER_HEALTH_ADDR: ":8081"
+      DATABASE_URL: ${DATABASE_URL:-postgres://order_fill:order_fill@postgres:5432/order_fill?sslmode=disable}
+      QUEUE_URL: ${QUEUE_URL:-redis://redis:6379/0}
+      WORKER_CONCURRENCY: ${WORKER_CONCURRENCY:-1}
+      S3_ENDPOINT: ${S3_ENDPOINT:-http://minio:9000}
+      S3_BUCKET: ${S3_BUCKET:-order-fill}
+      S3_ACCESS_KEY: ${S3_ACCESS_KEY:-minioadmin}
+      S3_SECRET_KEY: ${S3_SECRET_KEY:-minioadmin}
+    expose:
+      - "8081"
+    depends_on:
+      # api-service owns the database schema and creates it on startup.
+      api-service:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8081/healthz"]
+      interval: 10s
+      timeout: 3s
+      retries: 10
+    deploy:
+      resources:
+        limits:
+          cpus: "8.00"
+          memory: 8G
+
+  postgres:
+    image: mirror.gcr.io/library/postgres:18-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: order_fill
+      POSTGRES_USER: order_fill
+      POSTGRES_PASSWORD: order_fill
+    ports:
+      - "127.0.0.1:5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U order_fill -d order_fill"]
+      interval: 10s
+      timeout: 3s
+      retries: 10
+    deploy:
+      resources:
+        limits:
+          cpus: "1.00"
+          memory: 512M
+
+  redis:
+    image: mirror.gcr.io/library/redis:8-alpine
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:6379:6379"
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 10
+    deploy:
+      resources:
+        limits:
+          cpus: "0.50"
+          memory: 128M
+
+  minio:
+    image: mirror.gcr.io/minio/minio:RELEASE.2025-09-07T16-13-09Z
+    restart: unless-stopped
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ${S3_ACCESS_KEY:-minioadmin}
+      MINIO_ROOT_PASSWORD: ${S3_SECRET_KEY:-minioadmin}
+    ports:
+      - "127.0.0.1:9000:9000"
+      - "127.0.0.1:9001:9001"
+    volumes:
+      - minio-data:/data
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    deploy:
+      resources:
+        limits:
+          cpus: "1.00"
+          memory: 512M
+
+volumes:
+  postgres-data:
+  redis-data:
+  minio-data:
