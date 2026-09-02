@@ -36,7 +36,7 @@ function triggerBlobDownload(blob, fileName) {
   window.setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
-export function OrderFillApp({ companyId, resumeJob, onHome }) {
+export function OrderFillApp({ companyId, resumeJob, onHome, onHelp }) {
   const [stage, setStage] = useState(resumeJob ? (resumeJob.finalized ? "preview" : "fill") : "upload");
   const [brand, setBrand] = useState(resumeJob?.brand || "");
   const [month, setMonth] = useState(resumeJob?.month || "");
@@ -214,6 +214,7 @@ export function OrderFillApp({ companyId, resumeJob, onHome }) {
         stage={stage}
         format="order"
         onHome={onHome}
+        onHelp={onHelp}
       />
       <StageRail
         stage={stage}

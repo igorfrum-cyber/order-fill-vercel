@@ -1,10 +1,23 @@
-import { IconCheck, IconList } from "./icons.jsx";
+import { IconCheck, IconHelp, IconList } from "./icons.jsx";
 
-export function TopBar({ brandLabel, monthLabel, stage, format = "order", onHome }) {
+export function HelpButton({ onClick }) {
+  return (
+    <button
+      type="button"
+      aria-label="Справка"
+      className="grid h-9 w-9 place-items-center rounded-lg text-[var(--color-ink-faint)] hover:bg-[var(--color-line-soft)] hover:text-[var(--color-ink)]"
+      onClick={onClick}
+    >
+      <IconHelp className="h-4 w-4" />
+    </button>
+  );
+}
+
+export function TopBar({ brandLabel, monthLabel, stage, format = "order", onHome, onHelp }) {
   const north = format === "north";
   return (
-    <header className="flex items-center justify-between border-b border-[var(--color-line)] bg-[var(--color-surface)] px-6 py-3.5">
-      <div className="flex items-center gap-2.5">
+    <header className="flex items-center justify-between gap-2 border-b border-[var(--color-line)] bg-[var(--color-surface)] px-4 py-3.5 sm:px-6">
+      <div className="flex min-w-0 items-center gap-2.5">
         <button type="button" className="grid h-9 w-9 place-items-center rounded-md bg-[var(--color-brand)] text-white" onClick={onHome}>
           <IconList className="h-4 w-4" />
         </button>
@@ -12,19 +25,22 @@ export function TopBar({ brandLabel, monthLabel, stage, format = "order", onHome
           <div className="text-[16px] font-semibold tracking-tight">{north ? "Север" : "Бланки закупки"}</div>
           <div className="text-[13px] text-[var(--color-ink-faint)]">{north ? "объединение городов" : "автозаполнение"}</div>
         </div>
-        <span className="ml-4 rounded-full bg-[var(--color-brand-soft)] px-2.5 py-1 text-[12px] font-semibold text-[var(--color-brand-strong)]">
+        <span className="ml-4 hidden rounded-full bg-[var(--color-brand-soft)] px-2.5 py-1 text-[12px] font-semibold text-[var(--color-brand-strong)] sm:inline">
           {north ? "Север" : "Бланк"}
         </span>
       </div>
-      {(stage === "fill" || stage === "preview") && (
-        <div className="flex items-center gap-2 font-mono text-[13px] text-[var(--color-ink-soft)]">
-          <span className="rounded-full bg-[var(--color-brand-soft)] px-2.5 py-1 text-[var(--color-brand-strong)]">
-            {brandLabel}
-          </span>
-          <span className="text-[var(--color-ink-faint)]">·</span>
-          <span>{monthLabel}</span>
-        </div>
-      )}
+      <div className="flex shrink-0 items-center gap-2 font-mono text-[13px] text-[var(--color-ink-soft)]">
+        {(stage === "fill" || stage === "preview") && (
+          <>
+            <span className="rounded-full bg-[var(--color-brand-soft)] px-2.5 py-1 text-[var(--color-brand-strong)]">
+              {brandLabel}
+            </span>
+            <span className="text-[var(--color-ink-faint)]">·</span>
+            <span>{monthLabel}</span>
+          </>
+        )}
+        {onHelp ? <HelpButton onClick={onHelp} /> : null}
+      </div>
     </header>
   );
 }

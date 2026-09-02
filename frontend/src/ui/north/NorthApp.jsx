@@ -19,7 +19,7 @@ import { NorthPlanTable } from "./NorthPlanTable.jsx";
 import { NorthPrompts } from "./NorthPrompts.jsx";
 import { NorthUploadPanel } from "./NorthUploadPanel.jsx";
 
-export function NorthApp({ companyId, onHome }) {
+export function NorthApp({ companyId, onHome, onHelp }) {
   const [brand, setBrand] = useState("angiopharm");
   const [files, setFiles] = useState([]);
   const [homeFiles, setHomeFiles] = useState([]);
@@ -224,7 +224,7 @@ export function NorthApp({ companyId, onHome }) {
 
   return (
     <div className="flex h-full flex-col bg-[var(--color-ground)]">
-      <TopBar brandLabel="" monthLabel="" stage="setup" format="north" onHome={onHome} />
+      <TopBar brandLabel="" monthLabel="" stage="setup" format="north" onHome={onHome} onHelp={onHelp} />
       <div className="flex-1 overflow-auto px-6 py-6">
         <div className="mx-auto max-w-6xl">
           <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
