@@ -25,6 +25,10 @@
   --color-danger-soft: #fef2f2;
   --color-neutral: #64748b;
   --color-neutral-soft: #f1f5f9;
+
+  --radius-control: 0.5rem;
+  --radius-panel: 0.625rem;
+  --radius-modal: 1rem;
 }
 
 html,
@@ -67,13 +71,30 @@ body {
 
 .input {
   width: 100%;
-  border-radius: 0.75rem;
+  border-radius: var(--radius-control);
   border: 1px solid var(--color-line);
   background: var(--color-surface);
   padding: 0.75rem 1rem;
   font-size: 16px;
   font-weight: 500;
   outline: none;
+}
+
+.input:focus-visible {
+  border-color: var(--color-ink-soft);
+  box-shadow: 0 0 0 3px var(--color-neutral-soft);
+}
+
+button:focus-visible,
+select:focus-visible,
+a:focus-visible,
+[role="menuitem"]:focus-visible {
+  outline: 2px solid var(--color-ink);
+  outline-offset: 2px;
+}
+
+.primary-action:focus-visible {
+  outline-color: var(--color-brand);
 }
 
 .app-header {

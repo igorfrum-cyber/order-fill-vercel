@@ -27,7 +27,7 @@ export function PasswordField({ label, value, onChange, autoComplete, generate =
           {generate ? (
             <button
               type="button"
-              className="rounded-lg px-2 py-1 text-[12px] font-medium text-[var(--color-brand)] hover:bg-[var(--color-brand-soft)]"
+              className="rounded-md px-2 py-1 text-[12px] font-medium text-[var(--color-ink-soft)] hover:bg-[var(--color-line-soft)] hover:text-[var(--color-ink)]"
               onClick={() => {
                 const next = generatePassword();
                 onChange(next);
@@ -57,7 +57,7 @@ export function Select({ value, onChange, options }) {
       <select
         value={value}
         onChange={(event) => onChange(event.target.value)}
-        className="w-full appearance-none rounded-xl border border-[var(--color-line)] bg-[var(--color-surface)] px-4 py-3 text-[16px] font-medium outline-none transition focus:border-[var(--color-brand)] focus:ring-4 focus:ring-[var(--color-brand-soft)]"
+        className="w-full appearance-none rounded-control border border-[var(--color-line)] bg-[var(--color-surface)] px-4 py-3 text-[16px] font-medium outline-none transition focus-visible:border-[var(--color-ink-soft)] focus-visible:ring-4 focus-visible:ring-[var(--color-neutral-soft)]"
       >
         {options.map((option) => (
           <option key={option.value ?? option} value={option.value ?? option} disabled={option.disabled}>
@@ -76,7 +76,7 @@ export function PrimaryButton({ children, onClick, disabled, type = "button" }) 
       type={type}
       onClick={onClick}
       disabled={disabled}
-      className="flex items-center gap-2 rounded-xl bg-[var(--color-brand)] px-5 py-3 text-[15px] font-semibold text-white transition hover:bg-[var(--color-brand-strong)] focus:outline-none focus:ring-4 focus:ring-[var(--color-brand-soft)] disabled:cursor-not-allowed disabled:opacity-40"
+      className="primary-action flex items-center gap-2 whitespace-nowrap rounded-control bg-[var(--color-brand)] px-5 py-3 text-[15px] font-semibold text-white transition hover:bg-[var(--color-brand-strong)] focus:outline-none focus-visible:ring-4 focus-visible:ring-[var(--color-brand-soft)] disabled:cursor-not-allowed disabled:opacity-40"
     >
       {children}
     </button>
@@ -89,7 +89,7 @@ export function GhostButton({ children, onClick, disabled, type = "button" }) {
       type={type}
       onClick={onClick}
       disabled={disabled}
-      className="flex items-center gap-1.5 rounded-xl border border-[var(--color-line)] bg-[var(--color-surface)] px-4 py-2.5 text-[14px] font-medium text-[var(--color-ink-soft)] transition hover:border-[var(--color-ink-faint)] hover:text-[var(--color-ink)] disabled:cursor-not-allowed disabled:opacity-40"
+      className="flex items-center gap-1.5 whitespace-nowrap rounded-control border border-[var(--color-line)] bg-[var(--color-surface)] px-4 py-2.5 text-[14px] font-medium text-[var(--color-ink-soft)] transition hover:border-[var(--color-ink-faint)] hover:bg-[var(--color-neutral-soft)] hover:text-[var(--color-ink)] focus:outline-none focus-visible:ring-4 focus-visible:ring-[var(--color-neutral-soft)] disabled:cursor-not-allowed disabled:opacity-40"
     >
       {children}
     </button>
@@ -99,9 +99,9 @@ export function GhostButton({ children, onClick, disabled, type = "button" }) {
 export function StageHeading({ index, kicker, title, children }) {
   return (
     <>
-      <div className="mb-2 flex items-center gap-2 text-[13px] font-medium text-[var(--color-brand)]">
+      <div className="mb-2 flex items-center gap-2 text-[13px] font-medium text-[var(--color-ink-faint)]">
         <span className="font-mono text-[12px]">{index}</span>
-        <span className="h-px w-6 bg-[var(--color-brand)]/40" />
+        <span className="h-px w-6 bg-[var(--color-line)]" />
         {kicker}
       </div>
       <h1 className="text-[36px] font-semibold tracking-tight">{title}</h1>
@@ -167,7 +167,7 @@ export function Stepper({ value, disabled, onChange, step }) {
     "grid h-9 w-8 place-items-center text-[var(--color-ink-soft)] transition hover:bg-[var(--color-line-soft)] hover:text-[var(--color-ink)] disabled:opacity-30";
   return (
     <div
-      className={`flex items-center overflow-hidden rounded-lg border transition focus-within:border-[var(--color-brand)] focus-within:ring-4 focus-within:ring-[var(--color-brand-soft)] ${
+      className={`flex items-center overflow-hidden rounded-control border transition focus-within:border-[var(--color-ink-soft)] focus-within:ring-4 focus-within:ring-[var(--color-neutral-soft)] ${
         numeric > 0 ? "border-[var(--color-ok)]" : "border-[var(--color-line)]"
       }`}
     >
@@ -195,7 +195,7 @@ export function Stepper({ value, disabled, onChange, step }) {
 export function Modal({ title, children, onCancel, onConfirm, cancelLabel = "Назад", confirmLabel = "Продолжить", confirmDisabled }) {
   return (
     <div className="help-modal-backdrop fixed inset-0 z-20 grid place-items-center bg-slate-900/45 p-5" role="dialog" aria-modal="true">
-      <div className="help-modal-card w-full max-w-lg rounded-xl border border-[var(--color-line)] bg-[var(--color-surface)] p-6 shadow-xl">
+      <div className="help-modal-card w-full max-w-lg rounded-modal border border-[var(--color-line)] bg-[var(--color-surface)] p-6 shadow-xl">
         <h2 className="text-[18px] font-semibold tracking-tight">{title}</h2>
         <div className="mt-3 max-h-64 overflow-auto text-[14px] leading-relaxed text-[var(--color-ink-soft)] whitespace-pre-line">
           {children}
