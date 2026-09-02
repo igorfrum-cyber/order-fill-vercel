@@ -242,15 +242,22 @@ func clientIP(r *http.Request) string {
 }
 
 type userResponse struct {
-	ID         string  `json:"id"`
-	Login      string  `json:"login"`
-	Role       string  `json:"role"`
-	CompanyID  string  `json:"company_id,omitempty"`
-	DisabledAt *string `json:"disabled_at,omitempty"`
+	ID          string  `json:"id"`
+	Login       string  `json:"login"`
+	Role        string  `json:"role"`
+	CompanyID   string  `json:"company_id,omitempty"`
+	CompanyName string  `json:"company_name,omitempty"`
+	DisabledAt  *string `json:"disabled_at,omitempty"`
 }
 
 func presentUser(user identity.User) userResponse {
-	response := userResponse{ID: user.ID, Login: user.Login, Role: string(user.Role), CompanyID: user.CompanyID}
+	response := userResponse{
+		ID:          user.ID,
+		Login:       user.Login,
+		Role:        string(user.Role),
+		CompanyID:   user.CompanyID,
+		CompanyName: user.CompanyName,
+	}
 	if user.DisabledAt != nil {
 		value := user.DisabledAt.UTC().Format("2006-01-02T15:04:05Z")
 		response.DisabledAt = &value

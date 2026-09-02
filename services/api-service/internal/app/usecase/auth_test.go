@@ -410,6 +410,7 @@ func (m *memoryIdentity) hydrate(user identity.User) identity.User {
 		return user
 	}
 	if company, ok := m.companies[user.CompanyID]; ok {
+		user.CompanyName = company.Name
 		user.CompanyDisabled = company.Disabled()
 	}
 	return user

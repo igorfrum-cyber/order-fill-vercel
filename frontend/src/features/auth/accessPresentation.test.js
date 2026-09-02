@@ -39,6 +39,7 @@ test("canInviteRole follows inviteRoleOptions", () => {
 
 test("accessSummary explains what each role can do", () => {
   assert.match(accessSummary("platform_admin"), /компани/i);
+  assert.match(accessSummary("company_owner"), /сотрудник/i);
   assert.match(accessSummary("company_admin"), /приглаш/i);
   assert.match(accessSummary("purchaser"), /выгрузк/i);
 });

@@ -14,6 +14,7 @@ const (
 type User struct {
 	ID              string
 	CompanyID       string
+	CompanyName     string
 	Login           string
 	PasswordHash    string
 	Role            Role

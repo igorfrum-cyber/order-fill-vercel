@@ -1,7 +1,11 @@
 import { useState } from "react";
 import { changePassword } from "../../api/auth.js";
-import { accessSummary } from "../../features/auth/accessPresentation.js";
 import { isPasswordReady } from "../../features/auth/password.js";
+import {
+  accessSummaryForRole,
+  accountPasswordHint,
+  profileFields,
+} from "../../features/help/copy.js";
 import { PasswordField, PrimaryButton } from "../widgets.jsx";
 import { PasswordHints } from "./AuthShared.jsx";
 
@@ -13,6 +17,7 @@ export function AccountScreen({ me, onBack }) {
   const [done, setDone] = useState(false);
   const [busy, setBusy] = useState(false);
   const ready = Boolean(current) && isPasswordReady(password, repeat);
+  const fields = profileFields(me);
 
   async function submit(event) {
     event.preventDefault();
@@ -39,12 +44,23 @@ export function AccountScreen({ me, onBack }) {
         ← Назад
       </button>
       <div>
-        <h1 className="text-[22px] font-semibold">Пароль</h1>
-        <p className="mt-1 text-[14px] text-[var(--color-ink-soft)]">
-          {me.login}. {accessSummary(me.role)} Смена пароля только для этой учётки. Других пользователей сбрасывайте ссылкой-приглашением.
-        </p>
+        <h1 className="text-[22px] font-semibold">Мой профиль</h1>
+      </div>
+      <dl className="space-y-3 rounded-2xl border border-[var(--color-line)] bg-[var(--color-surface)] p-6">
+        {fields.map((field) => (
+          <div key={field.label}>
+            <dt className="text-[13px] font-medium text-[var(--color-ink-faint)]">{field.label}</dt>
+            <dd className="mt-1 text-[16px] font-medium">{field.value}</dd>
+          </div>
+        ))}
+        <p className="pt-1 text-[14px] leading-relaxed text-[var(--color-ink-soft)]">{accessSummaryForRole(me.role)}</p>
+      </dl>
+      <div className="space-y-3">
+        <h2 className="text-[16px] font-semibold">Безопасность</h2>
+        <p className="text-[14px] leading-relaxed text-[var(--color-ink-soft)]">{accountPasswordHint}</p>
       </div>
       <form className="space-y-4 rounded-2xl border border-[var(--color-line)] bg-[var(--color-surface)] p-6" onSubmit={submit}>
+        <h2 className="text-[16px] font-semibold">Сменить пароль</h2>
         <PasswordField label="Текущий пароль" value={current} onChange={setCurrent} autoComplete="current-password" />
         <PasswordField
           label="Новый пароль"

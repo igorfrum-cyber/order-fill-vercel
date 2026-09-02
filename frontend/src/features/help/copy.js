@@ -15,6 +15,35 @@ export function roleLabel(role) {
   return ROLE_LABELS[role] || "Пользователь";
 }
 
+export function accessSummaryForRole(role) {
+  if (role === "platform_admin") {
+    return "Вы можете создавать компании, помогать с доступом и смотреть историю по всем компаниям.";
+  }
+  if (role === "company_owner") {
+    return "Вы управляете доступом сотрудников и видите выгрузки своей компании.";
+  }
+  if (role === "company_admin") {
+    return "Вы приглашаете сотрудников, сбрасываете доступ и видите выгрузки своей компании.";
+  }
+  return "Вы создаёте выгрузки, проверяете строки и скачиваете готовые файлы.";
+}
+
+export function profileCompanyLabel(me) {
+  if (!me?.company_id || me.role === "platform_admin") return "Сервис";
+  return me.company_name || "Ваша компания";
+}
+
+export function profileFields(me) {
+  return [
+    { label: "Логин", value: me.login, editable: false },
+    { label: "Компания", value: profileCompanyLabel(me), editable: false },
+    { label: "Доступ", value: roleLabel(me.role), editable: false },
+  ];
+}
+
+export const accountPasswordHint =
+  "Ваш пароль знаете только вы. Если доступ нужен другому человеку, создайте отдельного пользователя.";
+
 export function tourForRole(role) {
   if (role === "platform_admin") {
     return [

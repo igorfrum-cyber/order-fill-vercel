@@ -655,6 +655,8 @@ components:
           enum: [platform_admin, company_admin, purchaser]
         company_id:
           type: string
+        company_name:
+          type: string
         disabled_at:
           type: string
           format: date-time

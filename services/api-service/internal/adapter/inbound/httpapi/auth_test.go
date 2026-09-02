@@ -2,6 +2,7 @@ package httpapi
 
 import (
 	"context"
+	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -89,6 +90,36 @@ func TestSecurityHeadersOnResponses(t *testing.T) {
 	}
 	if header.Get("Content-Security-Policy") == "" {
 		t.Fatal("Content-Security-Policy must be present")
+	}
+}
+
+func TestMeIncludesCompanyName(t *testing.T) {
+	token := "owner-token"
+	router := NewRouter(Config{
+		AllowedOrigins: []string{"http://127.0.0.1:3200"},
+		Auth: stubAuth{users: map[string]identity.User{
+			identity.HashSecret(token): {
+				ID:          "user-a",
+				Login:       "buyer",
+				Role:        identity.RolePurchaser,
+				CompanyID:   "company-a",
+				CompanyName: "Acme",
+			},
+		}},
+	})
+	request := httptest.NewRequest(http.MethodGet, "/api/v1/auth/me", nil)
+	request.AddCookie(&http.Cookie{Name: sessionCookieName, Value: token})
+	response := httptest.NewRecorder()
+	router.ServeHTTP(response, request)
+	if response.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d body %s", response.Code, response.Body.String())
+	}
+	var payload map[string]string
+	if err := json.NewDecoder(response.Body).Decode(&payload); err != nil {
+		t.Fatal(err)
+	}
+	if payload["company_name"] != "Acme" {
+		t.Fatalf("company_name: got %#v", payload["company_name"])
 	}
 }
 

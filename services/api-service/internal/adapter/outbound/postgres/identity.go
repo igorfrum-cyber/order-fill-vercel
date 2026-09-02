@@ -13,7 +13,7 @@ import (
 	"order-fill/services/api-service/internal/domain/identity"
 )
 
-const userSelect = `u.id, COALESCE(u.company_id, ''), u.login, u.password_hash, u.role, u.created_at, u.disabled_at,
+const userSelect = `u.id, COALESCE(u.company_id, ''), COALESCE(c.name, ''), u.login, u.password_hash, u.role, u.created_at, u.disabled_at,
 		COALESCE(c.disabled_at IS NOT NULL, false)`
 
 func (r *Repository) CountUsers(ctx context.Context) (int, error) {
@@ -257,7 +257,7 @@ func scanUserRow(row pgx.Row) (identity.User, error) {
 		user identity.User
 		role string
 	)
-	err := row.Scan(&user.ID, &user.CompanyID, &user.Login, &user.PasswordHash, &role, &user.CreatedAt, &user.DisabledAt, &user.CompanyDisabled)
+	err := row.Scan(&user.ID, &user.CompanyID, &user.CompanyName, &user.Login, &user.PasswordHash, &role, &user.CreatedAt, &user.DisabledAt, &user.CompanyDisabled)
 	if err != nil {
 		return identity.User{}, err
 	}

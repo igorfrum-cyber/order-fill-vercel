@@ -1,7 +1,18 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { helpSections, loginAccessHint, loginFailedMessage, quickStartForRole, roleLabel, tourForRole } from "./copy.js";
+import {
+  accessSummaryForRole,
+  accountPasswordHint,
+  helpSections,
+  loginAccessHint,
+  loginFailedMessage,
+  profileCompanyLabel,
+  profileFields,
+  quickStartForRole,
+  roleLabel,
+  tourForRole,
+} from "./copy.js";
 
 test("loginFailedMessage does not distinguish why login failed", () => {
   assert.equal(
@@ -47,6 +58,43 @@ test("tourForRole points at on-screen controls without jargon", () => {
       assert.equal(/api|token|cookie|backend|frontend|endpoint/i.test(`${step.title} ${step.body}`), false);
     }
   }
+});
+
+test("accessSummaryForRole explains what each role can do", () => {
+  assert.match(accessSummaryForRole("platform_admin"), /компани/i);
+  assert.match(accessSummaryForRole("company_owner"), /сотрудник/i);
+  assert.match(accessSummaryForRole("company_admin"), /приглаш/i);
+  assert.match(accessSummaryForRole("purchaser"), /выгрузк/i);
+});
+
+test("profileCompanyLabel prefers the company name and keeps platform admin at the service", () => {
+  assert.equal(profileCompanyLabel({ role: "platform_admin" }), "Сервис");
+  assert.equal(profileCompanyLabel({ role: "purchaser", company_id: "c-1", company_name: "Acme" }), "Acme");
+  assert.equal(profileCompanyLabel({ role: "purchaser", company_id: "c-1" }), "Ваша компания");
+});
+
+test("profileFields show login company and access as read-only", () => {
+  const fields = profileFields({
+    login: "buyer",
+    role: "purchaser",
+    company_id: "c-1",
+    company_name: "Acme",
+  });
+  assert.deepEqual(
+    fields.map((field) => field.label),
+    ["Логин", "Компания", "Доступ"],
+  );
+  assert.equal(fields[0].value, "buyer");
+  assert.equal(fields[1].value, "Acme");
+  assert.equal(fields[2].value, "Закупщик");
+  assert.ok(fields.every((field) => field.editable === false));
+});
+
+test("accountPasswordHint tells the user not to share the password", () => {
+  assert.equal(
+    accountPasswordHint,
+    "Ваш пароль знаете только вы. Если доступ нужен другому человеку, создайте отдельного пользователя.",
+  );
 });
 
 test("helpSections stay plain and cover the required topics", () => {
