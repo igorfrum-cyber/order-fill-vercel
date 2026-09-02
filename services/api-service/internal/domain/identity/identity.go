@@ -42,3 +42,16 @@ type Company struct {
 func (c Company) Disabled() bool {
 	return c.DisabledAt != nil
 }
+
+// TOTP is a user's app-based two-factor settings. Secret is the TOTP shared
+// secret; recovery codes are stored only as hashes.
+type TOTP struct {
+	UserID             string
+	Secret             string
+	EnabledAt          *time.Time
+	RecoveryCodeHashes []string
+}
+
+func (t TOTP) Enabled() bool {
+	return t.EnabledAt != nil
+}
