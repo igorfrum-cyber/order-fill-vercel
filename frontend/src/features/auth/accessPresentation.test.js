@@ -5,6 +5,7 @@ import {
   accessSummary,
   canEditCompanyProfile,
   canInviteRole,
+  canManageListedUser,
   companyLoginLogoURL,
   companyLoginCopy,
   companyLoginPath,
@@ -12,6 +13,7 @@ import {
   companySlugFromHost,
   companySlugFromPath,
   loginSlugIssue,
+  inviteRoleHint,
   inviteRoleOptions,
   needsUsersCompanyPicker,
   pickDefaultCompanyId,
@@ -23,6 +25,7 @@ import {
 test("roleLabel maps known roles to Russian labels", () => {
   assert.equal(roleLabel("purchaser"), "Закупщик");
   assert.equal(roleLabel("company_admin"), "Администратор компании");
+  assert.equal(roleLabel("company_owner"), "Владелец компании");
   assert.equal(roleLabel("platform_admin"), "Администратор сервиса");
 });
 
@@ -31,18 +34,33 @@ test("roleLabel falls back to a plain user label", () => {
 });
 
 test("inviteRoleOptions lists roles the actor may invite", () => {
-  assert.deepEqual(inviteRoleOptions("platform_admin"), ["company_admin"]);
-  assert.deepEqual(inviteRoleOptions("company_admin"), ["purchaser", "company_admin"]);
+  assert.deepEqual(inviteRoleOptions("platform_admin"), ["company_owner", "company_admin", "purchaser"]);
+  assert.deepEqual(inviteRoleOptions("company_owner"), ["company_admin", "purchaser"]);
+  assert.deepEqual(inviteRoleOptions("company_admin"), ["purchaser"]);
   assert.deepEqual(inviteRoleOptions("purchaser"), []);
 });
 
 test("canInviteRole follows inviteRoleOptions", () => {
-  assert.equal(canInviteRole("company_admin", "purchaser"), true);
-  assert.equal(canInviteRole("company_admin", "company_admin"), true);
+  assert.equal(canInviteRole("platform_admin", "company_owner"), true);
   assert.equal(canInviteRole("platform_admin", "company_admin"), true);
-  assert.equal(canInviteRole("platform_admin", "purchaser"), false);
+  assert.equal(canInviteRole("platform_admin", "purchaser"), true);
   assert.equal(canInviteRole("platform_admin", "platform_admin"), false);
+  assert.equal(canInviteRole("company_owner", "company_admin"), true);
+  assert.equal(canInviteRole("company_owner", "purchaser"), true);
+  assert.equal(canInviteRole("company_owner", "company_owner"), false);
+  assert.equal(canInviteRole("company_admin", "purchaser"), true);
+  assert.equal(canInviteRole("company_admin", "company_admin"), false);
+  assert.equal(canInviteRole("company_admin", "company_owner"), false);
   assert.equal(canInviteRole("purchaser", "purchaser"), false);
+});
+
+test("company admin cannot disable or reset the company owner", () => {
+  assert.equal(canManageListedUser("platform_admin", "company_owner"), true);
+  assert.equal(canManageListedUser("company_owner", "company_admin"), true);
+  assert.equal(canManageListedUser("company_owner", "purchaser"), true);
+  assert.equal(canManageListedUser("company_admin", "purchaser"), true);
+  assert.equal(canManageListedUser("company_admin", "company_owner"), false);
+  assert.equal(canManageListedUser("purchaser", "purchaser"), false);
 });
 
 test("accessSummary explains what each role can do", () => {
@@ -52,7 +70,15 @@ test("accessSummary explains what each role can do", () => {
   assert.match(accessSummary("purchaser"), /выгрузк/i);
 });
 
-test("only company admin edits the company profile", () => {
+test("inviteRoleHint explains the dropdown without jargon", () => {
+  assert.equal(
+    inviteRoleHint,
+    "Выберите, что человек сможет делать в компании. Доступ можно отключить позже.",
+  );
+});
+
+test("company owner and company admin edit the company profile", () => {
+  assert.equal(canEditCompanyProfile("company_owner"), true);
   assert.equal(canEditCompanyProfile("company_admin"), true);
   assert.equal(canEditCompanyProfile("platform_admin"), false);
   assert.equal(canEditCompanyProfile("purchaser"), false);
@@ -60,6 +86,7 @@ test("only company admin edits the company profile", () => {
 
 test("platform admin must pick a company to manage users", () => {
   assert.equal(needsUsersCompanyPicker("platform_admin"), true);
+  assert.equal(needsUsersCompanyPicker("company_owner"), false);
   assert.equal(needsUsersCompanyPicker("company_admin"), false);
   assert.equal(needsUsersCompanyPicker("purchaser"), false);
 });
@@ -67,6 +94,7 @@ test("platform admin must pick a company to manage users", () => {
 test("resolveUsersCompanyId uses the selected company only for platform admin", () => {
   assert.equal(resolveUsersCompanyId("platform_admin", "c-1", ""), "c-1");
   assert.equal(resolveUsersCompanyId("platform_admin", "", ""), "");
+  assert.equal(resolveUsersCompanyId("company_owner", "other", "own"), "own");
   assert.equal(resolveUsersCompanyId("company_admin", "other", "own"), "own");
 });
 

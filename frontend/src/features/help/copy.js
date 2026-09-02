@@ -49,6 +49,9 @@ export const logoutEverywhereLabel = "Выйти со всех устройст�
 export const logoutEverywhereConfirm =
   "Вы выйдете здесь и на других устройствах. Войти снова можно будет по логину и паролю.";
 
+export const inviteRoleHint =
+  "Выберите, что человек сможет делать в компании. Доступ можно отключить позже.";
+
 export function tourForRole(role) {
   if (role === "platform_admin") {
     return [

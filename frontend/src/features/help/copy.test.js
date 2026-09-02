@@ -14,6 +14,7 @@ import {
   quickStartForRole,
   roleLabel,
   tourForRole,
+  inviteRoleHint,
 } from "./copy.js";
 
 test("loginFailedMessage does not distinguish why login failed", () => {
@@ -32,9 +33,17 @@ test("loginAccessHint tells the user who can restore access", () => {
 });
 
 test("roleLabel uses plain Russian labels", () => {
+  assert.equal(roleLabel("company_owner"), "Владелец компании");
   assert.equal(roleLabel("company_admin"), "Администратор компании");
   assert.equal(roleLabel("platform_admin"), "Администратор сервиса");
   assert.equal(roleLabel("purchaser"), "Закупщик");
+});
+
+test("inviteRoleHint explains the company access choice", () => {
+  assert.equal(
+    inviteRoleHint,
+    "Выберите, что человек сможет делать в компании. Доступ можно отключить позже.",
+  );
 });
 
 test("quickStartForRole returns non-technical steps", () => {

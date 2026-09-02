@@ -1,8 +1,6 @@
-import { roleLabel, accessSummaryForRole } from "../help/copy.js";
+import { roleLabel, accessSummaryForRole, inviteRoleHint } from "../help/copy.js";
 
-const INVITE_ROLES = ["purchaser", "company_admin"];
-
-export { roleLabel };
+export { roleLabel, inviteRoleHint };
 
 export function accessSummary(role) {
   return accessSummaryForRole(role);
@@ -10,10 +8,13 @@ export function accessSummary(role) {
 
 export function inviteRoleOptions(actorRole) {
   if (actorRole === "platform_admin") {
-    return ["company_admin"];
+    return ["company_owner", "company_admin", "purchaser"];
+  }
+  if (actorRole === "company_owner") {
+    return ["company_admin", "purchaser"];
   }
   if (actorRole === "company_admin") {
-    return [...INVITE_ROLES];
+    return ["purchaser"];
   }
   return [];
 }
@@ -23,7 +24,18 @@ export function canInviteRole(actorRole, targetRole) {
 }
 
 export function canEditCompanyProfile(role) {
-  return role === "company_admin";
+  return role === "company_owner" || role === "company_admin";
+}
+
+export function canManageListedUser(actorRole, targetRole) {
+  if (actorRole === "platform_admin") return true;
+  if (actorRole === "company_owner") {
+    return targetRole === "company_owner" || targetRole === "company_admin" || targetRole === "purchaser";
+  }
+  if (actorRole === "company_admin") {
+    return targetRole === "company_admin" || targetRole === "purchaser";
+  }
+  return false;
 }
 
 export function needsUsersCompanyPicker(role) {

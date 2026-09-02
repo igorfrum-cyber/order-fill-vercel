@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 import { createUser, disableUser, listCompanies, listUsers, resetUser } from "../../api/auth.js";
 import {
+  canManageListedUser,
+  inviteRoleHint,
   inviteRoleOptions,
   needsUsersCompanyPicker,
   pickDefaultCompanyId,
@@ -99,8 +101,8 @@ export function UsersScreen({ companyId, actorRole, onCompany }) {
             }}
           >
             <input className="input flex-1" value={login} onChange={(event) => setLogin(event.target.value)} placeholder="Логин" />
-            {roles.length > 1 ? (
-              <select className="input" value={role} onChange={(event) => setRole(event.target.value)}>
+            {roles.length ? (
+              <select className="input" value={role} onChange={(event) => setRole(event.target.value)} aria-label="Роль">
                 {roles.map((value) => (
                   <option key={value} value={value}>
                     {roleLabel(value)}
@@ -112,9 +114,7 @@ export function UsersScreen({ companyId, actorRole, onCompany }) {
               Пригласить
             </PrimaryButton>
           </form>
-          {roles.length === 1 ? (
-            <p className="text-[13px] text-[var(--color-ink-faint)]">Человек станет администратором этой компании.</p>
-          ) : null}
+          {roles.length ? <p className="text-[13px] text-[var(--color-ink-faint)]">{inviteRoleHint}</p> : null}
           {error ? <p className="text-[14px] text-[var(--color-danger)]">{error}</p> : null}
           {invite ? <InviteBanner url={invite} copied={copied} onCopy={async () => setCopied(await copyText(invite))} /> : null}
           <ul className="divide-y divide-[var(--color-line)] rounded-xl border border-[var(--color-line)] bg-[var(--color-surface)]">
@@ -126,20 +126,24 @@ export function UsersScreen({ companyId, actorRole, onCompany }) {
                   {user.disabled_at ? <span className="ml-2 text-[13px] text-[var(--color-ink-faint)]">выключен</span> : null}
                 </span>
                 <span className="flex gap-2">
-                  <GhostButton onClick={() => setResetTarget(user)}>Сброс доступа</GhostButton>
-                  <GhostButton
-                    onClick={async () => {
-                      setError("");
-                      try {
-                        await disableUser(user.id);
-                        reload();
-                      } catch (err) {
-                        setError(err.message || "Не удалось выключить пользователя.");
-                      }
-                    }}
-                  >
-                    Выключить
-                  </GhostButton>
+                  {canManageListedUser(actorRole, user.role) ? (
+                    <>
+                      <GhostButton onClick={() => setResetTarget(user)}>Сброс доступа</GhostButton>
+                      <GhostButton
+                        onClick={async () => {
+                          setError("");
+                          try {
+                            await disableUser(user.id);
+                            reload();
+                          } catch (err) {
+                            setError(err.message || "Не удалось выключить пользователя.");
+                          }
+                        }}
+                      >
+                        Выключить
+                      </GhostButton>
+                    </>
+                  ) : null}
                 </span>
               </li>
             ))}
