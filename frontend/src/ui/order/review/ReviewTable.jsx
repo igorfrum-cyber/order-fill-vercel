@@ -1,18 +1,6 @@
 import { rowKey } from "../../../features/order/reviewEdits.js";
+import { reviewTableHeaders } from "../../../features/report/rowPresentation.js";
 import { ReportRow } from "./ReportRow.jsx";
-
-const TABLE_HEADERS = [
-  { key: "bar", label: "", align: "left" },
-  { key: "article", label: "Артикул", align: "left" },
-  { key: "name", label: "Товар", align: "left" },
-  { key: "unit", label: "Объём", align: "right" },
-  { key: "stock", label: "Остаток", align: "right" },
-  { key: "transit", label: "В пути", align: "right" },
-  { key: "recommended", label: "Реком.", align: "right" },
-  { key: "inserted", label: "Вставлено", align: "right" },
-  { key: "match", label: "Совпад.", align: "right" },
-  { key: "comment", label: "Комментарий", align: "left" },
-];
 
 export function ReviewTable({
   rows,
@@ -42,7 +30,7 @@ export function ReviewTable({
         </colgroup>
         <thead>
           <tr className="text-left">
-            {TABLE_HEADERS.map((header) => (
+            {reviewTableHeaders().map((header) => (
               <th
                 key={header.key}
                 className={`sticky top-0 z-10 whitespace-nowrap bg-[var(--color-ground)] px-4 pb-3.5 pt-2 text-[13px] font-medium tracking-wide text-[var(--color-ink-faint)] ${

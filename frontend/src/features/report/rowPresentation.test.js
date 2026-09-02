@@ -11,6 +11,8 @@ import {
   matchLayerHint,
   pairedRowCount,
   presentationStatus,
+  attentionReason,
+  reviewTableHeaders,
   rowMatchesQuery,
   rowMatchesTab,
   visibleFillTabs,
@@ -114,6 +116,25 @@ test("visibleFillTabs hides empty fill buckets but always keeps matching and all
     "filled",
     "all",
   ]);
+});
+
+test("reviewTableHeaders use short operational labels", () => {
+  const labels = Object.fromEntries(reviewTableHeaders().map((header) => [header.key, header.label]));
+  assert.equal(labels.recommended, "Расчёт");
+  assert.equal(labels.match, "Похоже");
+  assert.equal(labels.inserted, "Вставлено");
+});
+
+test("attentionReason explains why a row needs a closer look", () => {
+  assert.equal(
+    attentionReason({ status: "warning_name_differs" }),
+    "Название отличается от таблицы заказа.",
+  );
+  assert.equal(
+    attentionReason({ status: "not_in_source" }),
+    "Позиция есть в бланке, но не нашлась в таблице заказа.",
+  );
+  assert.equal(attentionReason({ status: "matched", inserted: 2 }), "");
 });
 
 test("matchLayerHint explains unmatched tabs and stays quiet for fill tabs", () => {

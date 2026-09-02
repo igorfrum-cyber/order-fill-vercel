@@ -105,6 +105,34 @@ export function matchLayerHint(tab) {
   return MATCH_LAYER_HINTS[tab] || "";
 }
 
+export function reviewTableHeaders() {
+  return [
+    { key: "bar", label: "", align: "left" },
+    { key: "article", label: "Артикул", align: "left" },
+    { key: "name", label: "Товар", align: "left" },
+    { key: "unit", label: "Объём", align: "right" },
+    { key: "stock", label: "Остаток", align: "right" },
+    { key: "transit", label: "В пути", align: "right" },
+    { key: "recommended", label: "Расчёт", align: "right" },
+    { key: "inserted", label: "Вставлено", align: "right" },
+    { key: "match", label: "Похоже", align: "right" },
+    { key: "comment", label: "Комментарий", align: "left" },
+  ];
+}
+
+export function attentionReason(row) {
+  if (row.status === "warning_name_differs") {
+    return "Название отличается от таблицы заказа.";
+  }
+  if (row.status === "not_in_source") {
+    return "Позиция есть в бланке, но не нашлась в таблице заказа.";
+  }
+  return "";
+}
+
+export const reviewCommentBanner =
+  "Есть строки, где изменено значение «Вставлено», но не заполнен новый комментарий.";
+
 export function canProceedPastDuplicates({ duplicateKeys = [], acknowledgedKeys = new Set() } = {}) {
   return duplicateKeys.every((key) => acknowledgedKeys.has(key));
 }

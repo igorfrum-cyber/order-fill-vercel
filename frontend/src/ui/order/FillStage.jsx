@@ -24,6 +24,7 @@ export function FillStage({
   summary,
   status,
   busy,
+  banner,
   onDownloadFiles,
   onIssueReport,
 }) {
@@ -81,6 +82,15 @@ export function FillStage({
         onEdit={onEdit}
         onAcknowledge={toggleDuplicateAck}
       />
+
+      {banner ? (
+        <div
+          role="alert"
+          className="mx-6 mt-3 rounded-lg border border-[var(--color-danger)]/25 bg-[var(--color-danger-soft)] px-4 py-3 text-[14px] text-[var(--color-danger)]"
+        >
+          {banner}
+        </div>
+      ) : null}
 
       <footer className="flex flex-wrap items-center gap-3 border-t border-[var(--color-line)] bg-[var(--color-surface)] px-6 py-3">
         <GhostButton onClick={onIssueReport} disabled={busy}>

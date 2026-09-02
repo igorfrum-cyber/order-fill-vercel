@@ -3,7 +3,7 @@ import { quantityDivergesFromRecommendation, roundingComment } from "../../../fe
 import { rowKey } from "../../../features/order/reviewEdits.js";
 import { duplicateDescription } from "../../../features/report/issueReport.js";
 import { baselineForReportRow, statusLabel } from "../../../features/report/reportModel.js";
-import { boxStep, displayArticle, displayName, matchPercent, presentationStatus, quantityDisplay } from "../../../features/report/rowPresentation.js";
+import { boxStep, displayArticle, displayName, matchPercent, presentationStatus, quantityDisplay, attentionReason } from "../../../features/report/rowPresentation.js";
 import { IconChevron } from "../../icons.jsx";
 import { Stepper } from "../../widgets.jsx";
 
@@ -34,6 +34,7 @@ export function ReportRow({ row, edit, expanded, invalid, acknowledged, boxLabel
   const match = matchPercent(row);
   const needsComment = rowNeedsComment(row, edit);
   const isDuplicate = status === "duplicate";
+  const reason = attentionReason(row);
 
   return (
     <>
@@ -125,6 +126,9 @@ export function ReportRow({ row, edit, expanded, invalid, acknowledged, boxLabel
       {expanded && (
         <tr>
           <td colSpan={10} className="border-b border-[var(--color-line-soft)] bg-[var(--color-ground)] px-3 py-3">
+            {reason ? (
+              <p className="mb-3 pl-5 text-[14px] leading-relaxed text-[var(--color-ink)]">{reason}</p>
+            ) : null}
             <div className="grid gap-x-8 gap-y-3 pl-5 text-[14px] sm:grid-cols-3">
               <Detail label="Статус">
                 <span className={`inline-flex rounded-md px-2 py-0.5 text-[13px] font-medium ${TONE_CHIP[meta.tone]}`}>

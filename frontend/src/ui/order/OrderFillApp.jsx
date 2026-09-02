@@ -15,6 +15,7 @@ import { collectReviewEdits, hasManualDeviations, initialEditState, patchEdit, r
 import { issueReportCsv } from "../../features/report/issueReport.js";
 import { combinedSummary, jobProgress, jobStatusText } from "../../features/report/reportModel.js";
 import { issueReportRows, qualityWarningLines, qualityWarningSummary } from "../../features/report/qualityWarnings.js";
+import { reviewCommentBanner } from "../../features/report/rowPresentation.js";
 import { StageRail, TopBar } from "../chrome.jsx";
 import { Modal } from "../widgets.jsx";
 import { FillStage } from "./FillStage.jsx";
@@ -53,6 +54,7 @@ export function OrderFillApp({ companyId, resumeJob, onHome, onHelp }) {
   const [invalidKeys, setInvalidKeys] = useState(new Set());
   const [busy, setBusy] = useState(false);
   const [confirmLines, setConfirmLines] = useState(null);
+  const [banner, setBanner] = useState("");
   const [outputFiles, setOutputFiles] = useState(resumeJob?.outputFiles || []);
   const [finalized, setFinalized] = useState(Boolean(resumeJob?.finalized));
 
@@ -131,7 +133,7 @@ export function OrderFillApp({ companyId, resumeJob, onHome, onHelp }) {
   function downloadIssueReport() {
     const issueRows = issueReportRows(rows);
     if (!issueRows.length) {
-      window.alert("Нет спорных строк для отчета.");
+      setBanner("Нет спорных строк для отчета.");
       return;
     }
     const blob = new Blob([`\ufeff${issueReportCsv(issueRows, (row) => edits.get(rowKey(row)) || { comment: "" })}`], {
@@ -142,15 +144,16 @@ export function OrderFillApp({ companyId, resumeJob, onHome, onHelp }) {
 
   async function openPreview() {
     if (!jobId) {
-      window.alert("Сначала заполните бланк.");
+      setBanner("Сначала заполните бланк.");
       return;
     }
     const invalid = validateReviewEdits(rows, edits);
     if (invalid.length) {
       setInvalidKeys(new Set(invalid));
-      window.alert("Есть строки, где изменено значение «Вставлено», но не заполнен новый комментарий.");
+      setBanner(reviewCommentBanner);
       return;
     }
+    setBanner("");
     const warnings = qualityWarningSummary({ rows, results, edits });
     const lines = qualityWarningLines(warnings, { skipDuplicates: true });
     if (lines.length) {
@@ -184,7 +187,7 @@ export function OrderFillApp({ companyId, resumeJob, onHome, onHelp }) {
       setStatus("");
     } catch (err) {
       setStatus("Ошибка");
-      window.alert(err.message || "Не удалось сохранить правки.");
+      setBanner(err.message || "Не удалось сохранить правки.");
     } finally {
       setBusy(false);
     }
@@ -199,8 +202,7 @@ export function OrderFillApp({ companyId, resumeJob, onHome, onHelp }) {
       triggerBlobDownload(archive.blob, archive.fileName);
       setStatus("Файлы готовы");
     } catch (err) {
-      setStatus("Ошибка");
-      window.alert(err.message || "Не удалось скачать файлы.");
+      setStatus(err.message || "Не удалось скачать файлы.");
     } finally {
       setBusy(false);
     }
@@ -264,6 +266,7 @@ export function OrderFillApp({ companyId, resumeJob, onHome, onHelp }) {
             summary={summary}
             status={status}
             busy={busy}
+            banner={banner}
             onDownloadFiles={openPreview}
             onIssueReport={downloadIssueReport}
           />
