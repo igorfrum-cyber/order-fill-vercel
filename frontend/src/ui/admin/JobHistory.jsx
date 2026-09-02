@@ -56,7 +56,7 @@ export function JobHistory({ me, companyId, onCompany, onOpen, onNew }) {
         </div>
       ) : (
         <p className="mb-4 text-[14px] text-[var(--color-ink-soft)]">
-          Здесь только просмотр: новую выгрузку создаёт закупщик или админ компании.
+          Здесь только просмотр: новую выгрузку создаёт закупщик или администратор компании.
         </p>
       )}
       {error ? <p className="text-[var(--color-danger)]">{error}</p> : null}

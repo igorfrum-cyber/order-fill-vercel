@@ -5,12 +5,12 @@ import { accessSummary, canInviteRole, inviteRoleOptions, roleLabel } from "./ac
 
 test("roleLabel maps known roles to Russian labels", () => {
   assert.equal(roleLabel("purchaser"), "Закупщик");
-  assert.equal(roleLabel("company_admin"), "Админ компании");
-  assert.equal(roleLabel("platform_admin"), "Платформа");
+  assert.equal(roleLabel("company_admin"), "Администратор компании");
+  assert.equal(roleLabel("platform_admin"), "Администратор сервиса");
 });
 
-test("roleLabel falls back to the raw role for unknown values", () => {
-  assert.equal(roleLabel("unknown"), "unknown");
+test("roleLabel falls back to a plain user label", () => {
+  assert.equal(roleLabel("unknown"), "Пользователь");
 });
 
 test("inviteRoleOptions lists roles the actor may invite", () => {

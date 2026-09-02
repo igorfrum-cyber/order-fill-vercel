@@ -1,14 +1,8 @@
-const ROLE_LABELS = {
-  purchaser: "Закупщик",
-  company_admin: "Админ компании",
-  platform_admin: "Платформа",
-};
+import { roleLabel } from "../help/copy.js";
 
 const INVITE_ROLES = ["purchaser", "company_admin"];
 
-export function roleLabel(role) {
-  return ROLE_LABELS[role] || role;
-}
+export { roleLabel };
 
 export function accessSummary(role) {
   if (role === "platform_admin") {
