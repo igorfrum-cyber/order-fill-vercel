@@ -6,6 +6,7 @@ type Role string
 
 const (
 	RolePlatformAdmin Role = "platform_admin"
+	RoleCompanyOwner  Role = "company_owner"
 	RoleCompanyAdmin  Role = "company_admin"
 	RolePurchaser     Role = "purchaser"
 )

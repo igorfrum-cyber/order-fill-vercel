@@ -51,7 +51,7 @@ func (a *Admin) CreateCompany(ctx context.Context, actor identity.User, name str
 }
 
 func (a *Admin) SetCompanyLoginSlug(ctx context.Context, actor identity.User, companyID string, loginSlug string) (identity.Company, error) {
-	if actor.Role == identity.RoleCompanyAdmin {
+	if boundToOwnCompany(actor) {
 		companyID = actor.CompanyID
 	}
 	if !authz.CanManageCompany(actor, companyID) || companyID == "" {
@@ -76,7 +76,7 @@ func (a *Admin) SetCompanyLoginSlug(ctx context.Context, actor identity.User, co
 }
 
 func (a *Admin) UpdateCompany(ctx context.Context, actor identity.User, companyID string, name string, loginSlug string) (identity.Company, error) {
-	if actor.Role == identity.RoleCompanyAdmin {
+	if boundToOwnCompany(actor) {
 		companyID = actor.CompanyID
 	}
 	if !authz.CanManageCompany(actor, companyID) || companyID == "" {
@@ -155,7 +155,7 @@ func (a *Admin) PublicCompanyLogo(ctx context.Context, slug string) (port.Object
 }
 
 func (a *Admin) companyForManager(ctx context.Context, actor identity.User, companyID string) (identity.Company, error) {
-	if actor.Role == identity.RoleCompanyAdmin {
+	if boundToOwnCompany(actor) {
 		companyID = actor.CompanyID
 	}
 	if !authz.CanManageCompany(actor, companyID) || companyID == "" {
@@ -220,7 +220,7 @@ func (a *Admin) CreateUser(ctx context.Context, actor identity.User, companyID s
 	if login == "" {
 		return identity.User{}, "", fmt.Errorf("%w: login is required", job.ErrInvalid)
 	}
-	if actor.Role == identity.RoleCompanyAdmin {
+	if boundToOwnCompany(actor) {
 		companyID = actor.CompanyID
 	}
 	if !authz.CanManageCompany(actor, companyID) || companyID == "" {
@@ -254,7 +254,7 @@ func (a *Admin) CreateUser(ctx context.Context, actor identity.User, companyID s
 }
 
 func (a *Admin) ListUsers(ctx context.Context, actor identity.User, companyID string) ([]identity.User, error) {
-	if actor.Role == identity.RoleCompanyAdmin {
+	if boundToOwnCompany(actor) {
 		companyID = actor.CompanyID
 	}
 	if !authz.CanManageCompany(actor, companyID) {
@@ -283,6 +283,10 @@ func (a *Admin) ListAudit(ctx context.Context, actor identity.User) ([]port.Audi
 		return nil, identity.ErrNotFound
 	}
 	return a.store.ListAudit(ctx, 100)
+}
+
+func boundToOwnCompany(actor identity.User) bool {
+	return actor.Role == identity.RoleCompanyOwner || actor.Role == identity.RoleCompanyAdmin
 }
 
 func (a *Admin) RecordAudit(ctx context.Context, actor identity.User, action string, companyID string, jobID string) {
@@ -316,7 +320,7 @@ func (u *ListJobs) Execute(ctx context.Context, actor identity.User, companyID s
 	switch actor.Role {
 	case identity.RolePlatformAdmin:
 		filter.CompanyID = strings.TrimSpace(companyID)
-	case identity.RoleCompanyAdmin:
+	case identity.RoleCompanyOwner, identity.RoleCompanyAdmin:
 		filter.CompanyID = actor.CompanyID
 	case identity.RolePurchaser:
 		filter.CompanyID = actor.CompanyID

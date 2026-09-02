@@ -253,20 +253,96 @@ func TestCreateUserRecordsInviteCreated(t *testing.T) {
 	assertAudit(t, store, "invite_created", actor.ID, "co-2")
 }
 
-func TestCreateUserPlatformCannotInvitePurchaser(t *testing.T) {
+func TestCreateUserInviteRolesFollowActor(t *testing.T) {
 	_, store := newTestAuthStore(t)
 	admin := NewAdmin(store, func() string { return "new-id" }, func() time.Time {
 		return time.Date(2026, 9, 1, 12, 0, 0, 0, time.UTC)
 	})
-	actor := identity.User{ID: "root", Role: identity.RolePlatformAdmin}
 	if err := store.CreateCompany(context.Background(), identity.Company{ID: "co-2", Name: "Beta"}); err != nil {
 		t.Fatal(err)
 	}
-	if _, _, err := admin.CreateUser(context.Background(), actor, "co-2", "buyer-2", identity.RolePurchaser); !errors.Is(err, job.ErrInvalid) {
-		t.Fatalf("platform purchaser invite: got %v", err)
+	platform := identity.User{ID: "root", Role: identity.RolePlatformAdmin}
+	if _, _, err := admin.CreateUser(context.Background(), platform, "co-2", "owner-2", identity.RoleCompanyOwner); err != nil {
+		t.Fatalf("platform owner invite: %v", err)
 	}
-	if _, _, err := admin.CreateUser(context.Background(), actor, "co-2", "admin-2", identity.RoleCompanyAdmin); err != nil {
+	if _, _, err := admin.CreateUser(context.Background(), platform, "co-2", "admin-2", identity.RoleCompanyAdmin); err != nil {
+		t.Fatalf("platform admin invite: %v", err)
+	}
+	if _, _, err := admin.CreateUser(context.Background(), platform, "co-2", "buyer-2", identity.RolePurchaser); err != nil {
+		t.Fatalf("platform purchaser invite: %v", err)
+	}
+
+	owner := identity.User{ID: "owner-1", CompanyID: "co-2", Role: identity.RoleCompanyOwner}
+	if _, _, err := admin.CreateUser(context.Background(), owner, "co-2", "admin-3", identity.RoleCompanyAdmin); err != nil {
+		t.Fatalf("owner admin invite: %v", err)
+	}
+	if _, _, err := admin.CreateUser(context.Background(), owner, "co-2", "buyer-3", identity.RolePurchaser); err != nil {
+		t.Fatalf("owner purchaser invite: %v", err)
+	}
+	if _, _, err := admin.CreateUser(context.Background(), owner, "co-2", "owner-3", identity.RoleCompanyOwner); !errors.Is(err, job.ErrInvalid) {
+		t.Fatalf("owner cannot invite owner: got %v", err)
+	}
+
+	companyAdmin := identity.User{ID: "admin-1", CompanyID: "co-2", Role: identity.RoleCompanyAdmin}
+	if _, _, err := admin.CreateUser(context.Background(), companyAdmin, "co-2", "buyer-4", identity.RolePurchaser); err != nil {
+		t.Fatalf("admin purchaser invite: %v", err)
+	}
+	if _, _, err := admin.CreateUser(context.Background(), companyAdmin, "co-2", "admin-4", identity.RoleCompanyAdmin); !errors.Is(err, job.ErrInvalid) {
+		t.Fatalf("admin cannot invite admin: got %v", err)
+	}
+}
+
+func TestDisableUserCompanyAdminCannotDisableOwner(t *testing.T) {
+	_, store := newTestAuthStore(t)
+	ctx := context.Background()
+	if err := store.CreateCompany(ctx, identity.Company{ID: "co-1", Name: "Acme"}); err != nil {
 		t.Fatal(err)
+	}
+	owner := identity.User{ID: "owner-1", CompanyID: "co-1", Role: identity.RoleCompanyOwner, Login: "owner"}
+	if err := store.CreateUser(ctx, owner); err != nil {
+		t.Fatal(err)
+	}
+	admin := NewAdmin(store, func() string { return "new-id" }, func() time.Time {
+		return time.Date(2026, 9, 1, 12, 0, 0, 0, time.UTC)
+	})
+	actor := identity.User{ID: "admin-1", CompanyID: "co-1", Role: identity.RoleCompanyAdmin}
+	if err := admin.DisableUser(ctx, actor, owner.ID); !errors.Is(err, identity.ErrNotFound) {
+		t.Fatalf("company admin disable owner: got %v", err)
+	}
+}
+
+func TestDisableUserPlatformCanDisableOwner(t *testing.T) {
+	_, store := newTestAuthStore(t)
+	ctx := context.Background()
+	if err := store.CreateCompany(ctx, identity.Company{ID: "co-1", Name: "Acme"}); err != nil {
+		t.Fatal(err)
+	}
+	owner := identity.User{ID: "owner-1", CompanyID: "co-1", Role: identity.RoleCompanyOwner, Login: "owner"}
+	if err := store.CreateUser(ctx, owner); err != nil {
+		t.Fatal(err)
+	}
+	admin := NewAdmin(store, func() string { return "new-id" }, func() time.Time {
+		return time.Date(2026, 9, 1, 12, 0, 0, 0, time.UTC)
+	})
+	actor := identity.User{ID: "root", Role: identity.RolePlatformAdmin}
+	if err := admin.DisableUser(ctx, actor, owner.ID); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestResetAccessCompanyAdminCannotResetOwner(t *testing.T) {
+	auth, store := newTestAuthStore(t)
+	ctx := context.Background()
+	if err := store.CreateCompany(ctx, identity.Company{ID: "co-1", Name: "Acme"}); err != nil {
+		t.Fatal(err)
+	}
+	owner := identity.User{ID: "owner-1", CompanyID: "co-1", Role: identity.RoleCompanyOwner, Login: "owner"}
+	if err := store.CreateUser(ctx, owner); err != nil {
+		t.Fatal(err)
+	}
+	actor := identity.User{ID: "admin-1", CompanyID: "co-1", Role: identity.RoleCompanyAdmin}
+	if _, err := auth.ResetAccess(ctx, actor, owner.ID); !errors.Is(err, identity.ErrNotFound) {
+		t.Fatalf("company admin reset owner: got %v", err)
 	}
 }
 

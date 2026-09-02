@@ -293,6 +293,14 @@ func TestListJobsScopesByRole(t *testing.T) {
 		t.Fatalf("company admin filter %+v", repo.last)
 	}
 
+	owner := identity.User{ID: "o1", CompanyID: "c1", Role: identity.RoleCompanyOwner}
+	if _, err := lister.Execute(ctx, owner, "other"); err != nil {
+		t.Fatal(err)
+	}
+	if repo.last.CompanyID != "c1" || repo.last.CreatedBy != "" {
+		t.Fatalf("company owner filter %+v", repo.last)
+	}
+
 	platform := identity.User{ID: "root", Role: identity.RolePlatformAdmin}
 	if _, err := lister.Execute(ctx, platform, "c9"); err != nil {
 		t.Fatal(err)

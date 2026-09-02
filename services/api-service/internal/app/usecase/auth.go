@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"order-fill/services/api-service/internal/app/port"
+	"order-fill/services/api-service/internal/domain/authz"
 	"order-fill/services/api-service/internal/domain/identity"
 )
 
@@ -197,14 +198,5 @@ func (a *Auth) recordAudit(ctx context.Context, actor identity.User, action stri
 }
 
 func canManageUser(actor identity.User, target identity.User) bool {
-	if actor.Disabled() {
-		return false
-	}
-	if actor.Role == identity.RolePlatformAdmin {
-		return true
-	}
-	return actor.Role == identity.RoleCompanyAdmin &&
-		actor.CompanyID != "" &&
-		actor.CompanyID == target.CompanyID &&
-		target.Role != identity.RolePlatformAdmin
+	return authz.CanManageUser(actor, target)
 }

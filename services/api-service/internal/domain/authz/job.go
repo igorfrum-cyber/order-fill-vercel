@@ -12,7 +12,7 @@ func CanAccessJob(actor identity.User, entity job.Job) bool {
 	switch actor.Role {
 	case identity.RolePlatformAdmin:
 		return true
-	case identity.RoleCompanyAdmin:
+	case identity.RoleCompanyOwner, identity.RoleCompanyAdmin:
 		return entity.CompanyID != "" && entity.CompanyID == actor.CompanyID
 	case identity.RolePurchaser:
 		return entity.CompanyID != "" && entity.CompanyID == actor.CompanyID && entity.CreatedBy == actor.ID
@@ -28,7 +28,7 @@ func CanManageCompany(actor identity.User, companyID string) bool {
 	if actor.Role == identity.RolePlatformAdmin {
 		return true
 	}
-	return actor.Role == identity.RoleCompanyAdmin && actor.CompanyID != "" && actor.CompanyID == companyID
+	return companyActor(actor) && actor.CompanyID != "" && actor.CompanyID == companyID
 }
 
 func CanInviteRole(actor identity.User, role identity.Role) bool {
@@ -37,9 +37,11 @@ func CanInviteRole(actor identity.User, role identity.Role) bool {
 	}
 	switch actor.Role {
 	case identity.RolePlatformAdmin:
-		return role == identity.RoleCompanyAdmin
-	case identity.RoleCompanyAdmin:
+		return role == identity.RoleCompanyOwner || role == identity.RoleCompanyAdmin || role == identity.RolePurchaser
+	case identity.RoleCompanyOwner:
 		return role == identity.RoleCompanyAdmin || role == identity.RolePurchaser
+	case identity.RoleCompanyAdmin:
+		return role == identity.RolePurchaser
 	default:
 		return false
 	}
@@ -54,9 +56,32 @@ func CanCreateJob(actor identity.User) bool {
 		return false
 	}
 	switch actor.Role {
-	case identity.RolePurchaser, identity.RoleCompanyAdmin:
+	case identity.RolePurchaser, identity.RoleCompanyAdmin, identity.RoleCompanyOwner:
 		return actor.CompanyID != ""
 	default:
 		return false
 	}
+}
+
+func CanManageUser(actor identity.User, target identity.User) bool {
+	if actor.Disabled() {
+		return false
+	}
+	if actor.Role == identity.RolePlatformAdmin {
+		return true
+	}
+	if !companyActor(actor) || actor.CompanyID == "" || actor.CompanyID != target.CompanyID {
+		return false
+	}
+	if target.Role == identity.RolePlatformAdmin {
+		return false
+	}
+	if actor.Role == identity.RoleCompanyAdmin && target.Role == identity.RoleCompanyOwner {
+		return false
+	}
+	return true
+}
+
+func companyActor(actor identity.User) bool {
+	return actor.Role == identity.RoleCompanyOwner || actor.Role == identity.RoleCompanyAdmin
 }
