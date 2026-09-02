@@ -14,7 +14,8 @@ import (
 )
 
 const userSelect = `u.id, COALESCE(u.company_id, ''), COALESCE(c.name, ''), COALESCE(c.login_slug, ''), COALESCE(c.logo_content_type, '') <> '', u.login, u.password_hash, u.role, u.created_at, u.disabled_at,
-		COALESCE(c.disabled_at IS NOT NULL, false), COALESCE(t.enabled_at IS NOT NULL, false)`
+		COALESCE(c.disabled_at IS NOT NULL, false), COALESCE(t.enabled_at IS NOT NULL, false),
+		EXISTS (SELECT 1 FROM passkey_credentials p WHERE p.user_id = u.id)`
 
 func (r *Repository) CountUsers(ctx context.Context) (int, error) {
 	var count int
@@ -195,10 +196,15 @@ func (r *Repository) DisableUser(ctx context.Context, id string, at time.Time) e
 	return nil
 }
 
-func (r *Repository) CreateSession(ctx context.Context, tokenHash string, userID string, expiresAt time.Time) error {
+func (r *Repository) CreateSession(ctx context.Context, session identity.LoginSession) error {
+	created := session.CreatedAt.UTC()
+	if created.IsZero() {
+		created = time.Now().UTC()
+	}
 	_, err := r.pool.Exec(ctx,
-		`INSERT INTO sessions (token_hash, user_id, expires_at) VALUES ($1, $2, $3)`,
-		tokenHash, userID, expiresAt.UTC())
+		`INSERT INTO sessions (token_hash, user_id, expires_at, id, created_at, user_agent, ip)
+		 VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+		session.TokenHash, session.UserID, session.ExpiresAt.UTC(), session.ID, created, session.UserAgent, session.IP)
 	if err != nil {
 		return fmt.Errorf("insert session: %w", err)
 	}
@@ -219,6 +225,28 @@ func (r *Repository) GetSessionUser(ctx context.Context, tokenHash string, now t
 		return identity.User{}, err
 	}
 	return user, nil
+}
+
+func (r *Repository) ListSessions(ctx context.Context, userID string, now time.Time) ([]identity.LoginSession, error) {
+	rows, err := r.pool.Query(ctx,
+		`SELECT COALESCE(id, token_hash), token_hash, user_id, COALESCE(user_agent, ''), COALESCE(ip, ''), COALESCE(created_at, expires_at), expires_at
+		 FROM sessions WHERE user_id = $1 AND expires_at > $2
+		 ORDER BY created_at DESC NULLS LAST`, userID, now.UTC())
+	if err != nil {
+		return nil, fmt.Errorf("list sessions: %w", err)
+	}
+	defer rows.Close()
+	out := make([]identity.LoginSession, 0)
+	for rows.Next() {
+		var item identity.LoginSession
+		if err := rows.Scan(&item.ID, &item.TokenHash, &item.UserID, &item.UserAgent, &item.IP, &item.CreatedAt, &item.ExpiresAt); err != nil {
+			return nil, err
+		}
+		item.CreatedAt = item.CreatedAt.UTC()
+		item.ExpiresAt = item.ExpiresAt.UTC()
+		out = append(out, item)
+	}
+	return out, rows.Err()
 }
 
 func (r *Repository) DeleteSession(ctx context.Context, tokenHash string) error {
@@ -578,7 +606,7 @@ func scanUserRow(row pgx.Row) (identity.User, error) {
 		user identity.User
 		role string
 	)
-	err := row.Scan(&user.ID, &user.CompanyID, &user.CompanyName, &user.CompanyLoginSlug, &user.CompanyHasLogo, &user.Login, &user.PasswordHash, &role, &user.CreatedAt, &user.DisabledAt, &user.CompanyDisabled, &user.TwoFactorEnabled)
+	err := row.Scan(&user.ID, &user.CompanyID, &user.CompanyName, &user.CompanyLoginSlug, &user.CompanyHasLogo, &user.Login, &user.PasswordHash, &role, &user.CreatedAt, &user.DisabledAt, &user.CompanyDisabled, &user.TwoFactorEnabled, &user.HasPasskey)
 	if err != nil {
 		return identity.User{}, err
 	}

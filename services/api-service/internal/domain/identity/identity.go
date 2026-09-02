@@ -25,6 +25,7 @@ type User struct {
 	DisabledAt       *time.Time
 	CompanyDisabled  bool
 	TwoFactorEnabled bool
+	HasPasskey       bool
 }
 
 func (u User) Disabled() bool {

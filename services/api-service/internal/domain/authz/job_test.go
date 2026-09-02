@@ -153,19 +153,22 @@ func TestCanManageUser(t *testing.T) {
 }
 
 func TestNeedsTwoFactorNudge(t *testing.T) {
+	if !NeedsTwoFactorNudge(identity.User{Role: identity.RolePurchaser}) {
+		t.Fatal("purchaser without extra login should be nudged")
+	}
 	if !NeedsTwoFactorNudge(identity.User{Role: identity.RoleCompanyOwner}) {
-		t.Fatal("owner without 2FA should be nudged")
+		t.Fatal("owner without extra login should be nudged")
 	}
 	if !NeedsTwoFactorNudge(identity.User{Role: identity.RoleCompanyAdmin}) {
-		t.Fatal("admin without 2FA should be nudged")
+		t.Fatal("admin without extra login should be nudged")
 	}
 	if !NeedsTwoFactorNudge(identity.User{Role: identity.RolePlatformAdmin}) {
-		t.Fatal("platform admin without 2FA should be nudged")
+		t.Fatal("platform admin without extra login should be nudged")
 	}
-	if NeedsTwoFactorNudge(identity.User{Role: identity.RolePurchaser}) {
-		t.Fatal("purchaser should not be nudged")
-	}
-	if NeedsTwoFactorNudge(identity.User{Role: identity.RoleCompanyOwner, TwoFactorEnabled: true}) {
+	if NeedsTwoFactorNudge(identity.User{Role: identity.RolePurchaser, TwoFactorEnabled: true}) {
 		t.Fatal("enabled 2FA should not be nudged")
+	}
+	if NeedsTwoFactorNudge(identity.User{Role: identity.RolePurchaser, HasPasskey: true}) {
+		t.Fatal("a passkey should not be nudged")
 	}
 }

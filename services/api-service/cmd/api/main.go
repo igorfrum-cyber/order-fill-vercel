@@ -106,6 +106,7 @@ func run(logger *slog.Logger) error {
 		AllowedOrigins:  httpapi.ParseAllowedOrigins(settings.AllowedOrigins),
 		MaxUploadBytes:  settings.MaxUploadBytes,
 		CookieSecure:    settings.CookieSecure,
+		CookieDomain:    settings.CookieDomain,
 		LoginLimiter:    httpapi.NewLimiter(15*time.Minute, 10),
 		CreateLimiter:   httpapi.NewLimiter(time.Hour, 30),
 	})

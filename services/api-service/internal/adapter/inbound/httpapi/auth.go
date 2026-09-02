@@ -28,6 +28,8 @@ type sessionAuthenticator interface {
 	DisableTOTP(ctx context.Context, actor identity.User, password string) error
 	Logout(ctx context.Context, tokenHash string) error
 	LogoutEverywhere(ctx context.Context, actor identity.User) error
+	ListSessions(ctx context.Context, actor identity.User, currentTokenHash string) ([]identity.SessionPublicView, error)
+	RevokeSession(ctx context.Context, actor identity.User, id string, currentTokenHash string) (bool, error)
 	AcceptInvite(ctx context.Context, rawToken string, password string) (usecase.Session, error)
 	ChangePassword(ctx context.Context, actor identity.User, current string, next string) error
 	SessionUser(ctx context.Context, tokenHash string) (identity.User, error)
@@ -42,7 +44,7 @@ func userFrom(r *http.Request) (identity.User, bool) {
 	return user, ok
 }
 
-func writeSessionCookie(w http.ResponseWriter, session usecase.Session, secure bool) {
+func writeSessionCookie(w http.ResponseWriter, session usecase.Session, secure bool, domain string) {
 	maxAge := int(time.Until(session.ExpiresAt).Seconds())
 	if maxAge < 1 {
 		maxAge = 1
@@ -51,6 +53,7 @@ func writeSessionCookie(w http.ResponseWriter, session usecase.Session, secure b
 		Name:     sessionCookieName,
 		Value:    session.RawToken,
 		Path:     "/",
+		Domain:   domain,
 		MaxAge:   maxAge,
 		HttpOnly: true,
 		SameSite: http.SameSiteLaxMode,
@@ -58,11 +61,12 @@ func writeSessionCookie(w http.ResponseWriter, session usecase.Session, secure b
 	})
 }
 
-func clearSessionCookie(w http.ResponseWriter, secure bool) {
+func clearSessionCookie(w http.ResponseWriter, secure bool, domain string) {
 	http.SetCookie(w, &http.Cookie{
 		Name:     sessionCookieName,
 		Value:    "",
 		Path:     "/",
+		Domain:   domain,
 		MaxAge:   -1,
 		HttpOnly: true,
 		SameSite: http.SameSiteLaxMode,
@@ -150,6 +154,7 @@ func setSecurityHeaders(w http.ResponseWriter) {
 type authHandler struct {
 	auth         sessionAuthenticator
 	cookieSecure bool
+	cookieDomain string
 	loginLimiter *Limiter
 }
 
@@ -167,7 +172,7 @@ func (h authHandler) login(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusTooManyRequests, "rate_limited", "too many requests")
 		return
 	}
-	session, err := h.auth.Login(r.Context(), payload.Login, payload.Password)
+	session, err := h.auth.Login(requestClient(r), payload.Login, payload.Password)
 	if err != nil {
 		writeError(w, http.StatusUnauthorized, "unauthorized", "authentication is required")
 		return
@@ -179,7 +184,7 @@ func (h authHandler) login(w http.ResponseWriter, r *http.Request) {
 		})
 		return
 	}
-	writeSessionCookie(w, session.Session, h.cookieSecure)
+	writeSessionCookie(w, session.Session, h.cookieSecure, h.cookieDomain)
 	writeJSON(w, http.StatusOK, presentUser(session.Session.User))
 }
 
@@ -197,12 +202,12 @@ func (h authHandler) login2FA(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusTooManyRequests, "rate_limited", "too many requests")
 		return
 	}
-	session, err := h.auth.CompleteTwoFactor(r.Context(), payload.ChallengeID, payload.Code)
+	session, err := h.auth.CompleteTwoFactor(requestClient(r), payload.ChallengeID, payload.Code)
 	if err != nil {
 		writeError(w, http.StatusUnauthorized, "unauthorized", "authentication is required")
 		return
 	}
-	writeSessionCookie(w, session, h.cookieSecure)
+	writeSessionCookie(w, session, h.cookieSecure, h.cookieDomain)
 	writeJSON(w, http.StatusOK, presentUser(session.User))
 }
 
@@ -215,12 +220,12 @@ func (h authHandler) invite(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	session, err := h.auth.AcceptInvite(r.Context(), payload.Token, payload.Password)
+	session, err := h.auth.AcceptInvite(requestClient(r), payload.Token, payload.Password)
 	if err != nil {
 		writeDomainError(w, "invite_failed", err)
 		return
 	}
-	writeSessionCookie(w, session, h.cookieSecure)
+	writeSessionCookie(w, session, h.cookieSecure, h.cookieDomain)
 	writeJSON(w, http.StatusOK, presentUser(session.User))
 }
 
@@ -228,7 +233,7 @@ func (h authHandler) logout(w http.ResponseWriter, r *http.Request) {
 	if hash := sessionTokenHash(r); hash != "" && h.auth != nil {
 		_ = h.auth.Logout(r.Context(), hash)
 	}
-	clearSessionCookie(w, h.cookieSecure)
+	clearSessionCookie(w, h.cookieSecure, h.cookieDomain)
 	w.WriteHeader(http.StatusNoContent)
 }
 
@@ -242,7 +247,41 @@ func (h authHandler) logoutEverywhere(w http.ResponseWriter, r *http.Request) {
 		writeDomainError(w, "logout_everywhere_failed", err)
 		return
 	}
-	clearSessionCookie(w, h.cookieSecure)
+	clearSessionCookie(w, h.cookieSecure, h.cookieDomain)
+	w.WriteHeader(http.StatusNoContent)
+}
+
+func (h authHandler) listSessions(w http.ResponseWriter, r *http.Request) {
+	user, ok := userFrom(r)
+	if !ok || h.auth == nil {
+		writeError(w, http.StatusUnauthorized, "unauthorized", "authentication is required")
+		return
+	}
+	items, err := h.auth.ListSessions(r.Context(), user, sessionTokenHash(r))
+	if err != nil {
+		writeDomainError(w, "session_list_failed", err)
+		return
+	}
+	if items == nil {
+		items = []identity.SessionPublicView{}
+	}
+	writeJSON(w, http.StatusOK, sessionListResponse{Sessions: items})
+}
+
+func (h authHandler) revokeSession(w http.ResponseWriter, r *http.Request) {
+	user, ok := userFrom(r)
+	if !ok || h.auth == nil {
+		writeError(w, http.StatusUnauthorized, "unauthorized", "authentication is required")
+		return
+	}
+	current, err := h.auth.RevokeSession(r.Context(), user, r.PathValue("id"), sessionTokenHash(r))
+	if err != nil {
+		writeDomainError(w, "session_revoke_failed", err)
+		return
+	}
+	if current {
+		clearSessionCookie(w, h.cookieSecure, h.cookieDomain)
+	}
 	w.WriteHeader(http.StatusNoContent)
 }
 
@@ -355,6 +394,10 @@ func clientIP(r *http.Request) string {
 	return host
 }
 
+func requestClient(r *http.Request) context.Context {
+	return identity.WithClient(r.Context(), identity.ClientInfo{UserAgent: r.UserAgent(), IP: clientIP(r)})
+}
+
 type userResponse struct {
 	ID          string  `json:"id"`
 	Login       string  `json:"login"`
@@ -364,6 +407,7 @@ type userResponse struct {
 	LoginSlug   string  `json:"login_slug,omitempty"`
 	HasLogo     bool    `json:"has_logo,omitempty"`
 	TwoFactor   bool    `json:"two_factor_enabled,omitempty"`
+	HasPasskey  bool    `json:"has_passkey,omitempty"`
 	DisabledAt  *string `json:"disabled_at,omitempty"`
 }
 
@@ -382,6 +426,10 @@ type totpEnableResponse struct {
 	RecoveryCodes []string `json:"recovery_codes"`
 }
 
+type sessionListResponse struct {
+	Sessions []identity.SessionPublicView `json:"sessions"`
+}
+
 func presentUser(user identity.User) userResponse {
 	response := userResponse{
 		ID:          user.ID,
@@ -392,6 +440,7 @@ func presentUser(user identity.User) userResponse {
 		LoginSlug:   user.CompanyLoginSlug,
 		HasLogo:     user.CompanyHasLogo,
 		TwoFactor:   user.TwoFactorEnabled,
+		HasPasskey:  user.HasPasskey,
 	}
 	if user.DisabledAt != nil {
 		value := user.DisabledAt.UTC().Format("2006-01-02T15:04:05Z")

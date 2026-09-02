@@ -1,4 +1,4 @@
-.PHONY: verify lint test up down logs load-order-fill
+.PHONY: verify lint test up down logs load-order-fill lan-https
 
 verify:
 	bash scripts/verify.sh
@@ -14,14 +14,19 @@ test:
 	cd services/api-service && go test ./...
 	cd services/document-service && go test ./...
 
+COMPOSE := docker compose $(if $(wildcard .env),--env-file .env) -f deploy/docker-compose.yml
+
 up:
-	docker compose -f deploy/docker-compose.yml up --build
+	$(COMPOSE) up --build
 
 down:
-	docker compose -f deploy/docker-compose.yml down
+	$(COMPOSE) $(if $(wildcard deploy/Caddyfile.lan),-f deploy/docker-compose.lan-https.yml) down
 
 logs:
-	docker compose -f deploy/docker-compose.yml logs -f
+	$(COMPOSE) logs -f
 
 load-order-fill:
 	node scripts/load-order-fill.mjs $(ARGS)
+
+lan-https:
+	bash scripts/lan-https.sh

@@ -1,3 +1,6 @@
+.env
+deploy/certs/
+deploy/Caddyfile.lan
 node_modules/
 dist/
 .cache/

@@ -61,8 +61,9 @@ type IdentityStore interface {
 	ClearPasswordHash(ctx context.Context, userID string) error
 	DisableUser(ctx context.Context, id string, at time.Time) error
 
-	CreateSession(ctx context.Context, tokenHash string, userID string, expiresAt time.Time) error
+	CreateSession(ctx context.Context, session identity.LoginSession) error
 	GetSessionUser(ctx context.Context, tokenHash string, now time.Time) (identity.User, error)
+	ListSessions(ctx context.Context, userID string, now time.Time) ([]identity.LoginSession, error)
 	DeleteSession(ctx context.Context, tokenHash string) error
 	DeleteSessionsForUser(ctx context.Context, userID string) error
 

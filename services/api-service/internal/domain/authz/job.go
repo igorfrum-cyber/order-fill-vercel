@@ -86,14 +86,11 @@ func companyActor(actor identity.User) bool {
 	return actor.Role == identity.RoleCompanyOwner || actor.Role == identity.RoleCompanyAdmin
 }
 
+// NeedsTwoFactorNudge is true until the person has a passkey or an app code.
+// Every role can set this up; a passkey is enough for daily work.
 func NeedsTwoFactorNudge(actor identity.User) bool {
-	if actor.Disabled() || actor.TwoFactorEnabled {
+	if actor.Disabled() || actor.TwoFactorEnabled || actor.HasPasskey {
 		return false
 	}
-	switch actor.Role {
-	case identity.RolePlatformAdmin, identity.RoleCompanyOwner, identity.RoleCompanyAdmin:
-		return true
-	default:
-		return false
-	}
+	return true
 }

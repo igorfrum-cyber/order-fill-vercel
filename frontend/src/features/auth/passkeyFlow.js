@@ -15,7 +15,11 @@ export async function createPasskey(name = "") {
   const begin = await beginPasskeyRegistration(name);
   const publicKey = creationOptionsFromJSON(publicKeyFromBegin(begin.options));
   const credential = await navigator.credentials.create({ publicKey });
-  if (!credential) throw new Error("passkey create cancelled");
+  if (!credential) {
+    const cancelled = new Error("Добавление отменено.");
+    cancelled.name = "NotAllowedError";
+    throw cancelled;
+  }
   return finishPasskeyRegistration(begin.challenge_id, credentialToJSON(credential), name);
 }
 

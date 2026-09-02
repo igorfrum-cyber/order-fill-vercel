@@ -77,6 +77,13 @@ func migrateStatements() []string {
 			user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
 			expires_at TIMESTAMPTZ NOT NULL
 		)`,
+		`ALTER TABLE sessions ADD COLUMN IF NOT EXISTS id TEXT`,
+		`ALTER TABLE sessions ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ`,
+		`ALTER TABLE sessions ADD COLUMN IF NOT EXISTS user_agent TEXT NOT NULL DEFAULT ''`,
+		`ALTER TABLE sessions ADD COLUMN IF NOT EXISTS ip TEXT NOT NULL DEFAULT ''`,
+		`UPDATE sessions SET id = token_hash WHERE id IS NULL OR id = ''`,
+		`UPDATE sessions SET created_at = expires_at - INTERVAL '7 days' WHERE created_at IS NULL`,
+		`CREATE UNIQUE INDEX IF NOT EXISTS sessions_id_uidx ON sessions (id)`,
 		`CREATE TABLE IF NOT EXISTS invite_tokens (
 			token_hash TEXT PRIMARY KEY,
 			user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,

@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { changePassword, completeTwoFactorLogin, createCompany, disableTwoFactor, enableTwoFactor, getCompanyLogin, login, logoutEverywhere, setCompanyLogo, setCompanyLoginSlug, startTwoFactorSetup, updateCompany } from "./auth.js";
+import { changePassword, completeTwoFactorLogin, createCompany, disableTwoFactor, enableTwoFactor, getCompanyLogin, listSessions, login, logoutEverywhere, setCompanyLogo, setCompanyLoginSlug, startTwoFactorSetup, updateCompany } from "./auth.js";
 import { ApiClient, apiClient } from "./client.js";
 
 test("getCompanyLogin requests public company metadata and encodes the slug", async () => {
@@ -253,6 +253,30 @@ test("logoutEverywhere posts to the all-sessions endpoint", async () => {
     await logoutEverywhere();
     assert.equal(calls[0].url, "/api/v1/auth/logout-everywhere");
     assert.equal(calls[0].options.method, "POST");
+  } finally {
+    apiClient.fetcher = originalFetcher;
+    apiClient.baseUrl = originalBase;
+  }
+});
+
+test("listSessions reads active login devices", async () => {
+  const calls = [];
+  const originalFetcher = apiClient.fetcher;
+  const originalBase = apiClient.baseUrl;
+  apiClient.baseUrl = "";
+  apiClient.fetcher = function fetcher(url, options) {
+    calls.push({ url, options });
+    return Promise.resolve({
+      ok: true,
+      status: 200,
+      headers: new Map([["Content-Type", "application/json"]]),
+      json: async () => ({ sessions: [{ id: "here", device: "Safari на Mac", current: true }] }),
+    });
+  };
+  try {
+    const result = await listSessions();
+    assert.equal(calls[0].url, "/api/v1/auth/sessions");
+    assert.equal(result.sessions[0].device, "Safari на Mac");
   } finally {
     apiClient.fetcher = originalFetcher;
     apiClient.baseUrl = originalBase;

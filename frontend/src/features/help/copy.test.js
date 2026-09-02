@@ -16,10 +16,15 @@ import {
   tourForRole,
   inviteRoleHint,
   twoFactorCodeLabel,
+  twoFactorOpenAppLabel,
+  twoFactorRecoveryHint,
+  twoFactorSetupSteps,
+  securitySetupLabel,
   twoFactorEnableLabel,
   twoFactorLoginTitle,
   twoFactorRequiredHint,
   twoFactorSetupHint,
+  passkeyInsecureOriginHint,
 } from "./copy.js";
 
 test("loginFailedMessage does not distinguish why login failed", () => {
@@ -109,7 +114,7 @@ test("profileFields show login company and access as read-only", () => {
 test("accountPasswordHint tells the user not to share the password", () => {
   assert.equal(
     accountPasswordHint,
-    "Ваш пароль знаете только вы. Если доступ нужен другому человеку, создайте отдельного пользователя.",
+    "Пароль только ваш. На работе удобнее входить по Face ID, Touch ID или Windows Hello.",
   );
 });
 
@@ -122,16 +127,31 @@ test("logoutEverywhere copy explains that every device will be signed out", () =
 });
 
 test("two-factor copy is ready for setup and login", () => {
-  assert.equal(twoFactorEnableLabel, "Включить защиту кодом");
+  assert.equal(securitySetupLabel, "Настроить");
+  assert.equal(twoFactorEnableLabel, "Включить вход по коду");
+  assert.equal(twoFactorOpenAppLabel, "Добавить в приложение");
   assert.equal(twoFactorLoginTitle, "Подтвердите вход");
   assert.equal(twoFactorCodeLabel, "Код из приложения");
   assert.equal(
     twoFactorSetupHint,
-    "Код нужен при входе с новым паролем. Сохраните запасные коды: каждый работает один раз.",
+    "На работе хватит Face ID или Touch ID. Код нужен, только если входите с чужого компьютера.",
   );
   assert.equal(
+    twoFactorRecoveryHint,
+    "Сохраните запасные коды: каждый работает один раз.",
+  );
+  assert.deepEqual(twoFactorSetupSteps, [
+    "Откройте Яндекс Ключ, Google Authenticator или 1Password.",
+    "На телефоне нажмите «Добавить в приложение» — секрет подставится сам. На компьютере наведите камеру на квадрат.",
+    "Введите шесть цифр из приложения.",
+  ]);
+  assert.equal(
     twoFactorRequiredHint,
-    "Для управления доступом включите вход с кодом. Это защищает сотрудников и файлы компании.",
+    "Добавьте Face ID, Touch ID или Windows Hello. На работе код из приложения не понадобится.",
+  );
+  assert.equal(
+    passkeyInsecureOriginHint,
+    "Face ID на этом адресе недоступен. Откройте сайт по обычному домену с https — или войдите паролем.",
   );
 });
 
@@ -143,6 +163,7 @@ test("helpSections stay plain and cover the required topics", () => {
     'Что значит "Нужно проверить"',
     "Пользователи и доступ",
     "Если не получается войти",
+    "Как быстрее входить",
   ]);
   const text = helpSections.map((section) => `${section.title} ${section.body}`).join("\n");
   assert.equal(/api|token|cookie|backend|frontend|endpoint/i.test(text), false);

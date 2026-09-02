@@ -131,6 +131,42 @@ paths:
           description: All sessions removed and cookie cleared.
         "401":
           $ref: "#/components/responses/Unauthorized"
+  /api/v1/auth/sessions:
+    get:
+      operationId: listSessions
+      summary: List active sessions for the current user
+      responses:
+        "200":
+          description: Active login sessions.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [sessions]
+                properties:
+                  sessions:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/Session"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+  /api/v1/auth/sessions/{id}/delete:
+    post:
+      operationId: revokeSession
+      summary: End one session
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+      responses:
+        "204":
+          description: Session removed. Cookie cleared when it was the current session.
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
   /api/v1/auth/password:
     post:
       operationId: changePassword
@@ -1090,6 +1126,8 @@ components:
           type: boolean
         two_factor_enabled:
           type: boolean
+        has_passkey:
+          type: boolean
         disabled_at:
           type: string
           format: date-time
@@ -1114,6 +1152,19 @@ components:
           type: string
           format: date-time
         last_used_at:
+          type: string
+          format: date-time
+    Session:
+      type: object
+      required: [id, device, current, created_at]
+      properties:
+        id:
+          type: string
+        device:
+          type: string
+        current:
+          type: boolean
+        created_at:
           type: string
           format: date-time
     PasskeyBegin:

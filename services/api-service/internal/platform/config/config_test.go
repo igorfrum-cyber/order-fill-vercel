@@ -55,6 +55,41 @@ func TestLoadReadsWebAuthnSettings(t *testing.T) {
 	}
 }
 
+func TestLoadRequiresWebAuthnRPIDInProduction(t *testing.T) {
+	setRequiredEnv(t)
+	t.Setenv("APP_ENV", "production")
+	t.Setenv("API_ALLOWED_ORIGINS", "https://example.com")
+	t.Setenv("SESSION_COOKIE_SECURE", "true")
+
+	if _, err := Load(); err == nil {
+		t.Fatal("production mode must require WEBAUTHN_RP_ID")
+	}
+}
+
+func TestLoadDefaultsCookieDomainToWebAuthnRPIDInProduction(t *testing.T) {
+	setRequiredEnv(t)
+	t.Setenv("APP_ENV", "production")
+	t.Setenv("API_ALLOWED_ORIGINS", "https://example.com")
+	t.Setenv("SESSION_COOKIE_SECURE", "true")
+	t.Setenv("WEBAUTHN_RP_ID", "example.com")
+
+	cfg, err := Load()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cfg.CookieDomain != "example.com" {
+		t.Fatalf("cookie domain %q", cfg.CookieDomain)
+	}
+}
+
+func TestLoadRejectsIPWebAuthnRPID(t *testing.T) {
+	setRequiredEnv(t)
+	t.Setenv("WEBAUTHN_RP_ID", "192.168.31.108")
+	if _, err := Load(); err == nil {
+		t.Fatal("WEBAUTHN_RP_ID must not be an IP address")
+	}
+}
+
 func setRequiredEnv(t *testing.T) {
 	t.Helper()
 	t.Setenv("DATABASE_URL", "postgres://order_fill:order_fill@localhost:5432/order_fill?sslmode=disable")

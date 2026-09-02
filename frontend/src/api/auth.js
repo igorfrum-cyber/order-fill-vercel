@@ -83,6 +83,17 @@ export function listPasskeys() {
   return apiClient.request("/api/v1/auth/passkeys");
 }
 
+export function listSessions() {
+  return apiClient.request("/api/v1/auth/sessions");
+}
+
+export function revokeSession(id) {
+  return apiClient.request(`/api/v1/auth/sessions/${encodeURIComponent(id)}/delete`, {
+    method: "POST",
+    body: JSON.stringify({}),
+  });
+}
+
 export function deletePasskey(id) {
   return apiClient.request(`/api/v1/auth/passkeys/${encodeURIComponent(id)}/delete`, {
     method: "POST",

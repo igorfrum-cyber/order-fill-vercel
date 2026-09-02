@@ -25,6 +25,7 @@ type passkeyAPI interface {
 type passkeyHandler struct {
 	auth           passkeyAPI
 	cookieSecure   bool
+	cookieDomain   string
 	loginLimiter   *Limiter
 	allowedOrigins []string
 }
@@ -137,12 +138,12 @@ func (h passkeyHandler) loginFinish(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusTooManyRequests, "rate_limited", "too many requests")
 		return
 	}
-	session, err := h.auth.FinishPasskeyLogin(r.Context(), origin, payload.ChallengeID, payload.Credential)
+	session, err := h.auth.FinishPasskeyLogin(requestClient(r), origin, payload.ChallengeID, payload.Credential)
 	if err != nil {
 		writeError(w, http.StatusUnauthorized, "unauthorized", "authentication is required")
 		return
 	}
-	writeSessionCookie(w, session, h.cookieSecure)
+	writeSessionCookie(w, session, h.cookieSecure, h.cookieDomain)
 	writeJSON(w, http.StatusOK, presentUser(session.User))
 }
 

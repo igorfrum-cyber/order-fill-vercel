@@ -27,9 +27,9 @@ export function canEditCompanyProfile(role) {
   return role === "company_owner" || role === "company_admin";
 }
 
-export function needsTwoFactorNudge(me) {
-  if (!me || me.two_factor_enabled) return false;
-  return me.role === "platform_admin" || me.role === "company_owner" || me.role === "company_admin";
+export function needsSecurityNudge(me) {
+  if (!me || me.two_factor_enabled || me.has_passkey) return false;
+  return true;
 }
 
 export function canManageListedUser(actorRole, targetRole) {

@@ -42,19 +42,29 @@ export function profileFields(me) {
 }
 
 export const accountPasswordHint =
-  "Ваш пароль знаете только вы. Если доступ нужен другому человеку, создайте отдельного пользователя.";
+  "Пароль только ваш. На работе удобнее входить по Face ID, Touch ID или Windows Hello.";
 
 export const logoutEverywhereLabel = "Выйти со всех устройств";
 
 export const logoutEverywhereConfirm =
   "Вы выйдете здесь и на других устройствах. Войти снова можно будет по логину и паролю.";
 
-export const twoFactorEnableLabel = "Включить защиту кодом";
+export const twoFactorEnableLabel = "Включить вход по коду";
 
-export const twoFactorDisableLabel = "Отключить защиту кодом";
+export const twoFactorDisableLabel = "Отключить вход по коду";
 
 export const twoFactorSetupHint =
-  "Код нужен при входе с новым паролем. Сохраните запасные коды: каждый работает один раз.";
+  "На работе хватит Face ID или Touch ID. Код нужен, только если входите с чужого компьютера.";
+
+export const twoFactorRecoveryHint = "Сохраните запасные коды: каждый работает один раз.";
+
+export const twoFactorSetupSteps = [
+  "Откройте Яндекс Ключ, Google Authenticator или 1Password.",
+  "На телефоне нажмите «Добавить в приложение» — секрет подставится сам. На компьютере наведите камеру на квадрат.",
+  "Введите шесть цифр из приложения.",
+];
+
+export const twoFactorOpenAppLabel = "Добавить в приложение";
 
 export const twoFactorLoginTitle = "Подтвердите вход";
 
@@ -67,23 +77,35 @@ export const twoFactorRecoveryCodeLabel = "Запасной код";
 export const twoFactorManualKeyLabel = "Ключ для приложения";
 
 export const twoFactorRequiredHint =
-  "Для управления доступом включите вход с кодом. Это защищает сотрудников и файлы компании.";
+  "Добавьте Face ID, Touch ID или Windows Hello. На работе код из приложения не понадобится.";
 
-export const passkeyLoginTitle = "Ключ доступа";
+export const securitySetupLabel = "Настроить";
 
-export const passkeyLoginHint =
-  "Face ID, Touch ID, Windows Hello, 1Password, Bitwarden или ключ безопасности";
+export const passkeyLoginTitle = "Быстрый вход";
 
-export const passkeyLoginButton = "Войти с ключом доступа";
+export const passkeyLoginHint = "Face ID, Touch ID, Windows Hello или 1Password";
 
-export const passkeySettingsTitle = "Ключ доступа";
+export const passkeyLoginButton = "Войти по Face ID или Touch ID";
+
+export const passkeySettingsTitle = "Быстрый вход";
 
 export const passkeySettingsHint =
-  "Можно входить по Face ID, Touch ID, Windows Hello, 1Password, Bitwarden или ключу безопасности. Добавьте хотя бы два устройства, чтобы не потерять доступ.";
+  "На работе удобнее входить по Face ID, Touch ID или Windows Hello. Один раз добавьте это устройство — код из приложения не понадобится.";
 
-export const passkeyAddButton = "Добавить ключ доступа";
+export const passkeyAddButton = "Добавить Face ID или Touch ID";
 
 export const passkeyDeleteButton = "Удалить";
+
+export const passkeyInsecureOriginHint =
+  "Face ID на этом адресе недоступен. Откройте сайт по обычному домену с https — или войдите паролем.";
+
+export const sessionsTitle = "Где вы вошли";
+
+export const sessionsHint = "Этот компьютер отмечен. Если видите чужой вход — закройте его.";
+
+export const sessionCurrentLabel = "Этот компьютер";
+
+export const sessionRevokeLabel = "Выйти";
 
 export const inviteRoleHint =
   "Выберите, что человек сможет делать в компании. Доступ можно отключить позже.";
@@ -208,6 +230,10 @@ export const helpSections = [
   },
   {
     title: "Если не получается войти",
-    body: "Проверьте логин и пароль или войдите с ключом доступа. Если ссылка устарела или доступ закрыли, попросите владельца или администратора компании прислать новое приглашение.",
+    body: "Проверьте логин и пароль или войдите по Face ID, Touch ID или Windows Hello. Если ссылка устарела или доступ закрыли, попросите владельца или администратора компании прислать новое приглашение.",
+  },
+  {
+    title: "Как быстрее входить",
+    body: "В профиле добавьте Face ID, Touch ID или Windows Hello — на работе код не понадобится. Если нужен запасной вход, откройте код из приложения и нажмите «Добавить в приложение».",
   },
 ];

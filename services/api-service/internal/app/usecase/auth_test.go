@@ -2,7 +2,9 @@ package usecase
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
+	"strings"
 	"testing"
 	"time"
 
@@ -18,12 +20,15 @@ func TestLoginRejectsUnknownUser(t *testing.T) {
 	}
 }
 
-func TestNeedsTwoFactorNudgeFollowsAccessManagerPolicy(t *testing.T) {
-	if !NeedsTwoFactorNudge(identity.User{Role: identity.RoleCompanyOwner}) {
-		t.Fatal("owner without 2FA should be nudged")
+func TestNeedsTwoFactorNudgeFollowsWorkLoginPolicy(t *testing.T) {
+	if !NeedsTwoFactorNudge(identity.User{Role: identity.RolePurchaser}) {
+		t.Fatal("purchaser without extra login should be nudged")
 	}
-	if NeedsTwoFactorNudge(identity.User{Role: identity.RolePurchaser}) {
-		t.Fatal("purchaser should not be nudged")
+	if !NeedsTwoFactorNudge(identity.User{Role: identity.RoleCompanyOwner}) {
+		t.Fatal("owner without extra login should be nudged")
+	}
+	if NeedsTwoFactorNudge(identity.User{Role: identity.RolePurchaser, HasPasskey: true}) {
+		t.Fatal("a passkey should not be nudged")
 	}
 }
 
@@ -54,6 +59,61 @@ func TestLoginIssuesSession(t *testing.T) {
 	}
 	if got.ID != user.ID {
 		t.Fatalf("got user %s", got.ID)
+	}
+}
+
+func TestListSessionsMarksCurrentFirstAndCanRevokeOther(t *testing.T) {
+	auth, store := newTestAuthStore(t)
+	user := seedPurchaser(t, store, "buyer", "correct-horse")
+	mac := identity.WithClient(context.Background(), identity.ClientInfo{
+		UserAgent: "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 Version/17.0 Safari/605.1.15",
+		IP:        "10.0.0.2",
+	})
+	if _, err := auth.Login(mac, user.Login, "correct-horse"); err != nil {
+		t.Fatal(err)
+	}
+	windows := identity.WithClient(context.Background(), identity.ClientInfo{
+		UserAgent: "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/128.0.0.0 Safari/537.36",
+		IP:        "10.0.0.3",
+	})
+	second, err := auth.Login(windows, user.Login, "correct-horse")
+	if err != nil {
+		t.Fatal(err)
+	}
+	currentHash := identity.HashSecret(second.Session.RawToken)
+	items, err := auth.ListSessions(context.Background(), user, currentHash)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(items) != 2 {
+		t.Fatalf("got %d sessions", len(items))
+	}
+	if !items[0].Current || items[0].Device != "Chrome на Windows" {
+		t.Fatalf("current session %#v", items[0])
+	}
+	if items[1].Current || items[1].Device != "Safari на Mac" {
+		t.Fatalf("other session %#v", items[1])
+	}
+	raw, err := json.Marshal(items)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(string(raw), "10.0.0.") {
+		t.Fatalf("session list leaked IP: %s", raw)
+	}
+	current, err := auth.RevokeSession(context.Background(), user, items[1].ID, currentHash)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if current {
+		t.Fatal("revoking the other session must not sign out here")
+	}
+	left, err := auth.ListSessions(context.Background(), user, currentHash)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(left) != 1 || !left[0].Current {
+		t.Fatalf("left %#v", left)
 	}
 }
 
@@ -625,7 +685,11 @@ type memoryIdentity struct {
 }
 
 type memorySession struct {
+	id        string
 	userID    string
+	userAgent string
+	ip        string
+	createdAt time.Time
 	expiresAt time.Time
 }
 
@@ -816,8 +880,15 @@ func (m *memoryIdentity) DisableUser(_ context.Context, id string, at time.Time)
 	return nil
 }
 
-func (m *memoryIdentity) CreateSession(_ context.Context, tokenHash string, userID string, expiresAt time.Time) error {
-	m.sessions[tokenHash] = memorySession{userID: userID, expiresAt: expiresAt}
+func (m *memoryIdentity) CreateSession(_ context.Context, session identity.LoginSession) error {
+	m.sessions[session.TokenHash] = memorySession{
+		id:        session.ID,
+		userID:    session.UserID,
+		userAgent: session.UserAgent,
+		ip:        session.IP,
+		createdAt: session.CreatedAt,
+		expiresAt: session.ExpiresAt,
+	}
 	return nil
 }
 
@@ -827,6 +898,25 @@ func (m *memoryIdentity) GetSessionUser(_ context.Context, tokenHash string, now
 		return identity.User{}, identity.ErrUnauthorized
 	}
 	return m.GetUserByID(context.Background(), session.userID)
+}
+
+func (m *memoryIdentity) ListSessions(_ context.Context, userID string, now time.Time) ([]identity.LoginSession, error) {
+	out := make([]identity.LoginSession, 0)
+	for hash, session := range m.sessions {
+		if session.userID != userID || !session.expiresAt.After(now) {
+			continue
+		}
+		out = append(out, identity.LoginSession{
+			ID:        session.id,
+			TokenHash: hash,
+			UserID:    session.userID,
+			UserAgent: session.userAgent,
+			IP:        session.ip,
+			CreatedAt: session.createdAt,
+			ExpiresAt: session.expiresAt,
+		})
+	}
+	return out, nil
 }
 
 func (m *memoryIdentity) DeleteSession(_ context.Context, tokenHash string) error {

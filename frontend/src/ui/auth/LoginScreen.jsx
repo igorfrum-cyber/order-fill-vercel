@@ -1,8 +1,14 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { login } from "../../api/auth.js";
 import { apiClient } from "../../api/client.js";
 import { companyLoginCopy, companyLoginLogoURL } from "../../features/auth/accessPresentation.js";
-import { conditionalMediationAvailable, passkeySupported } from "../../features/auth/passkey.js";
+import {
+  conditionalMediationAvailable,
+  isPasskeyRequestPending,
+  passkeyErrorMessage,
+  passkeyUsable,
+  waitForPasskeySlot,
+} from "../../features/auth/passkey.js";
 import { authenticatePasskey } from "../../features/auth/passkeyFlow.js";
 import {
   loginAccessHint,
@@ -21,37 +27,57 @@ export function LoginScreen({ onDone, company }) {
   const [challengeId, setChallengeId] = useState("");
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
+  const onDoneRef = useRef(onDone);
+  const conditionalAbort = useRef(null);
+  const passkeyLock = useRef(false);
+  onDoneRef.current = onDone;
   const copy = companyLoginCopy(company);
   const logoSrc =
     company?.has_logo && company.login_slug ? apiClient.absoluteUrl(companyLoginLogoURL(company.login_slug)) : "";
-  const canUsePasskey = passkeySupported();
+  const canUsePasskey = passkeyUsable();
 
   useEffect(() => {
     if (!canUsePasskey) return undefined;
     const abort = new AbortController();
     (async () => {
       if (!(await conditionalMediationAvailable())) return;
+      if (abort.signal.aborted) return;
+      conditionalAbort.current = abort;
       try {
         const result = await authenticatePasskey("", { mediation: "conditional", signal: abort.signal });
-        if (result) onDone(result);
+        if (result && !abort.signal.aborted) onDoneRef.current(result);
       } catch {
         // User ignored the suggestion or the browser cancelled it.
+      } finally {
+        if (conditionalAbort.current === abort) conditionalAbort.current = null;
       }
     })();
-    return () => abort.abort();
-  }, [canUsePasskey, onDone]);
+    return () => {
+      abort.abort();
+      if (conditionalAbort.current === abort) conditionalAbort.current = null;
+    };
+  }, [canUsePasskey]);
+
+  async function releaseConditionalPasskey() {
+    const abort = conditionalAbort.current;
+    if (!abort || abort.signal.aborted) return;
+    abort.abort();
+    conditionalAbort.current = null;
+    await waitForPasskeySlot();
+  }
 
   async function submit(event) {
     event.preventDefault();
     setBusy(true);
     setError("");
     try {
+      await releaseConditionalPasskey();
       const result = await login(name, password);
       if (result.two_factor_required) {
         setChallengeId(result.challenge_id);
         return;
       }
-      onDone(result);
+      onDoneRef.current(result);
     } catch {
       setError(loginFailedMessage);
     } finally {
@@ -60,14 +86,25 @@ export function LoginScreen({ onDone, company }) {
   }
 
   async function submitPasskey() {
+    if (passkeyLock.current) return;
+    passkeyLock.current = true;
     setBusy(true);
     setError("");
     try {
-      const result = await authenticatePasskey(name);
-      if (result) onDone(result);
-    } catch {
-      setError("Не получилось войти с ключом доступа. Можно войти паролем.");
+      await releaseConditionalPasskey();
+      let result;
+      try {
+        result = await authenticatePasskey(name);
+      } catch (err) {
+        if (!isPasskeyRequestPending(err)) throw err;
+        await waitForPasskeySlot();
+        result = await authenticatePasskey(name);
+      }
+      if (result) onDoneRef.current(result);
+    } catch (err) {
+      setError(passkeyErrorMessage(err, "login"));
     } finally {
+      passkeyLock.current = false;
       setBusy(false);
     }
   }

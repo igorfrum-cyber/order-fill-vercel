@@ -14,20 +14,27 @@ func resolveRPID(origin string, configured string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	configured = strings.TrimSpace(configured)
-	if configured != "" {
-		if host == configured || strings.HasSuffix(host, "."+configured) {
-			return configured, nil
-		}
-		return "", fmt.Errorf("origin %s does not match relying party %s", origin, configured)
+	if ip := net.ParseIP(host); ip != nil && !ip.IsLoopback() {
+		return "", fmt.Errorf("origin %s is an IP address; passkeys need a domain", origin)
 	}
-	if ip := net.ParseIP(host); ip != nil {
+	configured = strings.TrimSpace(configured)
+	if configured == "" {
 		return host, nil
 	}
-	if host == "localhost" || strings.HasSuffix(host, ".localhost") {
-		return "localhost", nil
+	if host == configured {
+		return configured, nil
 	}
-	return host, nil
+	if strings.HasSuffix(host, "."+configured) {
+		if isPublicSuffix(configured) {
+			return host, nil
+		}
+		return configured, nil
+	}
+	return "", fmt.Errorf("origin %s does not match relying party %s", origin, configured)
+}
+
+func isPublicSuffix(value string) bool {
+	return value == "localhost" || value == "local"
 }
 
 func originHost(origin string) (string, error) {

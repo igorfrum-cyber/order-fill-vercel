@@ -37,6 +37,7 @@ type Config struct {
 	AllowedOrigins  []string
 	MaxUploadBytes  int64
 	CookieSecure    bool
+	CookieDomain    string
 	LoginLimiter    *Limiter
 	CreateLimiter   *Limiter
 }
@@ -48,19 +49,21 @@ func NewRouter(config Config) http.Handler {
 		mux.Handle("GET /metrics", metricsHandler{metrics: config.Metrics})
 	}
 
-	auth := authHandler{auth: config.Auth, cookieSecure: config.CookieSecure, loginLimiter: config.LoginLimiter}
+	auth := authHandler{auth: config.Auth, cookieSecure: config.CookieSecure, cookieDomain: config.CookieDomain, loginLimiter: config.LoginLimiter}
 	mux.HandleFunc("POST /api/v1/auth/login", auth.login)
 	mux.HandleFunc("POST /api/v1/auth/login/2fa", auth.login2FA)
 	mux.HandleFunc("POST /api/v1/auth/invite", auth.invite)
 	mux.HandleFunc("POST /api/v1/auth/logout", auth.logout)
 	mux.HandleFunc("POST /api/v1/auth/logout-everywhere", auth.logoutEverywhere)
+	mux.HandleFunc("GET /api/v1/auth/sessions", auth.listSessions)
+	mux.HandleFunc("POST /api/v1/auth/sessions/{id}/delete", auth.revokeSession)
 	mux.HandleFunc("POST /api/v1/auth/password", auth.changePassword)
 	mux.HandleFunc("GET /api/v1/auth/me", auth.me)
 	mux.HandleFunc("POST /api/v1/auth/2fa/setup", auth.startTOTP)
 	mux.HandleFunc("POST /api/v1/auth/2fa/enable", auth.enableTOTP)
 	mux.HandleFunc("POST /api/v1/auth/2fa/disable", auth.disableTOTP)
 
-	passkeys := passkeyHandler{auth: config.Passkeys, cookieSecure: config.CookieSecure, loginLimiter: config.LoginLimiter, allowedOrigins: config.AllowedOrigins}
+	passkeys := passkeyHandler{auth: config.Passkeys, cookieSecure: config.CookieSecure, cookieDomain: config.CookieDomain, loginLimiter: config.LoginLimiter, allowedOrigins: config.AllowedOrigins}
 	mux.HandleFunc("POST /api/v1/auth/passkeys/register/begin", passkeys.registerBegin)
 	mux.HandleFunc("POST /api/v1/auth/passkeys/register/finish", passkeys.registerFinish)
 	mux.HandleFunc("GET /api/v1/auth/passkeys", passkeys.list)

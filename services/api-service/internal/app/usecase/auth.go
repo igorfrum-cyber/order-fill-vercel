@@ -169,6 +169,54 @@ func (a *Auth) LogoutEverywhere(ctx context.Context, actor identity.User) error 
 	return nil
 }
 
+func (a *Auth) ListSessions(ctx context.Context, actor identity.User, currentTokenHash string) ([]identity.SessionPublicView, error) {
+	items, err := a.store.ListSessions(ctx, actor.ID, a.now())
+	if err != nil {
+		return nil, err
+	}
+	out := make([]identity.SessionPublicView, 0, len(items))
+	var current identity.SessionPublicView
+	hasCurrent := false
+	for _, item := range items {
+		view := item.PublicView(currentTokenHash)
+		if view.Current {
+			current = view
+			hasCurrent = true
+			continue
+		}
+		out = append(out, view)
+	}
+	if hasCurrent {
+		return append([]identity.SessionPublicView{current}, out...), nil
+	}
+	return out, nil
+}
+
+func (a *Auth) RevokeSession(ctx context.Context, actor identity.User, id string, currentTokenHash string) (bool, error) {
+	id = strings.TrimSpace(id)
+	if id == "" {
+		return false, identity.ErrNotFound
+	}
+	items, err := a.store.ListSessions(ctx, actor.ID, a.now())
+	if err != nil {
+		return false, err
+	}
+	for _, item := range items {
+		if item.ID != id {
+			continue
+		}
+		if err := a.store.DeleteSession(ctx, item.TokenHash); err != nil {
+			return false, err
+		}
+		current := item.TokenHash != "" && item.TokenHash == currentTokenHash
+		if current {
+			a.recordAudit(ctx, actor, port.AuditLogout, actor.CompanyID, "")
+		}
+		return current, nil
+	}
+	return false, identity.ErrNotFound
+}
+
 func (a *Auth) SessionUser(ctx context.Context, tokenHash string) (identity.User, error) {
 	user, err := a.store.GetSessionUser(ctx, tokenHash, a.now())
 	if err != nil {

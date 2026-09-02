@@ -160,7 +160,6 @@ func (r *RelyingParty) instance(origin string) (*webauthn.WebAuthn, error) {
 			RequireResidentKey: protocol.ResidentKeyNotRequired(),
 			UserVerification:   protocol.VerificationPreferred,
 		},
-		EncodeUserIDAsString: true,
 	})
 }
 

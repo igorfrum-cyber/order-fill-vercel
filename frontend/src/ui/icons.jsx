@@ -123,3 +123,21 @@ export function IconHelp({ className }) {
     </svg>
   );
 }
+
+export function IconComputer({ className }) {
+  return (
+    <svg viewBox="0 0 24 24" className={className} {...stroke}>
+      <rect x="3" y="4" width="18" height="12" rx="2" />
+      <path d="M8 20h8M12 16v4" />
+    </svg>
+  );
+}
+
+export function IconPhone({ className }) {
+  return (
+    <svg viewBox="0 0 24 24" className={className} {...stroke}>
+      <rect x="7" y="2.5" width="10" height="19" rx="2" />
+      <path d="M11 17.5h2" />
+    </svg>
+  );
+}

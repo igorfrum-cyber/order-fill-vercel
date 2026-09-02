@@ -4,6 +4,7 @@ package config
 
 import (
 	"fmt"
+	"net"
 	"os"
 	"strconv"
 	"strings"
@@ -23,6 +24,7 @@ type Config struct {
 	S3AccessKey         string
 	S3SecretKey         string
 	CookieSecure        bool
+	CookieDomain        string
 	BootstrapAdminLogin string
 	WebAuthnRPID        string
 	WebAuthnRPName      string
@@ -45,8 +47,9 @@ func Load() (Config, error) {
 		S3SecretKey:         os.Getenv("S3_SECRET_KEY"),
 		MaxUploadBytes:      getenvInt64("API_MAX_UPLOAD_BYTES", defaultMaxUploadBytes),
 		CookieSecure:        getenvBool("SESSION_COOKIE_SECURE"),
+		CookieDomain:        normalizeHostname(getenv("SESSION_COOKIE_DOMAIN", "")),
 		BootstrapAdminLogin: getenv("BOOTSTRAP_ADMIN_LOGIN", "admin"),
-		WebAuthnRPID:        getenv("WEBAUTHN_RP_ID", ""),
+		WebAuthnRPID:        normalizeHostname(getenv("WEBAUTHN_RP_ID", "")),
 		WebAuthnRPName:      getenv("WEBAUTHN_RP_DISPLAY_NAME", "Order Fill"),
 	}
 
@@ -68,10 +71,19 @@ func Load() (Config, error) {
 	if err := config.validate(); err != nil {
 		return Config{}, err
 	}
+	if strings.EqualFold(config.Environment, "production") && config.CookieDomain == "" {
+		config.CookieDomain = config.WebAuthnRPID
+	}
 	return config, nil
 }
 
 func (c Config) validate() error {
+	if err := validateHostname("WEBAUTHN_RP_ID", c.WebAuthnRPID); err != nil {
+		return err
+	}
+	if err := validateHostname("SESSION_COOKIE_DOMAIN", c.CookieDomain); err != nil {
+		return err
+	}
 	if !strings.EqualFold(c.Environment, "production") {
 		return nil
 	}
@@ -80,6 +92,24 @@ func (c Config) validate() error {
 	}
 	if !c.CookieSecure {
 		return fmt.Errorf("SESSION_COOKIE_SECURE must be true when APP_ENV=production")
+	}
+	if c.WebAuthnRPID == "" || !strings.Contains(c.WebAuthnRPID, ".") {
+		return fmt.Errorf("WEBAUTHN_RP_ID must be a domain like example.com when APP_ENV=production")
+	}
+	return nil
+}
+
+func normalizeHostname(value string) string {
+	value = strings.ToLower(strings.TrimSpace(value))
+	return strings.TrimPrefix(value, ".")
+}
+
+func validateHostname(name string, value string) error {
+	if value == "" {
+		return nil
+	}
+	if strings.Contains(value, "://") || strings.ContainsAny(value, "/:") || net.ParseIP(value) != nil {
+		return fmt.Errorf("%s must be a hostname like example.com", name)
 	}
 	return nil
 }

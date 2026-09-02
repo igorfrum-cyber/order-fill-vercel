@@ -1,16 +1,15 @@
 import { useState } from "react";
-import { changePassword, logoutEverywhere } from "../../api/auth.js";
+import { changePassword } from "../../api/auth.js";
 import { isPasswordReady } from "../../features/auth/password.js";
 import {
   accessSummaryForRole,
   accountPasswordHint,
-  logoutEverywhereConfirm,
-  logoutEverywhereLabel,
   profileFields,
 } from "../../features/help/copy.js";
-import { GhostButton, Modal, PasswordField, PrimaryButton } from "../widgets.jsx";
+import { PasswordField, PrimaryButton } from "../widgets.jsx";
 import { PasswordHints } from "./AuthShared.jsx";
 import { PasskeySettings } from "./PasskeySettings.jsx";
+import { SessionSettings } from "./SessionSettings.jsx";
 import { TwoFactorSetup } from "./TwoFactorSetup.jsx";
 
 export function AccountScreen({ me, onBack, onSignedOut, onMe }) {
@@ -20,9 +19,6 @@ export function AccountScreen({ me, onBack, onSignedOut, onMe }) {
   const [error, setError] = useState("");
   const [done, setDone] = useState(false);
   const [busy, setBusy] = useState(false);
-  const [confirmEverywhere, setConfirmEverywhere] = useState(false);
-  const [everywhereBusy, setEverywhereBusy] = useState(false);
-  const [everywhereError, setEverywhereError] = useState("");
   const ready = Boolean(current) && isPasswordReady(password, repeat);
   const fields = profileFields(me);
 
@@ -45,20 +41,6 @@ export function AccountScreen({ me, onBack, onSignedOut, onMe }) {
     }
   }
 
-  async function signOutEverywhere() {
-    setEverywhereBusy(true);
-    setEverywhereError("");
-    try {
-      await logoutEverywhere();
-      onSignedOut?.();
-    } catch {
-      setEverywhereError("Не удалось выйти со всех устройств.");
-      setConfirmEverywhere(false);
-    } finally {
-      setEverywhereBusy(false);
-    }
-  }
-
   return (
     <section className="animate-enter mx-auto max-w-lg space-y-5 p-6">
       <button type="button" className="text-[14px] text-[var(--color-brand)]" onClick={onBack}>
@@ -76,21 +58,16 @@ export function AccountScreen({ me, onBack, onSignedOut, onMe }) {
         ))}
         <p className="pt-1 text-[14px] leading-relaxed text-[var(--color-ink-soft)]">{accessSummaryForRole(me.role)}</p>
       </dl>
-      <div className="space-y-3">
-        <h2 className="text-[16px] font-semibold">Безопасность</h2>
-        <p className="text-[14px] leading-relaxed text-[var(--color-ink-soft)]">{accountPasswordHint}</p>
-        {everywhereError ? <p className="text-[14px] text-[var(--color-danger)]">{everywhereError}</p> : null}
-        <GhostButton onClick={() => setConfirmEverywhere(true)} disabled={everywhereBusy}>
-          {logoutEverywhereLabel}
-        </GhostButton>
-      </div>
+      <PasskeySettings onChanged={(hasPasskey) => onMe?.((current) => ({ ...current, has_passkey: hasPasskey }))} />
+      <SessionSettings onSignedOut={onSignedOut} />
       <TwoFactorSetup
         enabled={Boolean(me.two_factor_enabled)}
-        onChanged={(enabled) => onMe?.({ ...me, two_factor_enabled: enabled })}
+        hasPasskey={Boolean(me.has_passkey)}
+        onChanged={(enabled) => onMe?.((current) => ({ ...current, two_factor_enabled: enabled }))}
       />
-      <PasskeySettings />
       <form className="space-y-4 rounded-2xl border border-[var(--color-line)] bg-[var(--color-surface)] p-6" onSubmit={submit}>
-        <h2 className="text-[16px] font-semibold">Сменить пароль</h2>
+        <h2 className="text-[16px] font-semibold">Пароль</h2>
+        <p className="text-[14px] leading-relaxed text-[var(--color-ink-soft)]">{accountPasswordHint}</p>
         <PasswordField label="Текущий пароль" value={current} onChange={setCurrent} autoComplete="current-password" />
         <PasswordField
           label="Новый пароль"
@@ -108,18 +85,6 @@ export function AccountScreen({ me, onBack, onSignedOut, onMe }) {
           Сохранить
         </PrimaryButton>
       </form>
-      {confirmEverywhere ? (
-        <Modal
-          title={logoutEverywhereLabel}
-          cancelLabel="Отмена"
-          confirmLabel="Выйти"
-          confirmDisabled={everywhereBusy}
-          onCancel={() => setConfirmEverywhere(false)}
-          onConfirm={signOutEverywhere}
-        >
-          {logoutEverywhereConfirm}
-        </Modal>
-      ) : null}
     </section>
   );
 }

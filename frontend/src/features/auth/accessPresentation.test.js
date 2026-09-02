@@ -15,7 +15,7 @@ import {
   loginSlugIssue,
   inviteRoleHint,
   inviteRoleOptions,
-  needsTwoFactorNudge,
+  needsSecurityNudge,
   needsUsersCompanyPicker,
   pickDefaultCompanyId,
   resolveUsersCompanyId,
@@ -85,12 +85,14 @@ test("company owner and company admin edit the company profile", () => {
   assert.equal(canEditCompanyProfile("purchaser"), false);
 });
 
-test("needsTwoFactorNudge prompts access managers until 2FA is on", () => {
-  assert.equal(needsTwoFactorNudge({ role: "company_owner" }), true);
-  assert.equal(needsTwoFactorNudge({ role: "company_admin" }), true);
-  assert.equal(needsTwoFactorNudge({ role: "platform_admin" }), true);
-  assert.equal(needsTwoFactorNudge({ role: "purchaser" }), false);
-  assert.equal(needsTwoFactorNudge({ role: "company_owner", two_factor_enabled: true }), false);
+test("needsSecurityNudge prompts every signed-in user until a passkey or code is on", () => {
+  assert.equal(needsSecurityNudge({ role: "purchaser" }), true);
+  assert.equal(needsSecurityNudge({ role: "company_owner" }), true);
+  assert.equal(needsSecurityNudge({ role: "company_admin" }), true);
+  assert.equal(needsSecurityNudge({ role: "platform_admin" }), true);
+  assert.equal(needsSecurityNudge({ role: "purchaser", two_factor_enabled: true }), false);
+  assert.equal(needsSecurityNudge({ role: "purchaser", has_passkey: true }), false);
+  assert.equal(needsSecurityNudge({ role: "company_owner", two_factor_enabled: true }), false);
 });
 
 test("platform admin must pick a company to manage users", () => {

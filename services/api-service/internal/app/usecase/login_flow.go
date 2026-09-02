@@ -25,8 +25,21 @@ func (a *Auth) issueSession(ctx context.Context, user identity.User) (Session, e
 	if err != nil {
 		return Session{}, err
 	}
+	id, err := identity.NewSecret()
+	if err != nil {
+		return Session{}, err
+	}
 	expires := a.now().Add(sessionTTL)
-	if err := a.store.CreateSession(ctx, identity.HashSecret(raw), user.ID, expires); err != nil {
+	client := identity.ClientFrom(ctx)
+	if err := a.store.CreateSession(ctx, identity.LoginSession{
+		ID:        id,
+		TokenHash: identity.HashSecret(raw),
+		UserID:    user.ID,
+		UserAgent: client.UserAgent,
+		IP:        client.IP,
+		CreatedAt: a.now().UTC(),
+		ExpiresAt: expires,
+	}); err != nil {
 		return Session{}, fmt.Errorf("create session: %w", err)
 	}
 	return Session{RawToken: raw, User: user, ExpiresAt: expires}, nil

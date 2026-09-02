@@ -1,0 +1,27 @@
+services:
+  frontend:
+    volumes:
+      - ./certs/local-ca.cer:/usr/share/nginx/html/local-ca.cer:ro
+
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    depends_on:
+      frontend:
+        condition: service_healthy
+    ports:
+      - "443:443"
+    volumes:
+      - ./Caddyfile.lan:/etc/caddy/Caddyfile:ro
+      - ./certs/lan.pem:/certs/lan.pem:ro
+      - ./certs/lan-key.pem:/certs/lan-key.pem:ro
+    healthcheck:
+      test: ["CMD", "caddy", "version"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    deploy:
+      resources:
+        limits:
+          cpus: "0.50"
+          memory: 128M

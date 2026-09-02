@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"order-fill/services/api-service/internal/app/port"
+	"order-fill/services/api-service/internal/app/usecase"
 	"order-fill/services/api-service/internal/domain/identity"
 	"order-fill/services/api-service/internal/domain/job"
 )
@@ -248,6 +249,35 @@ func TestSecurityHeadersOnResponses(t *testing.T) {
 	}
 }
 
+func TestMeIncludesHasPasskey(t *testing.T) {
+	token := "owner-token"
+	router := NewRouter(Config{
+		AllowedOrigins: []string{"http://127.0.0.1:3200"},
+		Auth: stubAuth{users: map[string]identity.User{
+			identity.HashSecret(token): {
+				ID:         "user-a",
+				Login:      "buyer",
+				Role:       identity.RolePurchaser,
+				HasPasskey: true,
+			},
+		}},
+	})
+	request := httptest.NewRequest(http.MethodGet, "/api/v1/auth/me", nil)
+	request.AddCookie(&http.Cookie{Name: sessionCookieName, Value: token})
+	response := httptest.NewRecorder()
+	router.ServeHTTP(response, request)
+	if response.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d body %s", response.Code, response.Body.String())
+	}
+	var payload map[string]any
+	if err := json.NewDecoder(response.Body).Decode(&payload); err != nil {
+		t.Fatal(err)
+	}
+	if payload["has_passkey"] != true {
+		t.Fatalf("has_passkey: got %#v", payload["has_passkey"])
+	}
+}
+
 func TestMeIncludesCompanyName(t *testing.T) {
 	token := "owner-token"
 	router := NewRouter(Config{
@@ -309,6 +339,31 @@ func TestMeIncludesCompanyLoginSlug(t *testing.T) {
 	}
 }
 
+func TestListSessionsReturnsDevices(t *testing.T) {
+	token := "owner-token"
+	router := NewRouter(Config{
+		AllowedOrigins: []string{"http://127.0.0.1:3200"},
+		Auth: stubAuth{
+			users: map[string]identity.User{identity.HashSecret(token): {ID: "user-a", Login: "buyer", Role: identity.RolePurchaser}},
+			sessions: []identity.SessionPublicView{
+				{ID: "here", Device: "Safari на Mac", Current: true},
+				{ID: "other", Device: "Chrome на Windows", Current: false},
+			},
+		},
+	})
+	request := httptest.NewRequest(http.MethodGet, "/api/v1/auth/sessions", nil)
+	request.AddCookie(&http.Cookie{Name: sessionCookieName, Value: token})
+	response := httptest.NewRecorder()
+	router.ServeHTTP(response, request)
+	if response.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d body %s", response.Code, response.Body.String())
+	}
+	body := response.Body.String()
+	if !strings.Contains(body, "Safari на Mac") || !strings.Contains(body, "Chrome на Windows") {
+		t.Fatalf("sessions body %s", body)
+	}
+}
+
 func TestLogoutEverywhereClearsCookie(t *testing.T) {
 	token := "owner-token"
 	user := identity.User{ID: "user-a", Login: "buyer", Role: identity.RolePurchaser, CompanyID: "company-a"}
@@ -343,6 +398,18 @@ func TestLogoutEverywhereClearsCookie(t *testing.T) {
 	}
 	if !cleared {
 		t.Fatal("expected cleared session cookie")
+	}
+}
+
+func TestWriteSessionCookieSetsParentDomain(t *testing.T) {
+	response := httptest.NewRecorder()
+	writeSessionCookie(response, usecase.Session{RawToken: "tok", ExpiresAt: time.Now().Add(time.Hour)}, true, "example.com")
+	cookies := response.Result().Cookies()
+	if len(cookies) != 1 {
+		t.Fatalf("got %d cookies", len(cookies))
+	}
+	if cookies[0].Domain != "example.com" || !cookies[0].Secure || cookies[0].Name != sessionCookieName {
+		t.Fatalf("cookie %#v", cookies[0])
 	}
 }
 
