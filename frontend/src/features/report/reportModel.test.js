@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { combinedSummary, jobProgress, jobStatusText, jobStatusLabel, reportSummaryFromRows, statusLabel } from "./reportModel.js";
+import { combinedSummary, jobProgress, jobStatusText, jobStatusLabel, jobsEmptyState, jobStatusHint, reportSummaryFromRows, statusLabel } from "./reportModel.js";
 
 test("reportSummaryFromRows derives dashboard metrics from API report rows", () => {
   const rows = [
@@ -73,6 +73,28 @@ test("jobStatusLabel is Russian for every job status", () => {
   assert.equal(jobStatusLabel("completed"), "Готово");
   assert.equal(jobStatusLabel("failed"), "Ошибка");
   assert.equal(jobStatusLabel("mystery_code"), "В работе");
+});
+
+test("jobsEmptyState tells company users how to start and platform admin that the company has none", () => {
+  assert.equal(
+    jobsEmptyState("purchaser"),
+    "Пока нет выгрузок. Начните с бланка закупки или объединения Севера.",
+  );
+  assert.equal(
+    jobsEmptyState("company_admin"),
+    "Пока нет выгрузок. Начните с бланка закупки или объединения Севера.",
+  );
+  assert.equal(jobsEmptyState("platform_admin"), "Пока нет выгрузок по выбранной компании.");
+});
+
+test("jobStatusHint explains each status without putting a paragraph in the row", () => {
+  assert.equal(jobStatusHint("queued"), "Файлы ждут обработки.");
+  assert.equal(jobStatusHint("processing"), "Сервис читает файлы и считает количества.");
+  assert.equal(jobStatusHint("needs_review"), "Откройте выгрузку и проверьте строки.");
+  assert.equal(jobStatusHint("finalizing"), "Собираю готовые Excel-файлы.");
+  assert.equal(jobStatusHint("completed"), "Можно скачать готовые файлы.");
+  assert.equal(jobStatusHint("failed"), "Не получилось обработать. Откройте строку, чтобы увидеть причину.");
+  assert.equal(jobStatusHint("unknown"), "");
 });
 
 test("jobStatusText maps terminal errors to their API message", () => {

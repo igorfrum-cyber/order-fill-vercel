@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { listCompanies, listJobs } from "../../api/auth.js";
 import { brandLabel } from "../../features/brands/brandPresentation.js";
-import { jobStatusLabel } from "../../features/report/reportModel.js";
+import { jobStatusHint, jobStatusLabel, jobsEmptyState } from "../../features/report/reportModel.js";
 
 export function JobHistory({ me, companyId, onCompany, onOpen, onNew }) {
   const [jobs, setJobs] = useState([]);
@@ -45,14 +45,14 @@ export function JobHistory({ me, companyId, onCompany, onOpen, onNew }) {
         <div className="mb-6 grid gap-3 sm:grid-cols-2">
           <JobTypeCard
             tour="order"
-            title="Бланк закупки"
-            hint="Таблица заказа и текущий бланк поставщика"
+            title="Заполнить бланк закупки"
+            hint="Для заказа поставщику"
             onClick={() => onNew("order")}
           />
           <JobTypeCard
             tour="north"
-            title="Север"
-            hint="Объединение городских бланков и таблицы Тюмени"
+            title="Соединить северные бланки"
+            hint="Для распределения между городами"
             onClick={() => onNew("north")}
           />
         </div>
@@ -88,7 +88,7 @@ export function JobHistory({ me, companyId, onCompany, onOpen, onNew }) {
             {!jobs.length ? (
               <tr>
                 <td className="px-4 py-8 text-[var(--color-ink-faint)]" colSpan={5}>
-                  Пока нет выгрузок
+                  {jobsEmptyState(me.role)}
                 </td>
               </tr>
             ) : null}
@@ -121,7 +121,14 @@ function JobStatus({ status }) {
     queued: "bg-[var(--color-neutral-soft)] text-[var(--color-ink-soft)]",
     finalizing: "bg-[var(--color-neutral-soft)] text-[var(--color-ink-soft)]",
   }[status] || "bg-[var(--color-neutral-soft)] text-[var(--color-ink-soft)]";
-  return <span className={`inline-flex rounded-full px-2.5 py-1 text-[13px] font-medium ${tone}`}>{jobStatusLabel(status)}</span>;
+  return (
+    <span
+      className={`inline-flex rounded-full px-2.5 py-1 text-[13px] font-medium ${tone}`}
+      title={jobStatusHint(status)}
+    >
+      {jobStatusLabel(status)}
+    </span>
+  );
 }
 
 function JobTypeCard({ title, hint, onClick, tour }) {

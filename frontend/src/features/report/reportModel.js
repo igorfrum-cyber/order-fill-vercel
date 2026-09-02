@@ -25,6 +25,26 @@ export function jobStatusLabel(status) {
   return JOB_STATUS_LABELS[status] || "В работе";
 }
 
+const JOB_STATUS_HINTS = {
+  queued: "Файлы ждут обработки.",
+  processing: "Сервис читает файлы и считает количества.",
+  needs_review: "Откройте выгрузку и проверьте строки.",
+  finalizing: "Собираю готовые Excel-файлы.",
+  completed: "Можно скачать готовые файлы.",
+  failed: "Не получилось обработать. Откройте строку, чтобы увидеть причину.",
+};
+
+export function jobStatusHint(status) {
+  return JOB_STATUS_HINTS[status] || "";
+}
+
+export function jobsEmptyState(role) {
+  if (role === "platform_admin") {
+    return "Пока нет выгрузок по выбранной компании.";
+  }
+  return "Пока нет выгрузок. Начните с бланка закупки или объединения Севера.";
+}
+
 export function jobStatusText(job) {
   const live = job?.progress_message || job?.progressMessage;
   if (live) return live;
