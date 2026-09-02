@@ -16,6 +16,8 @@ func TestMigrateStatementsIncludeUsers(t *testing.T) {
 		"login_slug",
 		"companies_login_slug_uidx",
 		"logo_content_type",
+		"CREATE TABLE IF NOT EXISTS user_totp",
+		"recovery_code_hashes JSONB NOT NULL DEFAULT '[]'",
 	} {
 		if !strings.Contains(joined, needle) {
 			t.Fatalf("missing %s", needle)

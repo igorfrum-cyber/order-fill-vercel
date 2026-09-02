@@ -70,6 +70,12 @@ type IdentityStore interface {
 	DeleteInvitesForUser(ctx context.Context, userID string) error
 	ConsumeInvite(ctx context.Context, tokenHash string, now time.Time) (string, error)
 
+	SaveTOTPSetup(ctx context.Context, settings identity.TOTP) error
+	GetTOTP(ctx context.Context, userID string) (identity.TOTP, error)
+	EnableTOTP(ctx context.Context, userID string, at time.Time) error
+	DisableTOTP(ctx context.Context, userID string) error
+	ReplaceRecoveryCodes(ctx context.Context, userID string, hashes []string) error
+
 	InsertAudit(ctx context.Context, event AuditEvent) error
 	ListAudit(ctx context.Context, limit int) ([]AuditEvent, error)
 }

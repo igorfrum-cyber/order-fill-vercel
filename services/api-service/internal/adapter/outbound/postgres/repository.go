@@ -103,6 +103,12 @@ func migrateStatements() []string {
 			"rows" JSONB NOT NULL DEFAULT '[]',
 			updated_at TIMESTAMPTZ NOT NULL
 		)`,
+		`CREATE TABLE IF NOT EXISTS user_totp (
+			user_id TEXT PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+			secret TEXT NOT NULL,
+			enabled_at TIMESTAMPTZ,
+			recovery_code_hashes JSONB NOT NULL DEFAULT '[]'
+		)`,
 	}
 }
 

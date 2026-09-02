@@ -4,8 +4,10 @@ import (
 	"encoding/json"
 	"reflect"
 	"sort"
+	"strings"
 	"testing"
 
+	"order-fill/services/api-service/internal/domain/identity"
 	"order-fill/services/api-service/internal/domain/job"
 )
 
@@ -256,6 +258,30 @@ func TestUnmarshalJSONIgnoresEmptyColumn(t *testing.T) {
 	}
 	if rows != nil {
 		t.Fatalf("expected untouched target, got %#v", rows)
+	}
+}
+
+func TestRecoveryCodeHashesJSONOmitsRawCodes(t *testing.T) {
+	raw, hashes, err := identity.GenerateRecoveryCodes(8)
+	if err != nil {
+		t.Fatal(err)
+	}
+	encoded, err := marshalJSON(hashes, "recovery_code_hashes")
+	if err != nil {
+		t.Fatal(err)
+	}
+	stored := string(encoded)
+	for _, code := range raw {
+		if strings.Contains(stored, code) {
+			t.Fatalf("raw recovery code leaked into stored json: %s", code)
+		}
+	}
+	var decoded []string
+	if err := unmarshalJSON(encoded, &decoded, "recovery_code_hashes"); err != nil {
+		t.Fatal(err)
+	}
+	if !reflect.DeepEqual(decoded, hashes) {
+		t.Fatalf("hash round trip mismatch: got %v want %v", decoded, hashes)
 	}
 }
 

@@ -259,6 +259,92 @@ func (r *Repository) ConsumeInvite(ctx context.Context, tokenHash string, now ti
 	return userID, nil
 }
 
+func (r *Repository) SaveTOTPSetup(ctx context.Context, settings identity.TOTP) error {
+	hashes, err := marshalJSON(recoveryHashes(settings.RecoveryCodeHashes), "recovery_code_hashes")
+	if err != nil {
+		return err
+	}
+	_, err = r.pool.Exec(ctx,
+		`INSERT INTO user_totp (user_id, secret, enabled_at, recovery_code_hashes)
+		 VALUES ($1, $2, $3, $4)
+		 ON CONFLICT (user_id) DO UPDATE SET
+			secret = EXCLUDED.secret,
+			enabled_at = EXCLUDED.enabled_at,
+			recovery_code_hashes = EXCLUDED.recovery_code_hashes`,
+		settings.UserID, settings.Secret, settings.EnabledAt, hashes)
+	if err != nil {
+		return fmt.Errorf("save totp: %w", err)
+	}
+	return nil
+}
+
+func (r *Repository) GetTOTP(ctx context.Context, userID string) (identity.TOTP, error) {
+	var (
+		settings identity.TOTP
+		raw      []byte
+	)
+	err := r.pool.QueryRow(ctx,
+		`SELECT user_id, secret, enabled_at, recovery_code_hashes FROM user_totp WHERE user_id = $1`,
+		userID).Scan(&settings.UserID, &settings.Secret, &settings.EnabledAt, &raw)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return identity.TOTP{}, identity.ErrNotFound
+		}
+		return identity.TOTP{}, fmt.Errorf("select totp: %w", err)
+	}
+	if err := unmarshalJSON(raw, &settings.RecoveryCodeHashes, "recovery_code_hashes"); err != nil {
+		return identity.TOTP{}, err
+	}
+	if settings.RecoveryCodeHashes == nil {
+		settings.RecoveryCodeHashes = []string{}
+	}
+	return settings, nil
+}
+
+func (r *Repository) EnableTOTP(ctx context.Context, userID string, at time.Time) error {
+	tag, err := r.pool.Exec(ctx, `UPDATE user_totp SET enabled_at = $2 WHERE user_id = $1`, userID, at.UTC())
+	if err != nil {
+		return fmt.Errorf("enable totp: %w", err)
+	}
+	if tag.RowsAffected() == 0 {
+		return identity.ErrNotFound
+	}
+	return nil
+}
+
+func (r *Repository) DisableTOTP(ctx context.Context, userID string) error {
+	tag, err := r.pool.Exec(ctx, `DELETE FROM user_totp WHERE user_id = $1`, userID)
+	if err != nil {
+		return fmt.Errorf("disable totp: %w", err)
+	}
+	if tag.RowsAffected() == 0 {
+		return identity.ErrNotFound
+	}
+	return nil
+}
+
+func (r *Repository) ReplaceRecoveryCodes(ctx context.Context, userID string, hashes []string) error {
+	encoded, err := marshalJSON(recoveryHashes(hashes), "recovery_code_hashes")
+	if err != nil {
+		return err
+	}
+	tag, err := r.pool.Exec(ctx, `UPDATE user_totp SET recovery_code_hashes = $2 WHERE user_id = $1`, userID, encoded)
+	if err != nil {
+		return fmt.Errorf("replace recovery codes: %w", err)
+	}
+	if tag.RowsAffected() == 0 {
+		return identity.ErrNotFound
+	}
+	return nil
+}
+
+func recoveryHashes(hashes []string) []string {
+	if hashes == nil {
+		return []string{}
+	}
+	return hashes
+}
+
 func (r *Repository) InsertAudit(ctx context.Context, event port.AuditEvent) error {
 	_, err := r.pool.Exec(ctx,
 		`INSERT INTO audit_events (id, at, actor_id, action, company_id, job_id) VALUES ($1, $2, $3, $4, $5, $6)`,

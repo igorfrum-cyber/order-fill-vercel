@@ -438,6 +438,7 @@ type memoryIdentity struct {
 	users     map[string]identity.User
 	sessions  map[string]memorySession
 	invites   map[string]memoryInvite
+	totp      map[string]identity.TOTP
 	audits    []port.AuditEvent
 }
 
@@ -457,6 +458,7 @@ func newMemoryIdentity() *memoryIdentity {
 		users:     map[string]identity.User{},
 		sessions:  map[string]memorySession{},
 		invites:   map[string]memoryInvite{},
+		totp:      map[string]identity.TOTP{},
 	}
 }
 
@@ -675,6 +677,57 @@ func (m *memoryIdentity) ConsumeInvite(_ context.Context, tokenHash string, now 
 	}
 	delete(m.invites, tokenHash)
 	return invite.userID, nil
+}
+
+func (m *memoryIdentity) SaveTOTPSetup(_ context.Context, settings identity.TOTP) error {
+	if settings.RecoveryCodeHashes == nil {
+		settings.RecoveryCodeHashes = []string{}
+	}
+	cloned := settings
+	cloned.RecoveryCodeHashes = append([]string{}, settings.RecoveryCodeHashes...)
+	m.totp[settings.UserID] = cloned
+	return nil
+}
+
+func (m *memoryIdentity) GetTOTP(_ context.Context, userID string) (identity.TOTP, error) {
+	settings, ok := m.totp[userID]
+	if !ok {
+		return identity.TOTP{}, identity.ErrNotFound
+	}
+	cloned := settings
+	cloned.RecoveryCodeHashes = append([]string{}, settings.RecoveryCodeHashes...)
+	return cloned, nil
+}
+
+func (m *memoryIdentity) EnableTOTP(_ context.Context, userID string, at time.Time) error {
+	settings, ok := m.totp[userID]
+	if !ok {
+		return identity.ErrNotFound
+	}
+	settings.EnabledAt = &at
+	m.totp[userID] = settings
+	return nil
+}
+
+func (m *memoryIdentity) DisableTOTP(_ context.Context, userID string) error {
+	if _, ok := m.totp[userID]; !ok {
+		return identity.ErrNotFound
+	}
+	delete(m.totp, userID)
+	return nil
+}
+
+func (m *memoryIdentity) ReplaceRecoveryCodes(_ context.Context, userID string, hashes []string) error {
+	settings, ok := m.totp[userID]
+	if !ok {
+		return identity.ErrNotFound
+	}
+	if hashes == nil {
+		hashes = []string{}
+	}
+	settings.RecoveryCodeHashes = append([]string{}, hashes...)
+	m.totp[userID] = settings
+	return nil
 }
 
 func (m *memoryIdentity) InsertAudit(_ context.Context, event port.AuditEvent) error {
