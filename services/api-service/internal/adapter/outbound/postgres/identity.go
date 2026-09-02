@@ -85,6 +85,17 @@ func (r *Repository) GetCompanyByLoginSlug(ctx context.Context, slug string) (id
 	return company, nil
 }
 
+func (r *Repository) SetCompanyLoginSlug(ctx context.Context, id string, slug string) error {
+	tag, err := r.pool.Exec(ctx, `UPDATE companies SET login_slug = $2 WHERE id = $1`, id, slug)
+	if err != nil {
+		return fmt.Errorf("set company login slug: %w", mapConflict(err))
+	}
+	if tag.RowsAffected() == 0 {
+		return identity.ErrNotFound
+	}
+	return nil
+}
+
 func (r *Repository) DisableCompany(ctx context.Context, id string, at time.Time) error {
 	tag, err := r.pool.Exec(ctx, `UPDATE companies SET disabled_at = $2 WHERE id = $1`, id, at.UTC())
 	if err != nil {

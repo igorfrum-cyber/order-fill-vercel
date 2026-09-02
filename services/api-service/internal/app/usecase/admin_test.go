@@ -2,6 +2,8 @@ package usecase
 
 import (
 	"context"
+	"errors"
+	"fmt"
 	"testing"
 	"time"
 
@@ -10,42 +12,60 @@ import (
 	"order-fill/services/api-service/internal/domain/job"
 )
 
-func TestCreateCompanyAssignsLoginSlug(t *testing.T) {
-	store := newMemoryIdentity()
-	admin := NewAdmin(store, func() string { return "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee" }, func() time.Time {
-		return time.Date(2026, 9, 1, 12, 0, 0, 0, time.UTC)
-	})
-	actor := identity.User{ID: "root", Role: identity.RolePlatformAdmin}
-	company, err := admin.CreateCompany(context.Background(), actor, "Acme")
+func TestCreateCompanyRequiresLoginSlug(t *testing.T) {
+	admin, actor := newPlatformAdmin(t)
+	if _, err := admin.CreateCompany(context.Background(), actor, "Кристайл", ""); !errors.Is(err, job.ErrInvalid) {
+		t.Fatalf("got %v", err)
+	}
+}
+
+func TestCreateCompanyUsesProvidedLoginSlug(t *testing.T) {
+	admin, actor := newPlatformAdmin(t)
+	company, err := admin.CreateCompany(context.Background(), actor, "Кристайл", "Kristail")
 	if err != nil {
 		t.Fatal(err)
 	}
-	if company.LoginSlug != "acme" {
+	if company.LoginSlug != "kristail" {
 		t.Fatalf("login slug: got %q", company.LoginSlug)
 	}
 }
 
-func TestCreateCompanyMakesDuplicateNamesUnique(t *testing.T) {
-	store := newMemoryIdentity()
-	n := 0
-	admin := NewAdmin(store, func() string {
-		n++
-		if n == 1 {
-			return "11111111-1111-1111-1111-111111111111"
-		}
-		return "22222222-2222-2222-2222-222222222222"
-	}, func() time.Time { return time.Date(2026, 9, 1, 12, 0, 0, 0, time.UTC) })
-	actor := identity.User{ID: "root", Role: identity.RolePlatformAdmin}
-	if _, err := admin.CreateCompany(context.Background(), actor, "Acme"); err != nil {
+func TestCreateCompanyRejectsDuplicateLoginSlug(t *testing.T) {
+	admin, actor := newPlatformAdmin(t)
+	if _, err := admin.CreateCompany(context.Background(), actor, "Acme", "acme"); err != nil {
 		t.Fatal(err)
 	}
-	second, err := admin.CreateCompany(context.Background(), actor, "Acme")
+	if _, err := admin.CreateCompany(context.Background(), actor, "Other", "acme"); !errors.Is(err, identity.ErrConflict) {
+		t.Fatalf("got %v", err)
+	}
+}
+
+func TestSetCompanyLoginSlugUpdatesExisting(t *testing.T) {
+	admin, actor := newPlatformAdmin(t)
+	created, err := admin.CreateCompany(context.Background(), actor, "Кристайл", "oldslug")
 	if err != nil {
 		t.Fatal(err)
 	}
-	if second.LoginSlug != "acme-22222222" {
-		t.Fatalf("login slug: got %q", second.LoginSlug)
+	updated, err := admin.SetCompanyLoginSlug(context.Background(), actor, created.ID, "kristail")
+	if err != nil {
+		t.Fatal(err)
 	}
+	if updated.LoginSlug != "kristail" {
+		t.Fatalf("login slug: got %q", updated.LoginSlug)
+	}
+}
+
+func newPlatformAdmin(t *testing.T) (*Admin, identity.User) {
+	t.Helper()
+	n := 0
+	store := newMemoryIdentity()
+	admin := NewAdmin(store, func() string {
+		n++
+		return fmt.Sprintf("co-%d", n)
+	}, func() time.Time {
+		return time.Date(2026, 9, 1, 12, 0, 0, 0, time.UTC)
+	})
+	return admin, identity.User{ID: "root", Role: identity.RolePlatformAdmin}
 }
 
 func TestPublicCompanyLoginReturnsActiveCompany(t *testing.T) {

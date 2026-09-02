@@ -221,10 +221,13 @@ paths:
           application/json:
             schema:
               type: object
-              required: [name]
+              required: [name, login_slug]
               properties:
                 name:
                   type: string
+                login_slug:
+                  type: string
+                  description: Public latin login address, unique among companies.
       responses:
         "201":
           description: Company created.
@@ -238,6 +241,39 @@ paths:
           $ref: "#/components/responses/Unauthorized"
         "404":
           $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+  /api/v1/companies/{company_id}/login-slug:
+    post:
+      operationId: setCompanyLoginSlug
+      summary: Set the public latin login address for a company (platform admin)
+      parameters:
+        - $ref: "#/components/parameters/CompanyId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [login_slug]
+              properties:
+                login_slug:
+                  type: string
+      responses:
+        "200":
+          description: Company updated.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Company"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
   /api/v1/companies/{company_id}/disable:
     post:
       operationId: disableCompany
@@ -672,6 +708,12 @@ components:
             $ref: "#/components/schemas/ApiError"
     NotFound:
       description: Resource not found or not visible to the current user.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ApiError"
+    Conflict:
+      description: Resource already exists.
       content:
         application/json:
           schema:

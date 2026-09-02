@@ -5,7 +5,9 @@ import {
   accessSummary,
   canInviteRole,
   companyLoginCopy,
+  companyLoginPath,
   companySlugFromPath,
+  loginSlugIssue,
   inviteRoleOptions,
   needsUsersCompanyPicker,
   pickDefaultCompanyId,
@@ -95,4 +97,15 @@ test("companyLoginCopy personalizes the login screen without leaking ids", () =>
     title: "Вход для сотрудников «Acme»",
     lead: "Работайте только с файлами своей компании.",
   });
+});
+
+test("loginSlugIssue requires latin letters digits and hyphen", () => {
+  assert.equal(loginSlugIssue(""), "Укажите адрес входа латиницей.");
+  assert.match(loginSlugIssue("Кристайл"), /латиниц/i);
+  assert.match(loginSlugIssue("admin"), /зарезерв/i);
+  assert.equal(loginSlugIssue("Kristail"), "");
+});
+
+test("companyLoginPath is a local /c/:slug link", () => {
+  assert.equal(companyLoginPath("kristail"), "/c/kristail");
 });

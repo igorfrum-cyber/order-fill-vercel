@@ -84,6 +84,7 @@ func NewRouter(config Config) http.Handler {
 	mux.HandleFunc("GET /api/v1/companies", admin.listCompanies)
 	mux.HandleFunc("POST /api/v1/companies", admin.createCompany)
 	mux.HandleFunc("POST /api/v1/companies/{company_id}/disable", admin.disableCompany)
+	mux.HandleFunc("POST /api/v1/companies/{company_id}/login-slug", admin.setCompanyLoginSlug)
 	mux.HandleFunc("GET /api/v1/companies/{company_id}/users", admin.listUsers)
 	mux.HandleFunc("POST /api/v1/companies/{company_id}/users", admin.createUser)
 	mux.HandleFunc("POST /api/v1/users/{user_id}/disable", admin.disableUser)

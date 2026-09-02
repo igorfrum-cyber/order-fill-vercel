@@ -1,35 +1,43 @@
 package identity
 
-import "testing"
+import (
+	"errors"
+	"testing"
+)
 
-func TestLoginSlugFromNameLatin(t *testing.T) {
-	got := LoginSlugFromName("Acme Corp!", "id-ignored")
-	if got != "acme-corp" {
+func TestParseLoginSlugAcceptsLatin(t *testing.T) {
+	got, err := ParseLoginSlug("Kristail")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got != "kristail" {
 		t.Fatalf("got %q", got)
 	}
 }
 
-func TestLoginSlugFromNameCyrillic(t *testing.T) {
-	got := LoginSlugFromName("ООО Ромашка", "id-ignored")
-	if got != "ooo-romashka" {
-		t.Fatalf("got %q", got)
+func TestParseLoginSlugRejectsCyrillic(t *testing.T) {
+	if _, err := ParseLoginSlug("Кристайл"); !errors.Is(err, ErrInvalidLoginSlug) {
+		t.Fatalf("got %v", err)
 	}
 }
 
-func TestLoginSlugFromNameFallbackToCompanyID(t *testing.T) {
-	got := LoginSlugFromName("!!!", "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee")
-	if got != "company-aaaaaaaa" {
-		t.Fatalf("got %q", got)
+func TestParseLoginSlugRejectsReserved(t *testing.T) {
+	if _, err := ParseLoginSlug("admin"); !errors.Is(err, ErrInvalidLoginSlug) {
+		t.Fatalf("got %v", err)
 	}
 }
 
-func TestUniqueLoginSlugAppendsIDWhenTaken(t *testing.T) {
-	taken := map[string]struct{}{"acme": {}}
-	got := UniqueLoginSlug("Acme", "22222222-2222-2222-2222-222222222222", func(slug string) bool {
-		_, ok := taken[slug]
-		return ok
-	})
-	if got != "acme-22222222" {
-		t.Fatalf("got %q", got)
+func TestParseLoginSlugRejectsEmpty(t *testing.T) {
+	if _, err := ParseLoginSlug("  "); !errors.Is(err, ErrInvalidLoginSlug) {
+		t.Fatalf("got %v", err)
+	}
+}
+
+func TestParseLoginSlugRejectsHyphenEdges(t *testing.T) {
+	if _, err := ParseLoginSlug("-acme"); !errors.Is(err, ErrInvalidLoginSlug) {
+		t.Fatalf("leading: %v", err)
+	}
+	if _, err := ParseLoginSlug("acme-"); !errors.Is(err, ErrInvalidLoginSlug) {
+		t.Fatalf("trailing: %v", err)
 	}
 }

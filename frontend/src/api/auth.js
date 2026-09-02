@@ -46,10 +46,17 @@ export function listCompanies() {
   return apiClient.request("/api/v1/companies");
 }
 
-export function createCompany(name) {
+export function createCompany(name, loginSlug) {
   return apiClient.request("/api/v1/companies", {
     method: "POST",
-    body: JSON.stringify({ name }),
+    body: JSON.stringify({ name, login_slug: loginSlug }),
+  });
+}
+
+export function setCompanyLoginSlug(companyId, loginSlug) {
+  return apiClient.request(`/api/v1/companies/${encodeURIComponent(companyId)}/login-slug`, {
+    method: "POST",
+    body: JSON.stringify({ login_slug: loginSlug }),
   });
 }
 

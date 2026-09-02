@@ -10,8 +10,9 @@ import (
 )
 
 type adminAPI interface {
-	CreateCompany(ctx context.Context, actor identity.User, name string) (identity.Company, error)
+	CreateCompany(ctx context.Context, actor identity.User, name string, loginSlug string) (identity.Company, error)
 	ListCompanies(ctx context.Context, actor identity.User) ([]identity.Company, error)
+	SetCompanyLoginSlug(ctx context.Context, actor identity.User, companyID string, loginSlug string) (identity.Company, error)
 	DisableCompany(ctx context.Context, actor identity.User, companyID string) error
 	CreateUser(ctx context.Context, actor identity.User, companyID string, login string, role identity.Role) (identity.User, string, error)
 	ListUsers(ctx context.Context, actor identity.User, companyID string) ([]identity.User, error)
@@ -86,12 +87,13 @@ func (h adminHandler) createCompany(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var payload struct {
-		Name string `json:"name"`
+		Name      string `json:"name"`
+		LoginSlug string `json:"login_slug"`
 	}
 	if !decodeJSON(w, r, &payload) {
 		return
 	}
-	company, err := h.admin.CreateCompany(r.Context(), user, payload.Name)
+	company, err := h.admin.CreateCompany(r.Context(), user, payload.Name, payload.LoginSlug)
 	if err != nil {
 		writeDomainError(w, "create_company_failed", err)
 		return
@@ -114,6 +116,30 @@ func (h adminHandler) disableCompany(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	w.WriteHeader(http.StatusNoContent)
+}
+
+func (h adminHandler) setCompanyLoginSlug(w http.ResponseWriter, r *http.Request) {
+	user, ok := userFrom(r)
+	if !ok {
+		writeError(w, http.StatusUnauthorized, "unauthorized", "authentication is required")
+		return
+	}
+	if h.admin == nil {
+		writeError(w, http.StatusNotFound, "not_found", "not found")
+		return
+	}
+	var payload struct {
+		LoginSlug string `json:"login_slug"`
+	}
+	if !decodeJSON(w, r, &payload) {
+		return
+	}
+	company, err := h.admin.SetCompanyLoginSlug(r.Context(), user, r.PathValue("company_id"), payload.LoginSlug)
+	if err != nil {
+		writeDomainError(w, "set_company_login_slug_failed", err)
+		return
+	}
+	writeJSON(w, http.StatusOK, presentCompany(company))
 }
 
 func (h adminHandler) listUsers(w http.ResponseWriter, r *http.Request) {

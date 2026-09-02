@@ -57,3 +57,41 @@ export function companyLoginCopy(company) {
     lead: "Работайте только с файлами своей компании.",
   };
 }
+
+const RESERVED_LOGIN_SLUGS = new Set([
+  "admin",
+  "api",
+  "app",
+  "assets",
+  "c",
+  "ftp",
+  "healthz",
+  "invite",
+  "localhost",
+  "login",
+  "mail",
+  "metrics",
+  "public",
+  "static",
+  "www",
+]);
+
+const LOGIN_SLUG_PATTERN = /^[a-z][a-z0-9-]{0,61}[a-z0-9]$/;
+
+export function normalizeLoginSlug(raw) {
+  return String(raw || "")
+    .trim()
+    .toLowerCase();
+}
+
+export function loginSlugIssue(raw) {
+  const slug = normalizeLoginSlug(raw);
+  if (!slug) return "Укажите адрес входа латиницей.";
+  if (RESERVED_LOGIN_SLUGS.has(slug)) return "Этот адрес зарезервирован.";
+  if (!LOGIN_SLUG_PATTERN.test(slug)) return "Только латиница, цифры и дефис. Без пробелов и кириллицы.";
+  return "";
+}
+
+export function companyLoginPath(slug) {
+  return `/c/${encodeURIComponent(normalizeLoginSlug(slug))}`;
+}

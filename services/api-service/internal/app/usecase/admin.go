@@ -2,6 +2,7 @@ package usecase
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strings"
 
@@ -21,7 +22,7 @@ func NewAdmin(store port.IdentityStore, newID port.IDGenerator, now port.Clock) 
 	return &Admin{store: store, newID: newID, now: now}
 }
 
-func (a *Admin) CreateCompany(ctx context.Context, actor identity.User, name string) (identity.Company, error) {
+func (a *Admin) CreateCompany(ctx context.Context, actor identity.User, name string, loginSlug string) (identity.Company, error) {
 	if !authz.CanCreatePlatformCompany(actor) {
 		return identity.Company{}, identity.ErrNotFound
 	}
@@ -29,33 +30,54 @@ func (a *Admin) CreateCompany(ctx context.Context, actor identity.User, name str
 	if name == "" {
 		return identity.Company{}, fmt.Errorf("%w: company name is required", job.ErrInvalid)
 	}
-	company := identity.Company{ID: a.newID(), Name: name, CreatedAt: a.now()}
-	slug, err := a.uniqueLoginSlug(ctx, name, company.ID)
+	slug, err := identity.ParseLoginSlug(loginSlug)
 	if err != nil {
+		return identity.Company{}, fmt.Errorf("%w: %s", job.ErrInvalid, err.Error())
+	}
+	if err := a.ensureLoginSlugFree(ctx, "", slug); err != nil {
 		return identity.Company{}, err
 	}
-	company.LoginSlug = slug
+	company := identity.Company{ID: a.newID(), Name: name, LoginSlug: slug, CreatedAt: a.now()}
 	if err := a.store.CreateCompany(ctx, company); err != nil {
 		return identity.Company{}, err
 	}
 	return company, nil
 }
 
-func (a *Admin) uniqueLoginSlug(ctx context.Context, name string, companyID string) (string, error) {
-	companies, err := a.store.ListCompanies(ctx)
+func (a *Admin) SetCompanyLoginSlug(ctx context.Context, actor identity.User, companyID string, loginSlug string) (identity.Company, error) {
+	if !authz.CanCreatePlatformCompany(actor) {
+		return identity.Company{}, identity.ErrNotFound
+	}
+	slug, err := identity.ParseLoginSlug(loginSlug)
 	if err != nil {
-		return "", err
+		return identity.Company{}, fmt.Errorf("%w: %s", job.ErrInvalid, err.Error())
 	}
-	taken := make(map[string]struct{}, len(companies))
-	for _, company := range companies {
-		if company.LoginSlug != "" {
-			taken[company.LoginSlug] = struct{}{}
+	company, err := a.store.GetCompany(ctx, companyID)
+	if err != nil {
+		return identity.Company{}, identity.ErrNotFound
+	}
+	if err := a.ensureLoginSlugFree(ctx, company.ID, slug); err != nil {
+		return identity.Company{}, err
+	}
+	if err := a.store.SetCompanyLoginSlug(ctx, company.ID, slug); err != nil {
+		return identity.Company{}, err
+	}
+	company.LoginSlug = slug
+	return company, nil
+}
+
+func (a *Admin) ensureLoginSlugFree(ctx context.Context, companyID string, slug string) error {
+	existing, err := a.store.GetCompanyByLoginSlug(ctx, slug)
+	if err != nil {
+		if errors.Is(err, identity.ErrNotFound) {
+			return nil
 		}
+		return err
 	}
-	return identity.UniqueLoginSlug(name, companyID, func(slug string) bool {
-		_, ok := taken[slug]
-		return ok
-	}), nil
+	if existing.ID == companyID {
+		return nil
+	}
+	return identity.ErrConflict
 }
 
 func (a *Admin) PublicCompanyLogin(ctx context.Context, slug string) (identity.Company, error) {

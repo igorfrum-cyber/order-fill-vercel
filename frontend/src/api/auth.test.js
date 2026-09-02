@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { changePassword, getCompanyLogin, login, logoutEverywhere } from "./auth.js";
+import { changePassword, createCompany, getCompanyLogin, login, logoutEverywhere, setCompanyLoginSlug } from "./auth.js";
 import { ApiClient, apiClient } from "./client.js";
 
 test("getCompanyLogin requests public company metadata and encodes the slug", async () => {
@@ -22,6 +22,57 @@ test("getCompanyLogin requests public company metadata and encodes the slug", as
     const company = await getCompanyLogin("acme/x");
     assert.equal(company.name, "Acme");
     assert.equal(calls[0].url, "/api/v1/public/companies/acme%2Fx/login");
+  } finally {
+    apiClient.fetcher = originalFetcher;
+    apiClient.baseUrl = originalBase;
+  }
+});
+
+test("createCompany posts name and latin login slug", async () => {
+  const calls = [];
+  const originalFetcher = apiClient.fetcher;
+  const originalBase = apiClient.baseUrl;
+  apiClient.baseUrl = "";
+  apiClient.fetcher = function fetcher(url, options) {
+    calls.push({ url, options });
+    return Promise.resolve({
+      ok: true,
+      status: 201,
+      headers: new Map([["Content-Type", "application/json"]]),
+      json: async () => ({ id: "c1", name: "Кристайл", login_slug: "kristail" }),
+    });
+  };
+  try {
+    const company = await createCompany("Кристайл", "kristail");
+    assert.equal(company.login_slug, "kristail");
+    assert.equal(calls[0].url, "/api/v1/companies");
+    assert.match(calls[0].options.body, /login_slug/);
+    assert.match(calls[0].options.body, /kristail/);
+  } finally {
+    apiClient.fetcher = originalFetcher;
+    apiClient.baseUrl = originalBase;
+  }
+});
+
+test("setCompanyLoginSlug posts the new latin address", async () => {
+  const calls = [];
+  const originalFetcher = apiClient.fetcher;
+  const originalBase = apiClient.baseUrl;
+  apiClient.baseUrl = "";
+  apiClient.fetcher = function fetcher(url, options) {
+    calls.push({ url, options });
+    return Promise.resolve({
+      ok: true,
+      status: 200,
+      headers: new Map([["Content-Type", "application/json"]]),
+      json: async () => ({ id: "c1", name: "Кристайл", login_slug: "kristail" }),
+    });
+  };
+  try {
+    await setCompanyLoginSlug("c1", "kristail");
+    assert.equal(calls[0].url, "/api/v1/companies/c1/login-slug");
+    assert.equal(calls[0].options.method, "POST");
+    assert.match(calls[0].options.body, /kristail/);
   } finally {
     apiClient.fetcher = originalFetcher;
     apiClient.baseUrl = originalBase;

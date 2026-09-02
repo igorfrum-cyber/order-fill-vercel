@@ -70,11 +70,14 @@ type stubPublicCompany struct {
 	missing bool
 }
 
-func (s stubPublicCompany) CreateCompany(context.Context, identity.User, string) (identity.Company, error) {
+func (s stubPublicCompany) CreateCompany(context.Context, identity.User, string, string) (identity.Company, error) {
 	return identity.Company{}, identity.ErrNotFound
 }
 func (s stubPublicCompany) ListCompanies(context.Context, identity.User) ([]identity.Company, error) {
 	return nil, identity.ErrNotFound
+}
+func (s stubPublicCompany) SetCompanyLoginSlug(context.Context, identity.User, string, string) (identity.Company, error) {
+	return identity.Company{}, identity.ErrNotFound
 }
 func (s stubPublicCompany) DisableCompany(context.Context, identity.User, string) error {
 	return identity.ErrNotFound
