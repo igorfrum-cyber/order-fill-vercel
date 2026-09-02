@@ -2,11 +2,13 @@ import { useEffect, useState } from "react";
 import { getMe, logout } from "./api/auth.js";
 import { onAuthRequired } from "./api/client.js";
 import { getJob, getJobReport, listJobFiles } from "./api/jobs.js";
+import { dismissQuickStart, shouldShowQuickStart } from "./features/help/firstRun.js";
+import { initialEditState } from "./features/order/reviewEdits.js";
 import { CompaniesScreen, JobHistory, UsersScreen } from "./ui/admin/AdminScreens.jsx";
 import { AccountScreen, InviteScreen, LoginScreen } from "./ui/auth/AuthScreens.jsx";
+import { QuickStart } from "./ui/help/QuickStart.jsx";
 import { NorthApp } from "./ui/north/NorthApp.jsx";
 import { OrderFillApp } from "./ui/order/OrderFillApp.jsx";
-import { initialEditState } from "./features/order/reviewEdits.js";
 
 export default function App() {
   const inviteToken = inviteTokenFromPath();
@@ -14,6 +16,7 @@ export default function App() {
   const [screen, setScreen] = useState("history");
   const [companyId, setCompanyId] = useState("");
   const [resume, setResume] = useState(null);
+  const [quickStartOpen, setQuickStartOpen] = useState(false);
 
   useEffect(() => {
     getMe()
@@ -25,6 +28,14 @@ export default function App() {
   }, []);
 
   useEffect(() => onAuthRequired(() => setMe(null)), []);
+
+  useEffect(() => {
+    if (!me) {
+      setQuickStartOpen(false);
+      return;
+    }
+    setQuickStartOpen(shouldShowQuickStart(me));
+  }, [me]);
 
   if (me === undefined) {
     return <div className="grid min-h-full place-items-center text-[var(--color-ink-faint)]">Загрузка…</div>;
@@ -144,6 +155,16 @@ export default function App() {
         ) : null}
         {screen === "account" ? <AccountScreen me={me} onBack={() => setScreen("history")} /> : null}
       </main>
+      {quickStartOpen ? (
+        <QuickStart
+          me={me}
+          onLater={() => setQuickStartOpen(false)}
+          onDismiss={() => {
+            dismissQuickStart(me);
+            setQuickStartOpen(false);
+          }}
+        />
+      ) : null}
     </div>
   );
 }
