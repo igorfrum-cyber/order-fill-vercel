@@ -114,6 +114,21 @@ func migrateStatements() []string {
 			user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
 			expires_at TIMESTAMPTZ NOT NULL
 		)`,
+		`CREATE TABLE IF NOT EXISTS passkey_credentials (
+			id TEXT PRIMARY KEY,
+			user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+			name TEXT NOT NULL,
+			credential JSONB NOT NULL,
+			created_at TIMESTAMPTZ NOT NULL,
+			last_used_at TIMESTAMPTZ
+		)`,
+		`CREATE TABLE IF NOT EXISTS passkey_challenges (
+			id TEXT PRIMARY KEY,
+			user_id TEXT REFERENCES users(id) ON DELETE CASCADE,
+			purpose TEXT NOT NULL,
+			challenge JSONB NOT NULL,
+			expires_at TIMESTAMPTZ NOT NULL
+		)`,
 	}
 }
 

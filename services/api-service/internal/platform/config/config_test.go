@@ -42,6 +42,19 @@ func TestLoadRequiresSecureCookieInProduction(t *testing.T) {
 	}
 }
 
+func TestLoadReadsWebAuthnSettings(t *testing.T) {
+	setRequiredEnv(t)
+	t.Setenv("WEBAUTHN_RP_ID", "example.com")
+	t.Setenv("WEBAUTHN_RP_DISPLAY_NAME", "Order Fill")
+	cfg, err := Load()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cfg.WebAuthnRPID != "example.com" || cfg.WebAuthnRPName != "Order Fill" {
+		t.Fatalf("got %#v", cfg)
+	}
+}
+
 func setRequiredEnv(t *testing.T) {
 	t.Helper()
 	t.Setenv("DATABASE_URL", "postgres://order_fill:order_fill@localhost:5432/order_fill?sslmode=disable")

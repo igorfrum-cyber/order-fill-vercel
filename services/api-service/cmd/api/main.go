@@ -16,6 +16,7 @@ import (
 
 	"order-fill/services/api-service/internal/adapter/inbound/httpapi"
 	"order-fill/services/api-service/internal/adapter/outbound/objectstore"
+	"order-fill/services/api-service/internal/adapter/outbound/passkeys"
 	"order-fill/services/api-service/internal/adapter/outbound/postgres"
 	"order-fill/services/api-service/internal/adapter/outbound/queue"
 	"order-fill/services/api-service/internal/app/usecase"
@@ -69,7 +70,9 @@ func run(logger *slog.Logger) error {
 
 	metrics := observability.NewMetrics()
 	now := func() time.Time { return time.Now().UTC() }
-	auth := usecase.NewAuth(repository, uuid.NewString, now)
+	auth := usecase.NewAuth(repository, uuid.NewString, now).WithPasskeys(
+		passkeys.New(settings.WebAuthnRPName, settings.WebAuthnRPID),
+	)
 	admin := usecase.NewAdmin(repository, uuid.NewString, now).WithFiles(storage)
 
 	invite, created, err := auth.Bootstrap(ctx, settings.BootstrapAdminLogin)
@@ -96,6 +99,7 @@ func run(logger *slog.Logger) error {
 		Preview:         usecase.NewPreviewReader(repository, storage),
 		ListJobs:        usecase.NewListJobs(repository),
 		Auth:            auth,
+		Passkeys:        auth,
 		Admin:           admin,
 		Reset:           auth,
 		Metrics:         metrics,

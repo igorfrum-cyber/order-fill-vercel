@@ -92,7 +92,7 @@ func (g gate) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		g.next.ServeHTTP(w, r)
 		return
 	}
-	if r.URL.Path == "/api/v1/auth/login" || r.URL.Path == "/api/v1/auth/login/2fa" || r.URL.Path == "/api/v1/auth/invite" || publicCompanyLoginPath(r.URL.Path) {
+	if r.URL.Path == "/api/v1/auth/login" || r.URL.Path == "/api/v1/auth/login/2fa" || r.URL.Path == "/api/v1/auth/invite" || r.URL.Path == "/api/v1/auth/passkeys/login/begin" || r.URL.Path == "/api/v1/auth/passkeys/login/finish" || publicCompanyLoginPath(r.URL.Path) {
 		g.next.ServeHTTP(w, r)
 		return
 	}

@@ -32,6 +32,8 @@ services:
       API_ALLOWED_ORIGINS: ${API_ALLOWED_ORIGINS:-http://127.0.0.1:3200,http://localhost:3200}
       BOOTSTRAP_ADMIN_LOGIN: ${BOOTSTRAP_ADMIN_LOGIN:-admin}
       SESSION_COOKIE_SECURE: ${SESSION_COOKIE_SECURE:-false}
+      WEBAUTHN_RP_DISPLAY_NAME: ${WEBAUTHN_RP_DISPLAY_NAME:-Order Fill}
+      WEBAUTHN_RP_ID: ${WEBAUTHN_RP_ID:-}
       DATABASE_URL: ${DATABASE_URL:-postgres://order_fill:order_fill@postgres:5432/order_fill?sslmode=disable}
       QUEUE_URL: ${QUEUE_URL:-redis://redis:6379/0}
       S3_ENDPOINT: ${S3_ENDPOINT:-http://minio:9000}

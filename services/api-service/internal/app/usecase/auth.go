@@ -30,9 +30,10 @@ type LoginResult struct {
 }
 
 type Auth struct {
-	store port.IdentityStore
-	newID port.IDGenerator
-	now   port.Clock
+	store    port.IdentityStore
+	newID    port.IDGenerator
+	now      port.Clock
+	passkeys port.PasskeyCeremony
 }
 
 func NewAuth(store port.IdentityStore, newID port.IDGenerator, now port.Clock) *Auth {

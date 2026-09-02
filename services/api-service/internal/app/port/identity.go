@@ -80,6 +80,16 @@ type IdentityStore interface {
 	GetLoginChallenge(ctx context.Context, tokenHash string, now time.Time) (string, error)
 	ConsumeLoginChallenge(ctx context.Context, tokenHash string, now time.Time) (string, error)
 
+	SavePasskey(ctx context.Context, credential identity.PasskeyCredential) error
+	ListPasskeys(ctx context.Context, userID string) ([]identity.PasskeyCredential, error)
+	GetPasskey(ctx context.Context, id string) (identity.PasskeyCredential, error)
+	DeletePasskey(ctx context.Context, userID string, id string) error
+	UpdatePasskey(ctx context.Context, credential identity.PasskeyCredential) error
+
+	SavePasskeyChallenge(ctx context.Context, challenge identity.PasskeyChallenge) error
+	GetPasskeyChallenge(ctx context.Context, id string, now time.Time) (identity.PasskeyChallenge, error)
+	ConsumePasskeyChallenge(ctx context.Context, id string, now time.Time) (identity.PasskeyChallenge, error)
+
 	InsertAudit(ctx context.Context, event AuditEvent) error
 	ListAudit(ctx context.Context, limit int) ([]AuditEvent, error)
 }

@@ -241,6 +241,144 @@ paths:
           description: Two-factor disabled.
         "401":
           $ref: "#/components/responses/Unauthorized"
+  /api/v1/auth/passkeys/register/begin:
+    post:
+      operationId: beginPasskeyRegistration
+      summary: Start adding a passkey for the current user
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+      responses:
+        "200":
+          description: Browser options for navigator.credentials.create.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PasskeyBegin"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+  /api/v1/auth/passkeys/register/finish:
+    post:
+      operationId: finishPasskeyRegistration
+      summary: Finish adding a passkey
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [challenge_id, credential]
+              properties:
+                challenge_id:
+                  type: string
+                name:
+                  type: string
+                credential:
+                  type: object
+                  additionalProperties: true
+      responses:
+        "200":
+          description: Stored passkey public view.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Passkey"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "409":
+          $ref: "#/components/responses/Conflict"
+  /api/v1/auth/passkeys:
+    get:
+      operationId: listPasskeys
+      summary: List passkeys for the current user
+      responses:
+        "200":
+          description: Passkeys without key material.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [passkeys]
+                properties:
+                  passkeys:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/Passkey"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+  /api/v1/auth/passkeys/{id}/delete:
+    post:
+      operationId: deletePasskey
+      summary: Remove a passkey
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "204":
+          description: Passkey removed.
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /api/v1/auth/passkeys/login/begin:
+    post:
+      operationId: beginPasskeyLogin
+      summary: Start passkey login
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                login:
+                  type: string
+      responses:
+        "200":
+          description: Browser options for navigator.credentials.get.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PasskeyBegin"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+  /api/v1/auth/passkeys/login/finish:
+    post:
+      operationId: finishPasskeyLogin
+      summary: Finish passkey login and set the session cookie
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [challenge_id, credential]
+              properties:
+                challenge_id:
+                  type: string
+                credential:
+                  type: object
+                  additionalProperties: true
+      responses:
+        "200":
+          description: Session cookie set.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
   /api/v1/jobs:
     get:
       operationId: listJobs
@@ -964,6 +1102,29 @@ components:
           enum: [true]
         challenge_id:
           type: string
+    Passkey:
+      type: object
+      required: [id, name, created_at]
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+        last_used_at:
+          type: string
+          format: date-time
+    PasskeyBegin:
+      type: object
+      required: [challenge_id, options]
+      properties:
+        challenge_id:
+          type: string
+        options:
+          type: object
+          additionalProperties: true
     Company:
       type: object
       required: [id, name, created_at]

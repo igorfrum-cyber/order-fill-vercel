@@ -69,6 +69,22 @@ export const twoFactorManualKeyLabel = "Ключ для приложения";
 export const twoFactorRequiredHint =
   "Для управления доступом включите вход с кодом. Это защищает сотрудников и файлы компании.";
 
+export const passkeyLoginTitle = "Ключ доступа";
+
+export const passkeyLoginHint =
+  "Face ID, Touch ID, Windows Hello, 1Password, Bitwarden или ключ безопасности";
+
+export const passkeyLoginButton = "Войти с ключом доступа";
+
+export const passkeySettingsTitle = "Ключ доступа";
+
+export const passkeySettingsHint =
+  "Можно входить по Face ID, Touch ID, Windows Hello, 1Password, Bitwarden или ключу безопасности. Добавьте хотя бы два устройства, чтобы не потерять доступ.";
+
+export const passkeyAddButton = "Добавить ключ доступа";
+
+export const passkeyDeleteButton = "Удалить";
+
 export const inviteRoleHint =
   "Выберите, что человек сможет делать в компании. Доступ можно отключить позже.";
 
@@ -192,6 +208,6 @@ export const helpSections = [
   },
   {
     title: "Если не получается войти",
-    body: "Проверьте логин и пароль. Если ссылка устарела или доступ закрыли, попросите владельца или администратора компании прислать новое приглашение.",
+    body: "Проверьте логин и пароль или войдите с ключом доступа. Если ссылка устарела или доступ закрыли, попросите владельца или администратора компании прислать новое приглашение.",
   },
 ];

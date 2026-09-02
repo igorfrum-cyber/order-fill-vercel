@@ -613,13 +613,15 @@ func seedTwoFactorUserWithSettings(t *testing.T, store *memoryIdentity, login st
 }
 
 type memoryIdentity struct {
-	companies  map[string]identity.Company
-	users      map[string]identity.User
-	sessions   map[string]memorySession
-	invites    map[string]memoryInvite
-	totp       map[string]identity.TOTP
-	challenges map[string]memoryInvite
-	audits     []port.AuditEvent
+	companies         map[string]identity.Company
+	users             map[string]identity.User
+	sessions          map[string]memorySession
+	invites           map[string]memoryInvite
+	totp              map[string]identity.TOTP
+	challenges        map[string]memoryInvite
+	passkeys          map[string]identity.PasskeyCredential
+	passkeyChallenges map[string]identity.PasskeyChallenge
+	audits            []port.AuditEvent
 }
 
 type memorySession struct {
@@ -634,12 +636,14 @@ type memoryInvite struct {
 
 func newMemoryIdentity() *memoryIdentity {
 	return &memoryIdentity{
-		companies:  map[string]identity.Company{},
-		users:      map[string]identity.User{},
-		sessions:   map[string]memorySession{},
-		invites:    map[string]memoryInvite{},
-		totp:       map[string]identity.TOTP{},
-		challenges: map[string]memoryInvite{},
+		companies:         map[string]identity.Company{},
+		users:             map[string]identity.User{},
+		sessions:          map[string]memorySession{},
+		invites:           map[string]memoryInvite{},
+		totp:              map[string]identity.TOTP{},
+		challenges:        map[string]memoryInvite{},
+		passkeys:          map[string]identity.PasskeyCredential{},
+		passkeyChallenges: map[string]identity.PasskeyChallenge{},
 	}
 }
 
@@ -933,6 +937,83 @@ func (m *memoryIdentity) ConsumeLoginChallenge(_ context.Context, tokenHash stri
 	}
 	delete(m.challenges, tokenHash)
 	return challenge.userID, nil
+}
+
+func (m *memoryIdentity) SavePasskey(_ context.Context, credential identity.PasskeyCredential) error {
+	if err := identity.AssertPasskeyCredentialJSON(credential.Raw); err != nil {
+		return err
+	}
+	if _, ok := m.passkeys[credential.ID]; ok {
+		return identity.ErrConflict
+	}
+	cloned := credential
+	cloned.Raw = append([]byte{}, credential.Raw...)
+	cloned.PublicKey = append([]byte{}, credential.PublicKey...)
+	m.passkeys[credential.ID] = cloned
+	return nil
+}
+
+func (m *memoryIdentity) ListPasskeys(_ context.Context, userID string) ([]identity.PasskeyCredential, error) {
+	out := make([]identity.PasskeyCredential, 0)
+	for _, credential := range m.passkeys {
+		if credential.UserID == userID {
+			out = append(out, credential)
+		}
+	}
+	return out, nil
+}
+
+func (m *memoryIdentity) GetPasskey(_ context.Context, id string) (identity.PasskeyCredential, error) {
+	credential, ok := m.passkeys[id]
+	if !ok {
+		return identity.PasskeyCredential{}, identity.ErrNotFound
+	}
+	return credential, nil
+}
+
+func (m *memoryIdentity) DeletePasskey(_ context.Context, userID string, id string) error {
+	credential, ok := m.passkeys[id]
+	if !ok || credential.UserID != userID {
+		return identity.ErrNotFound
+	}
+	delete(m.passkeys, id)
+	return nil
+}
+
+func (m *memoryIdentity) UpdatePasskey(_ context.Context, credential identity.PasskeyCredential) error {
+	if err := identity.AssertPasskeyCredentialJSON(credential.Raw); err != nil {
+		return err
+	}
+	existing, ok := m.passkeys[credential.ID]
+	if !ok || existing.UserID != credential.UserID {
+		return identity.ErrNotFound
+	}
+	m.passkeys[credential.ID] = credential
+	return nil
+}
+
+func (m *memoryIdentity) SavePasskeyChallenge(_ context.Context, challenge identity.PasskeyChallenge) error {
+	cloned := challenge
+	cloned.Session = append([]byte{}, challenge.Session...)
+	m.passkeyChallenges[challenge.ID] = cloned
+	return nil
+}
+
+func (m *memoryIdentity) GetPasskeyChallenge(_ context.Context, id string, now time.Time) (identity.PasskeyChallenge, error) {
+	challenge, ok := m.passkeyChallenges[id]
+	if !ok || !challenge.ExpiresAt.After(now) {
+		return identity.PasskeyChallenge{}, identity.ErrUnauthorized
+	}
+	return challenge, nil
+}
+
+func (m *memoryIdentity) ConsumePasskeyChallenge(_ context.Context, id string, now time.Time) (identity.PasskeyChallenge, error) {
+	challenge, ok := m.passkeyChallenges[id]
+	if !ok || !challenge.ExpiresAt.After(now) {
+		return identity.PasskeyChallenge{}, identity.ErrUnauthorized
+	}
+	delete(m.passkeyChallenges, id)
+	return challenge, nil
 }
 
 func (m *memoryIdentity) InsertAudit(_ context.Context, event port.AuditEvent) error {

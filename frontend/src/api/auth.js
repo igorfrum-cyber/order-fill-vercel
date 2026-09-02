@@ -65,6 +65,45 @@ export function changePassword(currentPassword, password) {
   });
 }
 
+export function beginPasskeyRegistration(name = "") {
+  return apiClient.request("/api/v1/auth/passkeys/register/begin", {
+    method: "POST",
+    body: JSON.stringify({ name }),
+  });
+}
+
+export function finishPasskeyRegistration(challengeId, credential, name = "") {
+  return apiClient.request("/api/v1/auth/passkeys/register/finish", {
+    method: "POST",
+    body: JSON.stringify({ challenge_id: challengeId, credential, name }),
+  });
+}
+
+export function listPasskeys() {
+  return apiClient.request("/api/v1/auth/passkeys");
+}
+
+export function deletePasskey(id) {
+  return apiClient.request(`/api/v1/auth/passkeys/${encodeURIComponent(id)}/delete`, {
+    method: "POST",
+    body: JSON.stringify({}),
+  });
+}
+
+export function beginPasskeyLogin(login = "") {
+  return apiClient.request("/api/v1/auth/passkeys/login/begin", {
+    method: "POST",
+    body: JSON.stringify({ login }),
+  });
+}
+
+export function finishPasskeyLogin(challengeId, credential) {
+  return apiClient.request("/api/v1/auth/passkeys/login/finish", {
+    method: "POST",
+    body: JSON.stringify({ challenge_id: challengeId, credential }),
+  });
+}
+
 export function listJobs(companyId = "") {
   const query = companyId ? `?company_id=${encodeURIComponent(companyId)}` : "";
   return apiClient.request(`/api/v1/jobs${query}`);

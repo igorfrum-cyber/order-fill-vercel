@@ -377,6 +377,151 @@ func (r *Repository) ConsumeLoginChallenge(ctx context.Context, tokenHash string
 	return userID, nil
 }
 
+func (r *Repository) SavePasskey(ctx context.Context, credential identity.PasskeyCredential) error {
+	if err := identity.AssertPasskeyCredentialJSON(credential.Raw); err != nil {
+		return err
+	}
+	_, err := r.pool.Exec(ctx,
+		`INSERT INTO passkey_credentials (id, user_id, name, credential, created_at, last_used_at)
+		 VALUES ($1, $2, $3, $4, $5, $6)`,
+		credential.ID, credential.UserID, credential.DisplayName(), credential.Raw, credential.CreatedAt.UTC(), credential.LastUsedAt)
+	if err != nil {
+		return fmt.Errorf("insert passkey: %w", mapConflict(err))
+	}
+	return nil
+}
+
+func (r *Repository) ListPasskeys(ctx context.Context, userID string) ([]identity.PasskeyCredential, error) {
+	rows, err := r.pool.Query(ctx,
+		`SELECT id, user_id, name, credential, created_at, last_used_at
+		 FROM passkey_credentials WHERE user_id = $1 ORDER BY created_at DESC`, userID)
+	if err != nil {
+		return nil, fmt.Errorf("list passkeys: %w", err)
+	}
+	defer rows.Close()
+	out := make([]identity.PasskeyCredential, 0)
+	for rows.Next() {
+		credential, err := scanPasskey(rows)
+		if err != nil {
+			return nil, err
+		}
+		out = append(out, credential)
+	}
+	return out, rows.Err()
+}
+
+func (r *Repository) GetPasskey(ctx context.Context, id string) (identity.PasskeyCredential, error) {
+	credential, err := scanPasskey(r.pool.QueryRow(ctx,
+		`SELECT id, user_id, name, credential, created_at, last_used_at FROM passkey_credentials WHERE id = $1`, id))
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return identity.PasskeyCredential{}, identity.ErrNotFound
+		}
+		return identity.PasskeyCredential{}, fmt.Errorf("select passkey: %w", err)
+	}
+	return credential, nil
+}
+
+func (r *Repository) DeletePasskey(ctx context.Context, userID string, id string) error {
+	tag, err := r.pool.Exec(ctx, `DELETE FROM passkey_credentials WHERE id = $1 AND user_id = $2`, id, userID)
+	if err != nil {
+		return fmt.Errorf("delete passkey: %w", err)
+	}
+	if tag.RowsAffected() == 0 {
+		return identity.ErrNotFound
+	}
+	return nil
+}
+
+func (r *Repository) UpdatePasskey(ctx context.Context, credential identity.PasskeyCredential) error {
+	if err := identity.AssertPasskeyCredentialJSON(credential.Raw); err != nil {
+		return err
+	}
+	tag, err := r.pool.Exec(ctx,
+		`UPDATE passkey_credentials SET name = $3, credential = $4, last_used_at = $5 WHERE id = $1 AND user_id = $2`,
+		credential.ID, credential.UserID, credential.DisplayName(), credential.Raw, credential.LastUsedAt)
+	if err != nil {
+		return fmt.Errorf("update passkey: %w", err)
+	}
+	if tag.RowsAffected() == 0 {
+		return identity.ErrNotFound
+	}
+	return nil
+}
+
+func (r *Repository) SavePasskeyChallenge(ctx context.Context, challenge identity.PasskeyChallenge) error {
+	_, err := r.pool.Exec(ctx,
+		`INSERT INTO passkey_challenges (id, user_id, purpose, challenge, expires_at) VALUES ($1, $2, $3, $4, $5)`,
+		challenge.ID, nullIfEmpty(challenge.UserID), challenge.Purpose, challenge.Session, challenge.ExpiresAt.UTC())
+	if err != nil {
+		return fmt.Errorf("insert passkey challenge: %w", err)
+	}
+	return nil
+}
+
+func (r *Repository) GetPasskeyChallenge(ctx context.Context, id string, now time.Time) (identity.PasskeyChallenge, error) {
+	challenge, err := scanPasskeyChallenge(r.pool.QueryRow(ctx,
+		`SELECT id, COALESCE(user_id, ''), purpose, challenge, expires_at
+		 FROM passkey_challenges WHERE id = $1 AND expires_at > $2`, id, now.UTC()))
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return identity.PasskeyChallenge{}, identity.ErrUnauthorized
+		}
+		return identity.PasskeyChallenge{}, fmt.Errorf("select passkey challenge: %w", err)
+	}
+	return challenge, nil
+}
+
+func (r *Repository) ConsumePasskeyChallenge(ctx context.Context, id string, now time.Time) (identity.PasskeyChallenge, error) {
+	challenge, err := scanPasskeyChallenge(r.pool.QueryRow(ctx,
+		`DELETE FROM passkey_challenges WHERE id = $1 AND expires_at > $2
+		 RETURNING id, COALESCE(user_id, ''), purpose, challenge, expires_at`, id, now.UTC()))
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return identity.PasskeyChallenge{}, identity.ErrUnauthorized
+		}
+		return identity.PasskeyChallenge{}, fmt.Errorf("consume passkey challenge: %w", err)
+	}
+	return challenge, nil
+}
+
+func scanPasskey(row pgx.Row) (identity.PasskeyCredential, error) {
+	var credential identity.PasskeyCredential
+	if err := row.Scan(&credential.ID, &credential.UserID, &credential.Name, &credential.Raw, &credential.CreatedAt, &credential.LastUsedAt); err != nil {
+		return identity.PasskeyCredential{}, err
+	}
+	credential.CreatedAt = credential.CreatedAt.UTC()
+	fillPasskeyFromRaw(&credential)
+	return credential, nil
+}
+
+func scanPasskeyChallenge(row pgx.Row) (identity.PasskeyChallenge, error) {
+	var challenge identity.PasskeyChallenge
+	if err := row.Scan(&challenge.ID, &challenge.UserID, &challenge.Purpose, &challenge.Session, &challenge.ExpiresAt); err != nil {
+		return identity.PasskeyChallenge{}, err
+	}
+	challenge.ExpiresAt = challenge.ExpiresAt.UTC()
+	return challenge, nil
+}
+
+func fillPasskeyFromRaw(credential *identity.PasskeyCredential) {
+	var parsed struct {
+		PublicKey     []byte   `json:"publicKey"`
+		Transport     []string `json:"transport"`
+		Authenticator struct {
+			AAGUID    []byte `json:"aaguid"`
+			SignCount uint32 `json:"signCount"`
+		} `json:"authenticator"`
+	}
+	if err := unmarshalJSON(credential.Raw, &parsed, "passkey"); err != nil {
+		return
+	}
+	credential.PublicKey = parsed.PublicKey
+	credential.Transports = parsed.Transport
+	credential.AAGUID = parsed.Authenticator.AAGUID
+	credential.SignCount = parsed.Authenticator.SignCount
+}
+
 func recoveryHashes(hashes []string) []string {
 	if hashes == nil {
 		return []string{}

@@ -30,6 +30,7 @@ type Config struct {
 	Preview         previewReader
 	ListJobs        lister
 	Auth            sessionAuthenticator
+	Passkeys        passkeyAPI
 	Admin           adminAPI
 	Reset           accessResetter
 	Metrics         MetricsReader
@@ -58,6 +59,14 @@ func NewRouter(config Config) http.Handler {
 	mux.HandleFunc("POST /api/v1/auth/2fa/setup", auth.startTOTP)
 	mux.HandleFunc("POST /api/v1/auth/2fa/enable", auth.enableTOTP)
 	mux.HandleFunc("POST /api/v1/auth/2fa/disable", auth.disableTOTP)
+
+	passkeys := passkeyHandler{auth: config.Passkeys, cookieSecure: config.CookieSecure, loginLimiter: config.LoginLimiter, allowedOrigins: config.AllowedOrigins}
+	mux.HandleFunc("POST /api/v1/auth/passkeys/register/begin", passkeys.registerBegin)
+	mux.HandleFunc("POST /api/v1/auth/passkeys/register/finish", passkeys.registerFinish)
+	mux.HandleFunc("GET /api/v1/auth/passkeys", passkeys.list)
+	mux.HandleFunc("POST /api/v1/auth/passkeys/{id}/delete", passkeys.delete)
+	mux.HandleFunc("POST /api/v1/auth/passkeys/login/begin", passkeys.loginBegin)
+	mux.HandleFunc("POST /api/v1/auth/passkeys/login/finish", passkeys.loginFinish)
 
 	handler := jobHandler{
 		creator:    config.CreateJob,

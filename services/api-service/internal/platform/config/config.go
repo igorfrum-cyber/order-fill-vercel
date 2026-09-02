@@ -24,6 +24,8 @@ type Config struct {
 	S3SecretKey         string
 	CookieSecure        bool
 	BootstrapAdminLogin string
+	WebAuthnRPID        string
+	WebAuthnRPName      string
 	MaxUploadBytes      int64
 }
 
@@ -44,6 +46,8 @@ func Load() (Config, error) {
 		MaxUploadBytes:      getenvInt64("API_MAX_UPLOAD_BYTES", defaultMaxUploadBytes),
 		CookieSecure:        getenvBool("SESSION_COOKIE_SECURE"),
 		BootstrapAdminLogin: getenv("BOOTSTRAP_ADMIN_LOGIN", "admin"),
+		WebAuthnRPID:        getenv("WEBAUTHN_RP_ID", ""),
+		WebAuthnRPName:      getenv("WEBAUTHN_RP_DISPLAY_NAME", "Order Fill"),
 	}
 
 	missing := make([]string, 0)
