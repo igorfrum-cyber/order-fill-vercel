@@ -26,8 +26,8 @@ func (r *Repository) CountUsers(ctx context.Context) (int, error) {
 
 func (r *Repository) CreateCompany(ctx context.Context, company identity.Company) error {
 	_, err := r.pool.Exec(ctx,
-		`INSERT INTO companies (id, name, created_at, disabled_at) VALUES ($1, $2, $3, $4)`,
-		company.ID, company.Name, company.CreatedAt.UTC(), company.DisabledAt)
+		`INSERT INTO companies (id, name, created_at, disabled_at, login_slug) VALUES ($1, $2, $3, $4, $5)`,
+		company.ID, company.Name, company.CreatedAt.UTC(), company.DisabledAt, nullIfEmpty(company.LoginSlug))
 	if err != nil {
 		return fmt.Errorf("insert company: %w", mapConflict(err))
 	}
@@ -35,36 +35,42 @@ func (r *Repository) CreateCompany(ctx context.Context, company identity.Company
 }
 
 func (r *Repository) GetCompany(ctx context.Context, id string) (identity.Company, error) {
-	var company identity.Company
-	err := r.pool.QueryRow(ctx,
-		`SELECT id, name, created_at, disabled_at FROM companies WHERE id = $1`, id,
-	).Scan(&company.ID, &company.Name, &company.CreatedAt, &company.DisabledAt)
+	company, err := scanCompany(r.pool.QueryRow(ctx,
+		`SELECT id, name, created_at, disabled_at, COALESCE(login_slug, '') FROM companies WHERE id = $1`, id))
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return identity.Company{}, identity.ErrNotFound
 		}
 		return identity.Company{}, fmt.Errorf("select company: %w", err)
 	}
-	company.CreatedAt = company.CreatedAt.UTC()
 	return company, nil
 }
 
 func (r *Repository) ListCompanies(ctx context.Context) ([]identity.Company, error) {
-	rows, err := r.pool.Query(ctx, `SELECT id, name, created_at, disabled_at FROM companies ORDER BY created_at DESC`)
+	rows, err := r.pool.Query(ctx,
+		`SELECT id, name, created_at, disabled_at, COALESCE(login_slug, '') FROM companies ORDER BY created_at DESC`)
 	if err != nil {
 		return nil, fmt.Errorf("list companies: %w", err)
 	}
 	defer rows.Close()
 	companies := make([]identity.Company, 0)
 	for rows.Next() {
-		var company identity.Company
-		if err := rows.Scan(&company.ID, &company.Name, &company.CreatedAt, &company.DisabledAt); err != nil {
+		company, err := scanCompany(rows)
+		if err != nil {
 			return nil, err
 		}
-		company.CreatedAt = company.CreatedAt.UTC()
 		companies = append(companies, company)
 	}
 	return companies, rows.Err()
+}
+
+func scanCompany(row pgx.Row) (identity.Company, error) {
+	var company identity.Company
+	if err := row.Scan(&company.ID, &company.Name, &company.CreatedAt, &company.DisabledAt, &company.LoginSlug); err != nil {
+		return identity.Company{}, err
+	}
+	company.CreatedAt = company.CreatedAt.UTC()
+	return company, nil
 }
 
 func (r *Repository) DisableCompany(ctx context.Context, id string, at time.Time) error {

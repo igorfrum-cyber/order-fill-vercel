@@ -30,10 +30,32 @@ func (a *Admin) CreateCompany(ctx context.Context, actor identity.User, name str
 		return identity.Company{}, fmt.Errorf("%w: company name is required", job.ErrInvalid)
 	}
 	company := identity.Company{ID: a.newID(), Name: name, CreatedAt: a.now()}
+	slug, err := a.uniqueLoginSlug(ctx, name, company.ID)
+	if err != nil {
+		return identity.Company{}, err
+	}
+	company.LoginSlug = slug
 	if err := a.store.CreateCompany(ctx, company); err != nil {
 		return identity.Company{}, err
 	}
 	return company, nil
+}
+
+func (a *Admin) uniqueLoginSlug(ctx context.Context, name string, companyID string) (string, error) {
+	companies, err := a.store.ListCompanies(ctx)
+	if err != nil {
+		return "", err
+	}
+	taken := make(map[string]struct{}, len(companies))
+	for _, company := range companies {
+		if company.LoginSlug != "" {
+			taken[company.LoginSlug] = struct{}{}
+		}
+	}
+	return identity.UniqueLoginSlug(name, companyID, func(slug string) bool {
+		_, ok := taken[slug]
+		return ok
+	}), nil
 }
 
 func (a *Admin) ListCompanies(ctx context.Context, actor identity.User) ([]identity.Company, error) {

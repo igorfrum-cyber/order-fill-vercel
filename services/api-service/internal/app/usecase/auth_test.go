@@ -390,6 +390,13 @@ func (m *memoryIdentity) CreateCompany(_ context.Context, company identity.Compa
 	if _, ok := m.companies[company.ID]; ok {
 		return identity.ErrConflict
 	}
+	if company.LoginSlug != "" {
+		for _, existing := range m.companies {
+			if existing.LoginSlug == company.LoginSlug {
+				return identity.ErrConflict
+			}
+		}
+	}
 	m.companies[company.ID] = company
 	return nil
 }

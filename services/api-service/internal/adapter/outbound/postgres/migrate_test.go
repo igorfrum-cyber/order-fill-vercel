@@ -13,6 +13,8 @@ func TestMigrateStatementsIncludeUsers(t *testing.T) {
 		"CREATE TABLE IF NOT EXISTS invite_tokens",
 		"CREATE TABLE IF NOT EXISTS companies",
 		"created_by",
+		"login_slug",
+		"companies_login_slug_uidx",
 	} {
 		if !strings.Contains(joined, needle) {
 			t.Fatalf("missing %s", needle)

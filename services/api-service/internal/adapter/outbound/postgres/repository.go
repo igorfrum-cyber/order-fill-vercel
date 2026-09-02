@@ -92,6 +92,10 @@ func migrateStatements() []string {
 		)`,
 		`ALTER TABLE jobs ADD COLUMN IF NOT EXISTS company_id TEXT`,
 		`ALTER TABLE jobs ADD COLUMN IF NOT EXISTS created_by TEXT`,
+		`ALTER TABLE companies ADD COLUMN IF NOT EXISTS login_slug TEXT`,
+		`UPDATE companies SET login_slug = 'company-' || lower(left(replace(id, '-', ''), 8))
+			WHERE login_slug IS NULL OR login_slug = ''`,
+		`CREATE UNIQUE INDEX IF NOT EXISTS companies_login_slug_uidx ON companies(login_slug) WHERE login_slug IS NOT NULL`,
 		`CREATE TABLE IF NOT EXISTS job_reports (
 			job_id TEXT PRIMARY KEY REFERENCES jobs(id) ON DELETE CASCADE,
 			summary JSONB NOT NULL DEFAULT '{}',

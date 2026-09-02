@@ -30,6 +30,7 @@ func (u User) Disabled() bool {
 type Company struct {
 	ID         string
 	Name       string
+	LoginSlug  string
 	CreatedAt  time.Time
 	DisabledAt *time.Time
 }
