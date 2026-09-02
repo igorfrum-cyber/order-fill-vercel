@@ -5,6 +5,8 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
+
+	"order-fill/services/api-service/internal/domain/identity"
 )
 
 func csrfAllowed(r *http.Request, allowedOrigins []string) bool {
@@ -48,7 +50,10 @@ func originsMatch(allowed string, origin string) bool {
 	if originPort(allowedURL) != originPort(originURL) {
 		return false
 	}
-	return isLoopbackHost(allowedURL.Hostname()) && isLoopbackHost(originURL.Hostname())
+	if isLoopbackHost(allowedURL.Hostname()) && isLoopbackHost(originURL.Hostname()) {
+		return true
+	}
+	return hostIsCompanySubdomain(originURL.Hostname(), allowedURL.Hostname())
 }
 
 func originPort(parsed *url.URL) string {
@@ -66,6 +71,24 @@ func isLoopbackHost(host string) bool {
 	case "localhost", "127.0.0.1", "::1":
 		return true
 	}
+	if strings.HasSuffix(strings.ToLower(host), ".localhost") {
+		return true
+	}
 	ip := net.ParseIP(host)
 	return ip != nil && ip.IsLoopback()
+}
+
+func hostIsCompanySubdomain(originHost string, allowedHost string) bool {
+	originHost = strings.ToLower(originHost)
+	allowedHost = strings.ToLower(allowedHost)
+	suffix := "." + allowedHost
+	if !strings.HasSuffix(originHost, suffix) {
+		return false
+	}
+	slug := strings.TrimSuffix(originHost, suffix)
+	if slug == "" || strings.Contains(slug, ".") {
+		return false
+	}
+	_, err := identity.ParseLoginSlug(slug)
+	return err == nil
 }

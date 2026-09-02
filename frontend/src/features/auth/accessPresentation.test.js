@@ -6,6 +6,8 @@ import {
   canInviteRole,
   companyLoginCopy,
   companyLoginPath,
+  companyLoginURL,
+  companySlugFromHost,
   companySlugFromPath,
   loginSlugIssue,
   inviteRoleOptions,
@@ -108,4 +110,27 @@ test("loginSlugIssue requires latin letters digits and hyphen", () => {
 
 test("companyLoginPath is a local /c/:slug link", () => {
   assert.equal(companyLoginPath("kristail"), "/c/kristail");
+});
+
+test("companySlugFromHost reads the first label of a company subdomain", () => {
+  assert.equal(companySlugFromHost("kristail.localhost"), "kristail");
+  assert.equal(companySlugFromHost("kristail.localhost:3200"), "kristail");
+  assert.equal(companySlugFromHost("localhost"), "");
+  assert.equal(companySlugFromHost("127.0.0.1"), "");
+  assert.equal(companySlugFromHost("www.example.com"), "");
+});
+
+test("companyLoginURL builds a localhost subdomain for local hosts", () => {
+  assert.equal(
+    companyLoginURL("kristail", { protocol: "http:", hostname: "127.0.0.1", port: "3200" }),
+    "http://kristail.localhost:3200/",
+  );
+  assert.equal(
+    companyLoginURL("kristail", { protocol: "http:", hostname: "localhost", port: "3200" }),
+    "http://kristail.localhost:3200/",
+  );
+  assert.equal(
+    companyLoginURL("chernovaa", { protocol: "https:", hostname: "example.com", port: "" }),
+    "https://chernovaa.example.com/",
+  );
 });

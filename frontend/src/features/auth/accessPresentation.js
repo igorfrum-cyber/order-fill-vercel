@@ -95,3 +95,46 @@ export function loginSlugIssue(raw) {
 export function companyLoginPath(slug) {
   return `/c/${encodeURIComponent(normalizeLoginSlug(slug))}`;
 }
+
+export function companySlugFromHost(hostname) {
+  const host = String(hostname || "")
+    .split(":")[0]
+    .toLowerCase();
+  if (!host || host === "localhost" || isIPAddress(host)) return "";
+  const labels = host.split(".");
+  if (labels.length < 2) return "";
+  const slug = labels[0];
+  if (loginSlugIssue(slug)) return "";
+  return slug;
+}
+
+export function loginParentHost(hostname) {
+  const host = String(hostname || "")
+    .split(":")[0]
+    .toLowerCase();
+  if (!host || isIPAddress(host) || host === "localhost" || host.endsWith(".localhost")) {
+    return "localhost";
+  }
+  const labels = host.split(".");
+  if (labels[0] === "www") {
+    return labels.slice(1).join(".") || host;
+  }
+  if (labels.length >= 3 && !loginSlugIssue(labels[0])) {
+    return labels.slice(1).join(".");
+  }
+  return host;
+}
+
+export function companyLoginURL(slug, location = globalThis.location) {
+  const normalized = normalizeLoginSlug(slug);
+  if (loginSlugIssue(normalized)) return "";
+  const parent = loginParentHost(location?.hostname || "localhost");
+  const protocol = location?.protocol || "http:";
+  const port = location?.port || "";
+  const portPart = port ? `:${port}` : "";
+  return `${protocol}//${normalized}.${parent}${portPart}/`;
+}
+
+function isIPAddress(host) {
+  return /^\d{1,3}(?:\.\d{1,3}){3}$/.test(host) || host.includes(":");
+}

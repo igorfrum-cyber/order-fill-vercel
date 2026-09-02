@@ -39,16 +39,14 @@ func TestRouterAnswersPreflight(t *testing.T) {
 	}
 }
 
-func TestRouterAcceptsLocalhostWhenLoopbackIsListed(t *testing.T) {
+func TestRouterAcceptsCompanyLocalhostOrigin(t *testing.T) {
 	router := NewRouter(Config{AllowedOrigins: []string{"http://127.0.0.1:3200"}})
 	request := httptest.NewRequest(http.MethodGet, "/healthz", nil)
-	request.Header.Set("Origin", "http://localhost:3200")
+	request.Header.Set("Origin", "http://kristail.localhost:3200")
 	response := httptest.NewRecorder()
-
 	router.ServeHTTP(response, request)
-
-	if got := response.Header().Get("Access-Control-Allow-Origin"); got != "http://localhost:3200" {
-		t.Fatalf("expected localhost echo, got %q", got)
+	if got := response.Header().Get("Access-Control-Allow-Origin"); got != "http://kristail.localhost:3200" {
+		t.Fatalf("expected company localhost origin echo, got %q", got)
 	}
 }
 

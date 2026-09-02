@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { createCompany, disableCompany, listCompanies, setCompanyLoginSlug } from "../../api/auth.js";
-import { companyLoginPath, loginSlugIssue, normalizeLoginSlug } from "../../features/auth/accessPresentation.js";
+import { companyLoginURL, loginSlugIssue, normalizeLoginSlug } from "../../features/auth/accessPresentation.js";
 import { GhostButton, PrimaryButton } from "../widgets.jsx";
 
 export function CompaniesScreen({ selectedId, onSelect }) {
@@ -60,12 +60,12 @@ export function CompaniesScreen({ selectedId, onSelect }) {
           <p className="text-[13px] text-[var(--color-ink-soft)]">
             {createIssue || (
               <>
-                Ссылка входа: <span className="font-mono">{companyLoginPath(loginSlug)}</span>
+                Ссылка входа: <span className="font-mono">{companyLoginURL(loginSlug)}</span>
               </>
             )}
           </p>
         ) : (
-          <p className="text-[13px] text-[var(--color-ink-faint)]">Адрес входа обязателен. Только латиница, например kristail.</p>
+          <p className="text-[13px] text-[var(--color-ink-faint)]">Адрес входа обязателен. Латиницей, откроется как kristail.localhost.</p>
         )}
       </form>
       {error ? <p className="text-[14px] text-[var(--color-danger)]">{error}</p> : null}
@@ -99,8 +99,8 @@ export function CompaniesScreen({ selectedId, onSelect }) {
                 </GhostButton>
               </div>
               {company.login_slug ? (
-                <a className="block font-mono text-[13px] text-[var(--color-brand)]" href={companyLoginPath(company.login_slug)}>
-                  {companyLoginPath(company.login_slug)}
+                <a className="block font-mono text-[13px] text-[var(--color-brand)]" href={companyLoginURL(company.login_slug)}>
+                  {companyLoginURL(company.login_slug)}
                 </a>
               ) : null}
               <form

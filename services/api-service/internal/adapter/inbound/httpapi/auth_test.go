@@ -158,6 +158,33 @@ func TestCSRFRejectsDifferentPortLoopback(t *testing.T) {
 	}
 }
 
+func TestCSRFAllowsCompanyLocalhostSubdomain(t *testing.T) {
+	request := httptest.NewRequest(http.MethodPost, "/api/v1/auth/login", strings.NewReader(`{"login":"buyer","password":"correct-horse"}`))
+	request.Header.Set("X-Requested-With", "fetch")
+	request.Header.Set("Origin", "http://kristail.localhost:3200")
+	if !csrfAllowed(request, []string{"http://127.0.0.1:3200"}) {
+		t.Fatal("kristail.localhost:3200 should be accepted when 127.0.0.1:3200 is allowed")
+	}
+}
+
+func TestCSRFAllowsCompanySubdomainOfAllowedOrigin(t *testing.T) {
+	request := httptest.NewRequest(http.MethodPost, "/api/v1/auth/login", strings.NewReader(`{"login":"buyer","password":"correct-horse"}`))
+	request.Header.Set("X-Requested-With", "fetch")
+	request.Header.Set("Origin", "https://kristail.example.com")
+	if !csrfAllowed(request, []string{"https://example.com"}) {
+		t.Fatal("company subdomain of the allowed origin must pass")
+	}
+}
+
+func TestCSRFRejectsUnrelatedSubdomain(t *testing.T) {
+	request := httptest.NewRequest(http.MethodPost, "/api/v1/auth/login", strings.NewReader(`{"login":"buyer","password":"correct-horse"}`))
+	request.Header.Set("X-Requested-With", "fetch")
+	request.Header.Set("Origin", "https://evil.example.net")
+	if csrfAllowed(request, []string{"https://example.com"}) {
+		t.Fatal("foreign host must not pass")
+	}
+}
+
 func TestSecurityHeadersOnResponses(t *testing.T) {
 	router := NewRouter(Config{AllowedOrigins: []string{"http://127.0.0.1:3200"}})
 	request := httptest.NewRequest(http.MethodGet, "/healthz", nil)
