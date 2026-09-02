@@ -24,6 +24,7 @@ type User struct {
 	CreatedAt        time.Time
 	DisabledAt       *time.Time
 	CompanyDisabled  bool
+	TwoFactorEnabled bool
 }
 
 func (u User) Disabled() bool {

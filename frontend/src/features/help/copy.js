@@ -49,6 +49,26 @@ export const logoutEverywhereLabel = "Выйти со всех устройст�
 export const logoutEverywhereConfirm =
   "Вы выйдете здесь и на других устройствах. Войти снова можно будет по логину и паролю.";
 
+export const twoFactorEnableLabel = "Включить защиту кодом";
+
+export const twoFactorDisableLabel = "Отключить защиту кодом";
+
+export const twoFactorSetupHint =
+  "Код нужен при входе с новым паролем. Сохраните запасные коды: каждый работает один раз.";
+
+export const twoFactorLoginTitle = "Подтвердите вход";
+
+export const twoFactorCodeLabel = "Код из приложения";
+
+export const twoFactorRecoveryLabel = "Использовать запасной код";
+
+export const twoFactorRecoveryCodeLabel = "Запасной код";
+
+export const twoFactorManualKeyLabel = "Ключ для приложения";
+
+export const twoFactorRequiredHint =
+  "Для управления доступом включите вход с кодом. Это защищает сотрудников и файлы компании.";
+
 export const inviteRoleHint =
   "Выберите, что человек сможет делать в компании. Доступ можно отключить позже.";
 

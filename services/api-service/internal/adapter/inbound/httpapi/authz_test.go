@@ -99,6 +99,18 @@ func (s stubAuth) CompleteTwoFactor(context.Context, string, string) (usecase.Se
 	return usecase.Session{}, identity.ErrUnauthorized
 }
 
+func (s stubAuth) StartTOTPSetup(context.Context, identity.User) (usecase.TOTPSetup, error) {
+	return usecase.TOTPSetup{}, identity.ErrUnauthorized
+}
+
+func (s stubAuth) EnableTOTP(context.Context, identity.User, string) ([]string, error) {
+	return nil, identity.ErrUnauthorized
+}
+
+func (s stubAuth) DisableTOTP(context.Context, identity.User, string) error {
+	return identity.ErrUnauthorized
+}
+
 func (s stubAuth) Logout(context.Context, string) error { return nil }
 
 func (s stubAuth) LogoutEverywhere(_ context.Context, actor identity.User) error {

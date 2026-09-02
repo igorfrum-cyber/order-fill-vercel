@@ -5,10 +5,12 @@ import { companyLoginCopy, companyLoginLogoURL } from "../../features/auth/acces
 import { loginAccessHint, loginFailedMessage } from "../../features/help/copy.js";
 import { Field, PasswordField, PrimaryButton } from "../widgets.jsx";
 import { AuthCard } from "./AuthShared.jsx";
+import { TwoFactorLogin } from "./TwoFactorLogin.jsx";
 
 export function LoginScreen({ onDone, company }) {
   const [name, setName] = useState("");
   const [password, setPassword] = useState("");
+  const [challengeId, setChallengeId] = useState("");
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   const copy = companyLoginCopy(company);
@@ -20,12 +22,21 @@ export function LoginScreen({ onDone, company }) {
     setBusy(true);
     setError("");
     try {
-      onDone(await login(name, password));
+      const result = await login(name, password);
+      if (result.two_factor_required) {
+        setChallengeId(result.challenge_id);
+        return;
+      }
+      onDone(result);
     } catch {
       setError(loginFailedMessage);
     } finally {
       setBusy(false);
     }
+  }
+
+  if (challengeId) {
+    return <TwoFactorLogin challengeId={challengeId} onDone={onDone} onBack={() => setChallengeId("")} />;
   }
 
   return (

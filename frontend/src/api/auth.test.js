@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { changePassword, createCompany, getCompanyLogin, login, logoutEverywhere, setCompanyLogo, setCompanyLoginSlug, updateCompany } from "./auth.js";
+import { changePassword, completeTwoFactorLogin, createCompany, disableTwoFactor, enableTwoFactor, getCompanyLogin, login, logoutEverywhere, setCompanyLogo, setCompanyLoginSlug, startTwoFactorSetup, updateCompany } from "./auth.js";
 import { ApiClient, apiClient } from "./client.js";
 
 test("getCompanyLogin requests public company metadata and encodes the slug", async () => {
@@ -154,6 +154,66 @@ test("login posts credentials with CSRF header and cookies", async () => {
     assert.equal(calls[0].options.credentials, "include");
     assert.equal(calls[0].options.headers["X-Requested-With"], "fetch");
     assert.match(calls[0].options.body, /correct-horse/);
+  } finally {
+    apiClient.fetcher = originalFetcher;
+    apiClient.baseUrl = originalBase;
+  }
+});
+
+test("completeTwoFactorLogin posts challenge id and code", async () => {
+  const calls = [];
+  const originalFetcher = apiClient.fetcher;
+  const originalBase = apiClient.baseUrl;
+  apiClient.baseUrl = "";
+  apiClient.fetcher = function fetcher(url, options) {
+    calls.push({ url, options });
+    return Promise.resolve({
+      ok: true,
+      status: 200,
+      headers: new Map([["Content-Type", "application/json"]]),
+      json: async () => ({ id: "u1", login: "buyer", role: "purchaser" }),
+    });
+  };
+  try {
+    const user = await completeTwoFactorLogin("challenge-1", "123456");
+    assert.equal(user.login, "buyer");
+    assert.equal(calls[0].url, "/api/v1/auth/login/2fa");
+    assert.match(calls[0].options.body, /challenge_id/);
+    assert.match(calls[0].options.body, /123456/);
+  } finally {
+    apiClient.fetcher = originalFetcher;
+    apiClient.baseUrl = originalBase;
+  }
+});
+
+test("two-factor setup enable and disable post the expected bodies", async () => {
+  const calls = [];
+  const originalFetcher = apiClient.fetcher;
+  const originalBase = apiClient.baseUrl;
+  apiClient.baseUrl = "";
+  apiClient.fetcher = function fetcher(url, options) {
+    calls.push({ url, options });
+    if (url.endsWith("/disable")) {
+      return Promise.resolve({ ok: true, status: 204, headers: new Map() });
+    }
+    return Promise.resolve({
+      ok: true,
+      status: 200,
+      headers: new Map([["Content-Type", "application/json"]]),
+      json: async () => (url.endsWith("/setup") ? { secret: "ABC", otpauth_url: "otpauth://", qr_png_base64: "png" } : { recovery_codes: ["AAAA-BBBB"] }),
+    });
+  };
+  try {
+    const setup = await startTwoFactorSetup();
+    assert.equal(setup.secret, "ABC");
+    assert.equal(calls[0].url, "/api/v1/auth/2fa/setup");
+    const enabled = await enableTwoFactor("123456");
+    assert.deepEqual(enabled.recovery_codes, ["AAAA-BBBB"]);
+    assert.equal(calls[1].url, "/api/v1/auth/2fa/enable");
+    assert.match(calls[1].options.body, /123456/);
+    await disableTwoFactor("correct-horse");
+    assert.equal(calls[2].url, "/api/v1/auth/2fa/disable");
+    assert.match(calls[2].options.body, /correct-horse/);
   } finally {
     apiClient.fetcher = originalFetcher;
     apiClient.baseUrl = originalBase;

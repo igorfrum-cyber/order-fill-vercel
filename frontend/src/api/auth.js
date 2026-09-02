@@ -15,6 +15,34 @@ export function login(login, password) {
   });
 }
 
+export function completeTwoFactorLogin(challengeId, code) {
+  return apiClient.request("/api/v1/auth/login/2fa", {
+    method: "POST",
+    body: JSON.stringify({ challenge_id: challengeId, code }),
+  });
+}
+
+export function startTwoFactorSetup() {
+  return apiClient.request("/api/v1/auth/2fa/setup", {
+    method: "POST",
+    body: JSON.stringify({}),
+  });
+}
+
+export function enableTwoFactor(code) {
+  return apiClient.request("/api/v1/auth/2fa/enable", {
+    method: "POST",
+    body: JSON.stringify({ code }),
+  });
+}
+
+export function disableTwoFactor(password) {
+  return apiClient.request("/api/v1/auth/2fa/disable", {
+    method: "POST",
+    body: JSON.stringify({ password }),
+  });
+}
+
 export function acceptInvite(token, password) {
   return apiClient.request("/api/v1/auth/invite", {
     method: "POST",

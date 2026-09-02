@@ -75,3 +75,27 @@ func TestRecoveryCodeHashDoesNotStoreRawCode(t *testing.T) {
 		}
 	}
 }
+
+func TestTOTPAuthURLContainsSecret(t *testing.T) {
+	secret, err := NewTOTPSecret()
+	if err != nil {
+		t.Fatal(err)
+	}
+	authURL, err := TOTPAuthURL(secret, "buyer")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(authURL, secret) {
+		t.Fatal("otpauth url must include the secret")
+	}
+	if !strings.Contains(authURL, "otpauth://totp/") {
+		t.Fatalf("unexpected url %s", authURL)
+	}
+	png, err := TOTPQR(secret, "buyer")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(png) < 32 {
+		t.Fatalf("qr png too small: %d", len(png))
+	}
+}

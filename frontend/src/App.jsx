@@ -200,7 +200,12 @@ export default function App() {
               />
             ) : null}
             {screen === "account" ? (
-              <AccountScreen me={me} onBack={() => setScreen("history")} onSignedOut={() => setMe(null)} />
+              <AccountScreen
+                me={me}
+                onBack={() => setScreen("history")}
+                onSignedOut={() => setMe(null)}
+                onMe={setMe}
+              />
             ) : null}
           </main>
           {quickStartOpen ? (

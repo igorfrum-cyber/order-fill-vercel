@@ -55,6 +55,9 @@ func NewRouter(config Config) http.Handler {
 	mux.HandleFunc("POST /api/v1/auth/logout-everywhere", auth.logoutEverywhere)
 	mux.HandleFunc("POST /api/v1/auth/password", auth.changePassword)
 	mux.HandleFunc("GET /api/v1/auth/me", auth.me)
+	mux.HandleFunc("POST /api/v1/auth/2fa/setup", auth.startTOTP)
+	mux.HandleFunc("POST /api/v1/auth/2fa/enable", auth.enableTOTP)
+	mux.HandleFunc("POST /api/v1/auth/2fa/disable", auth.disableTOTP)
 
 	handler := jobHandler{
 		creator:    config.CreateJob,

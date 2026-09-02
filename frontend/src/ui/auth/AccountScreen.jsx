@@ -10,8 +10,9 @@ import {
 } from "../../features/help/copy.js";
 import { GhostButton, Modal, PasswordField, PrimaryButton } from "../widgets.jsx";
 import { PasswordHints } from "./AuthShared.jsx";
+import { TwoFactorSetup } from "./TwoFactorSetup.jsx";
 
-export function AccountScreen({ me, onBack, onSignedOut }) {
+export function AccountScreen({ me, onBack, onSignedOut, onMe }) {
   const [current, setCurrent] = useState("");
   const [password, setPassword] = useState("");
   const [repeat, setRepeat] = useState("");
@@ -82,6 +83,10 @@ export function AccountScreen({ me, onBack, onSignedOut }) {
           {logoutEverywhereLabel}
         </GhostButton>
       </div>
+      <TwoFactorSetup
+        enabled={Boolean(me.two_factor_enabled)}
+        onChanged={(enabled) => onMe?.({ ...me, two_factor_enabled: enabled })}
+      />
       <form className="space-y-4 rounded-2xl border border-[var(--color-line)] bg-[var(--color-surface)] p-6" onSubmit={submit}>
         <h2 className="text-[16px] font-semibold">Сменить пароль</h2>
         <PasswordField label="Текущий пароль" value={current} onChange={setCurrent} autoComplete="current-password" />

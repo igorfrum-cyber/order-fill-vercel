@@ -738,14 +738,16 @@ func (m *memoryIdentity) CreateUser(_ context.Context, user identity.User) error
 }
 
 func (m *memoryIdentity) hydrate(user identity.User) identity.User {
-	if user.CompanyID == "" {
-		return user
+	if user.CompanyID != "" {
+		if company, ok := m.companies[user.CompanyID]; ok {
+			user.CompanyName = company.Name
+			user.CompanyLoginSlug = company.LoginSlug
+			user.CompanyHasLogo = company.HasLogo()
+			user.CompanyDisabled = company.Disabled()
+		}
 	}
-	if company, ok := m.companies[user.CompanyID]; ok {
-		user.CompanyName = company.Name
-		user.CompanyLoginSlug = company.LoginSlug
-		user.CompanyHasLogo = company.HasLogo()
-		user.CompanyDisabled = company.Disabled()
+	if settings, ok := m.totp[user.ID]; ok {
+		user.TwoFactorEnabled = settings.Enabled()
 	}
 	return user
 }

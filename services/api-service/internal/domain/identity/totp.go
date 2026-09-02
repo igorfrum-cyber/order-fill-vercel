@@ -1,8 +1,11 @@
 package identity
 
 import (
+	"bytes"
 	"crypto/rand"
 	"fmt"
+	"image/png"
+	"net/url"
 	"strings"
 	"time"
 
@@ -102,4 +105,42 @@ func totpOpts() totp.ValidateOpts {
 		Digits:    otp.DigitsSix,
 		Algorithm: otp.AlgorithmSHA1,
 	}
+}
+
+func TOTPAuthURL(secret string, accountName string) (string, error) {
+	secret = strings.TrimSpace(secret)
+	if secret == "" {
+		return "", ErrInvalidTOTP
+	}
+	account := strings.TrimSpace(accountName)
+	if account == "" {
+		account = "user"
+	}
+	values := url.Values{}
+	values.Set("secret", secret)
+	values.Set("issuer", totpIssuer)
+	values.Set("algorithm", "SHA1")
+	values.Set("digits", "6")
+	values.Set("period", "30")
+	return "otpauth://totp/" + url.PathEscape(totpIssuer+":"+account) + "?" + values.Encode(), nil
+}
+
+func TOTPQR(secret string, accountName string) ([]byte, error) {
+	authURL, err := TOTPAuthURL(secret, accountName)
+	if err != nil {
+		return nil, err
+	}
+	key, err := otp.NewKeyFromURL(authURL)
+	if err != nil {
+		return nil, fmt.Errorf("totp url: %w", err)
+	}
+	img, err := key.Image(200, 200)
+	if err != nil {
+		return nil, fmt.Errorf("totp qr: %w", err)
+	}
+	var buf bytes.Buffer
+	if err := png.Encode(&buf, img); err != nil {
+		return nil, fmt.Errorf("encode totp qr: %w", err)
+	}
+	return buf.Bytes(), nil
 }

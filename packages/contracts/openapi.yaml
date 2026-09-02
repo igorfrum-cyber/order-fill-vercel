@@ -168,6 +168,79 @@ paths:
                 $ref: "#/components/schemas/User"
         "401":
           $ref: "#/components/responses/Unauthorized"
+  /api/v1/auth/2fa/setup:
+    post:
+      operationId: startTwoFactorSetup
+      summary: Start app-based two-factor setup
+      responses:
+        "200":
+          description: Pending TOTP secret and QR payload.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [secret, otpauth_url, qr_png_base64]
+                properties:
+                  secret:
+                    type: string
+                  otpauth_url:
+                    type: string
+                  qr_png_base64:
+                    type: string
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "409":
+          $ref: "#/components/responses/Conflict"
+  /api/v1/auth/2fa/enable:
+    post:
+      operationId: enableTwoFactor
+      summary: Confirm TOTP setup with a code from the app
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [code]
+              properties:
+                code:
+                  type: string
+      responses:
+        "200":
+          description: Recovery codes shown once.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [recovery_codes]
+                properties:
+                  recovery_codes:
+                    type: array
+                    items:
+                      type: string
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "409":
+          $ref: "#/components/responses/Conflict"
+  /api/v1/auth/2fa/disable:
+    post:
+      operationId: disableTwoFactor
+      summary: Disable two-factor authentication
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [password]
+              properties:
+                password:
+                  type: string
+      responses:
+        "204":
+          description: Two-factor disabled.
+        "401":
+          $ref: "#/components/responses/Unauthorized"
   /api/v1/jobs:
     get:
       operationId: listJobs
@@ -876,6 +949,8 @@ components:
         login_slug:
           type: string
         has_logo:
+          type: boolean
+        two_factor_enabled:
           type: boolean
         disabled_at:
           type: string

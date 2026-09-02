@@ -14,7 +14,7 @@ import (
 )
 
 const userSelect = `u.id, COALESCE(u.company_id, ''), COALESCE(c.name, ''), COALESCE(c.login_slug, ''), COALESCE(c.logo_content_type, '') <> '', u.login, u.password_hash, u.role, u.created_at, u.disabled_at,
-		COALESCE(c.disabled_at IS NOT NULL, false)`
+		COALESCE(c.disabled_at IS NOT NULL, false), COALESCE(t.enabled_at IS NOT NULL, false)`
 
 func (r *Repository) CountUsers(ctx context.Context) (int, error) {
 	var count int
@@ -142,17 +142,17 @@ func (r *Repository) CreateUser(ctx context.Context, user identity.User) error {
 
 func (r *Repository) GetUserByID(ctx context.Context, id string) (identity.User, error) {
 	return r.scanUser(r.pool.QueryRow(ctx,
-		`SELECT `+userSelect+` FROM users u LEFT JOIN companies c ON c.id = u.company_id WHERE u.id = $1`, id))
+		`SELECT `+userSelect+` FROM users u LEFT JOIN companies c ON c.id = u.company_id LEFT JOIN user_totp t ON t.user_id = u.id WHERE u.id = $1`, id))
 }
 
 func (r *Repository) GetUserByLogin(ctx context.Context, login string) (identity.User, error) {
 	return r.scanUser(r.pool.QueryRow(ctx,
-		`SELECT `+userSelect+` FROM users u LEFT JOIN companies c ON c.id = u.company_id WHERE u.login = $1`, login))
+		`SELECT `+userSelect+` FROM users u LEFT JOIN companies c ON c.id = u.company_id LEFT JOIN user_totp t ON t.user_id = u.id WHERE u.login = $1`, login))
 }
 
 func (r *Repository) ListUsers(ctx context.Context, companyID string) ([]identity.User, error) {
 	rows, err := r.pool.Query(ctx,
-		`SELECT `+userSelect+` FROM users u LEFT JOIN companies c ON c.id = u.company_id
+		`SELECT `+userSelect+` FROM users u LEFT JOIN companies c ON c.id = u.company_id LEFT JOIN user_totp t ON t.user_id = u.id
 		 WHERE ($1 = '' OR u.company_id = $1) ORDER BY u.created_at DESC`, companyID)
 	if err != nil {
 		return nil, fmt.Errorf("list users: %w", err)
@@ -210,6 +210,7 @@ func (r *Repository) GetSessionUser(ctx context.Context, tokenHash string, now t
 		`SELECT `+userSelect+` FROM sessions s
 		 JOIN users u ON u.id = s.user_id
 		 LEFT JOIN companies c ON c.id = u.company_id
+		 LEFT JOIN user_totp t ON t.user_id = u.id
 		 WHERE s.token_hash = $1 AND s.expires_at > $2`, tokenHash, now.UTC()))
 	if err != nil {
 		if errors.Is(err, identity.ErrNotFound) {
@@ -432,7 +433,7 @@ func scanUserRow(row pgx.Row) (identity.User, error) {
 		user identity.User
 		role string
 	)
-	err := row.Scan(&user.ID, &user.CompanyID, &user.CompanyName, &user.CompanyLoginSlug, &user.CompanyHasLogo, &user.Login, &user.PasswordHash, &role, &user.CreatedAt, &user.DisabledAt, &user.CompanyDisabled)
+	err := row.Scan(&user.ID, &user.CompanyID, &user.CompanyName, &user.CompanyLoginSlug, &user.CompanyHasLogo, &user.Login, &user.PasswordHash, &role, &user.CreatedAt, &user.DisabledAt, &user.CompanyDisabled, &user.TwoFactorEnabled)
 	if err != nil {
 		return identity.User{}, err
 	}

@@ -15,6 +15,11 @@ import {
   roleLabel,
   tourForRole,
   inviteRoleHint,
+  twoFactorCodeLabel,
+  twoFactorEnableLabel,
+  twoFactorLoginTitle,
+  twoFactorRequiredHint,
+  twoFactorSetupHint,
 } from "./copy.js";
 
 test("loginFailedMessage does not distinguish why login failed", () => {
@@ -113,6 +118,20 @@ test("logoutEverywhere copy explains that every device will be signed out", () =
   assert.equal(
     logoutEverywhereConfirm,
     "Вы выйдете здесь и на других устройствах. Войти снова можно будет по логину и паролю.",
+  );
+});
+
+test("two-factor copy is ready for setup and login", () => {
+  assert.equal(twoFactorEnableLabel, "Включить защиту кодом");
+  assert.equal(twoFactorLoginTitle, "Подтвердите вход");
+  assert.equal(twoFactorCodeLabel, "Код из приложения");
+  assert.equal(
+    twoFactorSetupHint,
+    "Код нужен при входе с новым паролем. Сохраните запасные коды: каждый работает один раз.",
+  );
+  assert.equal(
+    twoFactorRequiredHint,
+    "Для управления доступом включите вход с кодом. Это защищает сотрудников и файлы компании.",
   );
 });
 

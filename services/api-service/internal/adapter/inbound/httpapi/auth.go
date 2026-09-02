@@ -23,6 +23,9 @@ type userContextKey struct{}
 type sessionAuthenticator interface {
 	Login(ctx context.Context, login string, password string) (usecase.LoginResult, error)
 	CompleteTwoFactor(ctx context.Context, challengeID string, code string) (usecase.Session, error)
+	StartTOTPSetup(ctx context.Context, actor identity.User) (usecase.TOTPSetup, error)
+	EnableTOTP(ctx context.Context, actor identity.User, code string) ([]string, error)
+	DisableTOTP(ctx context.Context, actor identity.User, password string) error
 	Logout(ctx context.Context, tokenHash string) error
 	LogoutEverywhere(ctx context.Context, actor identity.User) error
 	AcceptInvite(ctx context.Context, rawToken string, password string) (usecase.Session, error)
@@ -269,6 +272,59 @@ func (h authHandler) me(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, presentUser(user))
 }
 
+func (h authHandler) startTOTP(w http.ResponseWriter, r *http.Request) {
+	user, ok := userFrom(r)
+	if !ok || h.auth == nil {
+		writeError(w, http.StatusUnauthorized, "unauthorized", "authentication is required")
+		return
+	}
+	setup, err := h.auth.StartTOTPSetup(r.Context(), user)
+	if err != nil {
+		writeDomainError(w, "totp_setup_failed", err)
+		return
+	}
+	writeJSON(w, http.StatusOK, totpSetupResponse{
+		Secret:      setup.Secret,
+		AuthURL:     setup.AuthURL,
+		QRPNGBase64: setup.QRPNGBase64,
+	})
+}
+
+func (h authHandler) enableTOTP(w http.ResponseWriter, r *http.Request) {
+	user, ok := userFrom(r)
+	if !ok || h.auth == nil {
+		writeError(w, http.StatusUnauthorized, "unauthorized", "authentication is required")
+		return
+	}
+	payload, decoded := decodeAuthJSON(w, r)
+	if !decoded {
+		return
+	}
+	codes, err := h.auth.EnableTOTP(r.Context(), user, payload.Code)
+	if err != nil {
+		writeDomainError(w, "totp_enable_failed", err)
+		return
+	}
+	writeJSON(w, http.StatusOK, totpEnableResponse{RecoveryCodes: codes})
+}
+
+func (h authHandler) disableTOTP(w http.ResponseWriter, r *http.Request) {
+	user, ok := userFrom(r)
+	if !ok || h.auth == nil {
+		writeError(w, http.StatusUnauthorized, "unauthorized", "authentication is required")
+		return
+	}
+	payload, decoded := decodeAuthJSON(w, r)
+	if !decoded {
+		return
+	}
+	if err := h.auth.DisableTOTP(r.Context(), user, payload.Password); err != nil {
+		writeDomainError(w, "totp_disable_failed", err)
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
+}
+
 type authJSON struct {
 	Login           string `json:"login"`
 	Password        string `json:"password"`
@@ -307,12 +363,23 @@ type userResponse struct {
 	CompanyName string  `json:"company_name,omitempty"`
 	LoginSlug   string  `json:"login_slug,omitempty"`
 	HasLogo     bool    `json:"has_logo,omitempty"`
+	TwoFactor   bool    `json:"two_factor_enabled,omitempty"`
 	DisabledAt  *string `json:"disabled_at,omitempty"`
 }
 
 type twoFactorChallengeResponse struct {
 	TwoFactorRequired bool   `json:"two_factor_required"`
 	ChallengeID       string `json:"challenge_id"`
+}
+
+type totpSetupResponse struct {
+	Secret      string `json:"secret"`
+	AuthURL     string `json:"otpauth_url"`
+	QRPNGBase64 string `json:"qr_png_base64"`
+}
+
+type totpEnableResponse struct {
+	RecoveryCodes []string `json:"recovery_codes"`
 }
 
 func presentUser(user identity.User) userResponse {
@@ -324,6 +391,7 @@ func presentUser(user identity.User) userResponse {
 		CompanyName: user.CompanyName,
 		LoginSlug:   user.CompanyLoginSlug,
 		HasLogo:     user.CompanyHasLogo,
+		TwoFactor:   user.TwoFactorEnabled,
 	}
 	if user.DisabledAt != nil {
 		value := user.DisabledAt.UTC().Format("2006-01-02T15:04:05Z")
