@@ -192,3 +192,11 @@ export function resetUser(userId) {
     body: JSON.stringify({}),
   });
 }
+
+export function listAudit() {
+  return apiClient.request("/api/v1/audit");
+}
+
+export function listStatus() {
+  return apiClient.request("/api/v1/status");
+}

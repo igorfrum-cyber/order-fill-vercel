@@ -260,7 +260,25 @@ func (a *Admin) ListUsers(ctx context.Context, actor identity.User, companyID st
 	if !authz.CanManageCompany(actor, companyID) {
 		return nil, identity.ErrNotFound
 	}
-	return a.store.ListUsers(ctx, companyID)
+	users, err := a.store.ListUsers(ctx, companyID)
+	if err != nil {
+		return nil, err
+	}
+	ids := make([]string, 0, len(users))
+	for _, user := range users {
+		ids = append(ids, user.ID)
+	}
+	seen, err := a.store.LastLogins(ctx, ids)
+	if err != nil {
+		return nil, err
+	}
+	for i := range users {
+		if at, ok := seen[users[i].ID]; ok {
+			value := at.UTC()
+			users[i].LastSeenAt = &value
+		}
+	}
+	return users, nil
 }
 
 func (a *Admin) DisableUser(ctx context.Context, actor identity.User, userID string) error {
@@ -282,7 +300,7 @@ func (a *Admin) ListAudit(ctx context.Context, actor identity.User) ([]port.Audi
 	if actor.Role != identity.RolePlatformAdmin {
 		return nil, identity.ErrNotFound
 	}
-	return a.store.ListAudit(ctx, 100)
+	return a.store.ListAudit(ctx, 100, port.AccessAuditActions())
 }
 
 func boundToOwnCompany(actor identity.User) bool {

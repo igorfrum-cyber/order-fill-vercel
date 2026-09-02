@@ -583,6 +583,42 @@ func TestDisableCompanyRecordsAudit(t *testing.T) {
 	assertAudit(t, store, "company_disabled", actor.ID, "co-1")
 }
 
+func TestListAuditDropsLoginsAndKeepsAccessEvents(t *testing.T) {
+	_, store := newTestAuthStore(t)
+	store.users["admin-1"] = identity.User{ID: "admin-1", Login: "root"}
+	store.companies["co-1"] = identity.Company{ID: "co-1", Name: "Сияние"}
+	now := time.Date(2026, 9, 2, 12, 0, 0, 0, time.UTC)
+	_ = store.InsertAudit(context.Background(), port.AuditEvent{ID: "1", At: now, ActorID: "admin-1", Action: port.AuditLoginSuccess, CompanyID: "co-1"})
+	_ = store.InsertAudit(context.Background(), port.AuditEvent{ID: "2", At: now.Add(time.Minute), ActorID: "admin-1", Action: port.AuditInviteCreated, CompanyID: "co-1"})
+	admin := NewAdmin(store, func() string { return "new-id" }, func() time.Time { return now })
+	events, err := admin.ListAudit(context.Background(), identity.User{ID: "admin-1", Role: identity.RolePlatformAdmin})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(events) != 1 || events[0].Action != port.AuditInviteCreated {
+		t.Fatalf("got %+v", events)
+	}
+	if events[0].ActorLogin != "root" || events[0].CompanyName != "Сияние" {
+		t.Fatalf("missing names %+v", events[0])
+	}
+}
+
+func TestListUsersAttachesLastLogin(t *testing.T) {
+	_, store := newTestAuthStore(t)
+	user := identity.User{ID: "u-1", CompanyID: "co-1", Login: "buyer", Role: identity.RolePurchaser}
+	store.users[user.ID] = user
+	seen := time.Date(2026, 9, 2, 8, 15, 0, 0, time.UTC)
+	_ = store.InsertAudit(context.Background(), port.AuditEvent{ID: "login", At: seen, ActorID: user.ID, Action: port.AuditLoginSuccess})
+	admin := NewAdmin(store, func() string { return "new-id" }, func() time.Time { return seen })
+	items, err := admin.ListUsers(context.Background(), identity.User{ID: "owner", CompanyID: "co-1", Role: identity.RoleCompanyOwner}, "co-1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(items) != 1 || items[0].LastSeenAt == nil || !items[0].LastSeenAt.Equal(seen) {
+		t.Fatalf("got %+v", items)
+	}
+}
+
 func assertAudit(t *testing.T, store *memoryIdentity, action string, actorID string, companyID string) {
 	t.Helper()
 	for _, event := range store.audits {
@@ -1111,11 +1147,53 @@ func (m *memoryIdentity) InsertAudit(_ context.Context, event port.AuditEvent) e
 	return nil
 }
 
-func (m *memoryIdentity) ListAudit(_ context.Context, limit int) ([]port.AuditEvent, error) {
-	if limit <= 0 || limit > len(m.audits) {
-		limit = len(m.audits)
+func (m *memoryIdentity) ListAudit(_ context.Context, limit int, actions []string) ([]port.AuditEvent, error) {
+	filtered := make([]port.AuditEvent, 0, len(m.audits))
+	allow := map[string]bool{}
+	for _, action := range actions {
+		allow[action] = true
+	}
+	for _, event := range m.audits {
+		if len(allow) > 0 && !allow[event.Action] {
+			continue
+		}
+		if event.ActorLogin == "" {
+			if user, ok := m.users[event.ActorID]; ok {
+				event.ActorLogin = user.Login
+			}
+		}
+		if event.CompanyName == "" && event.CompanyID != "" {
+			if company, ok := m.companies[event.CompanyID]; ok {
+				event.CompanyName = company.Name
+			}
+		}
+		filtered = append(filtered, event)
+	}
+	if limit <= 0 || limit > len(filtered) {
+		limit = len(filtered)
+	}
+	start := len(filtered) - limit
+	if start < 0 {
+		start = 0
 	}
 	out := make([]port.AuditEvent, limit)
-	copy(out, m.audits[len(m.audits)-limit:])
+	copy(out, filtered[start:])
+	return out, nil
+}
+
+func (m *memoryIdentity) LastLogins(_ context.Context, userIDs []string) (map[string]time.Time, error) {
+	wanted := map[string]bool{}
+	for _, id := range userIDs {
+		wanted[id] = true
+	}
+	out := map[string]time.Time{}
+	for _, event := range m.audits {
+		if event.Action != port.AuditLoginSuccess || !wanted[event.ActorID] {
+			continue
+		}
+		if current, ok := out[event.ActorID]; !ok || event.At.After(current) {
+			out[event.ActorID] = event.At.UTC()
+		}
+	}
 	return out, nil
 }

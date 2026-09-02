@@ -64,7 +64,7 @@ test("quickStartForRole returns non-technical steps", () => {
 });
 
 test("tourForRole points at on-screen controls without jargon", () => {
-  const known = new Set(["order", "north", "jobs", "help", "users", "companies", "company", "company-select"]);
+  const known = new Set(["overview", "order", "north", "jobs", "help", "users", "companies", "company", "company-select"]);
   const purchaser = tourForRole("purchaser");
   assert.deepEqual(
     purchaser.map((step) => step.target),
@@ -185,6 +185,7 @@ test("helpSections stay plain and cover the required topics", () => {
     'Что значит "Нужно проверить"',
     "Статусы выгрузок",
     "Пользователи и доступ",
+    "Обзор сервиса",
     "Если не получается войти",
     "Как быстрее входить",
   ]);

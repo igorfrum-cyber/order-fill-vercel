@@ -49,6 +49,13 @@ func (p *Publisher) Publish(ctx context.Context, message port.JobMessage) error 
 	return nil
 }
 
+func (p *Publisher) Ping(ctx context.Context) error {
+	if err := p.client.Ping(ctx).Err(); err != nil {
+		return fmt.Errorf("ping queue: %w", err)
+	}
+	return nil
+}
+
 func (p *Publisher) Close() error {
 	if err := p.client.Close(); err != nil {
 		return fmt.Errorf("close queue client: %w", err)

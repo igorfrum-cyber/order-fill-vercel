@@ -90,6 +90,18 @@ func TestLoadRejectsIPWebAuthnRPID(t *testing.T) {
 	}
 }
 
+func TestLoadReadsDocumentHealthURL(t *testing.T) {
+	setRequiredEnv(t)
+	t.Setenv("DOCUMENT_HEALTH_URL", "http://document-service:8081/healthz")
+	cfg, err := Load()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cfg.DocumentHealthURL != "http://document-service:8081/healthz" {
+		t.Fatalf("got %q", cfg.DocumentHealthURL)
+	}
+}
+
 func setRequiredEnv(t *testing.T) {
 	t.Helper()
 	t.Setenv("DATABASE_URL", "postgres://order_fill:order_fill@localhost:5432/order_fill?sslmode=disable")

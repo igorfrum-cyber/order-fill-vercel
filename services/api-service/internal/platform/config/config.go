@@ -29,6 +29,7 @@ type Config struct {
 	WebAuthnRPID        string
 	WebAuthnRPName      string
 	MaxUploadBytes      int64
+	DocumentHealthURL   string
 }
 
 // Load reads the configuration and fails fast when a required value is missing,
@@ -51,6 +52,7 @@ func Load() (Config, error) {
 		BootstrapAdminLogin: getenv("BOOTSTRAP_ADMIN_LOGIN", "admin"),
 		WebAuthnRPID:        normalizeHostname(getenv("WEBAUTHN_RP_ID", "")),
 		WebAuthnRPName:      getenv("WEBAUTHN_RP_DISPLAY_NAME", "Order Fill"),
+		DocumentHealthURL:   strings.TrimSpace(getenv("DOCUMENT_HEALTH_URL", "")),
 	}
 
 	missing := make([]string, 0)

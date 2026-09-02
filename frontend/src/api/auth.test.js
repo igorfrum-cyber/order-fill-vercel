@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { changePassword, completeTwoFactorLogin, createCompany, disableTwoFactor, enableTwoFactor, getCompanyLogin, listSessions, login, logoutEverywhere, setCompanyLogo, setCompanyLoginSlug, startTwoFactorSetup, updateCompany } from "./auth.js";
+import { changePassword, completeTwoFactorLogin, createCompany, disableTwoFactor, enableTwoFactor, getCompanyLogin, listAudit, listSessions, listStatus, login, logoutEverywhere, setCompanyLogo, setCompanyLoginSlug, startTwoFactorSetup, updateCompany } from "./auth.js";
 import { ApiClient, apiClient } from "./client.js";
 
 test("getCompanyLogin requests public company metadata and encodes the slug", async () => {
@@ -277,6 +277,30 @@ test("listSessions reads active login devices", async () => {
     const result = await listSessions();
     assert.equal(calls[0].url, "/api/v1/auth/sessions");
     assert.equal(result.sessions[0].device, "Safari на Mac");
+  } finally {
+    apiClient.fetcher = originalFetcher;
+    apiClient.baseUrl = originalBase;
+  }
+});
+
+test("listStatus and listAudit hit the platform ops endpoints", async () => {
+  const calls = [];
+  const originalFetcher = apiClient.fetcher;
+  const originalBase = apiClient.baseUrl;
+  apiClient.baseUrl = "";
+  apiClient.fetcher = function fetcher(url) {
+    calls.push(url);
+    return Promise.resolve({
+      ok: true,
+      status: 200,
+      headers: new Map([["Content-Type", "application/json"]]),
+      json: async () => (url.includes("status") ? { components: [] } : { events: [] }),
+    });
+  };
+  try {
+    await listStatus();
+    await listAudit();
+    assert.deepEqual(calls, ["/api/v1/status", "/api/v1/audit"]);
   } finally {
     apiClient.fetcher = originalFetcher;
     apiClient.baseUrl = originalBase;

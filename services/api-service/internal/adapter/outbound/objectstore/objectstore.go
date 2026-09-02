@@ -67,6 +67,14 @@ func (s *Store) EnsureBucket(ctx context.Context) error {
 	return nil
 }
 
+func (s *Store) Ping(ctx context.Context) error {
+	_, err := s.client.BucketExists(ctx, s.bucket)
+	if err != nil {
+		return fmt.Errorf("ping object store: %w", err)
+	}
+	return nil
+}
+
 func (s *Store) Put(ctx context.Context, key string, contentType string, content []byte) error {
 	if strings.TrimSpace(contentType) == "" {
 		contentType = DefaultContentType

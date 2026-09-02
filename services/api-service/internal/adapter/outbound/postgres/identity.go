@@ -567,13 +567,22 @@ func (r *Repository) InsertAudit(ctx context.Context, event port.AuditEvent) err
 	return nil
 }
 
-func (r *Repository) ListAudit(ctx context.Context, limit int) ([]port.AuditEvent, error) {
+func (r *Repository) ListAudit(ctx context.Context, limit int, actions []string) ([]port.AuditEvent, error) {
 	if limit <= 0 {
 		limit = 100
 	}
-	rows, err := r.pool.Query(ctx,
-		`SELECT id, at, actor_id, action, COALESCE(company_id, ''), COALESCE(job_id, '')
-		 FROM audit_events ORDER BY at DESC LIMIT $1`, limit)
+	query := `SELECT e.id, e.at, e.actor_id, e.action, COALESCE(e.company_id, ''), COALESCE(e.job_id, ''),
+		COALESCE(u.login, ''), COALESCE(c.name, '')
+		 FROM audit_events e
+		 LEFT JOIN users u ON u.id = e.actor_id
+		 LEFT JOIN companies c ON c.id = e.company_id`
+	args := []any{limit}
+	if len(actions) > 0 {
+		query += ` WHERE e.action = ANY($2)`
+		args = append(args, actions)
+	}
+	query += ` ORDER BY e.at DESC LIMIT $1`
+	rows, err := r.pool.Query(ctx, query, args...)
 	if err != nil {
 		return nil, fmt.Errorf("list audit: %w", err)
 	}
@@ -581,13 +590,36 @@ func (r *Repository) ListAudit(ctx context.Context, limit int) ([]port.AuditEven
 	events := make([]port.AuditEvent, 0)
 	for rows.Next() {
 		var event port.AuditEvent
-		if err := rows.Scan(&event.ID, &event.At, &event.ActorID, &event.Action, &event.CompanyID, &event.JobID); err != nil {
+		if err := rows.Scan(&event.ID, &event.At, &event.ActorID, &event.Action, &event.CompanyID, &event.JobID, &event.ActorLogin, &event.CompanyName); err != nil {
 			return nil, err
 		}
 		event.At = event.At.UTC()
 		events = append(events, event)
 	}
 	return events, rows.Err()
+}
+
+func (r *Repository) LastLogins(ctx context.Context, userIDs []string) (map[string]time.Time, error) {
+	out := map[string]time.Time{}
+	if len(userIDs) == 0 {
+		return out, nil
+	}
+	rows, err := r.pool.Query(ctx,
+		`SELECT actor_id, MAX(at) FROM audit_events WHERE action = $1 AND actor_id = ANY($2) GROUP BY actor_id`,
+		port.AuditLoginSuccess, userIDs)
+	if err != nil {
+		return nil, fmt.Errorf("last logins: %w", err)
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var id string
+		var at time.Time
+		if err := rows.Scan(&id, &at); err != nil {
+			return nil, err
+		}
+		out[id] = at.UTC()
+	}
+	return out, rows.Err()
 }
 
 func (r *Repository) scanUser(row pgx.Row) (identity.User, error) {

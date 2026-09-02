@@ -408,6 +408,7 @@ type userResponse struct {
 	HasLogo     bool    `json:"has_logo,omitempty"`
 	TwoFactor   bool    `json:"two_factor_enabled,omitempty"`
 	HasPasskey  bool    `json:"has_passkey,omitempty"`
+	LastSeenAt  *string `json:"last_seen_at,omitempty"`
 	DisabledAt  *string `json:"disabled_at,omitempty"`
 }
 
@@ -441,6 +442,10 @@ func presentUser(user identity.User) userResponse {
 		HasLogo:     user.CompanyHasLogo,
 		TwoFactor:   user.TwoFactorEnabled,
 		HasPasskey:  user.HasPasskey,
+	}
+	if user.LastSeenAt != nil {
+		value := user.LastSeenAt.UTC().Format("2006-01-02T15:04:05Z")
+		response.LastSeenAt = &value
 	}
 	if user.DisabledAt != nil {
 		value := user.DisabledAt.UTC().Format("2006-01-02T15:04:05Z")

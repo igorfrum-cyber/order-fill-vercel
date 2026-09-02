@@ -38,6 +38,12 @@ export function jobStatusHint(status) {
   return JOB_STATUS_HINTS[status] || "";
 }
 
+const LIVE_JOB_STATUSES = new Set(["queued", "processing", "needs_review", "finalizing"]);
+
+export function liveJobs(jobs = []) {
+  return (jobs || []).filter((job) => LIVE_JOB_STATUSES.has(job.status));
+}
+
 export function jobsEmptyState(role) {
   if (role === "platform_admin") {
     return "Пока нет выгрузок по выбранной компании.";

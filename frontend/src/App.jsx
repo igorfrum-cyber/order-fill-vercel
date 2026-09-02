@@ -2,11 +2,11 @@ import { useEffect, useState } from "react";
 import { getCompanyLogin, getMe, logout } from "./api/auth.js";
 import { onAuthRequired } from "./api/client.js";
 import { getJob, getJobReport, listJobFiles } from "./api/jobs.js";
-import { canEditCompanyProfile, companyLoginURL, companySlugFromHost, companySlugFromPath, needsSecurityNudge, resolveUsersCompanyId } from "./features/auth/accessPresentation.js";
+import { canEditCompanyProfile, companyLoginURL, companySlugFromHost, companySlugFromPath, homeScreen, needsSecurityNudge, resolveUsersCompanyId } from "./features/auth/accessPresentation.js";
 import { consumeQuickStart } from "./features/help/firstRun.js";
 import { headerContext, roleLabel, securitySetupLabel, twoFactorRequiredHint } from "./features/help/copy.js";
 import { initialEditState } from "./features/order/reviewEdits.js";
-import { CompaniesScreen, CompanyScreen, JobHistory, UsersScreen } from "./ui/admin/AdminScreens.jsx";
+import { CompaniesScreen, CompanyScreen, JobHistory, OverviewScreen, UsersScreen } from "./ui/admin/AdminScreens.jsx";
 import { AccountScreen, InviteScreen, LoginScreen } from "./ui/auth/AuthScreens.jsx";
 import { HelpButton, ProfileMenu } from "./ui/chrome.jsx";
 import { HelpDrawer } from "./ui/help/HelpDrawer.jsx";
@@ -32,6 +32,7 @@ export default function App() {
       .then((user) => {
         setMe(user);
         if (user.company_id) setCompanyId(user.company_id);
+        setScreen(homeScreen(user.role));
       })
       .catch(() => setMe(null));
   }, []);
@@ -82,6 +83,7 @@ export default function App() {
         onDone={(user) => {
           setMe(user);
           if (user.company_id) setCompanyId(user.company_id);
+          setScreen(homeScreen(user.role));
         }}
       />
     );
@@ -97,6 +99,7 @@ export default function App() {
         onDone={(user) => {
           setMe(user);
           if (user.company_id) setCompanyId(user.company_id);
+          setScreen(homeScreen(user.role));
         }}
       />
     );
@@ -104,7 +107,7 @@ export default function App() {
 
   function goHome() {
     setResume(null);
-    setScreen("history");
+    setScreen(homeScreen(me.role));
   }
 
   const shell = headerContext(me);
@@ -119,6 +122,11 @@ export default function App() {
         <div className="flex h-full flex-col bg-[var(--color-ground)]">
           <header className="app-header flex flex-wrap items-center gap-2 border-b border-[var(--color-line)] bg-[var(--color-surface)] px-4 py-3 sm:px-6">
             <nav className="flex min-w-0 flex-wrap gap-1 text-[14px] font-medium sm:gap-2">
+              {me.role === "platform_admin" ? (
+                <NavButton dataTour="overview" active={screen === "overview"} onClick={() => setScreen("overview")}>
+                  Обзор
+                </NavButton>
+              ) : null}
               <NavButton active={screen === "history"} onClick={() => setScreen("history")}>
                 Выгрузки
               </NavButton>
@@ -171,6 +179,19 @@ export default function App() {
             </div>
           ) : null}
           <main className="flex-1 overflow-auto">
+            {screen === "overview" ? (
+              <OverviewScreen
+                onOpen={async (job) => {
+                  if (job.type === "north_merge") {
+                    setScreen("north");
+                    return;
+                  }
+                  const loaded = await loadOrderResume(job.id);
+                  setResume(loaded);
+                  setScreen("order");
+                }}
+              />
+            ) : null}
             {screen === "history" ? (
               <JobHistory
                 me={me}
@@ -216,7 +237,7 @@ export default function App() {
             {screen === "account" ? (
               <AccountScreen
                 me={me}
-                onBack={() => setScreen("history")}
+                onBack={() => setScreen(homeScreen(me.role))}
                 onSignedOut={() => setMe(null)}
                 onMe={setMe}
               />
@@ -236,7 +257,7 @@ export default function App() {
           onClose={() => setHelpOpen(false)}
           onReplay={() => {
             setHelpOpen(false);
-            setScreen("history");
+            setScreen(homeScreen(me.role));
             setQuickStartOpen(true);
           }}
         />

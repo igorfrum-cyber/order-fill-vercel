@@ -20,12 +20,14 @@ type JobListRow struct {
 }
 
 type AuditEvent struct {
-	ID        string
-	At        time.Time
-	ActorID   string
-	Action    string
-	CompanyID string
-	JobID     string
+	ID          string
+	At          time.Time
+	ActorID     string
+	ActorLogin  string
+	Action      string
+	CompanyID   string
+	CompanyName string
+	JobID       string
 }
 
 const (
@@ -41,6 +43,25 @@ const (
 	AuditFileDownload     = "file_download"
 	AuditArchiveDownload  = "archive_download"
 )
+
+func AccessAuditActions() []string {
+	return []string{
+		AuditPasswordChanged,
+		AuditInviteCreated,
+		AuditAccessReset,
+		AuditUserDisabled,
+		AuditCompanyDisabled,
+	}
+}
+
+func IsAccessAudit(action string) bool {
+	for _, item := range AccessAuditActions() {
+		if item == action {
+			return true
+		}
+	}
+	return false
+}
 
 type IdentityStore interface {
 	CountUsers(ctx context.Context) (int, error)
@@ -92,5 +113,6 @@ type IdentityStore interface {
 	ConsumePasskeyChallenge(ctx context.Context, id string, now time.Time) (identity.PasskeyChallenge, error)
 
 	InsertAudit(ctx context.Context, event AuditEvent) error
-	ListAudit(ctx context.Context, limit int) ([]AuditEvent, error)
+	ListAudit(ctx context.Context, limit int, actions []string) ([]AuditEvent, error)
+	LastLogins(ctx context.Context, userIDs []string) (map[string]time.Time, error)
 }

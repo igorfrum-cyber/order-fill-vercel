@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { combinedSummary, jobProgress, jobStatusText, jobStatusLabel, jobsEmptyState, jobStatusHint, reportSummaryFromRows, statusLabel } from "./reportModel.js";
+import { combinedSummary, jobProgress, jobStatusText, jobStatusLabel, jobsEmptyState, jobStatusHint, liveJobs, reportSummaryFromRows, statusLabel } from "./reportModel.js";
 
 test("reportSummaryFromRows derives dashboard metrics from API report rows", () => {
   const rows = [
@@ -119,4 +119,17 @@ test("jobProgress uses the worker-reported fraction instead of a fake status map
   assert.equal(jobProgress({ status: "needs_review", progress: 0.9 }), 1);
   assert.equal(jobProgress({ status: "completed" }), 1);
   assert.equal(jobProgress({ status: "failed" }), 1);
+});
+
+test("liveJobs keeps only work that is still in flight", () => {
+  assert.deepEqual(
+    liveJobs([
+      { id: "1", status: "queued" },
+      { id: "2", status: "completed" },
+      { id: "3", status: "processing" },
+      { id: "4", status: "failed" },
+      { id: "5", status: "needs_review" },
+    ]).map((job) => job.id),
+    ["1", "3", "5"],
+  );
 });

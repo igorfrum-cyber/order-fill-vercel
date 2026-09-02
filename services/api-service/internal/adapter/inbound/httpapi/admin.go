@@ -32,10 +32,15 @@ type lister interface {
 	Execute(ctx context.Context, actor identity.User, companyID string) ([]port.JobListRow, error)
 }
 
+type statusReader interface {
+	Snapshot(ctx context.Context, actor identity.User) ([]port.ComponentStatus, error)
+}
+
 type adminHandler struct {
 	admin  adminAPI
 	reset  accessResetter
 	lister lister
+	status statusReader
 }
 
 func (h adminHandler) listJobs(w http.ResponseWriter, r *http.Request) {
@@ -328,6 +333,24 @@ func (h adminHandler) listAudit(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, map[string]any{"events": presentAudit(events)})
 }
 
+func (h adminHandler) listStatus(w http.ResponseWriter, r *http.Request) {
+	user, ok := userFrom(r)
+	if !ok {
+		writeError(w, http.StatusUnauthorized, "unauthorized", "authentication is required")
+		return
+	}
+	if h.status == nil {
+		writeError(w, http.StatusNotFound, "not_found", "not found")
+		return
+	}
+	items, err := h.status.Snapshot(r.Context(), user)
+	if err != nil {
+		writeDomainError(w, "list_status_failed", err)
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"components": presentStatus(items)})
+}
+
 func (h adminHandler) publicCompanyLogin(w http.ResponseWriter, r *http.Request) {
 	if h.admin == nil {
 		writeError(w, http.StatusNotFound, "not_found", "not found")
@@ -424,25 +447,42 @@ func presentJobList(row port.JobListRow) jobListResponse {
 }
 
 type auditResponse struct {
-	ID        string `json:"id"`
-	At        string `json:"at"`
-	ActorID   string `json:"actor_id"`
-	Action    string `json:"action"`
-	CompanyID string `json:"company_id,omitempty"`
-	JobID     string `json:"job_id,omitempty"`
+	ID          string `json:"id"`
+	At          string `json:"at"`
+	ActorID     string `json:"actor_id"`
+	ActorLogin  string `json:"actor_login,omitempty"`
+	Action      string `json:"action"`
+	CompanyID   string `json:"company_id,omitempty"`
+	CompanyName string `json:"company_name,omitempty"`
+	JobID       string `json:"job_id,omitempty"`
 }
 
 func presentAudit(events []port.AuditEvent) []auditResponse {
 	items := make([]auditResponse, 0, len(events))
 	for _, event := range events {
 		items = append(items, auditResponse{
-			ID:        event.ID,
-			At:        event.At.UTC().Format("2006-01-02T15:04:05Z"),
-			ActorID:   event.ActorID,
-			Action:    event.Action,
-			CompanyID: event.CompanyID,
-			JobID:     event.JobID,
+			ID:          event.ID,
+			At:          event.At.UTC().Format("2006-01-02T15:04:05Z"),
+			ActorID:     event.ActorID,
+			ActorLogin:  event.ActorLogin,
+			Action:      event.Action,
+			CompanyID:   event.CompanyID,
+			CompanyName: event.CompanyName,
+			JobID:       event.JobID,
 		})
 	}
 	return items
+}
+
+type statusResponse struct {
+	ID string `json:"id"`
+	OK bool   `json:"ok"`
+}
+
+func presentStatus(items []port.ComponentStatus) []statusResponse {
+	out := make([]statusResponse, 0, len(items))
+	for _, item := range items {
+		out = append(out, statusResponse{ID: item.ID, OK: item.OK})
+	}
+	return out
 }

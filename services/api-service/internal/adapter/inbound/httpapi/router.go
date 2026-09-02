@@ -40,6 +40,7 @@ type Config struct {
 	CookieDomain    string
 	LoginLimiter    *Limiter
 	CreateLimiter   *Limiter
+	Status          statusReader
 }
 
 func NewRouter(config Config) http.Handler {
@@ -95,7 +96,7 @@ func NewRouter(config Config) http.Handler {
 	mux.HandleFunc("GET /api/v1/jobs/{job_id}/files/{file_id}/preview/window", handler.previewWindow)
 	mux.HandleFunc("GET /api/v1/jobs/{job_id}/files/{file_id}/preview/find", handler.previewFind)
 
-	admin := adminHandler{admin: config.Admin, reset: config.Reset, lister: config.ListJobs}
+	admin := adminHandler{admin: config.Admin, reset: config.Reset, lister: config.ListJobs, status: config.Status}
 	mux.HandleFunc("GET /api/v1/jobs", admin.listJobs)
 	mux.HandleFunc("GET /api/v1/companies", admin.listCompanies)
 	mux.HandleFunc("POST /api/v1/companies", admin.createCompany)
@@ -109,6 +110,7 @@ func NewRouter(config Config) http.Handler {
 	mux.HandleFunc("POST /api/v1/users/{user_id}/disable", admin.disableUser)
 	mux.HandleFunc("POST /api/v1/users/{user_id}/reset", admin.resetUser)
 	mux.HandleFunc("GET /api/v1/audit", admin.listAudit)
+	mux.HandleFunc("GET /api/v1/status", admin.listStatus)
 	mux.HandleFunc("GET /api/v1/public/companies/{slug}/login", admin.publicCompanyLogin)
 	mux.HandleFunc("GET /api/v1/public/companies/{slug}/logo", admin.publicCompanyLogo)
 

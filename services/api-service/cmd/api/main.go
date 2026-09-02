@@ -19,6 +19,7 @@ import (
 	"order-fill/services/api-service/internal/adapter/outbound/passkeys"
 	"order-fill/services/api-service/internal/adapter/outbound/postgres"
 	"order-fill/services/api-service/internal/adapter/outbound/queue"
+	"order-fill/services/api-service/internal/app/port"
 	"order-fill/services/api-service/internal/app/usecase"
 	"order-fill/services/api-service/internal/platform/config"
 	"order-fill/services/api-service/internal/platform/observability"
@@ -74,6 +75,13 @@ func run(logger *slog.Logger) error {
 		passkeys.New(settings.WebAuthnRPName, settings.WebAuthnRPID),
 	)
 	admin := usecase.NewAdmin(repository, uuid.NewString, now).WithFiles(storage)
+	status := usecase.NewStatus(nil).WithProbes([]usecase.StatusProbe{
+		{ID: port.ComponentAPI},
+		{ID: port.ComponentWorker, Ping: usecase.HTTPGetProbe(&http.Client{Timeout: 2 * time.Second}, settings.DocumentHealthURL)},
+		{ID: port.ComponentPostgres, Ping: pool.Ping},
+		{ID: port.ComponentQueue, Ping: publisher.Ping},
+		{ID: port.ComponentFiles, Ping: storage.Ping},
+	})
 
 	invite, created, err := auth.Bootstrap(ctx, settings.BootstrapAdminLogin)
 	if err != nil {
@@ -109,6 +117,7 @@ func run(logger *slog.Logger) error {
 		CookieDomain:    settings.CookieDomain,
 		LoginLimiter:    httpapi.NewLimiter(15*time.Minute, 10),
 		CreateLimiter:   httpapi.NewLimiter(time.Hour, 30),
+		Status:          status,
 	})
 
 	server := &http.Server{

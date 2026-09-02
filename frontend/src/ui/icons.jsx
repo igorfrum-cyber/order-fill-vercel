@@ -141,3 +141,61 @@ export function IconPhone({ className }) {
     </svg>
   );
 }
+
+export function IconServer({ className }) {
+  return (
+    <svg viewBox="0 0 24 24" className={className} {...stroke}>
+      <rect x="3" y="4" width="18" height="7" rx="1.6" />
+      <rect x="3" y="13" width="18" height="7" rx="1.6" />
+      <path d="M7 7.5h.01M7 16.5h.01" />
+    </svg>
+  );
+}
+
+export function IconWorker({ className }) {
+  return (
+    <svg viewBox="0 0 24 24" className={className} {...stroke}>
+      <path d="M4 19V9l8-5 8 5v10" />
+      <path d="M9 19v-6h6v6" />
+    </svg>
+  );
+}
+
+export function IconDatabase({ className }) {
+  return (
+    <svg viewBox="0 0 24 24" className={className} {...stroke}>
+      <ellipse cx="12" cy="6" rx="7" ry="3" />
+      <path d="M5 6v6c0 1.7 3.1 3 7 3s7-1.3 7-3V6" />
+      <path d="M5 12v6c0 1.7 3.1 3 7 3s7-1.3 7-3v-6" />
+    </svg>
+  );
+}
+
+export function IconQueue({ className }) {
+  return (
+    <svg viewBox="0 0 24 24" className={className} {...stroke}>
+      <path d="M4 7h16M4 12h10M4 17h6" />
+      <path d="m16 14 4 3-4 3" />
+    </svg>
+  );
+}
+
+export function IconFiles({ className }) {
+  return (
+    <svg viewBox="0 0 24 24" className={className} {...stroke}>
+      <path d="M15 3H7a2 2 0 0 0-2 2v12" />
+      <path d="M9 7h8a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H9a2 2 0 0 1-2-2V9a2 2 0 0 1 2-2Z" />
+    </svg>
+  );
+}
+
+export function IconPeople({ className }) {
+  return (
+    <svg viewBox="0 0 24 24" className={className} {...stroke}>
+      <circle cx="9" cy="8" r="3" />
+      <path d="M3.5 19a5.5 5.5 0 0 1 11 0" />
+      <circle cx="17" cy="9" r="2.4" />
+      <path d="M16 19a4.5 4.5 0 0 1 5.5-3.8" />
+    </svg>
+  );
+}

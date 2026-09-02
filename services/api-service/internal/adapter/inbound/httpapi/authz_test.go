@@ -7,6 +7,7 @@ import (
 	"strings"
 	"testing"
 
+	"order-fill/services/api-service/internal/app/port"
 	"order-fill/services/api-service/internal/app/usecase"
 	"order-fill/services/api-service/internal/domain/identity"
 	"order-fill/services/api-service/internal/domain/job"
@@ -146,6 +147,41 @@ func (s stubAuth) SessionUser(_ context.Context, tokenHash string) (identity.Use
 		return identity.User{}, identity.ErrUnauthorized
 	}
 	return user, nil
+}
+
+func TestStatusIsOnlyForPlatformAdmin(t *testing.T) {
+	adminToken := "admin-token"
+	buyerToken := "buyer-token"
+	router := NewRouter(Config{
+		AllowedOrigins: []string{"http://127.0.0.1:3200"},
+		Auth: stubAuth{users: map[string]identity.User{
+			identity.HashSecret(adminToken): {ID: "admin", Role: identity.RolePlatformAdmin, Login: "admin"},
+			identity.HashSecret(buyerToken): {ID: "buyer", Role: identity.RolePurchaser, Login: "buyer", CompanyID: "c-1"},
+		}},
+		Status: stubStatus{items: []port.ComponentStatus{{ID: port.ComponentAPI, OK: true}}},
+	})
+	forbidden := doAuthed(router, http.MethodGet, "/api/v1/status", buyerToken)
+	if forbidden.Code != http.StatusNotFound {
+		t.Fatalf("purchaser expected 404, got %d %s", forbidden.Code, forbidden.Body.String())
+	}
+	allowed := doAuthed(router, http.MethodGet, "/api/v1/status", adminToken)
+	if allowed.Code != http.StatusOK {
+		t.Fatalf("admin expected 200, got %d %s", allowed.Code, allowed.Body.String())
+	}
+	if !strings.Contains(allowed.Body.String(), `"id":"api"`) {
+		t.Fatalf("body %s", allowed.Body.String())
+	}
+}
+
+type stubStatus struct {
+	items []port.ComponentStatus
+}
+
+func (s stubStatus) Snapshot(_ context.Context, actor identity.User) ([]port.ComponentStatus, error) {
+	if actor.Role != identity.RolePlatformAdmin {
+		return nil, identity.ErrNotFound
+	}
+	return s.items, nil
 }
 
 type stubJobFinder struct {

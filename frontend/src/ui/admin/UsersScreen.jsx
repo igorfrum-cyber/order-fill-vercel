@@ -9,6 +9,7 @@ import {
   roleLabel,
   usersCompanyPrompt,
 } from "../../features/auth/accessPresentation.js";
+import { lastSeenLabel, userInitial, usersByHierarchy } from "../../features/auth/userHierarchy.js";
 import { IconCopy } from "../icons.jsx";
 import { GhostButton, Modal, PrimaryButton } from "../widgets.jsx";
 
@@ -53,8 +54,10 @@ export function UsersScreen({ companyId, actorRole, onCompany }) {
     setCopied(await copyText(url));
   }
 
+  const bands = usersByHierarchy(users);
+
   return (
-    <section className="animate-enter mx-auto max-w-3xl space-y-4 p-6">
+    <section className="animate-enter mx-auto max-w-5xl space-y-5 p-6">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h1 className="text-[22px] font-semibold">Пользователи</h1>
@@ -117,40 +120,39 @@ export function UsersScreen({ companyId, actorRole, onCompany }) {
           {roles.length ? <p className="text-[13px] text-[var(--color-ink-faint)]">{inviteRoleHint}</p> : null}
           {error ? <p className="text-[14px] text-[var(--color-danger)]">{error}</p> : null}
           {invite ? <InviteBanner url={invite} copied={copied} onCopy={async () => setCopied(await copyText(invite))} /> : null}
-          <ul className="divide-y divide-[var(--color-line)] rounded-xl border border-[var(--color-line)] bg-[var(--color-surface)]">
-            {users.map((user) => (
-              <li key={user.id} className="flex items-center justify-between gap-2 px-4 py-3">
-                <span>
-                  {user.login}
-                  <span className="text-[var(--color-ink-faint)]"> · {roleLabel(user.role)}</span>
-                  {user.disabled_at ? <span className="ml-2 text-[13px] text-[var(--color-ink-faint)]">выключен</span> : null}
-                </span>
-                <span className="flex gap-2">
-                  {canManageListedUser(actorRole, user.role) ? (
-                    <>
-                      <GhostButton onClick={() => setResetTarget(user)}>Сброс доступа</GhostButton>
-                      <GhostButton
-                        onClick={async () => {
-                          setError("");
-                          try {
-                            await disableUser(user.id);
-                            reload();
-                          } catch (err) {
-                            setError(err.message || "Не удалось выключить пользователя.");
-                          }
-                        }}
-                      >
-                        Выключить
-                      </GhostButton>
-                    </>
-                  ) : null}
-                </span>
-              </li>
+          <div className="space-y-5">
+            {bands.map((band) => (
+              <section key={band.key}>
+                <h2 className="mb-2 text-[13px] font-medium uppercase tracking-wide text-[var(--color-ink-faint)]">{band.title}</h2>
+                {band.users.length ? (
+                  <ul className="grid gap-3 sm:grid-cols-2">
+                    {band.users.map((user) => (
+                      <li key={user.id}>
+                        <UserCard
+                          user={user}
+                          canManage={canManageListedUser(actorRole, user.role)}
+                          onReset={() => setResetTarget(user)}
+                          onDisable={async () => {
+                            setError("");
+                            try {
+                              await disableUser(user.id);
+                              reload();
+                            } catch (err) {
+                              setError(err.message || "Не удалось выключить пользователя.");
+                            }
+                          }}
+                        />
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p className="rounded-[10px] border border-dashed border-[var(--color-line)] px-4 py-5 text-[14px] text-[var(--color-ink-faint)]">
+                    Пока никого
+                  </p>
+                )}
+              </section>
             ))}
-            {!users.length ? (
-              <li className="px-4 py-8 text-[14px] text-[var(--color-ink-faint)]">В этой компании пока нет пользователей</li>
-            ) : null}
-          </ul>
+          </div>
           {resetTarget ? (
             <Modal
               title={`Сбросить доступ ${resetTarget.login}?`}
@@ -176,6 +178,36 @@ export function UsersScreen({ companyId, actorRole, onCompany }) {
         </>
       )}
     </section>
+  );
+}
+
+function UserCard({ user, canManage, onReset, onDisable }) {
+  return (
+    <article
+      className={`rounded-[10px] border border-[var(--color-line)] bg-[var(--color-surface)] p-4 ${
+        user.disabled_at ? "opacity-55" : ""
+      }`}
+    >
+      <div className="flex items-start gap-3">
+        <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-[var(--color-neutral-soft)] text-[14px] font-semibold text-[var(--color-ink-soft)]">
+          {userInitial(user.login)}
+        </span>
+        <div className="min-w-0 flex-1">
+          <div className="truncate text-[15px] font-semibold">{user.login}</div>
+          <div className="mt-0.5 text-[13px] text-[var(--color-ink-soft)]">
+            {roleLabel(user.role)}
+            {user.disabled_at ? " · выключен" : ""}
+          </div>
+          <div className="mt-1 text-[13px] text-[var(--color-ink-faint)]">{lastSeenLabel(user.last_seen_at)}</div>
+        </div>
+      </div>
+      {canManage ? (
+        <div className="mt-3 flex flex-wrap gap-2">
+          <GhostButton onClick={onReset}>Сброс доступа</GhostButton>
+          <GhostButton onClick={onDisable}>Выключить</GhostButton>
+        </div>
+      ) : null}
+    </article>
   );
 }
 

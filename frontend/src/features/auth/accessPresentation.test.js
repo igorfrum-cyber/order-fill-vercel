@@ -16,6 +16,7 @@ import {
   inviteRoleHint,
   inviteRoleOptions,
   needsSecurityNudge,
+  homeScreen,
   needsUsersCompanyPicker,
   pickDefaultCompanyId,
   resolveUsersCompanyId,
@@ -93,6 +94,12 @@ test("needsSecurityNudge prompts every signed-in user until a passkey or code is
   assert.equal(needsSecurityNudge({ role: "purchaser", two_factor_enabled: true }), false);
   assert.equal(needsSecurityNudge({ role: "purchaser", has_passkey: true }), false);
   assert.equal(needsSecurityNudge({ role: "company_owner", two_factor_enabled: true }), false);
+});
+
+test("homeScreen lands platform admin on overview", () => {
+  assert.equal(homeScreen("platform_admin"), "overview");
+  assert.equal(homeScreen("company_owner"), "history");
+  assert.equal(homeScreen("purchaser"), "history");
 });
 
 test("platform admin must pick a company to manage users", () => {
