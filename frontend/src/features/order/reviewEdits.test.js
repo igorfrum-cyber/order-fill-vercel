@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { collectReviewEdits, hasManualDeviations, patchEdit, validateReviewEdits } from "./reviewEdits.js";
+import { collectReviewEdits, commentGateRows, hasManualDeviations, patchEdit, validateReviewEdits } from "./reviewEdits.js";
 
 function editMap(entries) {
   return new Map(entries);
@@ -19,6 +19,26 @@ test("validateReviewEdits flags rows where the inserted value changed without a 
 
   const invalid = validateReviewEdits(rows, edits);
   assert.deepEqual(invalid, ["a"]);
+});
+
+test("commentGateRows lists only rows that still need a comment after a quantity change", () => {
+  const rows = [
+    { key: "a", editable: true, inserted: 10, recommended: 10, rounded: 10, blankArticle: "CT02", blankName: "Крем" },
+    { key: "b", editable: true, inserted: 12, recommended: 10, rounded: 10, autoComment: "до коробки", blankArticle: "AA04", blankName: "Сыворотка" },
+  ];
+  const edits = editMap([
+    ["a", { value: "18", comment: "" }],
+    ["b", { value: "12", comment: "до коробки" }],
+  ]);
+  assert.deepEqual(commentGateRows(rows, edits).map((row) => row.key), ["a"]);
+});
+
+test("commentGateRows clears once a new comment is written", () => {
+  const rows = [
+    { key: "a", editable: true, inserted: 10, recommended: 10, rounded: 10, blankArticle: "CT02", blankName: "Крем" },
+  ];
+  const edits = editMap([["a", { value: "18", comment: "договорились с поставщиком" }]]);
+  assert.deepEqual(commentGateRows(rows, edits), []);
 });
 
 test("collectReviewEdits sends only editable rows", () => {

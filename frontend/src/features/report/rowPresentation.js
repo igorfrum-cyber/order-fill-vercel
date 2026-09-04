@@ -133,6 +133,11 @@ export function attentionReason(row) {
 export const reviewCommentBanner =
   "Есть строки, где изменено значение «Вставлено», но не заполнен новый комментарий.";
 
+export const commentGateTitle = "Сначала напишите, почему изменили количество";
+export const commentGateHint = "Эти строки не пускаем в файлы, пока не будет комментария.";
+export const commentGateConfirm = "Продолжить";
+export const commentGateCommentPlaceholder = "Почему изменили количество";
+
 export function canProceedPastDuplicates({ duplicateKeys = [], acknowledgedKeys = new Set() } = {}) {
   return duplicateKeys.every((key) => acknowledgedKeys.has(key));
 }

@@ -15,12 +15,12 @@ import { collectReviewEdits, hasManualDeviations, initialEditState, patchEdit, r
 import { issueReportCsv } from "../../features/report/issueReport.js";
 import { combinedSummary, jobProgress, jobStatusText } from "../../features/report/reportModel.js";
 import { issueReportRows, qualityWarningLines, qualityWarningSummary } from "../../features/report/qualityWarnings.js";
-import { reviewCommentBanner } from "../../features/report/rowPresentation.js";
 import { userFacingError } from "../../features/help/errors.js";
 import { StageRail, TopBar } from "../chrome.jsx";
 import { Modal } from "../widgets.jsx";
 import { FillStage } from "./FillStage.jsx";
 import { PreviewStage } from "./PreviewStage.jsx";
+import { CommentGate } from "./review/CommentGate.jsx";
 import { UploadStage } from "./SetupUpload.jsx";
 
 function triggerDownload(url, fileName) {
@@ -55,6 +55,7 @@ export function OrderFillApp({ companyId, resumeJob, onHome, onHelp, onStage }) 
   const [invalidKeys, setInvalidKeys] = useState(new Set());
   const [busy, setBusy] = useState(false);
   const [confirmLines, setConfirmLines] = useState(null);
+  const [commentGateKeys, setCommentGateKeys] = useState(null);
   const [banner, setBanner] = useState("");
   const [outputFiles, setOutputFiles] = useState(resumeJob?.outputFiles || []);
   const [finalized, setFinalized] = useState(Boolean(resumeJob?.finalized));
@@ -74,6 +75,7 @@ export function OrderFillApp({ companyId, resumeJob, onHome, onHelp, onStage }) 
     setResults([]);
     setEdits(new Map());
     setInvalidKeys(new Set());
+    setCommentGateKeys(null);
     setOutputFiles([]);
     setFinalized(false);
     setError("");
@@ -155,9 +157,26 @@ export function OrderFillApp({ companyId, resumeJob, onHome, onHelp, onStage }) 
     const invalid = validateReviewEdits(rows, edits);
     if (invalid.length) {
       setInvalidKeys(new Set(invalid));
-      setBanner(reviewCommentBanner);
+      setCommentGateKeys(invalid);
+      setBanner("");
       return;
     }
+    proceedToPreview();
+  }
+
+  function confirmCommentGate() {
+    const invalid = validateReviewEdits(rows, edits);
+    if (invalid.length) {
+      setInvalidKeys(new Set(invalid));
+      setCommentGateKeys(invalid);
+      return;
+    }
+    setCommentGateKeys(null);
+    setInvalidKeys(new Set());
+    proceedToPreview();
+  }
+
+  function proceedToPreview() {
     setBanner("");
     const warnings = qualityWarningSummary({ rows, results, edits });
     const lines = qualityWarningLines(warnings, { skipDuplicates: true });
@@ -165,7 +184,7 @@ export function OrderFillApp({ companyId, resumeJob, onHome, onHelp, onStage }) 
       setConfirmLines(lines);
       return;
     }
-    await submitAndPreview();
+    submitAndPreview();
   }
 
   async function submitAndPreview() {
@@ -287,7 +306,16 @@ export function OrderFillApp({ companyId, resumeJob, onHome, onHelp, onStage }) 
           />
         )}
       </main>
-      {confirmLines && (
+      {commentGateKeys && (
+        <CommentGate
+          rows={rows.filter((row) => commentGateKeys.includes(rowKey(row)))}
+          edits={edits}
+          onEdit={updateEdit}
+          onCancel={() => setCommentGateKeys(null)}
+          onConfirm={confirmCommentGate}
+        />
+      )}
+      {confirmLines && !commentGateKeys && (
         <Modal
           title="Проверьте спорные строки"
           cancelLabel="Назад"
