@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { blankIdForPreviewFile, defaultPreviewFileId, findEditColumns, isCommentOverlay, isQuantityOverlay, isSourcePreviewFile, needsEditResubmit, orderSheetIndex, previewOverlays } from "./previewEdits.js";
+import { blankIdForPreviewFile, defaultPreviewFileId, findEditColumns, isCommentOverlay, isQuantityOverlay, isSourcePreviewFile, needsEditResubmit, needsHeaderScan, orderSheetIndex, previewOverlays } from "./previewEdits.js";
 
 const files = [
   { id: "output-1", label: "Скачать заполненный бланк", name: "бланк заполненный.xlsx" },
@@ -56,6 +56,19 @@ test("orderSheetIndex opens the sheet that has Заказано по факту"
     ]),
     1,
   );
+});
+
+test("orderSheetIndex does not throw on empty or holey sheet lists", () => {
+  assert.equal(orderSheetIndex(), 0);
+  assert.equal(orderSheetIndex([]), 0);
+  assert.equal(orderSheetIndex([undefined, null, { index: 2, quantity_column: 5 }]), 2);
+});
+
+test("needsHeaderScan is false until a source sheet without a fact column is ready", () => {
+  assert.equal(needsHeaderScan(undefined, { sourceFile: true, jobId: "j", fileId: "f" }), false);
+  assert.equal(needsHeaderScan({ header_row: 14, quantity_column: 34 }, { sourceFile: true, jobId: "j", fileId: "f" }), false);
+  assert.equal(needsHeaderScan({ header_row: 8 }, { sourceFile: true, jobId: "j", fileId: "f" }), true);
+  assert.equal(needsHeaderScan({ header_row: 8 }, { sourceFile: false, jobId: "j", fileId: "f" }), false);
 });
 
 test("findEditColumns picks fact and comment and ignores recommended order", () => {

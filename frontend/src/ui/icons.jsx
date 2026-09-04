@@ -47,6 +47,15 @@ export function IconSearch({ className }) {
   );
 }
 
+export function IconPin({ className }) {
+  return (
+    <svg viewBox="0 0 24 24" className={className} {...stroke}>
+      <path d="M12 17v5" />
+      <path d="M9 3h6l-1 7a4 4 0 0 1 2.5 3.5h-9A4 4 0 0 1 10 10L9 3Z" />
+    </svg>
+  );
+}
+
 export function IconX({ className }) {
   return (
     <svg viewBox="0 0 24 24" className={className} {...stroke}>

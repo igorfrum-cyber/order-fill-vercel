@@ -62,3 +62,16 @@ test("formulaOverlays sums a list of subtotal cells", () => {
   const derived = formulaOverlays(formulas, { overlays: new Map(), values });
   assert.equal(derived.get("8:5").value, "23");
 });
+
+test("formulaOverlays skips a million-cell range instead of freezing the preview", () => {
+  const started = Date.now();
+  const derived = formulaOverlays([{ row: 1048577, column: 5, formula: "SUM(E1:E1048576)" }], {
+    values: { "1:5": "1" },
+  });
+  assert.ok(Date.now() - started < 50);
+  assert.equal(derived.has("1048577:5"), false);
+});
+
+test("formulaOverlays ignores a non-array formulas payload", () => {
+  assert.equal(formulaOverlays({ 0: { row: 1, column: 1, formula: "A1" } }).size, 0);
+});

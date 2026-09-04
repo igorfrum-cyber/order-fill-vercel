@@ -19,10 +19,17 @@ export function defaultPreviewFileId(files = []) {
 }
 
 export function orderSheetIndex(sheets = []) {
-  const withFact = sheets.find((sheet) => Number(sheet.quantity_column) > 0);
+  const withFact = sheets.find((sheet) => Number(sheet?.quantity_column) > 0);
   if (withFact) return withFact.index;
-  const withHeader = sheets.find((sheet) => Number(sheet.header_row) > 0);
+  const withHeader = sheets.find((sheet) => Number(sheet?.header_row) > 0);
   return withHeader?.index ?? sheets[0]?.index ?? 0;
+}
+
+export function needsHeaderScan(sheet, { sourceFile, jobId, fileId } = {}) {
+  if (!sourceFile || !jobId || !fileId || !sheet) return false;
+  const headerRow = Number(sheet.header_row);
+  if (!Number.isFinite(headerRow) || headerRow < 1) return false;
+  return !(Number(sheet.quantity_column) > 0);
 }
 
 export function findEditColumns(headerCells = []) {

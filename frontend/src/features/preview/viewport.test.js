@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { columnName, columnLetters } from "./columns.js";
+import { columnName, columnLetters, visibleColumnCount, PREVIEW_MAX_COLUMNS } from "./columns.js";
 import { missingRange, visibleWindow, buildRowOffsets, parseCustomHeights, gridContentWidth, columnSize, columnOffsets, spanSize, PREVIEW_GUTTER_WIDTH } from "./viewport.js";
 import { previewFileTitle } from "./fileTitle.js";
 
@@ -15,6 +15,12 @@ test("columnName matches spreadsheet letters through AI", () => {
 
 test("columnLetters lists every column up to the used range", () => {
   assert.deepEqual(columnLetters(3), ["A", "B", "C"]);
+});
+
+test("visibleColumnCount keeps a normal 1C sheet and caps a full Excel width", () => {
+  assert.equal(visibleColumnCount(35), 35);
+  assert.equal(visibleColumnCount(16384), PREVIEW_MAX_COLUMNS);
+  assert.equal(columnLetters(16384).length, PREVIEW_MAX_COLUMNS);
 });
 
 test("visibleWindow virtualizes a 100k sheet without enumerating rows", () => {
@@ -65,6 +71,17 @@ test("spanSize of a merge equals the union of its columns", () => {
   const offsets = columnOffsets(4, [79, 34, 426, 75]);
   assert.equal(spanSize(offsets, 0, 3), 79 + 34 + 426);
   assert.equal(PREVIEW_GUTTER_WIDTH + offsets[3], PREVIEW_GUTTER_WIDTH + 79 + 34 + 426);
+});
+
+test("spanSize of a merge past the offset table is zero, not NaN", () => {
+  const offsets = columnOffsets(4, [79, 34, 426, 75]);
+  assert.equal(spanSize(offsets, 99, 3), 0);
+});
+
+test("buildRowOffsets uses a whole number of rows", () => {
+  const offsets = buildRowOffsets(3.9, 10);
+  assert.equal(offsets.length, 5);
+  assert.equal(offsets[4], 30);
 });
 
 test("missingRange skips rows already in the cache", () => {

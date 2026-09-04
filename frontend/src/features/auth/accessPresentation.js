@@ -146,6 +146,8 @@ export function loginParentHost(hostname) {
   if (!host || isLoopbackHost(host)) {
     return "localhost";
   }
+  const registrable = registrableHost(host);
+  if (registrable) return registrable;
   const labels = host.split(".");
   if (labels[0] === "www") {
     return labels.slice(1).join(".") || host;
@@ -165,11 +167,29 @@ export function companyLoginURL(slug, location = globalThis.location) {
   const protocol = location?.protocol || "http:";
   const port = location?.port || "";
   const portPart = port ? `:${port}` : "";
-  if (isIPAddress(hostname) && !isLoopbackHost(hostname)) {
+  if (usesPathCompanyLogin(hostname)) {
     return `${protocol}//${hostForURL(hostname)}${portPart}${companyLoginPath(normalized)}`;
   }
   const parent = loginParentHost(hostname);
   return `${protocol}//${normalized}.${parent}${portPart}/`;
+}
+
+const PATH_LOGIN_SUFFIXES = ["duckdns.org", "sslip.io", "nip.io"];
+
+function usesPathCompanyLogin(host) {
+  if (isIPAddress(host) && !isLoopbackHost(host)) return true;
+  return PATH_LOGIN_SUFFIXES.some((suffix) => host === suffix || host.endsWith(`.${suffix}`));
+}
+
+function registrableHost(host) {
+  for (const suffix of PATH_LOGIN_SUFFIXES) {
+    if (host === suffix) return suffix;
+    if (!host.endsWith(`.${suffix}`)) continue;
+    const rest = host.slice(0, -(suffix.length + 1));
+    const head = rest.split(".");
+    return `${head[head.length - 1]}.${suffix}`;
+  }
+  return "";
 }
 
 function isLoopbackHost(host) {

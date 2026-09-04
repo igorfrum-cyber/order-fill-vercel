@@ -9,8 +9,15 @@ export function columnName(column) {
   return name;
 }
 
+export const PREVIEW_MAX_COLUMNS = 128;
+
+export function visibleColumnCount(maxColumn) {
+  const count = Math.max(0, Math.floor(Number(maxColumn) || 0));
+  return Math.min(count, PREVIEW_MAX_COLUMNS);
+}
+
 export function columnLetters(maxColumn) {
-  const count = Math.max(0, Number(maxColumn) || 0);
+  const count = visibleColumnCount(maxColumn);
   const letters = [];
   for (let column = 1; column <= count; column += 1) {
     letters.push(columnName(column));

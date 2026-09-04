@@ -6,15 +6,23 @@ import { columnName } from "../../features/preview/columns.js";
 import { previewFileTitle } from "../../features/preview/fileTitle.js";
 import { formulaOverlays } from "../../features/preview/formulas.js";
 import {
+  previewBodyState,
+  previewEmptyHint,
+  previewLoadingHint,
+  previewLoadingTitle,
+} from "../../features/preview/previewStatus.js";
+import {
   defaultPreviewFileId,
   findEditColumns,
   isSourcePreviewFile,
   mergePreviewOverlays,
+  needsHeaderScan,
   orderSheetIndex,
   previewOverlays,
 } from "../../features/preview/previewEdits.js";
-import { IconDownload, IconSearch, IconX } from "../icons.jsx";
-import { GhostButton, PrimaryButton } from "../widgets.jsx";
+import { ErrorBoundary } from "../ErrorBoundary.jsx";
+import { IconDownload, IconPin, IconSearch, IconX } from "../icons.jsx";
+import { GhostButton, PrimaryButton, ProgressBar } from "../widgets.jsx";
 import { ExcelGrid } from "./ExcelGrid.jsx";
 
 export function PreviewStage({
@@ -28,6 +36,7 @@ export function PreviewStage({
   refreshKey = 0,
   onDownload,
   onBack,
+  onReady,
 }) {
   const defaultFileId = defaultPreviewFileId(files);
   const [fileId, setFileId] = useState(defaultFileId);
@@ -39,6 +48,9 @@ export function PreviewStage({
   const [sheetIndex, setSheetIndex] = useState(0);
   const [findStatus, setFindStatus] = useState("");
   const [headerCells, setHeaderCells] = useState([]);
+  const [gridReady, setGridReady] = useState(false);
+  const [overlays, setOverlays] = useState(() => new Map());
+  const [freezeHeader, setFreezeHeader] = useState(true);
 
   const file = files.find((item) => item.id === fileId) || files[0];
   const sheets = meta?.sheets || [];
@@ -59,6 +71,7 @@ export function PreviewStage({
     setHighlightRow(0);
     setFocusRow(0);
     setHeaderCells([]);
+    setGridReady(false);
     getPreviewMeta(jobId, file.id)
       .then((payload) => {
         if (cancelled) return;
@@ -82,8 +95,8 @@ export function PreviewStage({
   }, [headerCells, sheet?.comment_column, sheet?.quantity_column]);
 
   useEffect(() => {
-    const headerRow = Number(sheet?.header_row);
-    if (!sourceFile || !jobId || !file?.id || headerRow < 1 || Number(sheet.quantity_column) > 0) return;
+    if (!needsHeaderScan(sheet, { sourceFile, jobId, fileId: file?.id })) return;
+    const headerRow = Number(sheet.header_row);
     let cancelled = false;
     getPreviewWindow(jobId, file.id, {
       sheet: sheet.index ?? sheetIndex,
@@ -101,23 +114,37 @@ export function PreviewStage({
     };
   }, [file?.id, jobId, sheet, sheetIndex, sourceFile]);
 
-  const overlays = useMemo(() => {
-    const quantity = previewOverlays(rows, edits || new Map(), {
-      files,
-      fileId: file?.id,
-      quantityColumn: editColumns.quantity,
-      commentColumn: editColumns.comment,
+  useEffect(() => {
+    const frame = window.requestAnimationFrame(() => {
+      try {
+        const quantity = previewOverlays(rows, edits instanceof Map ? edits : new Map(), {
+          files,
+          fileId: file?.id,
+          quantityColumn: editColumns.quantity,
+          commentColumn: editColumns.comment,
+        });
+        setOverlays(
+          mergePreviewOverlays(
+            formulaOverlays(sheet?.formulas, { overlays: quantity, values: sheet?.formula_values || {} }),
+            quantity,
+          ),
+        );
+      } catch {
+        setOverlays(new Map());
+      }
     });
-    return mergePreviewOverlays(
-      formulaOverlays(sheet?.formulas, { overlays: quantity, values: sheet?.formula_values || {} }),
-      quantity,
-    );
+    return () => window.cancelAnimationFrame(frame);
   }, [editColumns.comment, editColumns.quantity, edits, file?.id, files, rows, sheet?.formula_values, sheet?.formulas]);
 
-  const stats = useMemo(() => {
-    if (!sheet) return "";
-    return `${sheet.max_row} строк · до ${columnName(sheet.max_column)}`;
-  }, [sheet]);
+  const bodyState = previewBodyState({
+    error,
+    fileId: file?.id,
+    meta,
+    sheet,
+    gridReady,
+  });
+  const stats = sheet ? `${sheet.max_row} строк · до ${columnName(sheet.max_column)}` : "";
+  const canFreezeHeader = Number(sheet?.header_row) > 0;
 
   async function jumpToArticle(event) {
     event.preventDefault();
@@ -167,7 +194,10 @@ export function PreviewStage({
               <button
                 key={item.index}
                 type="button"
-                onClick={() => setSheetIndex(item.index)}
+                onClick={() => {
+                  setGridReady(false);
+                  setSheetIndex(item.index);
+                }}
                 className={`rounded-md px-2 py-1 font-mono text-[12px] ${
                   item.index === sheetIndex ? "bg-[var(--color-brand-soft)] text-[var(--color-brand-strong)]" : "text-[var(--color-ink-faint)]"
                 }`}
@@ -177,6 +207,20 @@ export function PreviewStage({
             ))}
           </div>
         )}
+        <button
+          type="button"
+          aria-pressed={freezeHeader && canFreezeHeader}
+          disabled={!canFreezeHeader}
+          onClick={() => setFreezeHeader((on) => !on)}
+          className={`flex items-center gap-1.5 rounded-lg px-3 py-2 text-[14px] font-medium transition ${
+            freezeHeader && canFreezeHeader
+              ? "bg-[var(--color-brand-soft)] text-[var(--color-brand-strong)]"
+              : "text-[var(--color-ink-soft)] hover:bg-[var(--color-line-soft)]"
+          } disabled:cursor-not-allowed disabled:opacity-40`}
+        >
+          <IconPin className="h-4 w-4" />
+          {freezeHeader ? "Шапка закреплена" : "Закрепить шапку"}
+        </button>
         <form onSubmit={jumpToArticle} className="relative ml-auto min-w-64">
           <IconSearch className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--color-ink-faint)]" />
           <input
@@ -197,29 +241,70 @@ export function PreviewStage({
         <span className="font-mono text-[12px] text-[var(--color-ink-faint)]">{findStatus || stats}</span>
       </div>
 
-      <div className="min-h-0 flex-1">
-        {error && <div className="px-6 py-10 text-center text-[15px] text-[var(--color-danger)]">{error}</div>}
-        {!error && sheet && (
-          <ExcelGrid
-            jobId={jobId}
-            fileId={file.id}
-            sheetIndex={sheet.index ?? sheetIndex}
-            maxRow={sheet.max_row}
-            maxColumn={sheet.max_column}
-            headerRow={sheet.header_row}
-            highlightRow={highlightRow}
-            focusRow={focusRow}
-            columns={sheet.columns}
-            rowHeight={sheet.row_height}
-            rowHeights={sheet.row_heights}
-            styles={sheet.styles}
-            merges={sheet.merges}
-            overlays={overlays}
-            onEdit={onEdit}
-            refreshKey={refreshKey}
-          />
-        )}
-        {!error && !sheet && !meta && <div className="px-6 py-10 text-center text-[15px] text-[var(--color-ink-faint)]">Загружаю сетку...</div>}
+      <div className="relative min-h-0 flex-1">
+        {file?.id && sheet ? (
+          <div className="absolute inset-0">
+            <ErrorBoundary
+              key={`${file.id}:${sheet.index ?? sheetIndex}:${refreshKey}`}
+              fallback={(err) => (
+                <div className="grid h-full place-items-center bg-[var(--color-ground)] px-6">
+                  <div className="max-w-md text-center">
+                    <p className="text-[16px] leading-relaxed text-[var(--color-danger)]">
+                      {userFacingError(err, "Не удалось нарисовать сетку файла.")}
+                    </p>
+                    {err?.message ? (
+                      <p className="mt-3 break-all font-mono text-[12px] text-[var(--color-ink-faint)]">{String(err.message)}</p>
+                    ) : null}
+                  </div>
+                </div>
+              )}
+            >
+              <ExcelGrid
+                jobId={jobId}
+                fileId={file.id}
+                sheetIndex={sheet.index ?? sheetIndex}
+                maxRow={sheet.max_row}
+                maxColumn={sheet.max_column}
+                headerRow={sheet.header_row}
+                freezeHeader={canFreezeHeader && freezeHeader}
+                highlightRow={highlightRow}
+                focusRow={focusRow}
+                columns={sheet.columns}
+                rowHeight={sheet.row_height}
+                rowHeights={sheet.row_heights}
+                styles={sheet.styles}
+                merges={sheet.merges}
+                overlays={overlays instanceof Map ? overlays : new Map()}
+                onEdit={onEdit}
+                onReady={() => {
+                  setGridReady(true);
+                  onReady?.();
+                }}
+                onError={(err) => setError(userFacingError(err, "Не удалось загрузить сетку."))}
+                refreshKey={refreshKey}
+              />
+            </ErrorBoundary>
+          </div>
+        ) : null}
+        {bodyState === "error" ? (
+          <div className="absolute inset-0 z-10 grid place-items-center bg-[var(--color-ground)] px-6">
+            <p className="max-w-md text-center text-[16px] leading-relaxed text-[var(--color-danger)]">{error}</p>
+          </div>
+        ) : null}
+        {bodyState === "empty" ? (
+          <div className="absolute inset-0 z-10 grid place-items-center bg-[var(--color-ground)] px-6">
+            <p className="max-w-md text-center text-[16px] leading-relaxed text-[var(--color-ink-soft)]">{previewEmptyHint}</p>
+          </div>
+        ) : null}
+        {bodyState === "loading" ? (
+          <div className="absolute inset-0 z-10 grid place-items-center bg-[var(--color-ground)] px-6">
+            <div className="w-full max-w-md text-center">
+              <h2 className="text-[22px] font-semibold tracking-tight">{previewLoadingTitle}</h2>
+              <p className="mt-2 text-[15px] leading-relaxed text-[var(--color-ink-soft)]">{previewLoadingHint}</p>
+              <ProgressBar indeterminate label="Загружаю файл" />
+            </div>
+          </div>
+        ) : null}
       </div>
 
       <footer className="flex flex-wrap items-center gap-3 border-t border-[var(--color-line)] bg-[var(--color-surface)] px-6 py-3">

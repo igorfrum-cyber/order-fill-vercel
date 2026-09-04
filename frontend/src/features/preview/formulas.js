@@ -2,10 +2,13 @@ import { quantityDisplay } from "../report/rowPresentation.js";
 
 const COLUMN_INDEX = new Map();
 
+const MAX_FORMULA_RANGE_CELLS = 4000;
+
 export function formulaOverlays(formulas = [], { overlays = new Map(), values = {} } = {}) {
   const items = [];
   const formulaCells = new Set();
-  for (const item of formulas || []) {
+  const list = Array.isArray(formulas) ? formulas : [];
+  for (const item of list) {
     const row = Number(item?.row);
     const column = Number(item?.column);
     const formula = String(item?.formula || item?.text || "").replace(/^\s*=/, "").trim();
@@ -204,6 +207,8 @@ function sumRefs(text, getNumber, skipKeys) {
   const rowTo = Math.max(start.row, end.row);
   const colFrom = Math.min(start.column, end.column);
   const colTo = Math.max(start.column, end.column);
+  const count = (rowTo - rowFrom + 1) * (colTo - colFrom + 1);
+  if (count > MAX_FORMULA_RANGE_CELLS) throw new Error("range");
   let total = 0;
   for (let row = rowFrom; row <= rowTo; row += 1) {
     for (let column = colFrom; column <= colTo; column += 1) {

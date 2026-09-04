@@ -10,7 +10,7 @@ import {
   visibleReportRows,
 } from "../../features/report/rowPresentation.js";
 import { IconDownload } from "../icons.jsx";
-import { GhostButton, PrimaryButton } from "../widgets.jsx";
+import { GhostButton, PrimaryButton, ProgressBar } from "../widgets.jsx";
 import { ReviewSummary } from "./review/ReviewSummary.jsx";
 import { ReviewTable } from "./review/ReviewTable.jsx";
 import { ReviewTabs } from "./review/ReviewTabs.jsx";
@@ -56,7 +56,7 @@ export function FillStage({
   }
 
   return (
-    <div className="flex h-full flex-col">
+    <div className="relative flex h-full flex-col">
       <ReviewSummary counts={counts} summary={summary} activeTab={activeTab} onTab={setTab} />
 
       <ReviewTabs
@@ -116,6 +116,17 @@ export function FillStage({
           </PrimaryButton>
         </div>
       </footer>
+      {busy ? (
+        <div className="absolute inset-0 z-10 grid place-items-center bg-[var(--color-ground)]/95 px-6">
+          <div className="w-full max-w-md text-center">
+            <h2 className="text-[22px] font-semibold tracking-tight">Готовлю файлы</h2>
+            <p className="mt-2 text-[15px] leading-relaxed text-[var(--color-ink-soft)]">
+              {status || "Сохраняю правки и открываю Excel. Это может занять несколько секунд."}
+            </p>
+            <ProgressBar indeterminate label={status || "Готовлю файлы"} />
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }

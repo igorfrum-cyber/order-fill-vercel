@@ -18,7 +18,8 @@ import { combinedSummary, jobProgress, jobStatusText } from "../../features/repo
 import { issueReportRows, qualityWarningLines, qualityWarningSummary } from "../../features/report/qualityWarnings.js";
 import { userFacingError } from "../../features/help/errors.js";
 import { StageRail, TopBar } from "../chrome.jsx";
-import { Modal } from "../widgets.jsx";
+import { ErrorBoundary } from "../ErrorBoundary.jsx";
+import { GhostButton, Modal } from "../widgets.jsx";
 import { FillStage } from "./FillStage.jsx";
 import { PreviewStage } from "./PreviewStage.jsx";
 import { CommentGate } from "./review/CommentGate.jsx";
@@ -234,13 +235,18 @@ export function OrderFillApp({ companyId, resumeJob, onHome, onHelp, onStage }) 
       setOutputFiles(listed.files);
       setFinalized(true);
       setStage("preview");
-      setStatus("");
+      setStatus("Собираю сетку...");
     } catch (err) {
       setStatus("Ошибка");
       setBanner(userFacingError(err, "Не удалось сохранить правки."));
     } finally {
       setBusy(false);
     }
+  }
+
+  function backToFill() {
+    setStage("fill");
+    setStatus("");
   }
 
   async function downloadArchive() {
@@ -286,7 +292,7 @@ export function OrderFillApp({ companyId, resumeJob, onHome, onHelp, onStage }) 
           setStage(next);
         }}
       />
-      <main className="flex-1 overflow-hidden">
+      <main className="relative min-h-0 flex-1 overflow-hidden">
         {(stage === "upload" || stage === "processing") && (
           <UploadStage
             sourceFile={sourceFile}
@@ -330,18 +336,39 @@ export function OrderFillApp({ companyId, resumeJob, onHome, onHelp, onStage }) 
           />
         )}
         {stage === "preview" && (
-          <PreviewStage
-            files={outputFiles}
-            jobId={jobId}
-            status={status}
-            busy={busy}
-            rows={rows}
-            edits={edits}
-            onEdit={updateEdit}
-            refreshKey={previewEpoch}
-            onBack={() => setStage("fill")}
-            onDownload={downloadArchive}
-          />
+          <ErrorBoundary
+            key={jobId || "preview"}
+            fallback={(err) => (
+              <div className="grid h-full place-items-center bg-[var(--color-ground)] px-6">
+                <div className="max-w-md text-center">
+                  <h2 className="text-[22px] font-semibold tracking-tight">Не получилось открыть файлы</h2>
+                  <p className="mt-2 text-[15px] leading-relaxed text-[var(--color-ink-soft)]">
+                    {userFacingError(err, "Попробуйте вернуться к правкам и открыть ещё раз.")}
+                  </p>
+                  {err?.message ? (
+                    <p className="mt-3 break-all font-mono text-[12px] text-[var(--color-ink-faint)]">{String(err.message)}</p>
+                  ) : null}
+                  <div className="mt-5 flex justify-center">
+                    <GhostButton onClick={backToFill}>Назад к правкам</GhostButton>
+                  </div>
+                </div>
+              </div>
+            )}
+          >
+            <PreviewStage
+              files={outputFiles}
+              jobId={jobId}
+              status={status}
+              busy={busy}
+              rows={rows}
+              edits={edits}
+              onEdit={updateEdit}
+              refreshKey={previewEpoch}
+              onBack={backToFill}
+              onReady={() => setStatus("")}
+              onDownload={downloadArchive}
+            />
+          </ErrorBoundary>
         )}
       </main>
       {commentGateKeys && (
