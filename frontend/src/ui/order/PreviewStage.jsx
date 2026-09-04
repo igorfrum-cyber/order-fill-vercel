@@ -1,14 +1,44 @@
 import { useEffect, useMemo, useState } from "react";
 
-import { findPreviewArticle, getPreviewMeta } from "../../api/preview.js";
+import { findPreviewArticle, getPreviewMeta, getPreviewWindow } from "../../api/preview.js";
+import { userFacingError } from "../../features/help/errors.js";
 import { columnName } from "../../features/preview/columns.js";
 import { previewFileTitle } from "../../features/preview/fileTitle.js";
-import { IconDownload, IconSearch, IconX } from "../icons.jsx";
-import { GhostButton, PrimaryButton } from "../widgets.jsx";
+import { formulaOverlays } from "../../features/preview/formulas.js";
+import {
+  previewBodyState,
+  previewEmptyHint,
+  previewLoadingHint,
+  previewLoadingTitle,
+} from "../../features/preview/previewStatus.js";
+import {
+  defaultPreviewFileId,
+  findEditColumns,
+  isSourcePreviewFile,
+  mergePreviewOverlays,
+  needsHeaderScan,
+  orderSheetIndex,
+  previewOverlays,
+} from "../../features/preview/previewEdits.js";
+import { ErrorBoundary } from "../ErrorBoundary.jsx";
+import { IconDownload, IconPin, IconSearch, IconX } from "../icons.jsx";
+import { GhostButton, PrimaryButton, ProgressBar } from "../widgets.jsx";
 import { ExcelGrid } from "./ExcelGrid.jsx";
 
-export function PreviewStage({ files = [], jobId, status, busy, onDownload, onBack }) {
-  const defaultFileId = files.at(-1)?.id || files[0]?.id || "";
+export function PreviewStage({
+  files = [],
+  jobId,
+  status,
+  busy,
+  rows = [],
+  edits,
+  onEdit,
+  refreshKey = 0,
+  onDownload,
+  onBack,
+  onReady,
+}) {
+  const defaultFileId = defaultPreviewFileId(files);
   const [fileId, setFileId] = useState(defaultFileId);
   const [meta, setMeta] = useState(null);
   const [error, setError] = useState("");
@@ -17,10 +47,20 @@ export function PreviewStage({ files = [], jobId, status, busy, onDownload, onBa
   const [focusRow, setFocusRow] = useState(0);
   const [sheetIndex, setSheetIndex] = useState(0);
   const [findStatus, setFindStatus] = useState("");
+  const [headerCells, setHeaderCells] = useState([]);
+  const [gridReady, setGridReady] = useState(false);
+  const [overlays, setOverlays] = useState(() => new Map());
+  const [freezeHeader, setFreezeHeader] = useState(true);
 
   const file = files.find((item) => item.id === fileId) || files[0];
   const sheets = meta?.sheets || [];
   const sheet = sheets[sheetIndex] || sheets[0];
+
+  useEffect(() => {
+    if (!files.length) return;
+    if (files.some((item) => item.id === fileId)) return;
+    setFileId(defaultPreviewFileId(files));
+  }, [fileId, files]);
 
   useEffect(() => {
     if (!jobId || !file?.id) return;
@@ -30,22 +70,81 @@ export function PreviewStage({ files = [], jobId, status, busy, onDownload, onBa
     setSheetIndex(0);
     setHighlightRow(0);
     setFocusRow(0);
+    setHeaderCells([]);
+    setGridReady(false);
     getPreviewMeta(jobId, file.id)
       .then((payload) => {
-        if (!cancelled) setMeta(payload);
+        if (cancelled) return;
+        setMeta(payload);
+        setSheetIndex(orderSheetIndex(payload.sheets || []));
       })
       .catch((err) => {
-        if (!cancelled) setError(err.message || "Не удалось загрузить превью.");
+        if (!cancelled) setError(userFacingError(err, "Не удалось загрузить превью."));
       });
     return () => {
       cancelled = true;
     };
-  }, [file?.id, jobId]);
+  }, [file?.id, jobId, refreshKey]);
 
-  const stats = useMemo(() => {
-    if (!sheet) return "";
-    return `${sheet.max_row} строк · до ${columnName(sheet.max_column)}`;
-  }, [sheet]);
+  const sourceFile = isSourcePreviewFile(file);
+  const editColumns = useMemo(() => {
+    if (sheet?.quantity_column) {
+      return { quantity: sheet.quantity_column, comment: sheet.comment_column || 0 };
+    }
+    return findEditColumns(headerCells);
+  }, [headerCells, sheet?.comment_column, sheet?.quantity_column]);
+
+  useEffect(() => {
+    if (!needsHeaderScan(sheet, { sourceFile, jobId, fileId: file?.id })) return;
+    const headerRow = Number(sheet.header_row);
+    let cancelled = false;
+    getPreviewWindow(jobId, file.id, {
+      sheet: sheet.index ?? sheetIndex,
+      fromRow: headerRow,
+      toRow: headerRow,
+    })
+      .then((payload) => {
+        if (!cancelled) setHeaderCells(payload.rows?.[0] || []);
+      })
+      .catch(() => {
+        if (!cancelled) setHeaderCells([]);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [file?.id, jobId, sheet, sheetIndex, sourceFile]);
+
+  useEffect(() => {
+    const frame = window.requestAnimationFrame(() => {
+      try {
+        const quantity = previewOverlays(rows, edits instanceof Map ? edits : new Map(), {
+          files,
+          fileId: file?.id,
+          quantityColumn: editColumns.quantity,
+          commentColumn: editColumns.comment,
+        });
+        setOverlays(
+          mergePreviewOverlays(
+            formulaOverlays(sheet?.formulas, { overlays: quantity, values: sheet?.formula_values || {} }),
+            quantity,
+          ),
+        );
+      } catch {
+        setOverlays(new Map());
+      }
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [editColumns.comment, editColumns.quantity, edits, file?.id, files, rows, sheet?.formula_values, sheet?.formulas]);
+
+  const bodyState = previewBodyState({
+    error,
+    fileId: file?.id,
+    meta,
+    sheet,
+    gridReady,
+  });
+  const stats = sheet ? `${sheet.max_row} строк · до ${columnName(sheet.max_column)}` : "";
+  const canFreezeHeader = Number(sheet?.header_row) > 0;
 
   async function jumpToArticle(event) {
     event.preventDefault();
@@ -62,14 +161,14 @@ export function PreviewStage({ files = [], jobId, status, busy, onDownload, onBa
       setFocusRow(hit.row);
       setFindStatus(`строка ${hit.row}`);
     } catch (err) {
-      setFindStatus(err.message || "Не удалось найти артикул");
+      setFindStatus(userFacingError(err, "Не удалось найти артикул"));
     }
   }
 
   return (
     <div className="flex h-full flex-col">
       <div className="flex flex-wrap items-center gap-3 border-b border-[var(--color-line)] bg-[var(--color-surface)] px-6 py-3">
-        <div className="flex flex-wrap gap-1">
+        <div data-tour="preview-files" className="flex flex-wrap gap-1">
           {files.map((item) => {
             const active = item.id === file?.id;
             return (
@@ -86,13 +185,19 @@ export function PreviewStage({ files = [], jobId, status, busy, onDownload, onBa
             );
           })}
         </div>
+        <span className="text-[13px] text-[var(--color-ink-faint)]">
+          Править «Заказано по факту» и комментарий — количество в бланке подтянется само
+        </span>
         {sheets.length > 1 && (
           <div className="flex gap-1">
             {sheets.map((item) => (
               <button
                 key={item.index}
                 type="button"
-                onClick={() => setSheetIndex(item.index)}
+                onClick={() => {
+                  setGridReady(false);
+                  setSheetIndex(item.index);
+                }}
                 className={`rounded-md px-2 py-1 font-mono text-[12px] ${
                   item.index === sheetIndex ? "bg-[var(--color-brand-soft)] text-[var(--color-brand-strong)]" : "text-[var(--color-ink-faint)]"
                 }`}
@@ -102,6 +207,20 @@ export function PreviewStage({ files = [], jobId, status, busy, onDownload, onBa
             ))}
           </div>
         )}
+        <button
+          type="button"
+          aria-pressed={freezeHeader && canFreezeHeader}
+          disabled={!canFreezeHeader}
+          onClick={() => setFreezeHeader((on) => !on)}
+          className={`flex items-center gap-1.5 rounded-lg px-3 py-2 text-[14px] font-medium transition ${
+            freezeHeader && canFreezeHeader
+              ? "bg-[var(--color-brand-soft)] text-[var(--color-brand-strong)]"
+              : "text-[var(--color-ink-soft)] hover:bg-[var(--color-line-soft)]"
+          } disabled:cursor-not-allowed disabled:opacity-40`}
+        >
+          <IconPin className="h-4 w-4" />
+          {freezeHeader ? "Шапка закреплена" : "Закрепить шапку"}
+        </button>
         <form onSubmit={jumpToArticle} className="relative ml-auto min-w-64">
           <IconSearch className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--color-ink-faint)]" />
           <input
@@ -122,26 +241,70 @@ export function PreviewStage({ files = [], jobId, status, busy, onDownload, onBa
         <span className="font-mono text-[12px] text-[var(--color-ink-faint)]">{findStatus || stats}</span>
       </div>
 
-      <div className="min-h-0 flex-1">
-        {error && <div className="px-6 py-10 text-center text-[15px] text-[var(--color-danger)]">{error}</div>}
-        {!error && sheet && (
-          <ExcelGrid
-            jobId={jobId}
-            fileId={file.id}
-            sheetIndex={sheet.index ?? sheetIndex}
-            maxRow={sheet.max_row}
-            maxColumn={sheet.max_column}
-            headerRow={sheet.header_row}
-            highlightRow={highlightRow}
-            focusRow={focusRow}
-            columns={sheet.columns}
-            rowHeight={sheet.row_height}
-            rowHeights={sheet.row_heights}
-            styles={sheet.styles}
-            merges={sheet.merges}
-          />
-        )}
-        {!error && !sheet && !meta && <div className="px-6 py-10 text-center text-[15px] text-[var(--color-ink-faint)]">Загружаю сетку...</div>}
+      <div className="relative min-h-0 flex-1">
+        {file?.id && sheet ? (
+          <div className="absolute inset-0">
+            <ErrorBoundary
+              key={`${file.id}:${sheet.index ?? sheetIndex}:${refreshKey}`}
+              fallback={(err) => (
+                <div className="grid h-full place-items-center bg-[var(--color-ground)] px-6">
+                  <div className="max-w-md text-center">
+                    <p className="text-[16px] leading-relaxed text-[var(--color-danger)]">
+                      {userFacingError(err, "Не удалось нарисовать сетку файла.")}
+                    </p>
+                    {err?.message ? (
+                      <p className="mt-3 break-all font-mono text-[12px] text-[var(--color-ink-faint)]">{String(err.message)}</p>
+                    ) : null}
+                  </div>
+                </div>
+              )}
+            >
+              <ExcelGrid
+                jobId={jobId}
+                fileId={file.id}
+                sheetIndex={sheet.index ?? sheetIndex}
+                maxRow={sheet.max_row}
+                maxColumn={sheet.max_column}
+                headerRow={sheet.header_row}
+                freezeHeader={canFreezeHeader && freezeHeader}
+                highlightRow={highlightRow}
+                focusRow={focusRow}
+                columns={sheet.columns}
+                rowHeight={sheet.row_height}
+                rowHeights={sheet.row_heights}
+                styles={sheet.styles}
+                merges={sheet.merges}
+                overlays={overlays instanceof Map ? overlays : new Map()}
+                onEdit={onEdit}
+                onReady={() => {
+                  setGridReady(true);
+                  onReady?.();
+                }}
+                onError={(err) => setError(userFacingError(err, "Не удалось загрузить сетку."))}
+                refreshKey={refreshKey}
+              />
+            </ErrorBoundary>
+          </div>
+        ) : null}
+        {bodyState === "error" ? (
+          <div className="absolute inset-0 z-10 grid place-items-center bg-[var(--color-ground)] px-6">
+            <p className="max-w-md text-center text-[16px] leading-relaxed text-[var(--color-danger)]">{error}</p>
+          </div>
+        ) : null}
+        {bodyState === "empty" ? (
+          <div className="absolute inset-0 z-10 grid place-items-center bg-[var(--color-ground)] px-6">
+            <p className="max-w-md text-center text-[16px] leading-relaxed text-[var(--color-ink-soft)]">{previewEmptyHint}</p>
+          </div>
+        ) : null}
+        {bodyState === "loading" ? (
+          <div className="absolute inset-0 z-10 grid place-items-center bg-[var(--color-ground)] px-6">
+            <div className="w-full max-w-md text-center">
+              <h2 className="text-[22px] font-semibold tracking-tight">{previewLoadingTitle}</h2>
+              <p className="mt-2 text-[15px] leading-relaxed text-[var(--color-ink-soft)]">{previewLoadingHint}</p>
+              <ProgressBar indeterminate label="Загружаю файл" />
+            </div>
+          </div>
+        ) : null}
       </div>
 
       <footer className="flex flex-wrap items-center gap-3 border-t border-[var(--color-line)] bg-[var(--color-surface)] px-6 py-3">
@@ -150,8 +313,8 @@ export function PreviewStage({ files = [], jobId, status, busy, onDownload, onBa
         </GhostButton>
         <div className="ml-auto flex items-center gap-3">
           <span className="font-mono text-[13px] text-[var(--color-ink-soft)]">{status}</span>
-          <PrimaryButton onClick={onDownload} disabled={busy}>
-            {busy ? "Готовлю архив..." : "Скачать zip"}
+          <PrimaryButton dataTour="preview-download" onClick={onDownload} disabled={busy}>
+            {busy ? "Готовлю архив..." : "Скачать файлы"}
             <IconDownload className="h-4 w-4" />
           </PrimaryButton>
         </div>

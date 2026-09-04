@@ -149,7 +149,7 @@ func (h jobHandler) submitEdits(w http.ResponseWriter, r *http.Request) {
 			Comment string `json:"comment"`
 		} `json:"edits"`
 	}
-	if !decodeJSON(w, r, &payload) {
+	if !decodeJSONLimited(w, r, &payload, jobJSONLimit) {
 		return
 	}
 	edits := make([]job.ManualEdit, 0, len(payload.Edits))

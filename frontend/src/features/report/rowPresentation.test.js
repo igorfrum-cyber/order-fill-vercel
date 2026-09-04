@@ -3,6 +3,8 @@ import assert from "node:assert/strict";
 
 import {
   canProceedPastDuplicates,
+  commentGateHint,
+  commentGateTitle,
   countByTab,
   displayArticle,
   displayName,
@@ -142,6 +144,11 @@ test("matchLayerHint explains unmatched tabs and stays quiet for fill tabs", () 
   assert.match(matchLayerHint("not_in_blank"), /не нашлись в бланке/i);
   assert.equal(matchLayerHint("empty"), "");
   assert.equal(matchLayerHint("all"), "");
+});
+
+test("comment gate copy tells the reviewer why they cannot open files yet", () => {
+  assert.equal(commentGateTitle, "Сначала напишите, почему изменили количество");
+  assert.match(commentGateHint, /не пускаем в файлы/i);
 });
 
 test("canProceedPastDuplicates requires every duplicate key to be acknowledged", () => {

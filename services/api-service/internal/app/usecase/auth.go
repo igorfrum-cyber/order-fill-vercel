@@ -12,7 +12,7 @@ import (
 )
 
 const (
-	sessionTTL   = 7 * 24 * time.Hour
+	sessionTTL   = 8 * time.Hour
 	inviteTTL    = 72 * time.Hour
 	challengeTTL = 5 * time.Minute
 )

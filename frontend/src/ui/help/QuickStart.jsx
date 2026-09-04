@@ -1,14 +1,14 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
-import { tourForRole } from "../../features/help/copy.js";
+import { tourForScene } from "../../features/help/copy.js";
 import { isLastTourStep, nextTourIndex, prevTourIndex, spotlightRect, tooltipLayout, visibleTourSteps } from "../../features/help/tour.js";
 import { IconChevron } from "../icons.jsx";
 import { GhostButton, PrimaryButton } from "../widgets.jsx";
 
 const CARD_WIDTH = 320;
 
-export function QuickStart({ me, onDismiss, onLater }) {
+export function QuickStart({ me, scene = "home", onDismiss, onLater }) {
   const role = me.role;
-  const [steps, setSteps] = useState(() => tourForRole(role));
+  const [steps, setSteps] = useState(() => tourForScene(scene, role));
   const [index, setIndex] = useState(0);
   const [cardSize, setCardSize] = useState({ width: CARD_WIDTH, height: 180 });
   const [displaySpot, setDisplaySpot] = useState(null);
@@ -18,10 +18,11 @@ export function QuickStart({ me, onDismiss, onLater }) {
   const last = isLastTourStep(index, steps.length);
 
   useLayoutEffect(() => {
-    const catalog = tourForRole(role);
+    const catalog = tourForScene(scene, role);
     const visible = visibleTourSteps(catalog, (id) => Boolean(document.querySelector(`[data-tour="${id}"]`)));
     setSteps(visible.length ? visible : catalog);
-  }, [role]);
+    setIndex(0);
+  }, [role, scene]);
 
   useLayoutEffect(() => {
     if (!step) return undefined;

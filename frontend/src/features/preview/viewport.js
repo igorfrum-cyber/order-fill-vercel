@@ -23,7 +23,7 @@ export function rowHeightOf(row, defaultHeight = PREVIEW_ROW_HEIGHT, customHeigh
 }
 
 export function buildRowOffsets(maxRow, defaultHeight = PREVIEW_ROW_HEIGHT, customHeights) {
-  const rows = Math.max(0, Number(maxRow) || 0);
+  const rows = Math.max(0, Math.floor(Number(maxRow) || 0));
   const offsets = new Float64Array(rows + 2);
   let y = 0;
   for (let row = 1; row <= rows; row += 1) {
@@ -49,7 +49,7 @@ export function columnSize(index, columns, fallback = PREVIEW_COL_WIDTH) {
 }
 
 export function columnOffsets(maxColumn, columns, fallback = PREVIEW_COL_WIDTH) {
-  const count = Math.max(0, Number(maxColumn) || 0);
+  const count = Math.max(0, Math.floor(Number(maxColumn) || 0));
   const offsets = new Float64Array(count + 1);
   let x = 0;
   for (let index = 0; index < count; index += 1) {
@@ -61,13 +61,15 @@ export function columnOffsets(maxColumn, columns, fallback = PREVIEW_COL_WIDTH) 
 }
 
 export function gridContentWidth(maxColumn, columns, gutter = PREVIEW_GUTTER_WIDTH, fallback = PREVIEW_COL_WIDTH) {
-  return gutter + columnOffsets(maxColumn, columns, fallback)[Math.max(0, Number(maxColumn) || 0)];
+  const count = Math.max(0, Math.floor(Number(maxColumn) || 0));
+  return gutter + columnOffsets(count, columns, fallback)[count];
 }
 
 export function spanSize(offsets, start, count) {
   const from = Math.max(0, start);
   const to = Math.min(offsets.length - 1, from + count);
-  return offsets[to] - offsets[from];
+  const size = offsets[to] - offsets[from];
+  return Number.isFinite(size) && size > 0 ? size : 0;
 }
 
 export function rowAtOffset(offsets, y, maxRow) {

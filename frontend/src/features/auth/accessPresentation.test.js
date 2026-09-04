@@ -10,6 +10,7 @@ import {
   companyLoginCopy,
   companyLoginPath,
   companyLoginURL,
+  loginParentHost,
   companySlugFromHost,
   companySlugFromPath,
   loginSlugIssue,
@@ -191,4 +192,36 @@ test("companyLoginURL builds a localhost subdomain for local hosts", () => {
     companyLoginURL("chernovaa", { protocol: "https:", hostname: "example.com", port: "" }),
     "https://chernovaa.example.com/",
   );
+  assert.equal(
+    companyLoginURL("art72", { protocol: "https:", hostname: "art72.example.com", port: "" }),
+    "https://art72.example.com/",
+  );
+});
+
+test("companyLoginURL uses a path on a public IP because subdomains cannot attach to an address", () => {
+  assert.equal(
+    companyLoginURL("art72", { protocol: "http:", hostname: "203.0.113.10", port: "3200" }),
+    "http://203.0.113.10:3200/c/art72",
+  );
+  assert.equal(
+    companyLoginURL("art72", { protocol: "http:", hostname: "192.168.31.108", port: "" }),
+    "http://192.168.31.108/c/art72",
+  );
+});
+
+test("companyLoginURL uses a path on DuckDNS because a wildcard certificate is not assumed", () => {
+  assert.equal(
+    companyLoginURL("art72", { protocol: "https:", hostname: "orderfill.duckdns.org", port: "" }),
+    "https://orderfill.duckdns.org/c/art72",
+  );
+  assert.equal(
+    companyLoginURL("art72", { protocol: "https:", hostname: "203-0-113-10.sslip.io", port: "" }),
+    "https://203-0-113-10.sslip.io/c/art72",
+  );
+});
+
+test("loginParentHost does not collapse a DuckDNS name onto duckdns.org", () => {
+  assert.equal(loginParentHost("orderfill.duckdns.org"), "orderfill.duckdns.org");
+  assert.equal(loginParentHost("art72.orderfill.duckdns.org"), "orderfill.duckdns.org");
+  assert.equal(loginParentHost("art72.example.com"), "example.com");
 });

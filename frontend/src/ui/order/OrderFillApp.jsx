@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   createOrderFillJob,
   downloadJobArchive,
@@ -12,14 +12,17 @@ import { blankSlotsForSource, brandLabel } from "../../features/brands/brandPres
 import { runOrderFillJob } from "../../features/jobs/orderJobWorkflow.js";
 import { formatOrderMonthLabel } from "../../features/order/monthPolicy.js";
 import { collectReviewEdits, hasManualDeviations, initialEditState, patchEdit, rowKey, validateReviewEdits } from "../../features/order/reviewEdits.js";
+import { needsEditResubmit } from "../../features/preview/previewEdits.js";
 import { issueReportCsv } from "../../features/report/issueReport.js";
 import { combinedSummary, jobProgress, jobStatusText } from "../../features/report/reportModel.js";
 import { issueReportRows, qualityWarningLines, qualityWarningSummary } from "../../features/report/qualityWarnings.js";
-import { reviewCommentBanner } from "../../features/report/rowPresentation.js";
+import { userFacingError } from "../../features/help/errors.js";
 import { StageRail, TopBar } from "../chrome.jsx";
-import { Modal } from "../widgets.jsx";
+import { ErrorBoundary } from "../ErrorBoundary.jsx";
+import { GhostButton, Modal } from "../widgets.jsx";
 import { FillStage } from "./FillStage.jsx";
 import { PreviewStage } from "./PreviewStage.jsx";
+import { CommentGate } from "./review/CommentGate.jsx";
 import { UploadStage } from "./SetupUpload.jsx";
 
 function triggerDownload(url, fileName) {
@@ -37,7 +40,7 @@ function triggerBlobDownload(blob, fileName) {
   window.setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
-export function OrderFillApp({ companyId, resumeJob, onHome, onHelp }) {
+export function OrderFillApp({ companyId, resumeJob, onHome, onHelp, onStage }) {
   const [stage, setStage] = useState(resumeJob ? (resumeJob.finalized ? "preview" : "fill") : "upload");
   const [brand, setBrand] = useState(resumeJob?.brand || "");
   const [month, setMonth] = useState(resumeJob?.month || "");
@@ -54,9 +57,17 @@ export function OrderFillApp({ companyId, resumeJob, onHome, onHelp }) {
   const [invalidKeys, setInvalidKeys] = useState(new Set());
   const [busy, setBusy] = useState(false);
   const [confirmLines, setConfirmLines] = useState(null);
+  const [commentGateKeys, setCommentGateKeys] = useState(null);
+  const [afterCommentGate, setAfterCommentGate] = useState("preview");
   const [banner, setBanner] = useState("");
   const [outputFiles, setOutputFiles] = useState(resumeJob?.outputFiles || []);
   const [finalized, setFinalized] = useState(Boolean(resumeJob?.finalized));
+  const [editsDirty, setEditsDirty] = useState(false);
+  const [previewEpoch, setPreviewEpoch] = useState(0);
+
+  useEffect(() => {
+    onStage?.(stage);
+  }, [stage, onStage]);
 
   const monthLabel = formatOrderMonthLabel(month);
   const uploadSlots = blankSlotsForSource(sourceFile?.name);
@@ -69,8 +80,11 @@ export function OrderFillApp({ companyId, resumeJob, onHome, onHelp }) {
     setResults([]);
     setEdits(new Map());
     setInvalidKeys(new Set());
+    setCommentGateKeys(null);
     setOutputFiles([]);
     setFinalized(false);
+    setEditsDirty(false);
+    setPreviewEpoch(0);
     setError("");
     setStatus("");
     setProgress(0);
@@ -108,11 +122,12 @@ export function OrderFillApp({ companyId, resumeJob, onHome, onHelp }) {
       setRows(result.rows);
       setResults(result.results);
       setEdits(initialEditState(result.rows));
+      setEditsDirty(false);
       setStage("fill");
       setStatus("");
       setProgress(1);
     } catch (err) {
-      setError(err.message || "Не удалось обработать файлы.");
+      setError(userFacingError(err, "Не удалось обработать файлы."));
       setStatus("");
       setProgress(0);
     } finally {
@@ -122,6 +137,7 @@ export function OrderFillApp({ companyId, resumeJob, onHome, onHelp }) {
 
   function updateEdit(key, patch) {
     setEdits((prev) => patchEdit(prev, key, patch));
+    setEditsDirty(true);
     setInvalidKeys((prev) => {
       if (!prev.has(key)) return prev;
       const copy = new Set(prev);
@@ -150,9 +166,31 @@ export function OrderFillApp({ companyId, resumeJob, onHome, onHelp }) {
     const invalid = validateReviewEdits(rows, edits);
     if (invalid.length) {
       setInvalidKeys(new Set(invalid));
-      setBanner(reviewCommentBanner);
+      setCommentGateKeys(invalid);
+      setAfterCommentGate("preview");
+      setBanner("");
       return;
     }
+    proceedToPreview();
+  }
+
+  function confirmCommentGate() {
+    const invalid = validateReviewEdits(rows, edits);
+    if (invalid.length) {
+      setInvalidKeys(new Set(invalid));
+      setCommentGateKeys(invalid);
+      return;
+    }
+    setCommentGateKeys(null);
+    setInvalidKeys(new Set());
+    if (afterCommentGate === "download") {
+      downloadArchive();
+      return;
+    }
+    proceedToPreview();
+  }
+
+  function proceedToPreview() {
     setBanner("");
     const warnings = qualityWarningSummary({ rows, results, edits });
     const lines = qualityWarningLines(warnings, { skipDuplicates: true });
@@ -160,49 +198,75 @@ export function OrderFillApp({ companyId, resumeJob, onHome, onHelp }) {
       setConfirmLines(lines);
       return;
     }
-    await submitAndPreview();
+    submitAndPreview();
+  }
+
+  async function persistEditsIfNeeded() {
+    if (!needsEditResubmit({
+      finalized,
+      dirty: editsDirty,
+      hasDeviations: hasManualDeviations(rows, edits),
+    })) {
+      return false;
+    }
+    setStatus("Сохраняю правки...");
+    const payload = collectReviewEdits(rows, edits);
+    const editedJob = await submitJobEdits(jobId, payload);
+    const finalJob = await pollJob(editedJob.id, {
+      until: FINALIZE_DONE_STATUSES,
+      onUpdate: (job) => setStatus(jobStatusText(job)),
+    });
+    if (finalJob.status === "failed") {
+      throw new Error(finalJob.error?.message || "Не удалось подготовить файлы.");
+    }
+    setEditsDirty(false);
+    setFinalized(true);
+    setPreviewEpoch((epoch) => epoch + 1);
+    return true;
   }
 
   async function submitAndPreview() {
     setConfirmLines(null);
     setBusy(true);
     try {
-      if (!finalized && hasManualDeviations(rows, edits)) {
-        setStatus("Сохраняю правки...");
-        const payload = collectReviewEdits(rows, edits);
-        const editedJob = await submitJobEdits(jobId, payload);
-        const finalJob = await pollJob(editedJob.id, {
-          until: FINALIZE_DONE_STATUSES,
-          onUpdate: (job) => setStatus(jobStatusText(job)),
-        });
-        if (finalJob.status === "failed") {
-          throw new Error(finalJob.error?.message || "Не удалось подготовить файлы.");
-        }
-      }
+      await persistEditsIfNeeded();
       setStatus("Открываю файлы...");
       const listed = await listJobFiles(jobId);
       setOutputFiles(listed.files);
       setFinalized(true);
       setStage("preview");
-      setStatus("");
+      setStatus("Собираю сетку...");
     } catch (err) {
       setStatus("Ошибка");
-      setBanner(err.message || "Не удалось сохранить правки.");
+      setBanner(userFacingError(err, "Не удалось сохранить правки."));
     } finally {
       setBusy(false);
     }
   }
 
+  function backToFill() {
+    setStage("fill");
+    setStatus("");
+  }
+
   async function downloadArchive() {
     if (!jobId) return;
+    const invalid = validateReviewEdits(rows, edits);
+    if (invalid.length) {
+      setInvalidKeys(new Set(invalid));
+      setCommentGateKeys(invalid);
+      setAfterCommentGate("download");
+      return;
+    }
     setBusy(true);
     try {
+      await persistEditsIfNeeded();
       setStatus("Скачиваю архив...");
       const archive = await downloadJobArchive(jobId);
       triggerBlobDownload(archive.blob, archive.fileName);
       setStatus("Файлы готовы");
     } catch (err) {
-      setStatus(err.message || "Не удалось скачать файлы.");
+      setStatus(userFacingError(err, "Не удалось скачать файлы."));
     } finally {
       setBusy(false);
     }
@@ -228,7 +292,7 @@ export function OrderFillApp({ companyId, resumeJob, onHome, onHelp }) {
           setStage(next);
         }}
       />
-      <main className="flex-1 overflow-hidden">
+      <main className="relative min-h-0 flex-1 overflow-hidden">
         {(stage === "upload" || stage === "processing") && (
           <UploadStage
             sourceFile={sourceFile}
@@ -272,17 +336,51 @@ export function OrderFillApp({ companyId, resumeJob, onHome, onHelp }) {
           />
         )}
         {stage === "preview" && (
-          <PreviewStage
-            files={outputFiles}
-            jobId={jobId}
-            status={status}
-            busy={busy}
-            onBack={() => setStage("fill")}
-            onDownload={downloadArchive}
-          />
+          <ErrorBoundary
+            key={jobId || "preview"}
+            fallback={(err) => (
+              <div className="grid h-full place-items-center bg-[var(--color-ground)] px-6">
+                <div className="max-w-md text-center">
+                  <h2 className="text-[22px] font-semibold tracking-tight">Не получилось открыть файлы</h2>
+                  <p className="mt-2 text-[15px] leading-relaxed text-[var(--color-ink-soft)]">
+                    {userFacingError(err, "Попробуйте вернуться к правкам и открыть ещё раз.")}
+                  </p>
+                  {err?.message ? (
+                    <p className="mt-3 break-all font-mono text-[12px] text-[var(--color-ink-faint)]">{String(err.message)}</p>
+                  ) : null}
+                  <div className="mt-5 flex justify-center">
+                    <GhostButton onClick={backToFill}>Назад к правкам</GhostButton>
+                  </div>
+                </div>
+              </div>
+            )}
+          >
+            <PreviewStage
+              files={outputFiles}
+              jobId={jobId}
+              status={status}
+              busy={busy}
+              rows={rows}
+              edits={edits}
+              onEdit={updateEdit}
+              refreshKey={previewEpoch}
+              onBack={backToFill}
+              onReady={() => setStatus("")}
+              onDownload={downloadArchive}
+            />
+          </ErrorBoundary>
         )}
       </main>
-      {confirmLines && (
+      {commentGateKeys && (
+        <CommentGate
+          rows={rows.filter((row) => commentGateKeys.includes(rowKey(row)))}
+          edits={edits}
+          onEdit={updateEdit}
+          onCancel={() => setCommentGateKeys(null)}
+          onConfirm={confirmCommentGate}
+        />
+      )}
+      {confirmLines && !commentGateKeys && (
         <Modal
           title="Проверьте спорные строки"
           cancelLabel="Назад"

@@ -143,9 +143,11 @@ export function loginParentHost(hostname) {
   const host = String(hostname || "")
     .split(":")[0]
     .toLowerCase();
-  if (!host || isIPAddress(host) || host === "localhost" || host.endsWith(".localhost")) {
+  if (!host || isLoopbackHost(host)) {
     return "localhost";
   }
+  const registrable = registrableHost(host);
+  if (registrable) return registrable;
   const labels = host.split(".");
   if (labels[0] === "www") {
     return labels.slice(1).join(".") || host;
@@ -159,13 +161,46 @@ export function loginParentHost(hostname) {
 export function companyLoginURL(slug, location = globalThis.location) {
   const normalized = normalizeLoginSlug(slug);
   if (loginSlugIssue(normalized)) return "";
-  const parent = loginParentHost(location?.hostname || "localhost");
+  const hostname = String(location?.hostname || "localhost")
+    .split(":")[0]
+    .toLowerCase();
   const protocol = location?.protocol || "http:";
   const port = location?.port || "";
   const portPart = port ? `:${port}` : "";
+  if (usesPathCompanyLogin(hostname)) {
+    return `${protocol}//${hostForURL(hostname)}${portPart}${companyLoginPath(normalized)}`;
+  }
+  const parent = loginParentHost(hostname);
   return `${protocol}//${normalized}.${parent}${portPart}/`;
+}
+
+const PATH_LOGIN_SUFFIXES = ["duckdns.org", "sslip.io", "nip.io"];
+
+function usesPathCompanyLogin(host) {
+  if (isIPAddress(host) && !isLoopbackHost(host)) return true;
+  return PATH_LOGIN_SUFFIXES.some((suffix) => host === suffix || host.endsWith(`.${suffix}`));
+}
+
+function registrableHost(host) {
+  for (const suffix of PATH_LOGIN_SUFFIXES) {
+    if (host === suffix) return suffix;
+    if (!host.endsWith(`.${suffix}`)) continue;
+    const rest = host.slice(0, -(suffix.length + 1));
+    const head = rest.split(".");
+    return `${head[head.length - 1]}.${suffix}`;
+  }
+  return "";
+}
+
+function isLoopbackHost(host) {
+  return host === "localhost" || host === "127.0.0.1" || host === "::1" || host.endsWith(".localhost");
 }
 
 function isIPAddress(host) {
   return /^\d{1,3}(?:\.\d{1,3}){3}$/.test(host) || host.includes(":");
+}
+
+function hostForURL(host) {
+  if (host.includes(":") && !host.startsWith("[")) return `[${host}]`;
+  return host;
 }

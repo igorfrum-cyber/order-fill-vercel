@@ -1,0 +1,7 @@
+{$PUBLIC_HOST} {
+	reverse_proxy frontend:80 {
+		header_up Host {host}
+		header_up X-Forwarded-Proto https
+		header_up X-Forwarded-For {remote_host}
+	}
+}

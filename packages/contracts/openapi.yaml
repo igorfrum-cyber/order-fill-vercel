@@ -1623,6 +1623,12 @@ components:
           type: integer
         article_column:
           type: integer
+        quantity_column:
+          type: integer
+          description: 1-based column for live quantity edits (blank qty or 1C ordered-fact).
+        comment_column:
+          type: integer
+          description: 1-based column for live comment edits on the 1C table.
         styles:
           type: array
           items:
@@ -1644,6 +1650,16 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/PreviewMerge"
+        formulas:
+          type: array
+          items:
+            $ref: "#/components/schemas/PreviewFormula"
+          description: Excel formulas the browser re-evaluates when the reviewer edits a quantity.
+        formula_values:
+          type: object
+          additionalProperties:
+            type: string
+          description: Captured numeric inputs referenced by formulas, keyed as row:column.
     PreviewCellStyle:
       type: object
       properties:
@@ -1687,6 +1703,18 @@ components:
         width:
           type: integer
           minimum: 1
+    PreviewFormula:
+      type: object
+      required: [row, column, formula]
+      properties:
+        row:
+          type: integer
+          minimum: 1
+        column:
+          type: integer
+          minimum: 1
+        formula:
+          type: string
     PreviewWindow:
       type: object
       required: [sheet_index, from_row, to_row, rows]

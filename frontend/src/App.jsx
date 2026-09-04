@@ -3,7 +3,7 @@ import { getCompanyLogin, getMe, logout } from "./api/auth.js";
 import { onAuthRequired } from "./api/client.js";
 import { getJob, getJobReport, listJobFiles } from "./api/jobs.js";
 import { canEditCompanyProfile, companyLoginURL, companySlugFromHost, companySlugFromPath, homeScreen, needsSecurityNudge, resolveUsersCompanyId } from "./features/auth/accessPresentation.js";
-import { consumeQuickStart } from "./features/help/firstRun.js";
+import { shouldAutoStartTour, tourSceneForView } from "./features/help/firstRun.js";
 import { headerContext, roleLabel, securitySetupLabel, twoFactorRequiredHint } from "./features/help/copy.js";
 import { initialEditState } from "./features/order/reviewEdits.js";
 import { CompaniesScreen, CompanyScreen, JobHistory, OverviewScreen, UsersScreen } from "./ui/admin/AdminScreens.jsx";
@@ -26,6 +26,9 @@ export default function App() {
   const [resume, setResume] = useState(null);
   const [quickStartOpen, setQuickStartOpen] = useState(false);
   const [helpOpen, setHelpOpen] = useState(false);
+  const [tourFollowUp, setTourFollowUp] = useState(false);
+  const [seenTourScenes, setSeenTourScenes] = useState(() => new Set());
+  const [orderStage, setOrderStage] = useState("upload");
 
   useEffect(() => {
     getMe()
@@ -63,14 +66,27 @@ export default function App() {
   }, [companySlug]);
 
   const userId = me?.id;
+  const tourScene = tourSceneForView({
+    screen,
+    stage: orderStage,
+    seenHome: seenTourScenes.has("home") || !tourFollowUp,
+  });
+
   useEffect(() => {
     if (!userId) {
       setQuickStartOpen(false);
       setHelpOpen(false);
+      setTourFollowUp(false);
+      setSeenTourScenes(new Set());
       return;
     }
-    setQuickStartOpen(consumeQuickStart({ id: userId }));
   }, [userId]);
+
+  useEffect(() => {
+    if (!tourFollowUp || !userId) return;
+    if (seenTourScenes.has(tourScene)) return;
+    setQuickStartOpen(true);
+  }, [tourFollowUp, tourScene, userId, seenTourScenes]);
 
   if (me === undefined) {
     return <div className="grid min-h-full place-items-center text-[var(--color-ink-faint)]">Загрузка…</div>;
@@ -84,6 +100,10 @@ export default function App() {
           setMe(user);
           if (user.company_id) setCompanyId(user.company_id);
           setScreen(homeScreen(user.role));
+          if (shouldAutoStartTour("invite")) {
+            setTourFollowUp(true);
+            setQuickStartOpen(true);
+          }
         }}
       />
     );
@@ -107,7 +127,13 @@ export default function App() {
 
   function goHome() {
     setResume(null);
+    setOrderStage("upload");
     setScreen(homeScreen(me.role));
+  }
+
+  function closeTour() {
+    setSeenTourScenes((prev) => new Set(prev).add(tourScene));
+    setQuickStartOpen(false);
   }
 
   const shell = headerContext(me);
@@ -115,7 +141,13 @@ export default function App() {
   return (
     <>
       {screen === "order" ? (
-        <OrderFillApp companyId={companyId} resumeJob={resume} onHome={goHome} onHelp={() => setHelpOpen(true)} />
+        <OrderFillApp
+          companyId={companyId}
+          resumeJob={resume}
+          onHome={goHome}
+          onHelp={() => setHelpOpen(true)}
+          onStage={setOrderStage}
+        />
       ) : screen === "north" ? (
         <NorthApp companyId={companyId} onHome={goHome} onHelp={() => setHelpOpen(true)} />
       ) : (
@@ -188,6 +220,7 @@ export default function App() {
                   }
                   const loaded = await loadOrderResume(job.id);
                   setResume(loaded);
+                  setOrderStage(loaded.finalized ? "preview" : "fill");
                   setScreen("order");
                 }}
               />
@@ -200,6 +233,7 @@ export default function App() {
                 onNew={(kind) => {
                   if (me.role === "platform_admin") return;
                   setResume(null);
+                  setOrderStage("upload");
                   setScreen(kind === "north" ? "north" : "order");
                 }}
                 onOpen={async (job) => {
@@ -209,6 +243,7 @@ export default function App() {
                   }
                   const loaded = await loadOrderResume(job.id);
                   setResume(loaded);
+                  setOrderStage(loaded.finalized ? "preview" : "fill");
                   setScreen("order");
                 }}
               />
@@ -243,21 +278,16 @@ export default function App() {
               />
             ) : null}
           </main>
-          {quickStartOpen ? (
-            <QuickStart
-              me={me}
-              onLater={() => setQuickStartOpen(false)}
-              onDismiss={() => setQuickStartOpen(false)}
-            />
-          ) : null}
         </div>
       )}
+      {quickStartOpen ? (
+        <QuickStart me={me} scene={tourScene} onLater={closeTour} onDismiss={closeTour} />
+      ) : null}
       {helpOpen ? (
         <HelpDrawer
           onClose={() => setHelpOpen(false)}
           onReplay={() => {
             setHelpOpen(false);
-            setScreen(homeScreen(me.role));
             setQuickStartOpen(true);
           }}
         />

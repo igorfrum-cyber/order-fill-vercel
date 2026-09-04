@@ -145,5 +145,5 @@ func writeJSON(w http.ResponseWriter, status int, payload any) {
 }
 
 func writeError(w http.ResponseWriter, status int, code string, message string) {
-	writeJSON(w, status, errorResponse{Code: code, Message: message})
+	writeJSON(w, status, errorResponse{Code: code, Message: publicErrorMessage(code, message)})
 }

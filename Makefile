@@ -1,4 +1,4 @@
-.PHONY: verify lint test up down logs load-order-fill lan-https
+.PHONY: verify lint test up down logs load-order-fill lan-https lan-https-down https https-down
 
 verify:
 	bash scripts/verify.sh
@@ -20,7 +20,7 @@ up:
 	$(COMPOSE) up --build
 
 down:
-	$(COMPOSE) $(if $(wildcard deploy/Caddyfile.lan),-f deploy/docker-compose.lan-https.yml) down
+	$(COMPOSE) down --remove-orphans
 
 logs:
 	$(COMPOSE) logs -f
@@ -30,3 +30,12 @@ load-order-fill:
 
 lan-https:
 	bash scripts/lan-https.sh
+
+lan-https-down:
+	$(COMPOSE) $(if $(wildcard deploy/Caddyfile.lan),-f deploy/docker-compose.lan-https.yml) down --remove-orphans
+
+https:
+	bash scripts/prod-https.sh
+
+https-down:
+	PUBLIC_HOST=$${PUBLIC_HOST:-_} $(COMPOSE) -f deploy/docker-compose.https.yml down --remove-orphans

@@ -220,17 +220,21 @@ func presentPreviewMeta(meta preview.Meta) previewMetaResponse {
 	sheets := make([]previewSheetResponse, 0, len(meta.Sheets))
 	for _, sheet := range meta.Sheets {
 		sheets = append(sheets, previewSheetResponse{
-			Name:          sheet.Name,
-			Index:         sheet.Index,
-			MaxRow:        sheet.MaxRow,
-			MaxColumn:     sheet.MaxColumn,
-			HeaderRow:     sheet.HeaderRow,
-			ArticleColumn: sheet.ArticleColumn,
-			Styles:        presentCellStyles(sheet.Styles),
-			Columns:       sheet.Columns,
-			RowHeight:     sheet.RowHeight,
-			RowHeights:    sheet.RowHeights,
-			Merges:        presentMerges(sheet.Merges),
+			Name:           sheet.Name,
+			Index:          sheet.Index,
+			MaxRow:         sheet.MaxRow,
+			MaxColumn:      sheet.MaxColumn,
+			HeaderRow:      sheet.HeaderRow,
+			ArticleColumn:  sheet.ArticleColumn,
+			Styles:         presentCellStyles(sheet.Styles),
+			Columns:        sheet.Columns,
+			RowHeight:      sheet.RowHeight,
+			RowHeights:     sheet.RowHeights,
+			Merges:         presentMerges(sheet.Merges),
+			Formulas:       presentFormulas(sheet.Formulas),
+			FormulaValues:  sheet.FormulaValues,
+			QuantityColumn: sheet.QuantityColumn,
+			CommentColumn:  sheet.CommentColumn,
 		})
 	}
 	return previewMetaResponse{ChunkRows: meta.ChunkRows, Sheets: sheets}
@@ -290,23 +294,38 @@ func presentMerges(merges []preview.Merge) []mergeResponse {
 	return out
 }
 
+func presentFormulas(formulas []preview.SheetFormula) []formulaResponse {
+	if len(formulas) == 0 {
+		return nil
+	}
+	out := make([]formulaResponse, 0, len(formulas))
+	for _, item := range formulas {
+		out = append(out, formulaResponse{Row: item.Row, Column: item.Column, Text: item.Text})
+	}
+	return out
+}
+
 type previewMetaResponse struct {
 	ChunkRows int                    `json:"chunk_rows"`
 	Sheets    []previewSheetResponse `json:"sheets"`
 }
 
 type previewSheetResponse struct {
-	Name          string              `json:"name"`
-	Index         int                 `json:"index"`
-	MaxRow        int                 `json:"max_row"`
-	MaxColumn     int                 `json:"max_column"`
-	HeaderRow     int                 `json:"header_row,omitempty"`
-	ArticleColumn int                 `json:"article_column,omitempty"`
-	Styles        []cellStyleResponse `json:"styles,omitempty"`
-	Columns       []float64           `json:"columns,omitempty"`
-	RowHeight     float64             `json:"row_height,omitempty"`
-	RowHeights    map[int]float64     `json:"row_heights,omitempty"`
-	Merges        []mergeResponse     `json:"merges,omitempty"`
+	Name           string              `json:"name"`
+	Index          int                 `json:"index"`
+	MaxRow         int                 `json:"max_row"`
+	MaxColumn      int                 `json:"max_column"`
+	HeaderRow      int                 `json:"header_row,omitempty"`
+	ArticleColumn  int                 `json:"article_column,omitempty"`
+	Styles         []cellStyleResponse `json:"styles,omitempty"`
+	Columns        []float64           `json:"columns,omitempty"`
+	RowHeight      float64             `json:"row_height,omitempty"`
+	RowHeights     map[int]float64     `json:"row_heights,omitempty"`
+	Merges         []mergeResponse     `json:"merges,omitempty"`
+	Formulas       []formulaResponse   `json:"formulas,omitempty"`
+	FormulaValues  map[string]string   `json:"formula_values,omitempty"`
+	QuantityColumn int                 `json:"quantity_column,omitempty"`
+	CommentColumn  int                 `json:"comment_column,omitempty"`
 }
 
 type cellStyleResponse struct {
@@ -329,6 +348,12 @@ type mergeResponse struct {
 	Column int `json:"column"`
 	Height int `json:"height"`
 	Width  int `json:"width"`
+}
+
+type formulaResponse struct {
+	Row    int    `json:"row"`
+	Column int    `json:"column"`
+	Text   string `json:"formula"`
 }
 
 type previewWindowResponse struct {

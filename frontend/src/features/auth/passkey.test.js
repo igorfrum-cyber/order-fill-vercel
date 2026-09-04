@@ -95,7 +95,7 @@ test("passkeyErrorMessage explains browser security errors", () => {
   assert.equal(passkeyErrorMessage(duplicate, "add"), "Этот ключ доступа уже добавлен.");
   const api = new Error("challenge expired");
   api.name = "ApiError";
-  assert.equal(passkeyErrorMessage(api, "add"), "challenge expired");
+  assert.equal(passkeyErrorMessage(api, "add"), "Код или ссылка устарели. Попробуйте ещё раз.");
   const pending = new Error("A request is already pending.");
   pending.name = "NotAllowedError";
   assert.equal(

@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { combinedSummary, jobProgress, jobStatusText, jobStatusLabel, jobsEmptyState, jobStatusHint, liveJobs, reportSummaryFromRows, statusLabel } from "./reportModel.js";
+import { combinedSummary, initialComment, jobProgress, jobStatusText, jobStatusLabel, jobsEmptyState, jobStatusHint, liveJobs, reportSummaryFromRows, statusLabel } from "./reportModel.js";
 
 test("reportSummaryFromRows derives dashboard metrics from API report rows", () => {
   const rows = [
@@ -132,4 +132,10 @@ test("liveJobs keeps only work that is still in flight", () => {
     ]).map((job) => job.id),
     ["1", "3", "5"],
   );
+});
+
+test("initialComment prefers the 1C table comment over the auto box note", () => {
+  assert.equal(initialComment({ sourceComment: "договорились", autoComment: "до коробки" }), "договорились");
+  assert.equal(initialComment({ sourceComment: "", autoComment: "до коробки" }), "до коробки");
+  assert.equal(initialComment({}), "");
 });

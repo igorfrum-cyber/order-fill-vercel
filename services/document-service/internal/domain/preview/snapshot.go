@@ -29,18 +29,22 @@ type Meta struct {
 
 // SheetMeta is the used range plus an article→row index for jump-to-SKU.
 type SheetMeta struct {
-	Name          string          `json:"name"`
-	Index         int             `json:"index"`
-	MaxRow        int             `json:"max_row"`
-	MaxColumn     int             `json:"max_column"`
-	HeaderRow     int             `json:"header_row,omitempty"`
-	ArticleColumn int             `json:"article_column,omitempty"`
-	Articles      map[string]int  `json:"articles,omitempty"`
-	Styles        []CellStyle     `json:"styles,omitempty"`
-	Columns       []float64       `json:"columns,omitempty"`
-	RowHeight     float64         `json:"row_height,omitempty"`
-	RowHeights    map[int]float64 `json:"row_heights,omitempty"`
-	Merges        []Merge         `json:"merges,omitempty"`
+	Name           string            `json:"name"`
+	Index          int               `json:"index"`
+	MaxRow         int               `json:"max_row"`
+	MaxColumn      int               `json:"max_column"`
+	HeaderRow      int               `json:"header_row,omitempty"`
+	ArticleColumn  int               `json:"article_column,omitempty"`
+	Articles       map[string]int    `json:"articles,omitempty"`
+	Styles         []CellStyle       `json:"styles,omitempty"`
+	Columns        []float64         `json:"columns,omitempty"`
+	RowHeight      float64           `json:"row_height,omitempty"`
+	RowHeights     map[int]float64   `json:"row_heights,omitempty"`
+	Merges         []Merge           `json:"merges,omitempty"`
+	Formulas       []SheetFormula    `json:"formulas,omitempty"`
+	FormulaValues  map[string]string `json:"formula_values,omitempty"`
+	QuantityColumn int               `json:"quantity_column,omitempty"`
+	CommentColumn  int               `json:"comment_column,omitempty"`
 }
 
 // CellStyle is one interned appearance. Empty fields mean Excel defaults.
@@ -65,6 +69,13 @@ type Merge struct {
 	Column int `json:"column"`
 	Height int `json:"height"`
 	Width  int `json:"width"`
+}
+
+// SheetFormula is one Excel formula the browser can re-evaluate over live edits.
+type SheetFormula struct {
+	Row    int    `json:"row"`
+	Column int    `json:"column"`
+	Text   string `json:"formula"`
 }
 
 // Chunk is a contiguous row window. Rows[i] is sheet row StartRow+i; the inner
@@ -124,6 +135,9 @@ func captureSheet(sheet spreadsheet.Sheet, index int, chunkRows int) (SheetMeta,
 		HeaderRow:     headerRow,
 		ArticleColumn: articleCol,
 	}
+	if headerRow > 0 {
+		meta.QuantityColumn, meta.CommentColumn = detectEditColumns(sheet, headerRow, bounds.MaxColumn)
+	}
 	styled, hasLook := sheet.(spreadsheet.Styled)
 	if hasLook {
 		meta.Columns = styled.ColumnWidths()
@@ -135,6 +149,7 @@ func captureSheet(sheet spreadsheet.Sheet, index int, chunkRows int) (SheetMeta,
 			meta.Styles = nil
 		}
 	}
+	captureFormulas(sheet, &meta)
 	if articleCol > 0 && headerRow > 0 && bounds.MaxRow > headerRow {
 		meta.Articles = indexArticles(sheet, headerRow, articleCol, bounds.MaxRow)
 	}
@@ -271,6 +286,20 @@ func detectHeader(sheet spreadsheet.Sheet, bounds spreadsheet.Bounds) (int, int)
 	}
 	last := hits[len(hits)-1]
 	return last.row, last.col
+}
+
+func detectEditColumns(sheet spreadsheet.Sheet, headerRow int, maxColumn int) (int, int) {
+	quantity, comment := 0, 0
+	for col := 1; col <= maxColumn; col++ {
+		folded := foldHeader(sheet.Value(headerRow, col))
+		if strings.Contains(folded, "заказано") && strings.Contains(folded, "факт") {
+			quantity = col
+		}
+		if folded == "комментарий" || strings.HasPrefix(folded, "комментарий") {
+			comment = col
+		}
+	}
+	return quantity, comment
 }
 
 func rowLooksLikeOrderHeader(sheet spreadsheet.Sheet, row int, maxColumn int) bool {

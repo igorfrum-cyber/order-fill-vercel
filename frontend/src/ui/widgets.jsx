@@ -70,12 +70,13 @@ export function Select({ value, onChange, options }) {
   );
 }
 
-export function PrimaryButton({ children, onClick, disabled, type = "button" }) {
+export function PrimaryButton({ children, onClick, disabled, type = "button", dataTour }) {
   return (
     <button
       type={type}
       onClick={onClick}
       disabled={disabled}
+      data-tour={dataTour}
       className="primary-action flex items-center gap-2 whitespace-nowrap rounded-control bg-[var(--color-brand)] px-5 py-3 text-[15px] font-semibold text-white transition hover:bg-[var(--color-brand-strong)] focus:outline-none focus-visible:ring-4 focus-visible:ring-[var(--color-brand-soft)] disabled:cursor-not-allowed disabled:opacity-40"
     >
       {children}
@@ -110,19 +111,25 @@ export function StageHeading({ index, kicker, title, children }) {
   );
 }
 
-export function ProgressBar({ value, label }) {
+export function ProgressBar({ value, label, indeterminate = false }) {
   const pct = Math.max(0, Math.min(100, Math.round(Number(value || 0) * 100)));
   return (
     <div className="mt-5">
       <div className="mb-2 flex items-center justify-between gap-3 text-[14px] text-[var(--color-ink-soft)]">
         <span>{label || "Обработка..."}</span>
-        <span className="font-mono tabular-nums text-[13px] text-[var(--color-ink-faint)]">{pct}%</span>
+        {indeterminate ? null : (
+          <span className="font-mono tabular-nums text-[13px] text-[var(--color-ink-faint)]">{pct}%</span>
+        )}
       </div>
       <div className="h-2.5 overflow-hidden rounded-full bg-[var(--color-line-soft)]">
-        <div
-          className="h-full rounded-full bg-[var(--color-brand)] transition-all duration-300"
-          style={{ width: `${pct}%` }}
-        />
+        {indeterminate ? (
+          <div className="preview-indeterminate-bar h-full rounded-full bg-[var(--color-brand)]" />
+        ) : (
+          <div
+            className="h-full rounded-full bg-[var(--color-brand)] transition-all duration-300"
+            style={{ width: `${pct}%` }}
+          />
+        )}
       </div>
     </div>
   );

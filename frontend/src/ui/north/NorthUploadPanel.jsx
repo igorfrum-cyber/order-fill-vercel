@@ -8,21 +8,21 @@ export function NorthUploadPanel({ christina, files, homeFiles, proffFiles, tyum
     <div className="grid gap-4 lg:grid-cols-2">
       {christina ? (
         <>
-          <MultiDropzone title={`1. Бланки HOME`} hint={excelAcceptHint} files={homeFiles} onAdd={(incoming) => onAdd("home", incoming)} onRemove={(index) => onRemove("home", index)} />
+          <MultiDropzone tour="north-cities" title={`1. Бланки HOME`} hint={excelAcceptHint} files={homeFiles} onAdd={(incoming) => onAdd("home", incoming)} onRemove={(index) => onRemove("home", index)} />
           <MultiDropzone title={`1. Бланки PROFF`} hint={excelAcceptHint} files={proffFiles} onAdd={(incoming) => onAdd("proff", incoming)} onRemove={(index) => onRemove("proff", index)} />
         </>
       ) : (
-        <MultiDropzone title={`${steps[0].n}. ${steps[0].title}`} hint={excelAcceptHint} files={files} onAdd={(incoming) => onAdd("default", incoming)} onRemove={(index) => onRemove("default", index)} />
+        <MultiDropzone tour="north-cities" title={`${steps[0].n}. ${steps[0].title}`} hint={excelAcceptHint} files={files} onAdd={(incoming) => onAdd("default", incoming)} onRemove={(index) => onRemove("default", index)} />
       )}
-      <SingleDropzone title={`${steps[1].n}. ${steps[1].title}`} hint={excelAcceptHint} file={tyumenFile} onPick={onPickTyumen} />
+      <SingleDropzone tour="north-tyumen" title={`${steps[1].n}. ${steps[1].title}`} hint={excelAcceptHint} file={tyumenFile} onPick={onPickTyumen} />
     </div>
   );
 }
 
-function MultiDropzone({ title, hint, files, onAdd, onRemove }) {
+function MultiDropzone({ title, hint, files, onAdd, onRemove, tour }) {
   const inputRef = useRef(null);
   return (
-    <div className="rounded-xl border-2 border-dashed border-[var(--color-line)] bg-[var(--color-surface)] p-5">
+    <div data-tour={tour} className="rounded-xl border-2 border-dashed border-[var(--color-line)] bg-[var(--color-surface)] p-5">
       <input ref={inputRef} type="file" accept=".xlsx,.xlsm,.xls" multiple className="hidden" onChange={(event) => {
         onAdd(Array.from(event.target.files || []));
         event.target.value = "";
@@ -53,10 +53,10 @@ function MultiDropzone({ title, hint, files, onAdd, onRemove }) {
   );
 }
 
-function SingleDropzone({ title, hint, file, onPick }) {
+function SingleDropzone({ title, hint, file, onPick, tour }) {
   const inputRef = useRef(null);
   return (
-    <div className={`rounded-xl border-2 border-dashed p-5 ${file ? "border-[var(--color-ok)] bg-[var(--color-ok-soft)]" : "border-[var(--color-line)] bg-[var(--color-surface)]"}`}>
+    <div data-tour={tour} className={`rounded-xl border-2 border-dashed p-5 ${file ? "border-[var(--color-ok)] bg-[var(--color-ok-soft)]" : "border-[var(--color-line)] bg-[var(--color-surface)]"}`}>
       <input ref={inputRef} type="file" accept=".xlsx,.xlsm,.xls" className="hidden" onChange={(event) => onPick(event.target.files?.[0] || null)} />
       <div className="mb-2 flex items-center justify-between">
         <span className="text-[13px] font-semibold">{title}</span>

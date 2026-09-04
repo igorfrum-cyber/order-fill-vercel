@@ -125,6 +125,7 @@ func parseSheetDocument(data []byte, shared []string, report func(float64)) (*et
 			cells[key] = value
 		}
 	}
+	expandSharedFormulas(cells)
 	reportProgress(report, 1)
 	return skeleton, rows, cells, nil
 }
@@ -142,6 +143,7 @@ func indexSheet(document *etree.Document, shared []string, report func(float64))
 	total := len(rowElements)
 	loadedRows := make(map[int]*etree.Element, total)
 	cells := make(map[cellKey]*cell, total*24)
+	defer expandSharedFormulas(cells)
 	if total == 0 {
 		reportProgress(report, 1)
 		return loadedRows, cells
@@ -231,7 +233,7 @@ func indexRow(rowElement *etree.Element, shared []string, rows map[int]*etree.El
 		if !ok {
 			continue
 		}
-		cells[key] = &cell{element: cellElement, value: readCellValue(cellElement, shared), xf: attrInt(cellElement, "s")}
+		cells[key] = &cell{element: cellElement, value: readCellValue(cellElement, shared), formula: readCellFormula(cellElement), xf: attrInt(cellElement, "s")}
 	}
 }
 

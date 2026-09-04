@@ -1,4 +1,5 @@
 import { jobStatusText, reportSummaryFromRows } from "../report/reportModel.js";
+import { userFacingError } from "../help/errors.js";
 
 export async function runOrderFillJob({ api, command, onStatus = () => {} }) {
   const created = await api.createOrderFillJob(command);
@@ -8,7 +9,7 @@ export async function runOrderFillJob({ api, command, onStatus = () => {} }) {
     },
   });
   if (job.status === "failed") {
-    throw new Error(job.error?.message || "Задача завершилась с ошибкой.");
+    throw new Error(userFacingError({ message: job.error?.message }, "Не удалось обработать файлы."));
   }
 
   const report = await api.getJobReport(job.id);

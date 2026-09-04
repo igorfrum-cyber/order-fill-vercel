@@ -44,6 +44,11 @@ export function validateReviewEdits(rows, edits) {
   return invalid;
 }
 
+export function commentGateRows(rows, edits) {
+  const invalid = new Set(validateReviewEdits(rows, edits));
+  return rows.filter((row) => invalid.has(rowKey(row)));
+}
+
 export function collectReviewEdits(rows, edits) {
   return rows
     .filter((row) => row.editable !== false)

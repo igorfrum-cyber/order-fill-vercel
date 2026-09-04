@@ -1,14 +1,18 @@
 const BORDER = "1px solid #b4b4b4";
+const MAX_COVERED_CELLS = 4096;
 
 export function cellCss(catalog, index) {
   const style = catalog?.[index];
   if (!style) return undefined;
   const css = {};
-  if (style.fill) css.backgroundColor = style.fill;
-  if (style.color) css.color = style.color;
+  const fill = cssString(style.fill);
+  const color = cssString(style.color);
+  const size = cssNumber(style.size);
+  if (fill) css.backgroundColor = fill;
+  if (color) css.color = color;
   if (style.bold) css.fontWeight = 700;
   if (style.italic) css.fontStyle = "italic";
-  if (style.size) css.fontSize = `${style.size}pt`;
+  if (size) css.fontSize = `${size}pt`;
   if (style.align === "center") css.justifyContent = "center";
   else if (style.align === "right") css.justifyContent = "flex-end";
   else if (style.align === "left") css.justifyContent = "flex-start";
@@ -27,6 +31,24 @@ export function cellCss(catalog, index) {
   return Object.keys(css).length ? css : undefined;
 }
 
+function cssString(value) {
+  return typeof value === "string" && value ? value : "";
+}
+
+function cssNumber(value) {
+  const number = Number(value);
+  return Number.isFinite(number) && number > 0 ? number : 0;
+}
+
+export function overlayAt(overlays, row, column) {
+  if (typeof overlays?.get !== "function") return undefined;
+  return overlays.get(cellKey(row, column));
+}
+
+export function cellSetHas(set, row, column) {
+  return typeof set?.has === "function" && set.has(cellKey(row, column));
+}
+
 export function mergeLayout(merges) {
   const covered = new Set();
   const origins = new Set();
@@ -39,6 +61,7 @@ export function mergeLayout(merges) {
     if (row < 1 || column < 1 || (height < 2 && width < 2)) continue;
     list.push({ row, column, height, width });
     origins.add(cellKey(row, column));
+    if (height * width > MAX_COVERED_CELLS) continue;
     for (let currentRow = row; currentRow < row + height; currentRow += 1) {
       for (let currentCol = column; currentCol < column + width; currentCol += 1) {
         if (currentRow === row && currentCol === column) continue;

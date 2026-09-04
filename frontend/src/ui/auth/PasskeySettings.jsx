@@ -64,7 +64,7 @@ export function PasskeySettings({ onChanged }) {
       : "Этот браузер не умеет Face ID, Touch ID или Windows Hello. Откройте Chrome, Safari или Edge — либо включите вход по коду ниже.";
 
   return (
-    <div className="space-y-4 rounded-2xl border border-[var(--color-line)] bg-[var(--color-surface)] p-6">
+    <div data-tour="account-passkey" className="space-y-4 rounded-2xl border border-[var(--color-line)] bg-[var(--color-surface)] p-6">
       <h2 className="text-[16px] font-semibold">{passkeySettingsTitle}</h2>
       <p className="text-[14px] leading-relaxed text-[var(--color-ink-soft)]">{hint}</p>
       {items.length ? (

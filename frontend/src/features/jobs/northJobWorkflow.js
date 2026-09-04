@@ -1,4 +1,5 @@
 import { jobStatusText } from "../report/reportModel.js";
+import { userFacingError } from "../help/errors.js";
 import { normalizeNorthResult } from "../north/northPlan.js";
 
 export async function runNorthMergeJob({ api, command, onStatus = () => {} }) {
@@ -9,7 +10,7 @@ export async function runNorthMergeJob({ api, command, onStatus = () => {} }) {
     },
   });
   if (job.status === "failed") {
-    throw new Error(job.error?.message || "Задача завершилась с ошибкой.");
+    throw new Error(userFacingError({ message: job.error?.message }, "Не удалось соединить бланки."));
   }
 
   const report = await api.getJobReport(job.id);

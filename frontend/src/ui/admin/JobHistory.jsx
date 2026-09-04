@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { listCompanies, listJobs } from "../../api/auth.js";
 import { brandLabel } from "../../features/brands/brandPresentation.js";
 import { jobStatusHint, jobStatusLabel, jobsEmptyState } from "../../features/report/reportModel.js";
+import { userFacingError } from "../../features/help/errors.js";
 
 export function JobHistory({ me, companyId, onCompany, onOpen, onNew }) {
   const [jobs, setJobs] = useState([]);
@@ -13,7 +14,7 @@ export function JobHistory({ me, companyId, onCompany, onOpen, onNew }) {
   useEffect(() => {
     listJobs(platform ? companyId : "")
       .then((payload) => setJobs(payload.jobs || []))
-      .catch((err) => setError(err.message || "Не удалось загрузить историю."));
+      .catch((err) => setError(userFacingError(err, "Не удалось загрузить историю.")));
   }, [me, companyId, platform]);
 
   useEffect(() => {

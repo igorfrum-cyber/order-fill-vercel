@@ -41,6 +41,7 @@ export function UploadStage({
           hint={excelAcceptHint}
           file={sourceFile}
           accept=".xlsx,.xlsm,.xls"
+          tour="source"
           onPick={onSource}
         />
         {slots.map((slot, index) => (
@@ -50,6 +51,7 @@ export function UploadStage({
             hint={excelAcceptHint}
             file={blankFiles[slot.id] || null}
             accept={slot.accept}
+            tour={index === 0 ? "blank" : undefined}
             onPick={(file) => onBlank(slot.id, file)}
           />
         ))}
@@ -72,7 +74,7 @@ export function UploadStage({
           <IconChevron className="h-4 w-4 rotate-90" />
           К выгрузкам
         </button>
-        <PrimaryButton onClick={onProcess} disabled={!ready || processing}>
+        <PrimaryButton dataTour="process" onClick={onProcess} disabled={!ready || processing}>
           {processing ? status || "Обработка..." : "Обработать"}
           <IconChevron className="h-4 w-4 -rotate-90" />
         </PrimaryButton>
@@ -81,11 +83,12 @@ export function UploadStage({
   );
 }
 
-function Dropzone({ title, hint, file, accept, onPick }) {
+function Dropzone({ title, hint, file, accept, onPick, tour }) {
   const [drag, setDrag] = useState(false);
   const inputRef = useRef(null);
   return (
     <div
+      data-tour={tour}
       onDragOver={(event) => {
         event.preventDefault();
         setDrag(true);

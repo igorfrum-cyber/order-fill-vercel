@@ -10,6 +10,7 @@ import {
   usersCompanyPrompt,
 } from "../../features/auth/accessPresentation.js";
 import { lastSeenLabel, userInitial, usersByHierarchy } from "../../features/auth/userHierarchy.js";
+import { userFacingError } from "../../features/help/errors.js";
 import { IconCopy } from "../icons.jsx";
 import { GhostButton, Modal, PrimaryButton } from "../widgets.jsx";
 
@@ -89,6 +90,7 @@ export function UsersScreen({ companyId, actorRole, onCompany }) {
       ) : (
         <>
           <form
+            data-tour="invite"
             className="flex flex-wrap gap-2"
             onSubmit={async (event) => {
               event.preventDefault();
@@ -99,7 +101,7 @@ export function UsersScreen({ companyId, actorRole, onCompany }) {
                 setLogin("");
                 reload();
               } catch (err) {
-                setError(err.message || "Не удалось пригласить пользователя.");
+                setError(userFacingError(err, "Не удалось пригласить пользователя."));
               }
             }}
           >
@@ -120,7 +122,7 @@ export function UsersScreen({ companyId, actorRole, onCompany }) {
           {roles.length ? <p className="text-[13px] text-[var(--color-ink-faint)]">{inviteRoleHint}</p> : null}
           {error ? <p className="text-[14px] text-[var(--color-danger)]">{error}</p> : null}
           {invite ? <InviteBanner url={invite} copied={copied} onCopy={async () => setCopied(await copyText(invite))} /> : null}
-          <div className="space-y-5">
+          <div data-tour="users-list" className="space-y-5">
             {bands.map((band) => (
               <section key={band.key}>
                 <h2 className="mb-2 text-[13px] font-medium uppercase tracking-wide text-[var(--color-ink-faint)]">{band.title}</h2>
@@ -138,7 +140,7 @@ export function UsersScreen({ companyId, actorRole, onCompany }) {
                               await disableUser(user.id);
                               reload();
                             } catch (err) {
-                              setError(err.message || "Не удалось выключить пользователя.");
+                              setError(userFacingError(err, "Не удалось выключить пользователя."));
                             }
                           }}
                         />
@@ -167,7 +169,7 @@ export function UsersScreen({ companyId, actorRole, onCompany }) {
                   setResetTarget(null);
                   reload();
                 } catch (err) {
-                  setError(err.message || "Не удалось сбросить доступ.");
+                  setError(userFacingError(err, "Не удалось сбросить доступ."));
                   setResetTarget(null);
                 }
               }}
