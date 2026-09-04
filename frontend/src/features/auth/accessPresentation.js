@@ -143,7 +143,7 @@ export function loginParentHost(hostname) {
   const host = String(hostname || "")
     .split(":")[0]
     .toLowerCase();
-  if (!host || isIPAddress(host) || host === "localhost" || host.endsWith(".localhost")) {
+  if (!host || isLoopbackHost(host)) {
     return "localhost";
   }
   const labels = host.split(".");
@@ -159,13 +159,28 @@ export function loginParentHost(hostname) {
 export function companyLoginURL(slug, location = globalThis.location) {
   const normalized = normalizeLoginSlug(slug);
   if (loginSlugIssue(normalized)) return "";
-  const parent = loginParentHost(location?.hostname || "localhost");
+  const hostname = String(location?.hostname || "localhost")
+    .split(":")[0]
+    .toLowerCase();
   const protocol = location?.protocol || "http:";
   const port = location?.port || "";
   const portPart = port ? `:${port}` : "";
+  if (isIPAddress(hostname) && !isLoopbackHost(hostname)) {
+    return `${protocol}//${hostForURL(hostname)}${portPart}${companyLoginPath(normalized)}`;
+  }
+  const parent = loginParentHost(hostname);
   return `${protocol}//${normalized}.${parent}${portPart}/`;
+}
+
+function isLoopbackHost(host) {
+  return host === "localhost" || host === "127.0.0.1" || host === "::1" || host.endsWith(".localhost");
 }
 
 function isIPAddress(host) {
   return /^\d{1,3}(?:\.\d{1,3}){3}$/.test(host) || host.includes(":");
+}
+
+function hostForURL(host) {
+  if (host.includes(":") && !host.startsWith("[")) return `[${host}]`;
+  return host;
 }

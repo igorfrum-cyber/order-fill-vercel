@@ -191,4 +191,19 @@ test("companyLoginURL builds a localhost subdomain for local hosts", () => {
     companyLoginURL("chernovaa", { protocol: "https:", hostname: "example.com", port: "" }),
     "https://chernovaa.example.com/",
   );
+  assert.equal(
+    companyLoginURL("art72", { protocol: "https:", hostname: "art72.example.com", port: "" }),
+    "https://art72.example.com/",
+  );
+});
+
+test("companyLoginURL uses a path on a public IP because subdomains cannot attach to an address", () => {
+  assert.equal(
+    companyLoginURL("art72", { protocol: "http:", hostname: "203.0.113.10", port: "3200" }),
+    "http://203.0.113.10:3200/c/art72",
+  );
+  assert.equal(
+    companyLoginURL("art72", { protocol: "http:", hostname: "192.168.31.108", port: "" }),
+    "http://192.168.31.108/c/art72",
+  );
 });

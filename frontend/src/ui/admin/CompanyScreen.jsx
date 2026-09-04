@@ -139,7 +139,7 @@ export function CompanyScreen({ me, onSaved }) {
             </a>
           </p>
         ) : (
-          <p className="text-[13px] text-[var(--color-ink-faint)]">Латиницей. Откроется как kristail.localhost.</p>
+          <p className="text-[13px] text-[var(--color-ink-faint)]">Латиницей. Сотрудники входят по ссылке ниже.</p>
         )}
         {error ? <p className="text-[14px] text-[var(--color-danger)]">{error}</p> : null}
         {done ? <p className="text-[14px] text-[var(--color-ok)]">Данные компании сохранены.</p> : null}
