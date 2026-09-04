@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   createOrderFillJob,
   downloadJobArchive,
@@ -16,6 +16,7 @@ import { issueReportCsv } from "../../features/report/issueReport.js";
 import { combinedSummary, jobProgress, jobStatusText } from "../../features/report/reportModel.js";
 import { issueReportRows, qualityWarningLines, qualityWarningSummary } from "../../features/report/qualityWarnings.js";
 import { reviewCommentBanner } from "../../features/report/rowPresentation.js";
+import { userFacingError } from "../../features/help/errors.js";
 import { StageRail, TopBar } from "../chrome.jsx";
 import { Modal } from "../widgets.jsx";
 import { FillStage } from "./FillStage.jsx";
@@ -37,7 +38,7 @@ function triggerBlobDownload(blob, fileName) {
   window.setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
-export function OrderFillApp({ companyId, resumeJob, onHome, onHelp }) {
+export function OrderFillApp({ companyId, resumeJob, onHome, onHelp, onStage }) {
   const [stage, setStage] = useState(resumeJob ? (resumeJob.finalized ? "preview" : "fill") : "upload");
   const [brand, setBrand] = useState(resumeJob?.brand || "");
   const [month, setMonth] = useState(resumeJob?.month || "");
@@ -57,6 +58,10 @@ export function OrderFillApp({ companyId, resumeJob, onHome, onHelp }) {
   const [banner, setBanner] = useState("");
   const [outputFiles, setOutputFiles] = useState(resumeJob?.outputFiles || []);
   const [finalized, setFinalized] = useState(Boolean(resumeJob?.finalized));
+
+  useEffect(() => {
+    onStage?.(stage);
+  }, [stage, onStage]);
 
   const monthLabel = formatOrderMonthLabel(month);
   const uploadSlots = blankSlotsForSource(sourceFile?.name);
@@ -112,7 +117,7 @@ export function OrderFillApp({ companyId, resumeJob, onHome, onHelp }) {
       setStatus("");
       setProgress(1);
     } catch (err) {
-      setError(err.message || "Не удалось обработать файлы.");
+      setError(userFacingError(err, "Не удалось обработать файлы."));
       setStatus("");
       setProgress(0);
     } finally {
@@ -187,7 +192,7 @@ export function OrderFillApp({ companyId, resumeJob, onHome, onHelp }) {
       setStatus("");
     } catch (err) {
       setStatus("Ошибка");
-      setBanner(err.message || "Не удалось сохранить правки.");
+      setBanner(userFacingError(err, "Не удалось сохранить правки."));
     } finally {
       setBusy(false);
     }
@@ -202,7 +207,7 @@ export function OrderFillApp({ companyId, resumeJob, onHome, onHelp }) {
       triggerBlobDownload(archive.blob, archive.fileName);
       setStatus("Файлы готовы");
     } catch (err) {
-      setStatus(err.message || "Не удалось скачать файлы.");
+      setStatus(userFacingError(err, "Не удалось скачать файлы."));
     } finally {
       setBusy(false);
     }

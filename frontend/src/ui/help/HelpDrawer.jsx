@@ -49,7 +49,7 @@ export function HelpDrawer({ onClose, onReplay }) {
               className="mt-2 text-[14px] font-medium text-[var(--color-brand)]"
               onClick={onReplay}
             >
-              Показать подсказки по экрану
+              Показать подсказки по этому экрану
             </button>
           ) : null}
         </div>

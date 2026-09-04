@@ -1,3 +1,4 @@
+import { userFacingError } from "../features/help/errors.js";
 import { fileNameFromContentDisposition } from "../features/downloads/downloadLinks.js";
 
 const DEFAULT_API_BASE_URL = "";
@@ -54,7 +55,8 @@ function apiBaseUrl() {
 
 export class ApiError extends Error {
   constructor(status, payload) {
-    super(payload?.message || `API request failed with status ${status}`);
+    const raw = payload?.message || `API request failed with status ${status}`;
+    super(userFacingError({ status, payload: { ...payload, message: raw }, message: raw }));
     this.name = "ApiError";
     this.status = status;
     this.payload = payload;

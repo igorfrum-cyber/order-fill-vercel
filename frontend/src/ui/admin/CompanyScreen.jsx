@@ -3,6 +3,7 @@ import { apiClient } from "../../api/client.js";
 import { clearCompanyLogo, setCompanyLogo, updateCompany } from "../../api/auth.js";
 import { companyLoginLogoURL, companyLoginURL, loginSlugIssue, normalizeLoginSlug } from "../../features/auth/accessPresentation.js";
 import { Field, GhostButton, PrimaryButton } from "../widgets.jsx";
+import { userFacingError } from "../../features/help/errors.js";
 
 export function CompanyScreen({ me, onSaved }) {
   const [name, setName] = useState(me.company_name || "");
@@ -45,6 +46,7 @@ export function CompanyScreen({ me, onSaved }) {
         </p>
       </div>
       <form
+        data-tour="company-profile"
         className="space-y-4 rounded-2xl border border-[var(--color-line)] bg-[var(--color-surface)] p-6"
         onSubmit={async (event) => {
           event.preventDefault();
@@ -68,12 +70,13 @@ export function CompanyScreen({ me, onSaved }) {
             onSaved?.(company);
             setDone(true);
           } catch (err) {
-            setError(err.message || "Не удалось сохранить данные компании.");
+            setError(userFacingError(err, "Не удалось сохранить данные компании."));
           } finally {
             setBusy(false);
           }
         }}
       >
+        <div data-tour="company-logo">
         <Field label="Логотип">
           <div className="flex items-center gap-3">
             {logoPreview || savedLogoSrc ? (
@@ -100,7 +103,7 @@ export function CompanyScreen({ me, onSaved }) {
                       const company = await clearCompanyLogo(me.company_id);
                       onSaved?.(company);
                     } catch (err) {
-                      setError(err.message || "Не удалось убрать логотип.");
+                      setError(userFacingError(err, "Не удалось убрать логотип."));
                     } finally {
                       setBusy(false);
                     }
@@ -112,6 +115,7 @@ export function CompanyScreen({ me, onSaved }) {
             </div>
           </div>
         </Field>
+        </div>
         <p className="text-[13px] text-[var(--color-ink-faint)]">PNG, JPEG или WebP, до 512 КБ.</p>
         <Field label="Название">
           <input className="input" value={name} onChange={(event) => setName(event.target.value)} autoComplete="organization" />

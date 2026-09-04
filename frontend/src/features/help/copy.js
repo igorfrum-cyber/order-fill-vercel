@@ -121,6 +121,184 @@ export const inviteRoleHint =
   "Выберите, что человек сможет делать в компании. Доступ можно отключить позже.";
 
 export function tourForRole(role) {
+  return tourForScene("home", role);
+}
+
+export function tourForScene(scene, role) {
+  if (scene === "order-upload") {
+    return [
+      {
+        target: "source",
+        placement: "bottom",
+        title: "Таблица из 1С",
+        body: "Сюда кладут выгрузку продаж. По ней сервис понимает бренд и считает количества.",
+      },
+      {
+        target: "blank",
+        placement: "bottom",
+        title: "Бланк поставщика",
+        body: "Это файл, который уйдёт в заказ. Для Christina нужны два бланка — HOME и PROFF.",
+      },
+      {
+        target: "process",
+        placement: "top",
+        title: "Обработать",
+        body: "Когда оба файла на месте, нажмите сюда. Если файлы перепутаны, подскажем простым языком.",
+      },
+    ];
+  }
+  if (scene === "order-fill") {
+    return [
+      {
+        target: "fill-summary",
+        placement: "bottom",
+        title: "Что получилось",
+        body: "Сразу видно, сколько строк заполнилось и где нет пары между бланком и таблицей.",
+      },
+      {
+        target: "fill-tabs",
+        placement: "bottom",
+        title: "Строки",
+        body: "Откройте вкладку, поправьте количество и напишите комментарий, если меняли число.",
+      },
+      {
+        target: "fill-next",
+        placement: "top",
+        title: "Дальше к файлам",
+        body: "Когда спорные строки разобраны, откройте готовые бланки и скачайте их.",
+      },
+    ];
+  }
+  if (scene === "order-preview") {
+    return [
+      {
+        target: "preview-files",
+        placement: "bottom",
+        title: "Готовые бланки",
+        body: "Переключайте файлы и листы, чтобы глянуть, как заполнятся количества.",
+      },
+      {
+        target: "preview-download",
+        placement: "top",
+        title: "Скачать",
+        body: "Все заполненные бланки уходят одним архивом.",
+      },
+    ];
+  }
+  if (scene === "north") {
+    return [
+      {
+        target: "north-brand",
+        placement: "left",
+        title: "Бренд",
+        body: "Сначала выберите бренд — от него зависит, какие бланки городов нужны.",
+      },
+      {
+        target: "north-cities",
+        placement: "bottom",
+        title: "Бланки городов",
+        body: "Добавьте бланки северных городов. Можно несколько сразу.",
+      },
+      {
+        target: "north-tyumen",
+        placement: "bottom",
+        title: "Таблица Тюмени",
+        body: "Отсюда берётся, чем закрыть потребность городов.",
+      },
+      {
+        target: "north-go",
+        placement: "top",
+        title: "Соединить",
+        body: "Сервис сведёт города с Тюменью и покажет план, который можно поправить.",
+      },
+    ];
+  }
+  if (scene === "users") {
+    return [
+      {
+        target: "invite",
+        placement: "bottom",
+        title: "Пригласить",
+        body: "Напишите логин, выберите доступ и отправьте человеку одноразовую ссылку.",
+      },
+      {
+        target: "users-list",
+        placement: "top",
+        title: "Сотрудники",
+        body: "Здесь видно, кто уже в компании. Доступ можно сбросить или выключить.",
+      },
+    ];
+  }
+  if (scene === "company") {
+    return [
+      {
+        target: "company-profile",
+        placement: "bottom",
+        title: "Название и адрес",
+        body: "Это видят сотрудники на экране входа. Латинский адрес — часть ссылки компании.",
+      },
+      {
+        target: "company-logo",
+        placement: "bottom",
+        title: "Логотип",
+        body: "Картинка появится на входе вместо стандартной заставки.",
+      },
+    ];
+  }
+  if (scene === "companies") {
+    return [
+      {
+        target: "companies-create",
+        placement: "bottom",
+        title: "Новая компания",
+        body: "Задайте название и латинский адрес входа. Дальше компанией управляет её администратор.",
+      },
+      {
+        target: "companies-list",
+        placement: "top",
+        title: "Список",
+        body: "Выберите компанию, чтобы смотреть её сотрудников и выгрузки.",
+      },
+    ];
+  }
+  if (scene === "overview") {
+    return [
+      {
+        target: "overview-status",
+        placement: "bottom",
+        title: "Сервисы",
+        body: "Зелёное — отвечает, красное — нет. Сначала смотрите сюда, если выгрузки зависли.",
+      },
+      {
+        target: "jobs",
+        placement: "top",
+        title: "Сейчас в работе",
+        body: "Отсюда открываются выгрузки, которые ещё считаются или ждут проверки.",
+      },
+      {
+        target: "overview-audit",
+        placement: "top",
+        title: "Кто менял доступ",
+        body: "Приглашения, сброс пароля и отключения — чтобы быстро понять, что изменилось.",
+      },
+    ];
+  }
+  if (scene === "account") {
+    return [
+      {
+        target: "account-passkey",
+        placement: "bottom",
+        title: "Быстрый вход",
+        body: "Добавьте это устройство: на работе хватит Face ID, Touch ID или Windows Hello.",
+      },
+      {
+        target: "account-sessions",
+        placement: "bottom",
+        title: "Где вы вошли",
+        body: "Чужой компьютер можно закрыть. Через восемь часов вход всё равно закончится сам.",
+      },
+    ];
+  }
   if (role === "platform_admin") {
     return [
       {

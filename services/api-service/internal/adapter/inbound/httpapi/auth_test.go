@@ -3,6 +3,7 @@ package httpapi
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -413,6 +414,34 @@ func TestWriteSessionCookieSetsParentDomain(t *testing.T) {
 	}
 }
 
+func TestSubmitEditsAcceptsAFullReviewBatch(t *testing.T) {
+	owner := identity.User{ID: "user-a", CompanyID: "company-a", Role: identity.RolePurchaser, Login: "a"}
+	entity := job.Job{ID: "job-1", CompanyID: "company-a", CreatedBy: owner.ID, Status: job.StatusNeedsReview}
+	token := "owner-token"
+	router := NewRouter(Config{
+		AllowedOrigins: []string{"http://127.0.0.1:3200"},
+		Auth: stubAuth{users: map[string]identity.User{
+			identity.HashSecret(token): owner,
+		}},
+		GetJob:      stubJobFinder{jobs: map[string]job.Job{entity.ID: entity}},
+		SubmitEdits: stubEditor{},
+	})
+	body := typicalEditsJSON(250)
+	if len(body) <= authJSONLimit {
+		t.Fatalf("fixture must exceed the auth JSON limit, got %d bytes", len(body))
+	}
+	request := httptest.NewRequest(http.MethodPost, "/api/v1/jobs/job-1/edits", strings.NewReader(body))
+	request.Header.Set("Content-Type", "application/json")
+	request.Header.Set("X-Requested-With", "fetch")
+	request.Header.Set("Origin", "http://127.0.0.1:3200")
+	request.AddCookie(&http.Cookie{Name: sessionCookieName, Value: token})
+	response := httptest.NewRecorder()
+	router.ServeHTTP(response, request)
+	if response.Code != http.StatusAccepted {
+		t.Fatalf("expected 202 for a full review batch (%d bytes), got %d body %s", len(body), response.Code, response.Body.String())
+	}
+}
+
 func TestSubmitEditsRejectsOversizedBody(t *testing.T) {
 	owner := identity.User{ID: "user-a", CompanyID: "company-a", Role: identity.RolePurchaser, Login: "a"}
 	entity := job.Job{ID: "job-1", CompanyID: "company-a", CreatedBy: owner.ID, Status: job.StatusNeedsReview}
@@ -425,7 +454,7 @@ func TestSubmitEditsRejectsOversizedBody(t *testing.T) {
 		GetJob:      stubJobFinder{jobs: map[string]job.Job{entity.ID: entity}},
 		SubmitEdits: stubEditor{},
 	})
-	body := `{"edits":[{"key":"k","value":"` + strings.Repeat("x", authJSONLimit) + `"}]}`
+	body := `{"edits":[{"key":"k","value":"` + strings.Repeat("x", jobJSONLimit) + `"}]}`
 	request := httptest.NewRequest(http.MethodPost, "/api/v1/jobs/job-1/edits", strings.NewReader(body))
 	request.Header.Set("X-Requested-With", "fetch")
 	request.Header.Set("Origin", "http://127.0.0.1:3200")
@@ -435,6 +464,14 @@ func TestSubmitEditsRejectsOversizedBody(t *testing.T) {
 	if response.Code != http.StatusBadRequest {
 		t.Fatalf("expected 400, got %d body %s", response.Code, response.Body.String())
 	}
+}
+
+func typicalEditsJSON(count int) string {
+	parts := make([]string, count)
+	for i := 0; i < count; i++ {
+		parts[i] = fmt.Sprintf(`{"key":"blank-1:%d","value":"%d","comment":"до коробки"}`, i+21, (i%20)+1)
+	}
+	return `{"edits":[` + strings.Join(parts, ",") + `]}`
 }
 
 type stubEditor struct{}

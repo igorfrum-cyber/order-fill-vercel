@@ -35,9 +35,9 @@ test("collectReviewEdits sends only editable rows", () => {
   ]);
 });
 
-test("hasManualDeviations is false when the reviewer kept the engine quantities", () => {
+test("hasManualDeviations is false when the reviewer kept a box-adjusted quantity", () => {
   const rows = [
-    { key: "a", editable: true, inserted: 12, recommended: 10, rounded: 12, autoComment: "до коробки" },
+    { key: "a", editable: true, inserted: 12, recommended: 10, rounded: 10, autoComment: "до коробки" },
   ];
   const edits = editMap([["a", { value: "12", comment: "до коробки" }]]);
   assert.equal(hasManualDeviations(rows, edits), false);

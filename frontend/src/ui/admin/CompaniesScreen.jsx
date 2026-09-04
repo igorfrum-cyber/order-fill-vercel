@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { createCompany, disableCompany, listCompanies } from "../../api/auth.js";
 import { companyLoginURL, loginSlugIssue, normalizeLoginSlug } from "../../features/auth/accessPresentation.js";
 import { GhostButton, PrimaryButton } from "../widgets.jsx";
+import { userFacingError } from "../../features/help/errors.js";
 
 export function CompaniesScreen({ selectedId, onSelect }) {
   const [companies, setCompanies] = useState([]);
@@ -23,6 +24,7 @@ export function CompaniesScreen({ selectedId, onSelect }) {
     <section className="animate-enter mx-auto max-w-3xl space-y-4 p-6">
       <h1 className="text-[22px] font-semibold">Компании</h1>
       <form
+        data-tour="companies-create"
         className="space-y-3"
         onSubmit={async (event) => {
           event.preventDefault();
@@ -33,7 +35,7 @@ export function CompaniesScreen({ selectedId, onSelect }) {
             setLoginSlug("");
             reload();
           } catch (err) {
-            setError(err.message || "Не удалось создать компанию.");
+            setError(userFacingError(err, "Не удалось создать компанию."));
           }
         }}
       >
@@ -64,7 +66,7 @@ export function CompaniesScreen({ selectedId, onSelect }) {
         )}
       </form>
       {error ? <p className="text-[14px] text-[var(--color-danger)]">{error}</p> : null}
-      <ul className="divide-y divide-[var(--color-line)] rounded-xl border border-[var(--color-line)] bg-[var(--color-surface)]">
+      <ul data-tour="companies-list" className="divide-y divide-[var(--color-line)] rounded-xl border border-[var(--color-line)] bg-[var(--color-surface)]">
         {companies.map((company) => (
           <li key={company.id} className="space-y-2 px-4 py-3">
             <div className="flex items-center justify-between gap-3">
@@ -82,7 +84,7 @@ export function CompaniesScreen({ selectedId, onSelect }) {
                     await disableCompany(company.id);
                     reload();
                   } catch (err) {
-                    setError(err.message || "Не удалось выключить компанию.");
+                    setError(userFacingError(err, "Не удалось выключить компанию."));
                   }
                 }}
               >

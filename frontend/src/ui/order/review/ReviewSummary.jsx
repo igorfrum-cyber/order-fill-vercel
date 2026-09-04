@@ -22,7 +22,7 @@ export function ReviewSummary({ counts, summary, activeTab, onTab }) {
   const unmatchedTotal = MATCH_LAYER_TABS.reduce((sum, key) => sum + (counts[key] || 0), 0);
 
   return (
-    <div className="border-b border-[var(--color-line)] bg-[var(--color-surface)] px-6 py-5">
+    <div data-tour="fill-summary" className="border-b border-[var(--color-line)] bg-[var(--color-surface)] px-6 py-5">
       <div className="flex flex-col gap-6 xl:flex-row xl:items-start">
         <div className="flex shrink-0 items-center gap-4">
           <Ring value={fillReadiness(counts)} />

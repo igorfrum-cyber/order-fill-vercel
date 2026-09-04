@@ -2,6 +2,7 @@ package orderfill
 
 import (
 	"errors"
+	"strings"
 	"testing"
 )
 
@@ -56,6 +57,9 @@ func TestDetectBrandRejectsMissingFilter(t *testing.T) {
 	if !errors.Is(err, ErrInvalidInput) {
 		t.Fatalf("expected invalid input, got %v", err)
 	}
+	if !strings.Contains(err.Error(), "1С") {
+		t.Fatalf("expected a human missing-source message, got %v", err)
+	}
 }
 
 func TestInferOrderMonthUsesMainPeriodEndPlusTwoMonths(t *testing.T) {
@@ -90,6 +94,9 @@ func TestPlanBlanksRequiresTwoChristinaFiles(t *testing.T) {
 	_, err := PlanBlanks("christina", []string{"HOME.xlsx"})
 	if !errors.Is(err, ErrInvalidInput) {
 		t.Fatalf("expected invalid input, got %v", err)
+	}
+	if !strings.Contains(err.Error(), "HOME") || !strings.Contains(err.Error(), "PROFF") {
+		t.Fatalf("expected a human Christina blank message, got %v", err)
 	}
 }
 

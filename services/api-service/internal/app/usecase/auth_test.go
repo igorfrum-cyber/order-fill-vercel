@@ -62,6 +62,20 @@ func TestLoginIssuesSession(t *testing.T) {
 	}
 }
 
+func TestLoginSessionLastsEightHours(t *testing.T) {
+	auth, store := newTestAuthStore(t)
+	user := seedPurchaser(t, store, "buyer", "correct-horse")
+	result, err := auth.Login(context.Background(), user.Login, "correct-horse")
+	if err != nil {
+		t.Fatal(err)
+	}
+	now := time.Date(2026, 9, 1, 12, 0, 0, 0, time.UTC)
+	want := now.Add(8 * time.Hour)
+	if !result.Session.ExpiresAt.Equal(want) {
+		t.Fatalf("expires %s, want %s", result.Session.ExpiresAt, want)
+	}
+}
+
 func TestListSessionsMarksCurrentFirstAndCanRevokeOther(t *testing.T) {
 	auth, store := newTestAuthStore(t)
 	user := seedPurchaser(t, store, "buyer", "correct-horse")

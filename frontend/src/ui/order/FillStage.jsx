@@ -109,7 +109,7 @@ export function FillStage({
               </button>
             )}
           </span>
-          <PrimaryButton onClick={onDownloadFiles} disabled={busy || !canProceed}>
+          <PrimaryButton dataTour="fill-next" onClick={onDownloadFiles} disabled={busy || !canProceed}>
             <span className={`h-2 w-2 rounded-full ${canProceed ? "bg-[var(--color-ok)]" : "bg-white/40"}`} />
             {busy ? "Готовлю файлы..." : "Проверить файлы"}
             <IconDownload className="h-4 w-4" />

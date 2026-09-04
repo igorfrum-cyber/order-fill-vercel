@@ -1,4 +1,5 @@
 import { passkeyInsecureOriginHint } from "../help/copy.js";
+import { userFacingError } from "../help/errors.js";
 
 export function defaultPasskeyName(existingCount = 0) {
   const count = Number(existingCount) || 0;
@@ -87,10 +88,10 @@ export function passkeyErrorMessage(err, action = "add") {
     return "Параметры ключа доступа с сервера неверные. Обновите страницу и попробуйте снова.";
   }
   if (name === "ApiError") {
-    return err.message || (action === "login" ? "Сервер не принял вход с ключом доступа." : "Сервер отклонил ключ доступа.");
+    return userFacingError(err, action === "login" ? "Не получилось войти с ключом доступа. Можно войти паролем." : "Не удалось добавить ключ доступа. Попробуйте другое приложение или ключ.");
   }
   if (typeof err?.message === "string" && err.message.trim()) {
-    return err.message;
+    return userFacingError(err, action === "login" ? "Не получилось войти с ключом доступа. Можно войти паролем." : "Не удалось добавить ключ доступа. Попробуйте другое приложение или ключ.");
   }
   return action === "login"
     ? "Не получилось войти с ключом доступа. Можно войти паролем."

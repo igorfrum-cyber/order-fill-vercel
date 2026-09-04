@@ -386,7 +386,11 @@ func (h adminHandler) publicCompanyLogo(w http.ResponseWriter, r *http.Request) 
 }
 
 func decodeJSON(w http.ResponseWriter, r *http.Request, dest any) bool {
-	r.Body = http.MaxBytesReader(w, r.Body, authJSONLimit)
+	return decodeJSONLimited(w, r, dest, authJSONLimit)
+}
+
+func decodeJSONLimited(w http.ResponseWriter, r *http.Request, dest any, limit int64) bool {
+	r.Body = http.MaxBytesReader(w, r.Body, limit)
 	if err := json.NewDecoder(r.Body).Decode(dest); err != nil {
 		writeError(w, http.StatusBadRequest, "bad_request", "invalid json")
 		return false

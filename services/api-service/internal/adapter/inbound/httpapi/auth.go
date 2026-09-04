@@ -16,6 +16,7 @@ import (
 const (
 	sessionCookieName = "order_fill_session"
 	authJSONLimit     = 8 << 10
+	jobJSONLimit      = 1 << 20
 )
 
 type userContextKey struct{}

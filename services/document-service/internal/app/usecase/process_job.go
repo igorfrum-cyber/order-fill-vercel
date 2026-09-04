@@ -365,13 +365,13 @@ func (u *ProcessJob) loadWorkbook(ctx context.Context, key string, report func(f
 	if loader, ok := u.codec.(spreadsheet.ProgressCodec); ok {
 		workbook, err := loader.LoadWithProgress(content, report)
 		if err != nil {
-			return nil, fmt.Errorf("%w: не удалось прочитать файл %s: %v", orderfill.ErrInvalidInput, key, err)
+			return nil, fmt.Errorf("%w: не получилось открыть Excel-файл. Проверьте, что это .xlsx или .xlsm и файл не повреждён", orderfill.ErrInvalidInput)
 		}
 		return workbook, nil
 	}
 	workbook, err := u.codec.Load(content)
 	if err != nil {
-		return nil, fmt.Errorf("%w: не удалось прочитать файл %s: %v", orderfill.ErrInvalidInput, key, err)
+		return nil, fmt.Errorf("%w: не получилось открыть Excel-файл. Проверьте, что это .xlsx или .xlsm и файл не повреждён", orderfill.ErrInvalidInput)
 	}
 	if report != nil {
 		report(1)
@@ -475,10 +475,10 @@ func splitInputs(inputs []port.MessageFile) (port.MessageFile, []port.MessageFil
 		}
 	}
 	if source.StorageKey == "" {
-		return port.MessageFile{}, nil, fmt.Errorf("%w: не хватает таблицы заказа товара", orderfill.ErrInvalidInput)
+		return port.MessageFile{}, nil, fmt.Errorf("%w: не хватает таблицы продаж из 1С. Загрузите её в первое поле", orderfill.ErrInvalidInput)
 	}
 	if len(blanks) == 0 {
-		return port.MessageFile{}, nil, fmt.Errorf("%w: не хватает бланка заказа", orderfill.ErrInvalidInput)
+		return port.MessageFile{}, nil, fmt.Errorf("%w: не хватает бланка поставщика. Загрузите бланк заказа", orderfill.ErrInvalidInput)
 	}
 	return source, blanks, nil
 }

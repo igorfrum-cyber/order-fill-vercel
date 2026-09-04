@@ -91,6 +91,10 @@ export function initialComment(row) {
 }
 
 export function baselineForReportRow(row) {
+  if (row.inserted != null && row.inserted !== "") {
+    const inserted = Number(row.inserted);
+    if (Number.isFinite(inserted)) return inserted;
+  }
   if (Number(row.recommended) < 1.5 || Number(row.rounded) <= 0) return null;
   return Number(row.rounded);
 }

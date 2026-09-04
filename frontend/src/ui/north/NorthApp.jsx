@@ -12,6 +12,7 @@ import { runNorthMergeJob } from "../../features/jobs/northJobWorkflow.js";
 import { sameNorthFile, uniqueNorthFiles } from "../../features/north/northFiles.js";
 import { defaultNorthActual, recalculateNorthRow } from "../../features/north/northPlan.js";
 import { jobStatusText } from "../../features/report/reportModel.js";
+import { userFacingError } from "../../features/help/errors.js";
 import {
   excelAcceptHint,
   northDuplicateFileMessage,
@@ -128,7 +129,7 @@ export function NorthApp({ companyId, onHome, onHelp }) {
       setMergePrompt({ entries, result: jobResult });
       setStatus("Готово");
     } catch (err) {
-      setError(err.message || "Не удалось соединить бланки.");
+      setError(userFacingError(err, "Не удалось соединить бланки."));
       setStatus("Ошибка");
     } finally {
       setBusy(false);
@@ -222,7 +223,7 @@ export function NorthApp({ companyId, onHome, onHelp }) {
       setStatus("Файлы готовы");
     } catch (err) {
       setStatus("Ошибка");
-      setError(err.message || "Не удалось подготовить файлы.");
+      setError(userFacingError(err, "Не удалось подготовить файлы."));
     } finally {
       setBusy(false);
     }
@@ -257,7 +258,9 @@ export function NorthApp({ companyId, onHome, onHelp }) {
             </div>
             <div className="w-64">
               <Field label="Бренд">
-                <Select value={brand} onChange={changeBrand} options={ORDER_BRANDS.map((item) => ({ value: item.id, label: item.label }))} />
+                <div data-tour="north-brand">
+                  <Select value={brand} onChange={changeBrand} options={ORDER_BRANDS.map((item) => ({ value: item.id, label: item.label }))} />
+                </div>
               </Field>
             </div>
           </div>
@@ -289,7 +292,7 @@ export function NorthApp({ companyId, onHome, onHelp }) {
             </GhostButton>
             <div className="flex items-center gap-3">
               <span className="font-mono text-[11px] text-[var(--color-ink-soft)]">{status}</span>
-              <PrimaryButton onClick={startMerge} disabled={busy}>
+              <PrimaryButton dataTour="north-go" onClick={startMerge} disabled={busy}>
                 Соединить бланки
                 <IconChevron className="h-4 w-4 -rotate-90" />
               </PrimaryButton>

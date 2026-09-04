@@ -116,20 +116,19 @@ func isProductNameHeader(header string) bool {
 // DetectSourceColumns recognises the 1C order calculation table.
 func DetectSourceColumns(workbook spreadsheet.Workbook) (Detection, error) {
 	order, matchers := sourceMatchers()
-	return detectColumns(workbook, order, matchers)
+	return detectColumns(workbook, order, matchers, "этот файл не похож на таблицу продаж из 1С. Загрузите выгрузку с отбором номенклатуры, а не бланк поставщика")
 }
 
 // DetectBlankColumns recognises the supplier blank for a brand.
 func DetectBlankColumns(workbook spreadsheet.Workbook, rule brand.RuleConfig) (Detection, error) {
 	order, matchers := blankMatchers(rule)
-	return detectColumns(workbook, order, matchers)
+	return detectColumns(workbook, order, matchers, "этот файл не похож на бланк поставщика. Проверьте, что загрузили бланк заказа, а не таблицу из 1С")
 }
 
 // detectColumns picks the header row where every required field is present and
 // the matched columns sit closest together, which disambiguates workbooks that
 // repeat similar captions in several blocks.
-func detectColumns(workbook spreadsheet.Workbook, required []string, matchers map[string]headerMatcher) (Detection, error) {
-	bestFound := make([]string, 0, len(required))
+func detectColumns(workbook spreadsheet.Workbook, required []string, matchers map[string]headerMatcher, missing string) (Detection, error) {
 	for _, sheet := range workbook.Sheets() {
 		bounds := sheet.Bounds()
 		for row := 1; row <= min(bounds.MaxRow, scanRowLimit); row++ {
@@ -145,16 +144,13 @@ func detectColumns(workbook spreadsheet.Workbook, required []string, matchers ma
 					}
 				}
 			}
-			found := make([]string, 0, len(required))
+			found := 0
 			for _, key := range required {
 				if len(candidates[key]) > 0 {
-					found = append(found, key)
+					found++
 				}
 			}
-			if len(found) > len(bestFound) {
-				bestFound = found
-			}
-			if len(found) != len(required) {
+			if found != len(required) {
 				continue
 			}
 			if columns, ok := tightestCombination(required, candidates); ok {
@@ -162,11 +158,7 @@ func detectColumns(workbook spreadsheet.Workbook, required []string, matchers ma
 			}
 		}
 	}
-	discovered := "ничего"
-	if len(bestFound) > 0 {
-		discovered = strings.Join(bestFound, ", ")
-	}
-	return Detection{}, fmt.Errorf("%w: не удалось найти все нужные колонки: %s. Найдено: %s", ErrInvalidInput, strings.Join(required, ", "), discovered)
+	return Detection{}, fmt.Errorf("%w: %s", ErrInvalidInput, missing)
 }
 
 // tightestCombination picks distinct columns for every field minimising the

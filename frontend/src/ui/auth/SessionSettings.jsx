@@ -59,7 +59,7 @@ export function SessionSettings({ onSignedOut }) {
   }
 
   return (
-    <div className="space-y-4 rounded-2xl border border-[var(--color-line)] bg-[var(--color-surface)] p-6">
+    <div data-tour="account-sessions" className="space-y-4 rounded-2xl border border-[var(--color-line)] bg-[var(--color-surface)] p-6">
       <div>
         <h2 className="text-[16px] font-semibold">{sessionsTitle}</h2>
         <p className="mt-1 text-[14px] leading-relaxed text-[var(--color-ink-soft)]">{sessionsHint}</p>

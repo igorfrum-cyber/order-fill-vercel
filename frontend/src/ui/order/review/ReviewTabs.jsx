@@ -3,7 +3,7 @@ import { IconSearch, IconX } from "../../icons.jsx";
 export function ReviewTabs({ tabs, counts, activeTab, query, onTab, onQuery, duplicateCount, acknowledgedCount, hint }) {
   return (
     <>
-      <div className="flex flex-wrap items-center gap-3 border-b border-[var(--color-line)] bg-[var(--color-surface)] px-6 py-2.5">
+      <div data-tour="fill-tabs" className="flex flex-wrap items-center gap-3 border-b border-[var(--color-line)] bg-[var(--color-surface)] px-6 py-2.5">
         <div className="flex flex-wrap gap-1">
           {tabs.map((item) => {
             const n = counts[item.key] ?? 0;

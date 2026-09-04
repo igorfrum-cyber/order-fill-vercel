@@ -5,6 +5,7 @@ import { formatSessionWhen } from "../../features/auth/session.js";
 import { accessAuditEvents } from "../../features/ops/auditPresentation.js";
 import { presentStatus, statusHeadline } from "../../features/ops/statusPresentation.js";
 import { jobStatusHint, jobStatusLabel, liveJobs } from "../../features/report/reportModel.js";
+import { userFacingError } from "../../features/help/errors.js";
 import { IconDatabase, IconFiles, IconQueue, IconServer, IconWorker } from "../icons.jsx";
 
 const STATUS_ICONS = {
@@ -37,7 +38,7 @@ export function OverviewScreen({ onOpen }) {
         setEvents(auditPayload.events || []);
         setError("");
       } catch (err) {
-        if (!cancelled) setError(err.message || "Не удалось загрузить обзор.");
+        if (!cancelled) setError(userFacingError(err, "Не удалось загрузить обзор."));
       }
     }
     load();
@@ -55,7 +56,7 @@ export function OverviewScreen({ onOpen }) {
         <p className="mt-1 text-[14px] text-[var(--color-ink-soft)]">{statusHeadline(tiles)}</p>
       </div>
       {error ? <p className="text-[14px] text-[var(--color-danger)]">{error}</p> : null}
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+      <div data-tour="overview-status" className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
         {tiles.map((tile) => (
           <StatusTile key={tile.id} tile={tile} icon={STATUS_ICONS[tile.id] || IconServer} />
         ))}
@@ -97,7 +98,7 @@ export function OverviewScreen({ onOpen }) {
             <h2 className="text-[16px] font-semibold">Кто менял доступ</h2>
             <p className="mt-0.5 text-[13px] text-[var(--color-ink-faint)]">Приглашения, сброс, отключения и смена пароля</p>
           </header>
-          <ul className="divide-y divide-[var(--color-line)]">
+          <ul data-tour="overview-audit" className="divide-y divide-[var(--color-line)]">
             {feed.map((event) => (
               <li key={event.id} className="px-4 py-3">
                 <p className="text-[14px] leading-snug">{event.line}</p>

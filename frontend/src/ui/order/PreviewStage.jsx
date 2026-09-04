@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 
 import { findPreviewArticle, getPreviewMeta } from "../../api/preview.js";
+import { userFacingError } from "../../features/help/errors.js";
 import { columnName } from "../../features/preview/columns.js";
 import { previewFileTitle } from "../../features/preview/fileTitle.js";
 import { IconDownload, IconSearch, IconX } from "../icons.jsx";
@@ -35,7 +36,7 @@ export function PreviewStage({ files = [], jobId, status, busy, onDownload, onBa
         if (!cancelled) setMeta(payload);
       })
       .catch((err) => {
-        if (!cancelled) setError(err.message || "Не удалось загрузить превью.");
+        if (!cancelled) setError(userFacingError(err, "Не удалось загрузить превью."));
       });
     return () => {
       cancelled = true;
@@ -62,14 +63,14 @@ export function PreviewStage({ files = [], jobId, status, busy, onDownload, onBa
       setFocusRow(hit.row);
       setFindStatus(`строка ${hit.row}`);
     } catch (err) {
-      setFindStatus(err.message || "Не удалось найти артикул");
+      setFindStatus(userFacingError(err, "Не удалось найти артикул"));
     }
   }
 
   return (
     <div className="flex h-full flex-col">
       <div className="flex flex-wrap items-center gap-3 border-b border-[var(--color-line)] bg-[var(--color-surface)] px-6 py-3">
-        <div className="flex flex-wrap gap-1">
+        <div data-tour="preview-files" className="flex flex-wrap gap-1">
           {files.map((item) => {
             const active = item.id === file?.id;
             return (
@@ -150,8 +151,8 @@ export function PreviewStage({ files = [], jobId, status, busy, onDownload, onBa
         </GhostButton>
         <div className="ml-auto flex items-center gap-3">
           <span className="font-mono text-[13px] text-[var(--color-ink-soft)]">{status}</span>
-          <PrimaryButton onClick={onDownload} disabled={busy}>
-            {busy ? "Готовлю архив..." : "Скачать zip"}
+          <PrimaryButton dataTour="preview-download" onClick={onDownload} disabled={busy}>
+            {busy ? "Готовлю архив..." : "Скачать файлы"}
             <IconDownload className="h-4 w-4" />
           </PrimaryButton>
         </div>

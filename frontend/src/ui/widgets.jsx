@@ -70,12 +70,13 @@ export function Select({ value, onChange, options }) {
   );
 }
 
-export function PrimaryButton({ children, onClick, disabled, type = "button" }) {
+export function PrimaryButton({ children, onClick, disabled, type = "button", dataTour }) {
   return (
     <button
       type={type}
       onClick={onClick}
       disabled={disabled}
+      data-tour={dataTour}
       className="primary-action flex items-center gap-2 whitespace-nowrap rounded-control bg-[var(--color-brand)] px-5 py-3 text-[15px] font-semibold text-white transition hover:bg-[var(--color-brand-strong)] focus:outline-none focus-visible:ring-4 focus-visible:ring-[var(--color-brand-soft)] disabled:cursor-not-allowed disabled:opacity-40"
     >
       {children}

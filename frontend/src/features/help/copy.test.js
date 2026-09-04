@@ -15,6 +15,7 @@ import {
   quickStartForRole,
   roleLabel,
   tourForRole,
+  tourForScene,
   inviteRoleHint,
   twoFactorCodeLabel,
   twoFactorOpenAppLabel,
@@ -80,6 +81,21 @@ test("tourForRole points at on-screen controls without jargon", () => {
       assert.equal(/api|token|cookie|backend|frontend|endpoint/i.test(`${step.title} ${step.body}`), false);
     }
   }
+});
+
+test("tourForScene covers the rest of the working screens", () => {
+  const scenes = ["order-upload", "order-fill", "order-preview", "north", "users", "company", "companies", "overview", "account"];
+  for (const scene of scenes) {
+    const steps = tourForScene(scene, "purchaser");
+    assert.ok(steps.length >= 2, scene);
+    for (const step of steps) {
+      assert.ok(step.target, scene);
+      assert.ok(step.title, scene);
+      assert.ok(step.body, scene);
+      assert.equal(/api|token|cookie|backend|frontend|endpoint/i.test(`${step.title} ${step.body}`), false);
+    }
+  }
+  assert.equal(tourForScene("home", "purchaser")[0].target, "order");
 });
 
 test("accessSummaryForRole explains what each role can do", () => {
