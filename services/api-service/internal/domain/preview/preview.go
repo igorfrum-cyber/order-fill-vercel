@@ -26,18 +26,22 @@ type Meta struct {
 
 // SheetMeta is the used range plus an article→row index.
 type SheetMeta struct {
-	Name          string          `json:"name"`
-	Index         int             `json:"index"`
-	MaxRow        int             `json:"max_row"`
-	MaxColumn     int             `json:"max_column"`
-	HeaderRow     int             `json:"header_row,omitempty"`
-	ArticleColumn int             `json:"article_column,omitempty"`
-	Articles      map[string]int  `json:"articles,omitempty"`
-	Styles        []CellStyle     `json:"styles,omitempty"`
-	Columns       []float64       `json:"columns,omitempty"`
-	RowHeight     float64         `json:"row_height,omitempty"`
-	RowHeights    map[int]float64 `json:"row_heights,omitempty"`
-	Merges        []Merge         `json:"merges,omitempty"`
+	Name           string            `json:"name"`
+	Index          int               `json:"index"`
+	MaxRow         int               `json:"max_row"`
+	MaxColumn      int               `json:"max_column"`
+	HeaderRow      int               `json:"header_row,omitempty"`
+	ArticleColumn  int               `json:"article_column,omitempty"`
+	Articles       map[string]int    `json:"articles,omitempty"`
+	Styles         []CellStyle       `json:"styles,omitempty"`
+	Columns        []float64         `json:"columns,omitempty"`
+	RowHeight      float64           `json:"row_height,omitempty"`
+	RowHeights     map[int]float64   `json:"row_heights,omitempty"`
+	Merges         []Merge           `json:"merges,omitempty"`
+	Formulas       []SheetFormula    `json:"formulas,omitempty"`
+	FormulaValues  map[string]string `json:"formula_values,omitempty"`
+	QuantityColumn int               `json:"quantity_column,omitempty"`
+	CommentColumn  int               `json:"comment_column,omitempty"`
 }
 
 // CellStyle is one interned appearance. Empty fields mean Excel defaults.
@@ -62,6 +66,13 @@ type Merge struct {
 	Column int `json:"column"`
 	Height int `json:"height"`
 	Width  int `json:"width"`
+}
+
+// SheetFormula is one Excel formula the browser can re-evaluate over live edits.
+type SheetFormula struct {
+	Row    int    `json:"row"`
+	Column int    `json:"column"`
+	Text   string `json:"formula"`
 }
 
 // Chunk is one gzipped row window. Rows are trimmed of trailing empty cells.

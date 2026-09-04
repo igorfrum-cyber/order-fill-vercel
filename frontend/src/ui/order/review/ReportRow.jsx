@@ -69,12 +69,21 @@ export function ReportRow({ row, edit, expanded, invalid, acknowledged, boxLabel
                 {note}
               </span>
             ) : null}
-            <Stepper
-              value={edit?.value ?? ""}
-              disabled={row.editable === false}
-              onChange={(value) => onEdit(key, { value })}
-              step={boxStep(row)}
-            />
+            <span className="relative inline-flex">
+              {String(edit?.comment || "").trim() ? (
+                <span
+                  title={edit.comment}
+                  aria-label="Есть комментарий"
+                  className="pointer-events-none absolute -right-0.5 -top-0.5 z-10 h-0 w-0 border-l-8 border-t-8 border-l-transparent border-t-[#ea580c]"
+                />
+              ) : null}
+              <Stepper
+                value={edit?.value ?? ""}
+                disabled={row.editable === false}
+                onChange={(value) => onEdit(key, { value })}
+                step={boxStep(row)}
+              />
+            </span>
           </div>
         </td>
         <td className={cell}>
@@ -140,6 +149,12 @@ export function ReportRow({ row, edit, expanded, invalid, acknowledged, boxLabel
               <Detail label="Бланк">
                 <span className="font-mono text-[13px]">{row.blankLabel || "—"}</span>
               </Detail>
+              {row.sourceComment ? (
+                <Detail label="Комментарий в таблице">{row.sourceComment}</Detail>
+              ) : null}
+              {edit?.comment && edit.comment !== row.sourceComment ? (
+                <Detail label="Комментарий">{edit.comment}</Detail>
+              ) : null}
               {row.sourceArticle || row.sourceName ? (
                 <Detail label="Таблица заказа">
                   <span className="font-mono text-[13px]">

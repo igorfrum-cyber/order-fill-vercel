@@ -80,4 +80,5 @@ test("missingRange skips rows already in the cache", () => {
 test("previewFileTitle prefers a short tab label over the download CTA", () => {
   assert.equal(previewFileTitle({ label: "Скачать заполненный бланк", name: "Бланк.xlsx" }), "Бланк");
   assert.equal(previewFileTitle({ label: "Скачать заполненную таблицу заказа", name: "Заказ.xlsx" }), "Таблица 1С");
+  assert.equal(previewFileTitle({ label: "Скачать файл", name: "Ангио заполненная таблица.xlsx" }), "Таблица 1С");
 });

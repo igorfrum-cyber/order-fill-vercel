@@ -12,6 +12,7 @@ import { blankSlotsForSource, brandLabel } from "../../features/brands/brandPres
 import { runOrderFillJob } from "../../features/jobs/orderJobWorkflow.js";
 import { formatOrderMonthLabel } from "../../features/order/monthPolicy.js";
 import { collectReviewEdits, hasManualDeviations, initialEditState, patchEdit, rowKey, validateReviewEdits } from "../../features/order/reviewEdits.js";
+import { needsEditResubmit } from "../../features/preview/previewEdits.js";
 import { issueReportCsv } from "../../features/report/issueReport.js";
 import { combinedSummary, jobProgress, jobStatusText } from "../../features/report/reportModel.js";
 import { issueReportRows, qualityWarningLines, qualityWarningSummary } from "../../features/report/qualityWarnings.js";
@@ -56,9 +57,12 @@ export function OrderFillApp({ companyId, resumeJob, onHome, onHelp, onStage }) 
   const [busy, setBusy] = useState(false);
   const [confirmLines, setConfirmLines] = useState(null);
   const [commentGateKeys, setCommentGateKeys] = useState(null);
+  const [afterCommentGate, setAfterCommentGate] = useState("preview");
   const [banner, setBanner] = useState("");
   const [outputFiles, setOutputFiles] = useState(resumeJob?.outputFiles || []);
   const [finalized, setFinalized] = useState(Boolean(resumeJob?.finalized));
+  const [editsDirty, setEditsDirty] = useState(false);
+  const [previewEpoch, setPreviewEpoch] = useState(0);
 
   useEffect(() => {
     onStage?.(stage);
@@ -78,6 +82,8 @@ export function OrderFillApp({ companyId, resumeJob, onHome, onHelp, onStage }) 
     setCommentGateKeys(null);
     setOutputFiles([]);
     setFinalized(false);
+    setEditsDirty(false);
+    setPreviewEpoch(0);
     setError("");
     setStatus("");
     setProgress(0);
@@ -115,6 +121,7 @@ export function OrderFillApp({ companyId, resumeJob, onHome, onHelp, onStage }) 
       setRows(result.rows);
       setResults(result.results);
       setEdits(initialEditState(result.rows));
+      setEditsDirty(false);
       setStage("fill");
       setStatus("");
       setProgress(1);
@@ -129,6 +136,7 @@ export function OrderFillApp({ companyId, resumeJob, onHome, onHelp, onStage }) 
 
   function updateEdit(key, patch) {
     setEdits((prev) => patchEdit(prev, key, patch));
+    setEditsDirty(true);
     setInvalidKeys((prev) => {
       if (!prev.has(key)) return prev;
       const copy = new Set(prev);
@@ -158,6 +166,7 @@ export function OrderFillApp({ companyId, resumeJob, onHome, onHelp, onStage }) 
     if (invalid.length) {
       setInvalidKeys(new Set(invalid));
       setCommentGateKeys(invalid);
+      setAfterCommentGate("preview");
       setBanner("");
       return;
     }
@@ -173,6 +182,10 @@ export function OrderFillApp({ companyId, resumeJob, onHome, onHelp, onStage }) 
     }
     setCommentGateKeys(null);
     setInvalidKeys(new Set());
+    if (afterCommentGate === "download") {
+      downloadArchive();
+      return;
+    }
     proceedToPreview();
   }
 
@@ -187,22 +200,35 @@ export function OrderFillApp({ companyId, resumeJob, onHome, onHelp, onStage }) 
     submitAndPreview();
   }
 
+  async function persistEditsIfNeeded() {
+    if (!needsEditResubmit({
+      finalized,
+      dirty: editsDirty,
+      hasDeviations: hasManualDeviations(rows, edits),
+    })) {
+      return false;
+    }
+    setStatus("Сохраняю правки...");
+    const payload = collectReviewEdits(rows, edits);
+    const editedJob = await submitJobEdits(jobId, payload);
+    const finalJob = await pollJob(editedJob.id, {
+      until: FINALIZE_DONE_STATUSES,
+      onUpdate: (job) => setStatus(jobStatusText(job)),
+    });
+    if (finalJob.status === "failed") {
+      throw new Error(finalJob.error?.message || "Не удалось подготовить файлы.");
+    }
+    setEditsDirty(false);
+    setFinalized(true);
+    setPreviewEpoch((epoch) => epoch + 1);
+    return true;
+  }
+
   async function submitAndPreview() {
     setConfirmLines(null);
     setBusy(true);
     try {
-      if (!finalized && hasManualDeviations(rows, edits)) {
-        setStatus("Сохраняю правки...");
-        const payload = collectReviewEdits(rows, edits);
-        const editedJob = await submitJobEdits(jobId, payload);
-        const finalJob = await pollJob(editedJob.id, {
-          until: FINALIZE_DONE_STATUSES,
-          onUpdate: (job) => setStatus(jobStatusText(job)),
-        });
-        if (finalJob.status === "failed") {
-          throw new Error(finalJob.error?.message || "Не удалось подготовить файлы.");
-        }
-      }
+      await persistEditsIfNeeded();
       setStatus("Открываю файлы...");
       const listed = await listJobFiles(jobId);
       setOutputFiles(listed.files);
@@ -219,8 +245,16 @@ export function OrderFillApp({ companyId, resumeJob, onHome, onHelp, onStage }) 
 
   async function downloadArchive() {
     if (!jobId) return;
+    const invalid = validateReviewEdits(rows, edits);
+    if (invalid.length) {
+      setInvalidKeys(new Set(invalid));
+      setCommentGateKeys(invalid);
+      setAfterCommentGate("download");
+      return;
+    }
     setBusy(true);
     try {
+      await persistEditsIfNeeded();
       setStatus("Скачиваю архив...");
       const archive = await downloadJobArchive(jobId);
       triggerBlobDownload(archive.blob, archive.fileName);
@@ -301,6 +335,10 @@ export function OrderFillApp({ companyId, resumeJob, onHome, onHelp, onStage }) 
             jobId={jobId}
             status={status}
             busy={busy}
+            rows={rows}
+            edits={edits}
+            onEdit={updateEdit}
+            refreshKey={previewEpoch}
             onBack={() => setStage("fill")}
             onDownload={downloadArchive}
           />

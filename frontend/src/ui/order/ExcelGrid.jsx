@@ -3,6 +3,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { getPreviewWindow } from "../../api/preview.js";
 import { cellCss, cellKey, mergeLayout, visibleMerges } from "../../features/preview/appearance.js";
 import { columnLetters } from "../../features/preview/columns.js";
+import { isCommentOverlay, isQuantityOverlay } from "../../features/preview/previewEdits.js";
 import {
   PREVIEW_GUTTER_WIDTH,
   PREVIEW_HEADER_HEIGHT,
@@ -36,6 +37,9 @@ export function ExcelGrid({
   rowHeights,
   styles: catalog,
   merges,
+  overlays,
+  onEdit,
+  refreshKey = 0,
 }) {
   const scrollerRef = useRef(null);
   const cacheRef = useRef(new Map());
@@ -43,6 +47,7 @@ export function ExcelGrid({
   const timerRef = useRef(0);
   const [cells, setCells] = useState(() => new Map());
   const [range, setRange] = useState({ fromRow: 1, toRow: 1 });
+  const [activeKey, setActiveKey] = useState("");
   const letters = columnLetters(maxColumn);
   const defaultHeight = Number(rowHeight) > 0 ? Number(rowHeight) : PREVIEW_ROW_HEIGHT;
   const customHeights = useMemo(() => parseCustomHeights(rowHeights), [rowHeights]);
@@ -100,7 +105,7 @@ export function ExcelGrid({
       window.clearTimeout(timerRef.current);
       observer?.disconnect();
     };
-  }, [fileId, jobId, sheetIndex, maxRow, maxColumn, syncWindow]);
+  }, [fileId, jobId, sheetIndex, maxRow, maxColumn, refreshKey, syncWindow]);
 
   useEffect(() => {
     if (!focusRow || !scrollerRef.current) return;
@@ -186,6 +191,10 @@ export function ExcelGrid({
               covered={mergeMap.covered}
               origins={mergeMap.origins}
               catalog={catalog}
+              overlays={overlays}
+              activeKey={activeKey}
+              onActivate={setActiveKey}
+              onEdit={onEdit}
             />
           ))}
           {mergeBoxes.map((merge) => {
@@ -208,6 +217,10 @@ export function ExcelGrid({
                 highlight={highlighted}
                 header={merge.row === headerRow && !css?.backgroundColor}
                 z={2}
+                overlay={overlays?.get(`${merge.row}:${merge.column}`)}
+                active={activeKey === overlays?.get(`${merge.row}:${merge.column}`)?.key}
+                onActivate={setActiveKey}
+                onEdit={onEdit}
               />
             );
           })}
@@ -251,6 +264,10 @@ function GridRowCells({
   covered,
   origins,
   catalog,
+  overlays,
+  activeKey,
+  onActivate,
+  onEdit,
 }) {
   const isHeader = row === headerRow;
   const values = record?.values;
@@ -262,6 +279,7 @@ function GridRowCells({
     const width = columnSize(index, widths);
     if (width <= 0) continue;
     const css = cellCss(catalog, styles?.[index] ?? 0);
+    const overlay = overlays?.get(`${row}:${index + 1}`);
     cells.push(
       <GridCell
         key={index}
@@ -273,33 +291,111 @@ function GridRowCells({
         css={css}
         highlight={highlight}
         header={isHeader && !css?.backgroundColor}
+        overlay={overlay}
+        active={overlay?.key && overlay.key === activeKey}
+        onActivate={onActivate}
+        onEdit={onEdit}
       />,
     );
   }
   return cells;
 }
 
-function GridCell({ left, top, width, height, value, css, highlight, header, z = 0 }) {
+function GridCell({
+  left,
+  top,
+  width,
+  height,
+  value,
+  css,
+  highlight,
+  header,
+  z = 0,
+  overlay,
+  active,
+  onActivate,
+  onEdit,
+}) {
+  const quantity = isQuantityOverlay(overlay);
+  const commentCell = isCommentOverlay(overlay);
+  const editable = Boolean((quantity || commentCell) && onEdit);
+  const shown = quantity || commentCell ? overlay.value : overlay?.value || value;
+  const comment = quantity ? String(overlay?.comment || "").trim() : "";
+
   return (
     <div
-      title={value}
-      className={`absolute box-border flex items-center overflow-hidden px-2 text-[12px] leading-tight ${
+      title={comment || shown}
+      className={`absolute box-border flex items-center px-2 text-[12px] leading-tight ${
         header ? "font-semibold text-[var(--color-ink)]" : "text-[var(--color-ink-soft)]"
-      }`}
+      } ${editable ? "overflow-visible" : "overflow-hidden"}`}
       style={{
         left,
         top,
         width,
         height,
-        zIndex: z,
         borderRight: GRID_LINE,
         borderBottom: GRID_LINE,
-        backgroundColor: header ? "var(--color-line-soft)" : "var(--color-surface)",
-        boxShadow: highlight ? "inset 0 0 0 2px var(--color-brand)" : undefined,
         ...css,
+        zIndex: editable ? (active ? 8 : 3) : active ? 8 : z,
+        overflow: editable ? "visible" : css?.overflow,
+        backgroundColor: editable
+          ? "color-mix(in srgb, var(--color-brand-soft) 85%, var(--color-surface))"
+          : header
+            ? "var(--color-line-soft)"
+            : css?.backgroundColor || "var(--color-surface)",
+        boxShadow: editable
+          ? `inset 0 0 0 ${active ? 2 : 1}px var(--color-brand)`
+          : highlight || active
+            ? "inset 0 0 0 2px var(--color-brand)"
+            : undefined,
       }}
     >
-      <span className={css?.whiteSpace ? "w-full" : "truncate"}>{value}</span>
+      {comment ? <CommentMark /> : null}
+      {quantity ? (
+        <input
+          value={overlay.value}
+          aria-label="Заказано по факту"
+          onFocus={() => onActivate?.(overlay.key)}
+          onBlur={(event) => {
+            if (event.currentTarget.parentElement?.contains(event.relatedTarget)) return;
+            onActivate?.("");
+          }}
+          onChange={(event) => onEdit(overlay.key, { value: event.target.value })}
+          className="h-full w-full cursor-text bg-transparent font-mono text-[12px] text-[var(--color-ink)] outline-none"
+        />
+      ) : commentCell ? (
+        <input
+          value={overlay.value}
+          aria-label="Комментарий"
+          onChange={(event) => onEdit(overlay.key, { comment: event.target.value })}
+          className="h-full w-full cursor-text bg-transparent text-[12px] text-[var(--color-ink)] outline-none"
+        />
+      ) : (
+        <span className={css?.whiteSpace ? "w-full" : "truncate"}>{shown}</span>
+      )}
+      {quantity && active ? (
+        <textarea
+          value={overlay.comment || ""}
+          placeholder="Почему изменили количество"
+          onFocus={() => onActivate?.(overlay.key)}
+          onBlur={(event) => {
+            if (event.currentTarget.parentElement?.contains(event.relatedTarget)) return;
+            onActivate?.("");
+          }}
+          onChange={(event) => onEdit(overlay.key, { comment: event.target.value })}
+          className="absolute left-0 top-full z-30 mt-1 w-64 rounded-lg border border-[var(--color-line)] bg-[var(--color-surface)] p-2 text-[13px] text-[var(--color-ink)] shadow-lg outline-none"
+          rows={2}
+        />
+      ) : null}
     </div>
+  );
+}
+
+function CommentMark() {
+  return (
+    <span
+      aria-hidden
+      className="pointer-events-none absolute right-0 top-0 h-0 w-0 border-l-8 border-t-8 border-l-transparent border-t-[#ea580c]"
+    />
   );
 }

@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"fmt"
 	"io"
+	"strings"
 	"testing"
 
 	"github.com/beevik/etree"
@@ -82,6 +83,19 @@ func TestLoadExposesSheetAppearance(t *testing.T) {
 	}
 }
 
+func TestLoadExposesFormulas(t *testing.T) {
+	book := mustLoad(t, buildFixture(t))
+	sheet := mustSheet(t, book, priceSheetName)
+	formulated, ok := sheet.(spreadsheet.Formulated)
+	if !ok {
+		t.Fatal("xlsx sheet must expose formulas for live preview totals")
+	}
+	formulas := formulated.Formulas()
+	if len(formulas) != 1 || formulas[0].Row != 2 || formulas[0].Column != 3 || formulas[0].Text != "B2*2" {
+		t.Fatalf("formulas %#v", formulas)
+	}
+}
+
 func TestPreviewCaptureReadsFixtureAppearance(t *testing.T) {
 	snapshot := preview.Capture(mustLoad(t, buildFixture(t)))
 	meta := snapshot.Meta.Sheets[0]
@@ -96,6 +110,21 @@ func TestPreviewCaptureReadsFixtureAppearance(t *testing.T) {
 	}
 	if snapshot.Chunks[0][0].Styles[0][0] == 0 {
 		t.Fatalf("A1 should keep a style index, %#v", snapshot.Chunks[0][0].Styles)
+	}
+	if len(meta.Formulas) == 0 {
+		t.Fatal("preview meta must carry formulas so the browser can refresh totals")
+	}
+	found := false
+	for _, item := range meta.Formulas {
+		if item.Row == 2 && item.Column == 3 && strings.Contains(item.Text, "B2") {
+			found = true
+		}
+	}
+	if !found {
+		t.Fatalf("expected B2 formula on C2, got %#v", meta.Formulas)
+	}
+	if meta.FormulaValues["2:2"] != "12.5" {
+		t.Fatalf("formula values %#v", meta.FormulaValues)
 	}
 }
 

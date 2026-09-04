@@ -34,3 +34,16 @@ type Merge struct {
 	Height int
 	Width  int
 }
+
+// Formulated is implemented by workbook adapters that can list cell formulas.
+// Preview capture type-asserts it so the browser can refresh totals live.
+type Formulated interface {
+	Formulas() []Formula
+}
+
+// Formula is a 1-based cell whose stored text is an Excel formula.
+type Formula struct {
+	Row    int
+	Column int
+	Text   string
+}

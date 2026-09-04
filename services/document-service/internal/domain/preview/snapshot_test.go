@@ -93,6 +93,9 @@ func TestCaptureIndexesTheOrderTableArticleColumn(t *testing.T) {
 	if meta.Articles["RG01"] != 15 || meta.Articles["CT02"] != 16 {
 		t.Fatalf("article index %#v", meta.Articles)
 	}
+	if meta.QuantityColumn != 34 || meta.CommentColumn != 35 {
+		t.Fatalf("edit columns qty=%d comment=%d", meta.QuantityColumn, meta.CommentColumn)
+	}
 }
 
 func TestCaptureKeepsSheetAppearance(t *testing.T) {
@@ -162,6 +165,36 @@ func (s *styledFakeSheet) ColumnWidths() []float64            { return s.columns
 func (s *styledFakeSheet) DefaultRowHeight() float64          { return s.rowHeight }
 func (s *styledFakeSheet) CustomRowHeights() map[int]float64  { return s.rowHeights }
 func (s *styledFakeSheet) Merges() []spreadsheet.Merge        { return s.merges }
+
+func TestCaptureKeepsFormulasAndReferencedValues(t *testing.T) {
+	sheet := &formulaFakeSheet{
+		fakeSheet: fakeSheet{
+			name: "Бланк",
+			cells: map[[2]int]string{
+				{1, 5}: "Заказ",
+				{2, 5}: "12",
+				{3, 5}: "8",
+				{4, 5}: "20",
+			},
+		},
+		formulas: []spreadsheet.Formula{{Row: 4, Column: 5, Text: "SUM(E2:E3)"}},
+	}
+	snapshot := Capture(&fakeWorkbook{sheets: []spreadsheet.Sheet{sheet}})
+	meta := snapshot.Meta.Sheets[0]
+	if len(meta.Formulas) != 1 || meta.Formulas[0].Text != "SUM(E2:E3)" {
+		t.Fatalf("formulas %#v", meta.Formulas)
+	}
+	if meta.FormulaValues["2:5"] != "12" || meta.FormulaValues["3:5"] != "8" {
+		t.Fatalf("formula values %#v", meta.FormulaValues)
+	}
+}
+
+type formulaFakeSheet struct {
+	fakeSheet
+	formulas []spreadsheet.Formula
+}
+
+func (s *formulaFakeSheet) Formulas() []spreadsheet.Formula { return s.formulas }
 
 func TestCaptureSplitsRowsIntoChunks(t *testing.T) {
 	sheet := &fakeSheet{name: "Лист1", cells: map[[2]int]string{

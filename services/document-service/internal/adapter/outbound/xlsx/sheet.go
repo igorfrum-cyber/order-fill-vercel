@@ -42,6 +42,7 @@ type sheet struct {
 type cell struct {
 	element *etree.Element
 	value   string
+	formula string
 	xf      int
 }
 
@@ -111,6 +112,26 @@ func (s *sheet) Merges() []spreadsheet.Merge {
 	return s.look.merges
 }
 
+func (s *sheet) Formulas() []spreadsheet.Formula {
+	if s == nil {
+		return nil
+	}
+	out := make([]spreadsheet.Formula, 0)
+	for key, item := range s.cells {
+		if item == nil || item.formula == "" {
+			continue
+		}
+		out = append(out, spreadsheet.Formula{Row: key.row, Column: key.column, Text: item.formula})
+	}
+	sort.Slice(out, func(i int, j int) bool {
+		if out[i].Row != out[j].Row {
+			return out[i].Row < out[j].Row
+		}
+		return out[i].Column < out[j].Column
+	})
+	return out
+}
+
 func (s *sheet) Name() string {
 	return s.name
 }
@@ -147,6 +168,7 @@ func (s *sheet) SetNumber(row int, column int, value float64) {
 		newChild(target.element, "v", nil).SetText(text)
 	}
 	target.value = text
+	target.formula = ""
 	s.modified = true
 }
 
@@ -154,6 +176,7 @@ func (s *sheet) ClearValue(row int, column int) {
 	target := s.findOrCreateCell(row, column)
 	clearCell(target.element)
 	target.value = ""
+	target.formula = ""
 	s.modified = true
 }
 
@@ -168,6 +191,7 @@ func (s *sheet) SetText(row int, column int, value string) {
 	inline := newChild(target.element, "is", nil)
 	newChild(inline, "t", nil).SetText(value)
 	target.value = value
+	target.formula = ""
 	s.modified = true
 }
 
@@ -297,6 +321,17 @@ func clearCell(element *etree.Element) {
 		element.RemoveChildAt(0)
 	}
 	element.RemoveAttr("t")
+}
+
+func readCellFormula(element *etree.Element) string {
+	if element == nil {
+		return ""
+	}
+	formula := element.SelectElement("f")
+	if formula == nil {
+		return ""
+	}
+	return strings.TrimSpace(elementText(formula))
 }
 
 func readCellValue(element *etree.Element, shared []string) string {

@@ -174,8 +174,8 @@ export function tourForScene(scene, role) {
       {
         target: "preview-files",
         placement: "bottom",
-        title: "Готовые бланки",
-        body: "Переключайте файлы и листы, чтобы глянуть, как заполнятся количества.",
+        title: "Готовые файлы",
+        body: "В таблице 1С правьте «Заказано по факту» и комментарий. Количество в бланке и суммы обновятся сами.",
       },
       {
         target: "preview-download",

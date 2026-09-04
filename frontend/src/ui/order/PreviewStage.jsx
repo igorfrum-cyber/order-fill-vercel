@@ -1,15 +1,35 @@
 import { useEffect, useMemo, useState } from "react";
 
-import { findPreviewArticle, getPreviewMeta } from "../../api/preview.js";
+import { findPreviewArticle, getPreviewMeta, getPreviewWindow } from "../../api/preview.js";
 import { userFacingError } from "../../features/help/errors.js";
 import { columnName } from "../../features/preview/columns.js";
 import { previewFileTitle } from "../../features/preview/fileTitle.js";
+import { formulaOverlays } from "../../features/preview/formulas.js";
+import {
+  defaultPreviewFileId,
+  findEditColumns,
+  isSourcePreviewFile,
+  mergePreviewOverlays,
+  orderSheetIndex,
+  previewOverlays,
+} from "../../features/preview/previewEdits.js";
 import { IconDownload, IconSearch, IconX } from "../icons.jsx";
 import { GhostButton, PrimaryButton } from "../widgets.jsx";
 import { ExcelGrid } from "./ExcelGrid.jsx";
 
-export function PreviewStage({ files = [], jobId, status, busy, onDownload, onBack }) {
-  const defaultFileId = files.at(-1)?.id || files[0]?.id || "";
+export function PreviewStage({
+  files = [],
+  jobId,
+  status,
+  busy,
+  rows = [],
+  edits,
+  onEdit,
+  refreshKey = 0,
+  onDownload,
+  onBack,
+}) {
+  const defaultFileId = defaultPreviewFileId(files);
   const [fileId, setFileId] = useState(defaultFileId);
   const [meta, setMeta] = useState(null);
   const [error, setError] = useState("");
@@ -18,10 +38,17 @@ export function PreviewStage({ files = [], jobId, status, busy, onDownload, onBa
   const [focusRow, setFocusRow] = useState(0);
   const [sheetIndex, setSheetIndex] = useState(0);
   const [findStatus, setFindStatus] = useState("");
+  const [headerCells, setHeaderCells] = useState([]);
 
   const file = files.find((item) => item.id === fileId) || files[0];
   const sheets = meta?.sheets || [];
   const sheet = sheets[sheetIndex] || sheets[0];
+
+  useEffect(() => {
+    if (!files.length) return;
+    if (files.some((item) => item.id === fileId)) return;
+    setFileId(defaultPreviewFileId(files));
+  }, [fileId, files]);
 
   useEffect(() => {
     if (!jobId || !file?.id) return;
@@ -31,9 +58,12 @@ export function PreviewStage({ files = [], jobId, status, busy, onDownload, onBa
     setSheetIndex(0);
     setHighlightRow(0);
     setFocusRow(0);
+    setHeaderCells([]);
     getPreviewMeta(jobId, file.id)
       .then((payload) => {
-        if (!cancelled) setMeta(payload);
+        if (cancelled) return;
+        setMeta(payload);
+        setSheetIndex(orderSheetIndex(payload.sheets || []));
       })
       .catch((err) => {
         if (!cancelled) setError(userFacingError(err, "Не удалось загрузить превью."));
@@ -41,7 +71,48 @@ export function PreviewStage({ files = [], jobId, status, busy, onDownload, onBa
     return () => {
       cancelled = true;
     };
-  }, [file?.id, jobId]);
+  }, [file?.id, jobId, refreshKey]);
+
+  const sourceFile = isSourcePreviewFile(file);
+  const editColumns = useMemo(() => {
+    if (sheet?.quantity_column) {
+      return { quantity: sheet.quantity_column, comment: sheet.comment_column || 0 };
+    }
+    return findEditColumns(headerCells);
+  }, [headerCells, sheet?.comment_column, sheet?.quantity_column]);
+
+  useEffect(() => {
+    const headerRow = Number(sheet?.header_row);
+    if (!sourceFile || !jobId || !file?.id || headerRow < 1 || Number(sheet.quantity_column) > 0) return;
+    let cancelled = false;
+    getPreviewWindow(jobId, file.id, {
+      sheet: sheet.index ?? sheetIndex,
+      fromRow: headerRow,
+      toRow: headerRow,
+    })
+      .then((payload) => {
+        if (!cancelled) setHeaderCells(payload.rows?.[0] || []);
+      })
+      .catch(() => {
+        if (!cancelled) setHeaderCells([]);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [file?.id, jobId, sheet, sheetIndex, sourceFile]);
+
+  const overlays = useMemo(() => {
+    const quantity = previewOverlays(rows, edits || new Map(), {
+      files,
+      fileId: file?.id,
+      quantityColumn: editColumns.quantity,
+      commentColumn: editColumns.comment,
+    });
+    return mergePreviewOverlays(
+      formulaOverlays(sheet?.formulas, { overlays: quantity, values: sheet?.formula_values || {} }),
+      quantity,
+    );
+  }, [editColumns.comment, editColumns.quantity, edits, file?.id, files, rows, sheet?.formula_values, sheet?.formulas]);
 
   const stats = useMemo(() => {
     if (!sheet) return "";
@@ -87,6 +158,9 @@ export function PreviewStage({ files = [], jobId, status, busy, onDownload, onBa
             );
           })}
         </div>
+        <span className="text-[13px] text-[var(--color-ink-faint)]">
+          Править «Заказано по факту» и комментарий — количество в бланке подтянется само
+        </span>
         {sheets.length > 1 && (
           <div className="flex gap-1">
             {sheets.map((item) => (
@@ -140,6 +214,9 @@ export function PreviewStage({ files = [], jobId, status, busy, onDownload, onBa
             rowHeights={sheet.row_heights}
             styles={sheet.styles}
             merges={sheet.merges}
+            overlays={overlays}
+            onEdit={onEdit}
+            refreshKey={refreshKey}
           />
         )}
         {!error && !sheet && !meta && <div className="px-6 py-10 text-center text-[15px] text-[var(--color-ink-faint)]">Загружаю сетку...</div>}
