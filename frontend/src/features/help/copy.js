@@ -137,7 +137,7 @@ export function tourForScene(scene, role) {
         target: "blank",
         placement: "bottom",
         title: "Бланк поставщика",
-        body: "Это файл, который уйдёт в заказ. Для Christina нужны два бланка — HOME и PROFF.",
+        body: "Это файл, который уйдёт в заказ. Для Christina достаточно одного бланка — линия HOME или PROFF считывается из файла.",
       },
       {
         target: "process",

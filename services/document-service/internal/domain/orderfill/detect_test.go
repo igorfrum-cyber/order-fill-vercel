@@ -90,29 +90,20 @@ func TestInferOrderMonthRejectsMismatchedPreviousPeriod(t *testing.T) {
 	}
 }
 
-func TestPlanBlanksRequiresTwoChristinaFiles(t *testing.T) {
-	_, err := PlanBlanks("christina", []string{"HOME.xlsx"})
-	if !errors.Is(err, ErrInvalidInput) {
-		t.Fatalf("expected invalid input, got %v", err)
-	}
-	if !strings.Contains(err.Error(), "HOME") || !strings.Contains(err.Error(), "PROFF") {
-		t.Fatalf("expected a human Christina blank message, got %v", err)
-	}
-}
-
-func TestPlanBlanksLabelsChristinaHomeAndProffFromFileNames(t *testing.T) {
-	got, err := PlanBlanks("christina", []string{"Актуальный_бланк PROFF.xlsx", "Бланк HOME.xlsx"})
+func TestPlanBlanksAcceptsOneChristinaFile(t *testing.T) {
+	got, err := PlanBlanks("christina", []string{"Актуальный_бланк PROFF.xlsx"})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if len(got) != 2 {
-		t.Fatalf("got %d plans", len(got))
+	if len(got) != 1 || got[0].ID != "blank-1" || got[0].Label != "Актуальный_бланк PROFF.xlsx" {
+		t.Fatalf("unexpected plan %+v", got)
 	}
-	if got[0].ID != "blank-1" || got[0].Label != "PROFF" {
-		t.Fatalf("first blank: %+v", got[0])
-	}
-	if got[1].ID != "blank-2" || got[1].Label != "HOME" {
-		t.Fatalf("second blank: %+v", got[1])
+}
+
+func TestPlanBlanksRejectsTwoChristinaFiles(t *testing.T) {
+	_, err := PlanBlanks("christina", []string{"HOME.xlsx", "PROFF.xlsx"})
+	if !errors.Is(err, ErrInvalidInput) {
+		t.Fatalf("expected invalid input, got %v", err)
 	}
 }
 
@@ -123,13 +114,52 @@ func TestPlanBlanksRejectsTwoBlanksForSingleBlankBrand(t *testing.T) {
 	}
 }
 
-func TestPlanBlanksFallsBackToUploadOrderWhenFileNamesAreNeutral(t *testing.T) {
-	got, err := PlanBlanks("christina", []string{"бланк-1.xlsx", "бланк-2.xlsx"})
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
+func TestLabelChristinaBlankReadsProfessionalCareSection(t *testing.T) {
+	workbook := newFakeWorkbook("Лист1", [][]string{
+		{"БЛАНК ЗАКАЗА НА ПРОДУКЦИЮ CHRISTINA"},
+		{"Код", "Наименование препарата", "Форма выпуска (мл)", "Кол-во"},
+		{"", "MUSE – ЛИНИЯ С ЭКЗОСОМАМИ"},
+		{"", "Профессиональный уход"},
+		{"CHR884", "Muse Milky Cleanser", "300", ""},
+	})
+	got := LabelChristinaBlank(workbook, "бланк.xlsx")
+	if got != "PROFF" {
+		t.Fatalf("got %q, want PROFF", got)
 	}
-	if got[0].Label != "HOME" || got[1].Label != "PROFF" {
-		t.Fatalf("expected HOME then PROFF, got %+v", got)
+}
+
+func TestLabelChristinaBlankReadsHomeCareSection(t *testing.T) {
+	workbook := newFakeWorkbook("Лист1", [][]string{
+		{"Код", "Наименование препарата", "Форма выпуска (мл)", "Кол-во"},
+		{"", "Домашний уход"},
+		{"CHR967", "Muse Regenerating Cream", "50", ""},
+	})
+	got := LabelChristinaBlank(workbook, "бланк.xlsx")
+	if got != "HOME" {
+		t.Fatalf("got %q, want HOME", got)
+	}
+}
+
+func TestLabelChristinaBlankUsesFileNameWhenSectionsAreMissing(t *testing.T) {
+	workbook := newFakeWorkbook("Лист1", [][]string{
+		{"Код", "Наименование", "Кол-во"},
+		{"CHR050", "Post Peel Cream", ""},
+	})
+	got := LabelChristinaBlank(workbook, "Актуальный_бланк PROFF.xlsx")
+	if got != "PROFF" {
+		t.Fatalf("got %q, want PROFF", got)
+	}
+}
+
+func TestLabelChristinaBlankPrefersWorkbookOverFileName(t *testing.T) {
+	workbook := newFakeWorkbook("Лист1", [][]string{
+		{"Код", "Наименование препарата", "Кол-во"},
+		{"", "Профессиональный уход"},
+		{"CHR884", "Muse Milky Cleanser", ""},
+	})
+	got := LabelChristinaBlank(workbook, "Бланк HOME.xlsx")
+	if got != "PROFF" {
+		t.Fatalf("got %q, want PROFF from the blank itself, got from file name", got)
 	}
 }
 

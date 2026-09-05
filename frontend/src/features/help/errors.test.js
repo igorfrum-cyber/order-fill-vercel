@@ -33,8 +33,8 @@ test("userFacingError turns technical API text into Russian", () => {
 
 test("userFacingError keeps already human Russian messages", () => {
   assert.equal(
-    userFacingError(new Error("Для Christina нужны два бланка: HOME и PROFF.")),
-    "Для Christina нужны два бланка: HOME и PROFF.",
+    userFacingError(new Error("для CHRISTINA нужен один бланк поставщика. Сейчас загружено несколько файлов — оставьте один")),
+    "для CHRISTINA нужен один бланк поставщика. Сейчас загружено несколько файлов — оставьте один",
   );
 });
 

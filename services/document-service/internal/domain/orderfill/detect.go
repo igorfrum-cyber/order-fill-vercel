@@ -1,6 +1,7 @@
 package orderfill
 
 import (
+	"cmp"
 	"fmt"
 	"regexp"
 	"strings"
@@ -45,11 +46,8 @@ type BlankPlan struct {
 	Label string
 }
 
-// PlanBlanks checks how many blanks the brand needs and labels CHRISTINA files.
+// PlanBlanks checks that the brand got exactly one supplier blank.
 func PlanBlanks(brandKey string, names []string) ([]BlankPlan, error) {
-	if brandKey == "christina" {
-		return planChristinaBlanks(names)
-	}
 	if len(names) != 1 {
 		label := brand.Rule(brandKey).Label
 		return nil, fmt.Errorf("%w: для %s нужен один бланк поставщика. Сейчас загружено несколько файлов — оставьте один", ErrInvalidInput, label)
@@ -61,38 +59,49 @@ func blankPlanID(index int) string {
 	return fmt.Sprintf("blank-%d", index+1)
 }
 
-func planChristinaBlanks(names []string) ([]BlankPlan, error) {
-	if len(names) != 2 {
-		return nil, fmt.Errorf("%w: для Christina нужны два бланка: HOME и PROFF. Сейчас выбран другой набор файлов", ErrInvalidInput)
+// LabelChristinaBlank names the blank HOME or PROFF from section headers,
+// then from the file name.
+func LabelChristinaBlank(workbook spreadsheet.Workbook, fileName string) string {
+	kind := cmp.Or(christinaLineFromWorkbook(workbook), blankLineKind(fileName))
+	if kind == "" {
+		return fileName
 	}
-	first := blankLineKind(names[0])
-	second := blankLineKind(names[1])
-	if first == "" && second == "" {
-		first, second = "home", "proff"
-	}
-	if first == "" && second != "" {
-		first = remainingChristinaLine(second)
-	}
-	if second == "" && first != "" {
-		second = remainingChristinaLine(first)
-	}
-	if first == "" || second == "" || first == second {
-		return nil, fmt.Errorf("%w: не поняли, какой бланк HOME, а какой PROFF. Назовите файлы HOME и PROFF", ErrInvalidInput)
-	}
-	return []BlankPlan{
-		{Index: 0, ID: blankPlanID(0), Label: strings.ToUpper(first)},
-		{Index: 1, ID: blankPlanID(1), Label: strings.ToUpper(second)},
-	}, nil
+	return strings.ToUpper(kind)
 }
 
-func remainingChristinaLine(kind string) string {
-	if kind == "home" {
+func christinaLineFromWorkbook(workbook spreadsheet.Workbook) string {
+	var home, proff int
+	for _, sheet := range workbook.Sheets() {
+		bounds := sheet.Bounds()
+		for row := 1; row <= bounds.MaxRow; row++ {
+			for column := 1; column <= bounds.MaxColumn; column++ {
+				switch christinaSectionKind(sheet.Value(row, column)) {
+				case "proff":
+					proff++
+				case "home":
+					home++
+				}
+			}
+		}
+	}
+	if proff > home {
 		return "proff"
 	}
-	if kind == "proff" {
+	if home > proff {
 		return "home"
 	}
 	return ""
+}
+
+func christinaSectionKind(text string) string {
+	switch normalize.NormalizeHeader(text) {
+	case "профессиональный уход", "профессиональная линия":
+		return "proff"
+	case "домашний уход", "домашняя линия", "home care":
+		return "home"
+	default:
+		return ""
+	}
 }
 
 func blankLineKind(name string) string {
