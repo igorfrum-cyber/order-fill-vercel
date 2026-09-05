@@ -43,19 +43,18 @@ export function JobHistory({ me, companyId, onCompany, onOpen, onNew }) {
         ) : null}
       </div>
       {canCreate ? (
-        <div className="mb-6 grid gap-3 sm:grid-cols-2">
-          <JobTypeCard
-            tour="order"
-            title="Заполнить бланк закупки"
-            hint="Для заказа поставщику"
-            onClick={() => onNew("order")}
-          />
-          <JobTypeCard
-            tour="north"
-            title="Соединить северные бланки"
-            hint="Для распределения между городами"
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+          <p className="text-[14px] text-[var(--color-ink-soft)]">
+            Новая закупка открывается сразу после входа. Здесь можно вернуться к прошлым выгрузкам.
+          </p>
+          <button
+            type="button"
+            data-tour="north"
             onClick={() => onNew("north")}
-          />
+            className="rounded-lg border border-[var(--color-line)] bg-[var(--color-surface)] px-3 py-2 text-[14px] font-medium text-[var(--color-ink-soft)] transition hover:border-[var(--color-brand)] hover:text-[var(--color-ink)]"
+          >
+            Соединить северные бланки
+          </button>
         </div>
       ) : (
         <p className="mb-4 text-[14px] text-[var(--color-ink-soft)]">
@@ -129,19 +128,5 @@ function JobStatus({ status }) {
     >
       {jobStatusLabel(status)}
     </span>
-  );
-}
-
-function JobTypeCard({ title, hint, onClick, tour }) {
-  return (
-    <button
-      type="button"
-      data-tour={tour}
-      onClick={onClick}
-      className="rounded-2xl border border-[var(--color-line)] bg-[var(--color-surface)] p-5 text-left transition hover:border-[var(--color-brand)] hover:shadow-sm"
-    >
-      <div className="text-[16px] font-semibold">{title}</div>
-      <p className="mt-1 text-[13px] leading-relaxed text-[var(--color-ink-soft)]">{hint}</p>
-    </button>
   );
 }
