@@ -181,7 +181,7 @@ export function tourForScene(scene, role) {
         target: "preview-download",
         placement: "top",
         title: "Скачать",
-        body: "Все заполненные бланки уходят одним архивом.",
+        body: "Каждый заполненный бланк скачивается отдельным файлом.",
       },
     ];
   }

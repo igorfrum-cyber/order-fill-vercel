@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import {
   createOrderFillJob,
-  downloadJobArchive,
+  downloadJobFile,
   FINALIZE_DONE_STATUSES,
   getJobReport,
   listJobFiles,
@@ -36,7 +36,7 @@ function triggerDownload(url, fileName) {
 
 function triggerBlobDownload(blob, fileName) {
   const url = URL.createObjectURL(blob);
-  triggerDownload(url, fileName || "заполненные-файлы.zip");
+  triggerDownload(url, fileName || "файл");
   window.setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
@@ -184,7 +184,7 @@ export function OrderFillApp({ companyId, resumeJob, onHome, onHelp, onStage }) 
     setCommentGateKeys(null);
     setInvalidKeys(new Set());
     if (afterCommentGate === "download") {
-      downloadArchive();
+      downloadFiles();
       return;
     }
     proceedToPreview();
@@ -249,7 +249,7 @@ export function OrderFillApp({ companyId, resumeJob, onHome, onHelp, onStage }) 
     setStatus("");
   }
 
-  async function downloadArchive() {
+  async function downloadFiles() {
     if (!jobId) return;
     const invalid = validateReviewEdits(rows, edits);
     if (invalid.length) {
@@ -261,10 +261,18 @@ export function OrderFillApp({ companyId, resumeJob, onHome, onHelp, onStage }) 
     setBusy(true);
     try {
       await persistEditsIfNeeded();
-      setStatus("Скачиваю архив...");
-      const archive = await downloadJobArchive(jobId);
-      triggerBlobDownload(archive.blob, archive.fileName);
-      setStatus("Файлы готовы");
+      setStatus("Скачиваю файлы...");
+      const listed = await listJobFiles(jobId);
+      const files = listed.files || [];
+      if (!files.length) {
+        throw new Error("Нет готовых файлов для скачивания.");
+      }
+      setOutputFiles(files);
+      for (const file of files) {
+        const download = await downloadJobFile(jobId, file.id);
+        triggerBlobDownload(download.blob, download.fileName || file.name);
+      }
+      setStatus("Файлы скачаны");
     } catch (err) {
       setStatus(userFacingError(err, "Не удалось скачать файлы."));
     } finally {
@@ -366,7 +374,7 @@ export function OrderFillApp({ companyId, resumeJob, onHome, onHelp, onStage }) 
               refreshKey={previewEpoch}
               onBack={backToFill}
               onReady={() => setStatus("")}
-              onDownload={downloadArchive}
+              onDownload={downloadFiles}
             />
           </ErrorBoundary>
         )}

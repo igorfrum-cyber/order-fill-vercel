@@ -314,7 +314,7 @@ export function PreviewStage({
         <div className="ml-auto flex items-center gap-3">
           <span className="font-mono text-[13px] text-[var(--color-ink-soft)]">{status}</span>
           <PrimaryButton dataTour="preview-download" onClick={onDownload} disabled={busy}>
-            {busy ? "Готовлю архив..." : "Скачать файлы"}
+            {busy ? "Готовлю файлы..." : "Скачать файлы"}
             <IconDownload className="h-4 w-4" />
           </PrimaryButton>
         </div>
