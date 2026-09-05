@@ -130,3 +130,17 @@ export function scrollTopForRow(row, rowHeight = PREVIEW_ROW_HEIGHT, offsets) {
   if (offsets) return offsets[index] || 0;
   return Math.max(0, (index - 1) * rowHeight);
 }
+
+export function scrollLeftToRevealColumn({
+  column,
+  colOffsets,
+  gutter = PREVIEW_GUTTER_WIDTH,
+  viewportWidth,
+  trailingColumns = 1,
+} = {}) {
+  const colIndex = Math.max(1, Math.floor(Number(column) || 1)) - 1;
+  const last = Math.max(0, (colOffsets?.length || 1) - 1);
+  const after = Math.min(last, colIndex + 1 + Math.max(0, Number(trailingColumns) || 0));
+  const rightEdge = gutter + (colOffsets?.[after] || 0);
+  return Math.max(0, rightEdge - (Number(viewportWidth) || 0));
+}

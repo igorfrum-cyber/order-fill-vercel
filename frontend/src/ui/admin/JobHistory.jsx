@@ -43,10 +43,15 @@ export function JobHistory({ me, companyId, onCompany, onOpen, onNew }) {
         ) : null}
       </div>
       {canCreate ? (
-        <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-          <p className="text-[14px] text-[var(--color-ink-soft)]">
-            Новая закупка открывается сразу после входа. Здесь можно вернуться к прошлым выгрузкам.
-          </p>
+        <div className="mb-4 flex flex-wrap items-center justify-end gap-2">
+          <button
+            type="button"
+            data-tour="order"
+            onClick={() => onNew("order")}
+            className="rounded-lg bg-[var(--color-brand)] px-3 py-2 text-[14px] font-medium text-white transition hover:bg-[var(--color-brand-strong)]"
+          >
+            Заполнить бланк закупки
+          </button>
           <button
             type="button"
             data-tour="north"

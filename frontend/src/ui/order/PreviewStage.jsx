@@ -273,6 +273,7 @@ export function PreviewStage({
                 freezeHeader={canFreezeHeader}
                 highlightRow={highlightRow}
                 focusRow={focusRow}
+                focusColumn={editColumns.quantity}
                 columns={sheet.columns}
                 rowHeight={sheet.row_height}
                 rowHeights={sheet.row_heights}

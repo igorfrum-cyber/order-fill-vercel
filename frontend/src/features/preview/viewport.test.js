@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 
 import { columnName, columnLetters, visibleColumnCount, PREVIEW_MAX_COLUMNS } from "./columns.js";
-import { missingRange, visibleWindow, buildRowOffsets, parseCustomHeights, gridContentWidth, columnSize, columnOffsets, spanSize, PREVIEW_GUTTER_WIDTH } from "./viewport.js";
+import { missingRange, visibleWindow, buildRowOffsets, parseCustomHeights, gridContentWidth, columnSize, columnOffsets, spanSize, scrollLeftToRevealColumn, PREVIEW_GUTTER_WIDTH } from "./viewport.js";
 import { previewFileTitle } from "./fileTitle.js";
 
 test("columnName matches spreadsheet letters through AI", () => {
@@ -65,6 +65,33 @@ test("columnSize keeps narrow spacer columns instead of the 92px fallback", () =
   assert.equal(columnSize(0, [10, 91]), 10);
   assert.equal(columnSize(1, [10, 0]), 0);
   assert.equal(columnSize(0, undefined), 92);
+});
+
+test("scrollLeftToRevealColumn shifts right so the fact column sits at the viewport edge", () => {
+  const offsets = columnOffsets(35, Array(35).fill(80));
+  const scrollLeft = scrollLeftToRevealColumn({
+    column: 34,
+    colOffsets: offsets,
+    gutter: PREVIEW_GUTTER_WIDTH,
+    viewportWidth: 960,
+    trailingColumns: 1,
+  });
+  assert.equal(scrollLeft, PREVIEW_GUTTER_WIDTH + 35 * 80 - 960);
+  assert.ok(scrollLeft > offsets[23], "column X and earlier stay off-screen to the left");
+});
+
+test("scrollLeftToRevealColumn stays at zero when the work columns already fit", () => {
+  const offsets = columnOffsets(4, [90, 90, 90, 90]);
+  assert.equal(
+    scrollLeftToRevealColumn({
+      column: 3,
+      colOffsets: offsets,
+      gutter: PREVIEW_GUTTER_WIDTH,
+      viewportWidth: 800,
+      trailingColumns: 1,
+    }),
+    0,
+  );
 });
 
 test("spanSize of a merge equals the union of its columns", () => {
