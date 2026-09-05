@@ -41,9 +41,9 @@ test("ORDER_BRANDS is the catalog used for labels and North mode", () => {
   assert.equal(brandLabel("sothys"), "SOTHYS");
 });
 
-test("blankSlotsForBrand splits Christina into HOME and PROFF", () => {
+test("blankSlotsForBrand asks for one blank even for Christina", () => {
   assert.deepEqual(blankSlotsForBrand("angiopharm").map((slot) => slot.id), ["main"]);
-  assert.deepEqual(blankSlotsForBrand("christina").map((slot) => slot.id), ["home", "proff"]);
+  assert.deepEqual(blankSlotsForBrand("christina").map((slot) => slot.id), ["main"]);
 });
 
 test("looksLikeChristinaSource reads the 1C file name", () => {
@@ -52,9 +52,8 @@ test("looksLikeChristinaSource reads the 1C file name", () => {
   assert.equal(looksLikeChristinaSource("Ангио Тюмень .xlsx"), false);
 });
 
-test("blankSlotsForSource asks for HOME and PROFF when the sales table is Christina", () => {
-  assert.deepEqual(blankSlotsForSource("Кристина Тюмень .xlsx").map((slot) => slot.id), ["home", "proff"]);
+test("blankSlotsForSource asks for one blank when the sales table is Christina", () => {
+  assert.deepEqual(blankSlotsForSource("Кристина Тюмень .xlsx").map((slot) => slot.id), ["main"]);
   const other = blankSlotsForSource("Ангио Тюмень .xlsx");
-  assert.deepEqual(other.map((slot) => slot.id), ["main", "extra"]);
-  assert.equal(other[1].optional, true);
+  assert.deepEqual(other.map((slot) => slot.id), ["main"]);
 });

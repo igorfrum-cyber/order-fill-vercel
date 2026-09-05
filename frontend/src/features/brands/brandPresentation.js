@@ -65,13 +65,7 @@ export function brandLabel(brand) {
   return ORDER_BRANDS.find((item) => item.id === brand)?.label || brand;
 }
 
-export function blankSlotsForBrand(brand) {
-  if (usesChristinaSplitBlank(brand)) {
-    return [
-      { id: "home", label: "Бланк HOME", hint: "HOME-бланк для заполнения количеств", accept: ".xlsx,.xlsm" },
-      { id: "proff", label: "Бланк PROFF", hint: "PROFF-бланк для заполнения количеств", accept: ".xlsx,.xlsm" },
-    ];
-  }
+export function blankSlotsForBrand(_brand) {
   return [
     {
       id: "main",
@@ -87,23 +81,13 @@ export function looksLikeChristinaSource(fileName) {
   return value.includes("кристин") || value.includes("christina");
 }
 
-export function blankSlotsForSource(fileName) {
-  if (looksLikeChristinaSource(fileName)) {
-    return blankSlotsForBrand("christina");
-  }
+export function blankSlotsForSource(_fileName) {
   return [
     {
       id: "main",
       label: "Бланк",
       hint: "Бланк для заполнения количеств",
       accept: ".xlsx,.xlsm,.xls",
-    },
-    {
-      id: "extra",
-      label: "Второй бланк",
-      hint: "Нужен только для CHRISTINA (HOME / PROFF)",
-      accept: ".xlsx,.xlsm",
-      optional: true,
     },
   ];
 }

@@ -81,6 +81,9 @@ func Fill(command FillCommand) (Result, error) {
 	if rule.BlankLayout != "" {
 		return Result{}, fmt.Errorf("%w: раскладка бланка %q для бренда %s пока не поддерживается сервисом", ErrInvalidInput, rule.BlankLayout, rule.Label)
 	}
+	if command.Brand == "christina" {
+		command.BlankLabel = LabelChristinaBlank(command.Blank, command.BlankLabel)
+	}
 
 	command.report(0.02, "Читаю таблицу заказа")
 	source, err := readSource(command.Source, command.OrderMonth, rule, func(fraction float64, message string) {

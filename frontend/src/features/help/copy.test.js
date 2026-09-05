@@ -83,6 +83,13 @@ test("tourForRole points at on-screen controls without jargon", () => {
   }
 });
 
+test("order-upload tour does not ask for two Christina blanks", () => {
+  const blank = tourForScene("order-upload", "purchaser").find((step) => step.target === "blank");
+  assert.ok(blank);
+  assert.equal(/два бланка|HOME и PROFF/i.test(blank.body), false);
+  assert.match(blank.body, /один бланк|лини/i);
+});
+
 test("tourForScene covers the rest of the working screens", () => {
   const scenes = ["order-upload", "order-fill", "order-preview", "north", "users", "company", "companies", "overview", "account"];
   for (const scene of scenes) {
