@@ -4,6 +4,9 @@ import test from "node:test";
 import {
   accessSummary,
   canEditCompanyProfile,
+  canSetMatchingMode,
+  matchingModeOptions,
+  normalizeMatchingMode,
   canInviteRole,
   canManageListedUser,
   companyLoginLogoURL,
@@ -85,6 +88,23 @@ test("company owner and company admin edit the company profile", () => {
   assert.equal(canEditCompanyProfile("company_admin"), true);
   assert.equal(canEditCompanyProfile("platform_admin"), false);
   assert.equal(canEditCompanyProfile("purchaser"), false);
+});
+
+test("only platform admin can set matching mode", () => {
+  assert.equal(canSetMatchingMode("platform_admin"), true);
+  assert.equal(canSetMatchingMode("company_owner"), false);
+  assert.equal(canSetMatchingMode("company_admin"), false);
+  assert.equal(canSetMatchingMode("purchaser"), false);
+});
+
+test("matchingModeOptions are standard and smart", () => {
+  assert.deepEqual(
+    matchingModeOptions().map((option) => option.value),
+    ["standard", "smart"],
+  );
+  assert.equal(normalizeMatchingMode("smart"), "smart");
+  assert.equal(normalizeMatchingMode(""), "standard");
+  assert.equal(normalizeMatchingMode("nope"), "standard");
 });
 
 test("needsSecurityNudge prompts every signed-in user until a passkey or code is on", () => {

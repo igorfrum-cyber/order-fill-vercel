@@ -1,0 +1,8 @@
+{
+  "go.toolsEnvVars": {
+    "GOWORK": "${workspaceFolder}/backend/go.work"
+  },
+  "gopls": {
+    "directoryFilters": ["-frontend", "-node_modules", "-services", "-.git", "-dist"]
+  }
+}

@@ -1,13 +1,22 @@
 # Заполнение бланка заказа
 
-Сервисная схема:
+Текущий локальный рантайм — backend v2:
 
-- `frontend/` — загрузка файлов, отчёт и ручные правки;
-- `services/api-service/` — jobs, метаданные, статус;
-- `services/document-service/` — Excel-логика и отчёты;
-- Redis — очередь, PostgreSQL — метаданные, MinIO — файлы.
+- `frontend/` ходит в `gateway-service` (`:8080`);
+- внутренние сервисы общаются по gRPC;
+- Redis — очередь jobs, Excel считает `document-worker`.
 
-Браузер Excel не разбирает.
+Старый `services/api-service` в compose больше не поднимается.
+
+```text
+frontend --> gateway-service --> identity / jobs / files / …
+                              --> document-worker (Redis)
+```
+
+Целевой дизайн:
+
+- `docs/plans/2026-09-04-microservice-architecture-v2-design.md`
+- `docs/plans/2026-09-04-backend-v2-microservices-implementation-plan.md`
 
 ## Локальный запуск
 
@@ -17,9 +26,10 @@ docker compose -f deploy/docker-compose.yml up --build
 ```
 
 - frontend: http://127.0.0.1:3200
-- api-service: http://127.0.0.1:8080/healthz
-- document-service: http://127.0.0.1:8081/healthz
+- gateway: http://127.0.0.1:8080/healthz
 - MinIO console: http://127.0.0.1:9001
+
+Первый вход: смотрите в логах `identity-service` строку `bootstrap admin invite` и примите приглашение на `/invite`.
 
 Только UI:
 
@@ -38,5 +48,5 @@ make verify
 
 `make lint` — только версии, ESLint, gofmt, vet, golangci-lint, gosec и `go mod tidy`.
 
-Контракт API: `packages/contracts/openapi.yaml`.
+Контракт API: `backend/services/gateway-service/api/openapi.yaml` (указатель: `packages/contracts/openapi.yaml`).
 Правила для агентов: `CLAUDE.md`.

@@ -1,0 +1,4 @@
+package: spec
+output: ../internal/transport/httpapi/spec.gen.go
+generate:
+  embedded-spec: true

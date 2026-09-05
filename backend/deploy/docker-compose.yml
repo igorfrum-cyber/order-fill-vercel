@@ -1,0 +1,381 @@
+services:
+  frontend:
+    build:
+      context: ../../frontend
+      dockerfile: Dockerfile
+      args:
+        VITE_API_BASE_URL: ""
+    restart: unless-stopped
+    ports:
+      - "3200:80"
+    depends_on:
+      gateway-service:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost/"]
+      interval: 10s
+      timeout: 3s
+      retries: 10
+
+  gateway-service:
+    build:
+      context: ..
+      dockerfile: services/gateway-service/Dockerfile
+    restart: unless-stopped
+    environment:
+      GATEWAY_ADDR: ":8080"
+      IDENTITY_GRPC_ADDR: identity-service:9091
+      IDENTITY_HTTP_ADDR: http://identity-service:8082
+      TWOFA_GRPC_ADDR: twofa-service:9092
+      PASSKEY_GRPC_ADDR: passkey-service:9093
+      JOB_GRPC_ADDR: job-service:9094
+      FILE_GRPC_ADDR: file-service:9095
+      AUDIT_GRPC_ADDR: audit-service:9100
+      WORKER_HEALTH_URL: http://document-worker:8092/healthz
+      FILE_HEALTH_URL: http://file-service:8086/healthz
+      POSTGRES_ADDR: postgres:5432
+      REDIS_ADDR: redis:6379
+      API_ALLOWED_ORIGINS: ${API_ALLOWED_ORIGINS:-*}
+      SESSION_COOKIE_SECURE: ${SESSION_COOKIE_SECURE:-false}
+      SESSION_COOKIE_DOMAIN: ${SESSION_COOKIE_DOMAIN:-}
+    ports:
+      - "127.0.0.1:8080:8080"
+    depends_on:
+      identity-service:
+        condition: service_healthy
+      twofa-service:
+        condition: service_healthy
+      passkey-service:
+        condition: service_healthy
+      job-service:
+        condition: service_healthy
+      file-service:
+        condition: service_healthy
+      audit-service:
+        condition: service_healthy
+      document-worker:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8080/healthz"]
+      interval: 10s
+      timeout: 3s
+      retries: 10
+
+  identity-service:
+    build:
+      context: ..
+      dockerfile: services/identity-service/Dockerfile
+    restart: unless-stopped
+    environment:
+      IDENTITY_GRPC_ADDR: ":9091"
+      IDENTITY_HEALTH_ADDR: ":8082"
+      DATABASE_URL: ${DATABASE_URL:-postgres://order_fill:order_fill@postgres:5432/order_fill?sslmode=disable}
+      BOOTSTRAP_ADMIN_LOGIN: ${BOOTSTRAP_ADMIN_LOGIN:-admin}
+      TWOFA_GRPC_ADDR: twofa-service:9092
+      PASSKEY_GRPC_ADDR: passkey-service:9093
+    expose:
+      - "9091"
+      - "8082"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      twofa-service:
+        condition: service_healthy
+      passkey-service:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8082/healthz"]
+      interval: 10s
+      timeout: 3s
+      retries: 10
+
+  twofa-service:
+    build:
+      context: ..
+      dockerfile: services/twofa-service/Dockerfile
+    restart: unless-stopped
+    environment:
+      TWOFA_GRPC_ADDR: ":9092"
+      TWOFA_HEALTH_ADDR: ":8083"
+      TWOFA_MASTER_KEY: ${TWOFA_MASTER_KEY:-local-dev-twofa-master-key}
+      DATABASE_URL: ${DATABASE_URL:-postgres://order_fill:order_fill@postgres:5432/order_fill?sslmode=disable}
+      QUEUE_URL: ${QUEUE_URL:-redis://redis:6379/0}
+    expose:
+      - "9092"
+      - "8083"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8083/healthz"]
+      interval: 10s
+      timeout: 3s
+      retries: 10
+
+  passkey-service:
+    build:
+      context: ..
+      dockerfile: services/passkey-service/Dockerfile
+    restart: unless-stopped
+    environment:
+      PASSKEY_GRPC_ADDR: ":9093"
+      PASSKEY_HEALTH_ADDR: ":8084"
+      DATABASE_URL: ${DATABASE_URL:-postgres://order_fill:order_fill@postgres:5432/order_fill?sslmode=disable}
+      QUEUE_URL: ${QUEUE_URL:-redis://redis:6379/0}
+      WEBAUTHN_RP_ID: ${WEBAUTHN_RP_ID:-}
+      WEBAUTHN_RP_DISPLAY_NAME: ${WEBAUTHN_RP_DISPLAY_NAME:-Order Fill}
+    expose:
+      - "9093"
+      - "8084"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8084/healthz"]
+      interval: 10s
+      timeout: 3s
+      retries: 10
+
+  job-service:
+    build:
+      context: ..
+      dockerfile: services/job-service/Dockerfile
+    restart: unless-stopped
+    environment:
+      JOB_GRPC_ADDR: ":9094"
+      JOB_HEALTH_ADDR: ":8085"
+      QUEUE_URL: ${QUEUE_URL:-redis://redis:6379/0}
+      FILE_GRPC_ADDR: file-service:9095
+      IDENTITY_GRPC_ADDR: identity-service:9091
+      DATABASE_URL: ${DATABASE_URL:-postgres://order_fill:order_fill@postgres:5432/order_fill?sslmode=disable}
+    expose:
+      - "9094"
+      - "8085"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      file-service:
+        condition: service_healthy
+      identity-service:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8085/healthz"]
+      interval: 10s
+      timeout: 3s
+      retries: 10
+
+  file-service:
+    build:
+      context: ..
+      dockerfile: services/file-service/Dockerfile
+    restart: unless-stopped
+    environment:
+      FILE_GRPC_ADDR: ":9095"
+      FILE_HEALTH_ADDR: ":8086"
+      FILE_S3_ENDPOINT: minio:9000
+      FILE_S3_ACCESS_KEY: ${S3_ACCESS_KEY:-minioadmin}
+      FILE_S3_SECRET_KEY: ${S3_SECRET_KEY:-minioadmin}
+      FILE_S3_BUCKET: ${S3_BUCKET:-order-fill}
+      FILE_S3_USE_SSL: "false"
+      DATABASE_URL: ${DATABASE_URL:-postgres://order_fill:order_fill@postgres:5432/order_fill?sslmode=disable}
+    expose:
+      - "9095"
+      - "8086"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8086/healthz"]
+      interval: 10s
+      timeout: 3s
+      retries: 10
+
+  document-api:
+    build:
+      context: ..
+      dockerfile: services/document-service/Dockerfile
+      args:
+        BIN: document-api
+    restart: unless-stopped
+    environment:
+      DOCUMENT_GRPC_ADDR: ":9096"
+      DOCUMENT_HEALTH_ADDR: ":8087"
+      FILE_GRPC_ADDR: file-service:9095
+    expose:
+      - "9096"
+      - "8087"
+    depends_on:
+      file-service:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8087/healthz"]
+      interval: 10s
+      timeout: 3s
+      retries: 10
+
+  document-worker:
+    build:
+      context: ..
+      dockerfile: services/document-service/Dockerfile
+      args:
+        BIN: document-worker
+    restart: unless-stopped
+    environment:
+      DOCUMENT_GRPC_ADDR: ":9096"
+      DOCUMENT_HEALTH_ADDR: ":8092"
+      QUEUE_URL: ${QUEUE_URL:-redis://redis:6379/0}
+      JOB_GRPC_ADDR: job-service:9094
+      FILE_GRPC_ADDR: file-service:9095
+      CALCULATION_GRPC_ADDR: calculation-service:9099
+    expose:
+      - "8092"
+    depends_on:
+      redis:
+        condition: service_healthy
+      job-service:
+        condition: service_healthy
+      file-service:
+        condition: service_healthy
+      calculation-service:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8092/healthz"]
+      interval: 10s
+      timeout: 3s
+      retries: 10
+
+  matching-service:
+    build:
+      context: ..
+      dockerfile: services/matching-service/Dockerfile
+    restart: unless-stopped
+    environment:
+      MATCHING_GRPC_ADDR: ":9097"
+      MATCHING_HEALTH_ADDR: ":8088"
+    expose:
+      - "9097"
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8088/healthz"]
+      interval: 10s
+      timeout: 3s
+      retries: 10
+
+  brand-service:
+    build:
+      context: ..
+      dockerfile: services/brand-service/Dockerfile
+    restart: unless-stopped
+    environment:
+      BRAND_GRPC_ADDR: ":9098"
+      BRAND_HEALTH_ADDR: ":8089"
+    expose:
+      - "9098"
+      - "8089"
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8089/healthz"]
+      interval: 10s
+      timeout: 3s
+      retries: 10
+
+  calculation-service:
+    build:
+      context: ..
+      dockerfile: services/calculation-service/Dockerfile
+    restart: unless-stopped
+    environment:
+      CALCULATION_GRPC_ADDR: ":9099"
+      CALCULATION_HEALTH_ADDR: ":8090"
+    expose:
+      - "9099"
+      - "8090"
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8090/healthz"]
+      interval: 10s
+      timeout: 3s
+      retries: 10
+
+  audit-service:
+    build:
+      context: ..
+      dockerfile: services/audit-service/Dockerfile
+    restart: unless-stopped
+    environment:
+      AUDIT_GRPC_ADDR: ":9100"
+      AUDIT_HEALTH_ADDR: ":8091"
+      DATABASE_URL: ${DATABASE_URL:-postgres://order_fill:order_fill@postgres:5432/order_fill?sslmode=disable}
+    expose:
+      - "9100"
+      - "8091"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8091/healthz"]
+      interval: 10s
+      timeout: 3s
+      retries: 10
+
+  postgres:
+    image: mirror.gcr.io/library/postgres:18-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: order_fill
+      POSTGRES_USER: order_fill
+      POSTGRES_PASSWORD: order_fill
+    ports:
+      - "127.0.0.1:5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U order_fill -d order_fill"]
+      interval: 10s
+      timeout: 3s
+      retries: 10
+
+  redis:
+    image: mirror.gcr.io/library/redis:8-alpine
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:6379:6379"
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 10
+
+  minio:
+    image: mirror.gcr.io/minio/minio:RELEASE.2025-09-07T16-13-09Z
+    restart: unless-stopped
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ${S3_ACCESS_KEY:-minioadmin}
+      MINIO_ROOT_PASSWORD: ${S3_SECRET_KEY:-minioadmin}
+    ports:
+      - "127.0.0.1:9000:9000"
+      - "127.0.0.1:9001:9001"
+    volumes:
+      - minio-data:/data
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  postgres-data:
+  redis-data:
+  minio-data:

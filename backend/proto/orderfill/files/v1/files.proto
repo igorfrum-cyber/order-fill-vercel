@@ -1,0 +1,76 @@
+syntax = "proto3";
+
+package orderfill.files.v1;
+
+option go_package = "order-fill/backend/proto/gen/go/orderfill/files/v1;filesv1";
+
+import "orderfill/common/v1/common.proto";
+
+service FileService {
+  rpc PutObject(PutObjectRequest) returns (PutObjectResponse);
+  rpc GetObject(GetObjectRequest) returns (GetObjectResponse);
+  rpc CreateUpload(CreateUploadRequest) returns (CreateUploadResponse);
+  rpc FinalizeUpload(FinalizeUploadRequest) returns (FinalizeUploadResponse);
+  rpc CreateArchive(CreateArchiveRequest) returns (CreateArchiveResponse);
+}
+
+message ObjectMeta {
+  string id = 1;
+  string key = 2;
+  string name = 3;
+  string content_type = 4;
+  int64 size = 5;
+}
+
+message PutObjectRequest {
+  orderfill.common.v1.RequestMeta meta = 1;
+  string key = 2;
+  string name = 3;
+  string content_type = 4;
+  bytes body = 5;
+}
+
+message PutObjectResponse {
+  ObjectMeta object = 1;
+}
+
+message GetObjectRequest {
+  orderfill.common.v1.RequestMeta meta = 1;
+  string id = 2;
+  string key = 3;
+}
+
+message GetObjectResponse {
+  ObjectMeta object = 1;
+  bytes body = 2;
+}
+
+message CreateUploadRequest {
+  orderfill.common.v1.RequestMeta meta = 1;
+  string name = 2;
+  string content_type = 3;
+}
+
+message CreateUploadResponse {
+  string upload_id = 1;
+}
+
+message FinalizeUploadRequest {
+  orderfill.common.v1.RequestMeta meta = 1;
+  string upload_id = 2;
+  bytes body = 3;
+}
+
+message FinalizeUploadResponse {
+  ObjectMeta object = 1;
+}
+
+message CreateArchiveRequest {
+  orderfill.common.v1.RequestMeta meta = 1;
+  repeated string object_ids = 2;
+  string name = 3;
+}
+
+message CreateArchiveResponse {
+  ObjectMeta object = 1;
+}

@@ -1,0 +1,28 @@
+syntax = "proto3";
+
+package orderfill.common.v1;
+
+option go_package = "order-fill/backend/proto/gen/go/orderfill/common/v1;commonv1";
+
+enum MatchingMode {
+  MATCHING_MODE_UNSPECIFIED = 0;
+  MATCHING_MODE_STANDARD = 1;
+  MATCHING_MODE_SMART = 2;
+}
+
+enum ReportCategory {
+  REPORT_CATEGORY_UNSPECIFIED = 0;
+  REPORT_CATEGORY_NEEDS_DECISION = 1;
+  REPORT_CATEGORY_NOT_IN_SOURCE = 2;
+  REPORT_CATEGORY_CHECK_NAME_OR_VOLUME = 3;
+  REPORT_CATEGORY_NOT_IN_BLANK = 4;
+  REPORT_CATEGORY_TO_ORDER = 5;
+  REPORT_CATEGORY_ORDER_NOT_NEEDED = 6;
+}
+
+message RequestMeta {
+  string request_id = 1;
+  string idempotency_key = 2;
+  string actor_user_id = 3;
+  string company_id = 4;
+}

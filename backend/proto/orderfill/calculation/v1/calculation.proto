@@ -1,0 +1,99 @@
+syntax = "proto3";
+
+package orderfill.calculation.v1;
+
+option go_package = "order-fill/backend/proto/gen/go/orderfill/calculation/v1;calculationv1";
+
+import "orderfill/common/v1/common.proto";
+
+service CalculationService {
+  rpc CalculateOrderRecommendations(CalculateOrderRecommendationsRequest) returns (CalculateOrderRecommendationsResponse);
+  rpc CalculateAdjustedQuantity(CalculateAdjustedQuantityRequest) returns (CalculateAdjustedQuantityResponse);
+  rpc CalculateNorthPlan(CalculateNorthPlanRequest) returns (CalculateNorthPlanResponse);
+  rpc RecalculateNorthRow(RecalculateNorthRowRequest) returns (RecalculateNorthRowResponse);
+  rpc ValidateManualEdits(ValidateManualEditsRequest) returns (ValidateManualEditsResponse);
+}
+
+message OrderRow {
+  string id = 1;
+  string article = 2;
+  string name = 3;
+  double revenue = 4;
+  double stock = 5;
+  double in_transit = 6;
+  repeated double monthly_sales = 7;
+  double recommended_qty = 8;
+  string abc_category = 9;
+}
+
+message CalculateOrderRecommendationsRequest {
+  orderfill.common.v1.RequestMeta meta = 1;
+  string brand = 2;
+  repeated OrderRow rows = 3;
+}
+
+message CalculateOrderRecommendationsResponse {
+  repeated OrderRow rows = 1;
+}
+
+message CalculateAdjustedQuantityRequest {
+  string brand = 1;
+  double recommended_qty = 2;
+  double ordered_fact = 3;
+}
+
+message CalculateAdjustedQuantityResponse {
+  double qty = 1;
+}
+
+message NorthCityNeed {
+  string city = 1;
+  string article = 2;
+  double qty = 3;
+}
+
+message NorthPlanRow {
+  string article = 1;
+  string name = 2;
+  double tyumen_qty = 3;
+  double transfer_qty = 4;
+  double supplier_qty = 5;
+  string comment = 6;
+}
+
+message CalculateNorthPlanRequest {
+  orderfill.common.v1.RequestMeta meta = 1;
+  string brand = 2;
+  repeated NorthCityNeed needs = 3;
+  repeated OrderRow tyumen_stock = 4;
+}
+
+message CalculateNorthPlanResponse {
+  repeated NorthPlanRow rows = 1;
+}
+
+message RecalculateNorthRowRequest {
+  string brand = 1;
+  NorthPlanRow row = 2;
+  double edited_qty = 3;
+}
+
+message RecalculateNorthRowResponse {
+  NorthPlanRow row = 1;
+}
+
+message ManualEdit {
+  string row_id = 1;
+  double qty = 2;
+  string comment = 3;
+}
+
+message ValidateManualEditsRequest {
+  repeated ManualEdit edits = 1;
+  repeated OrderRow rows = 2;
+}
+
+message ValidateManualEditsResponse {
+  bool ok = 1;
+  repeated string blocking_row_ids = 2;
+}

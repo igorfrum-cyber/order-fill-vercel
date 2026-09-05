@@ -1,0 +1,1844 @@
+# Canonical public OpenAPI. packages/contracts/openapi.yaml is a pointer.
+openapi: 3.1.0
+info:
+  title: Order Fill Service API
+  version: 0.1.0
+  description: Job API for Excel order-fill and North merge processing.
+  license:
+    name: Proprietary
+    url: https://example.com/proprietary-license
+servers:
+  - url: http://127.0.0.1:3200
+    description: Local app (frontend origin, API via /api)
+security:
+  - sessionCookie: []
+tags:
+  - name: auth
+  - name: companies
+  - name: users
+  - name: jobs
+  - name: files
+  - name: preview
+  - name: audit
+  - name: status
+paths:
+  /readyz:
+    get:
+      operationId: getReadyz
+      tags: [status]
+      summary: Readiness check
+      tags: [status]
+      security: []
+      responses:
+        "200":
+          description: Service is ready.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [status]
+                properties:
+                  status:
+                    type: string
+                    enum: [ok]
+        "503":
+          description: Service is not ready.
+    /healthz:
+    get:
+      operationId: getHealthz
+      tags: [status]
+      summary: Health check
+      security: []
+      responses:
+        "200":
+          description: Service is healthy.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [status]
+                properties:
+                  status:
+                    type: string
+                    enum: [ok]
+        "400":
+          $ref: "#/components/responses/BadRequest"
+  /api/v1/auth/login:
+    post:
+      operationId: login
+      tags: [auth]
+      summary: Create a session cookie
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [login, password]
+              properties:
+                login:
+                  type: string
+                password:
+                  type: string
+                  minLength: 10
+      responses:
+        "200":
+          description: Session cookie set, or a two-factor challenge when 2FA is enabled.
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: "#/components/schemas/User"
+                  - $ref: "#/components/schemas/TwoFactorChallenge"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+  /api/v1/auth/login/2fa:
+    post:
+      operationId: completeTwoFactorLogin
+      tags: [auth]
+      summary: Complete login with a TOTP or recovery code
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [challenge_id, code]
+              properties:
+                challenge_id:
+                  type: string
+                code:
+                  type: string
+      responses:
+        "200":
+          description: Session cookie set.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+  /api/v1/auth/invite:
+    post:
+      operationId: acceptInvite
+      tags: [auth]
+      summary: Set password from a one-time invite and start a session
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [token, password]
+              properties:
+                token:
+                  type: string
+                password:
+                  type: string
+                  minLength: 10
+      responses:
+        "200":
+          description: Session cookie set.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+  /api/v1/auth/logout:
+    post:
+      operationId: logout
+      tags: [auth]
+      summary: End the current session
+      responses:
+        "204":
+          description: Cookie cleared.
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+  /api/v1/auth/logout-everywhere:
+    post:
+      operationId: logoutEverywhere
+      tags: [auth]
+      summary: End every session for the current user
+      responses:
+        "204":
+          description: All sessions removed and cookie cleared.
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+  /api/v1/auth/sessions:
+    get:
+      operationId: listSessions
+      tags: [auth]
+      summary: List active sessions for the current user
+      responses:
+        "200":
+          description: Active login sessions.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [sessions]
+                properties:
+                  sessions:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/Session"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+  /api/v1/auth/sessions/{id}/delete:
+    post:
+      operationId: revokeSession
+      tags: [auth]
+      summary: End one session
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+      responses:
+        "204":
+          description: Session removed. Cookie cleared when it was the current session.
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /api/v1/auth/password:
+    post:
+      operationId: changePassword
+      tags: [auth]
+      summary: Change the current user's password
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [current_password, password]
+              properties:
+                current_password:
+                  type: string
+                password:
+                  type: string
+                  minLength: 10
+      responses:
+        "204":
+          description: Password updated.
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+  /api/v1/auth/me:
+    get:
+      operationId: getMe
+      tags: [auth]
+      summary: Current session user
+      responses:
+        "200":
+          description: Authenticated user.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+  /api/v1/auth/2fa/setup:
+    post:
+      operationId: startTwoFactorSetup
+      tags: [auth]
+      summary: Start app-based two-factor setup
+      responses:
+        "200":
+          description: Pending TOTP secret and QR payload.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [secret, otpauth_url, qr_png_base64]
+                properties:
+                  secret:
+                    type: string
+                  otpauth_url:
+                    type: string
+                  qr_png_base64:
+                    type: string
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "409":
+          $ref: "#/components/responses/Conflict"
+  /api/v1/auth/2fa/enable:
+    post:
+      operationId: enableTwoFactor
+      tags: [auth]
+      summary: Confirm TOTP setup with a code from the app
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [code]
+              properties:
+                code:
+                  type: string
+      responses:
+        "200":
+          description: Recovery codes shown once.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [recovery_codes]
+                properties:
+                  recovery_codes:
+                    type: array
+                    items:
+                      type: string
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "409":
+          $ref: "#/components/responses/Conflict"
+  /api/v1/auth/2fa/disable:
+    post:
+      operationId: disableTwoFactor
+      tags: [auth]
+      summary: Disable two-factor authentication
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [password]
+              properties:
+                password:
+                  type: string
+      responses:
+        "204":
+          description: Two-factor disabled.
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+  /api/v1/auth/passkeys/register/begin:
+    post:
+      operationId: beginPasskeyRegistration
+      tags: [auth]
+      summary: Start adding a passkey for the current user
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+      responses:
+        "200":
+          description: Browser options for navigator.credentials.create.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PasskeyBegin"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+  /api/v1/auth/passkeys/register/finish:
+    post:
+      operationId: finishPasskeyRegistration
+      tags: [auth]
+      summary: Finish adding a passkey
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [challenge_id, credential]
+              properties:
+                challenge_id:
+                  type: string
+                name:
+                  type: string
+                credential:
+                  type: object
+                  additionalProperties: true
+      responses:
+        "200":
+          description: Stored passkey public view.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Passkey"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "409":
+          $ref: "#/components/responses/Conflict"
+  /api/v1/auth/passkeys:
+    get:
+      operationId: listPasskeys
+      tags: [auth]
+      summary: List passkeys for the current user
+      responses:
+        "200":
+          description: Passkeys without key material.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [passkeys]
+                properties:
+                  passkeys:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/Passkey"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+  /api/v1/auth/passkeys/{id}/delete:
+    post:
+      operationId: deletePasskey
+      tags: [auth]
+      summary: Remove a passkey
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "204":
+          description: Passkey removed.
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /api/v1/auth/passkeys/login/begin:
+    post:
+      operationId: beginPasskeyLogin
+      tags: [auth]
+      summary: Start passkey login
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                login:
+                  type: string
+      responses:
+        "200":
+          description: Browser options for navigator.credentials.get.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PasskeyBegin"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+  /api/v1/auth/passkeys/login/finish:
+    post:
+      operationId: finishPasskeyLogin
+      tags: [auth]
+      summary: Finish passkey login and set the session cookie
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [challenge_id, credential]
+              properties:
+                challenge_id:
+                  type: string
+                credential:
+                  type: object
+                  additionalProperties: true
+      responses:
+        "200":
+          description: Session cookie set.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+  /api/v1/jobs:
+    get:
+      operationId: listJobs
+      tags: [jobs]
+      summary: Export history visible to the current user
+      parameters:
+        - name: company_id
+          in: query
+          description: Platform admin may filter by company. Other roles ignore this.
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Job list.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [jobs]
+                properties:
+                  jobs:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/JobListItem"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+  /api/v1/public/companies/{slug}/login:
+    get:
+      operationId: getCompanyLogin
+      tags: [companies]
+      summary: Public login screen metadata for a company slug
+      security: []
+      parameters:
+        - name: slug
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Active company login screen metadata. Does not include company id or users.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [name, login_slug]
+                properties:
+                  name:
+                    type: string
+                  login_slug:
+                    type: string
+                  has_logo:
+                    type: boolean
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /api/v1/public/companies/{slug}/logo:
+    get:
+      operationId: getCompanyLogo
+      tags: [companies]
+      summary: Public company logo for the login screen
+      security: []
+      parameters:
+        - name: slug
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: PNG, JPEG or WebP image.
+          content:
+            image/png:
+              schema:
+                type: string
+                format: binary
+            image/jpeg:
+              schema:
+                type: string
+                format: binary
+            image/webp:
+              schema:
+                type: string
+                format: binary
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /api/v1/companies:
+    get:
+      operationId: listCompanies
+      tags: [companies]
+      summary: List companies (platform admin)
+      responses:
+        "200":
+          description: Companies.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [companies]
+                properties:
+                  companies:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/Company"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    post:
+      operationId: createCompany
+      tags: [companies]
+      summary: Create a company (platform admin)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name, login_slug]
+              properties:
+                name:
+                  type: string
+                login_slug:
+                  type: string
+                  description: Public latin login address, unique among companies.
+                matching_mode:
+                  type: string
+                  enum: [standard, smart]
+                  description: Platform admin only. Default standard.
+      responses:
+        "201":
+          description: Company created.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Company"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+  /api/v1/companies/{company_id}/login-slug:
+    post:
+      operationId: setCompanyLoginSlug
+      tags: [companies]
+      summary: Set the public latin login address for a company (company admin)
+      parameters:
+        - $ref: "#/components/parameters/CompanyId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [login_slug]
+              properties:
+                login_slug:
+                  type: string
+      responses:
+        "200":
+          description: Company updated.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Company"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+  /api/v1/companies/{company_id}/profile:
+    post:
+      operationId: updateCompany
+      tags: [companies]
+      summary: Update company name, public login address, and matching mode (platform admin matching_mode only)
+      parameters:
+        - $ref: "#/components/parameters/CompanyId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name, login_slug]
+              properties:
+                name:
+                  type: string
+                login_slug:
+                  type: string
+                matching_mode:
+                  type: string
+                  enum: [standard, smart]
+                  description: Ignored unless the actor is platform_admin.
+      responses:
+        "200":
+          description: Company updated.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Company"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+  /api/v1/companies/{company_id}/logo:
+    post:
+      operationId: setCompanyLogo
+      tags: [companies]
+      summary: Upload a company logo for the login screen (company admin)
+      parameters:
+        - $ref: "#/components/parameters/CompanyId"
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [logo]
+              properties:
+                logo:
+                  type: string
+                  format: binary
+      responses:
+        "200":
+          description: Company updated.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Company"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /api/v1/companies/{company_id}/logo/clear:
+    post:
+      operationId: clearCompanyLogo
+      tags: [companies]
+      summary: Remove the company login logo (company admin)
+      parameters:
+        - $ref: "#/components/parameters/CompanyId"
+      responses:
+        "200":
+          description: Company updated.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Company"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /api/v1/companies/{company_id}/disable:
+    post:
+      operationId: disableCompany
+      tags: [companies]
+      summary: Disable a company (platform admin)
+      parameters:
+        - $ref: "#/components/parameters/CompanyId"
+      responses:
+        "204":
+          description: Disabled.
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /api/v1/companies/{company_id}/users:
+    get:
+      operationId: listCompanyUsers
+      tags: [users]
+      summary: List users in a company
+      parameters:
+        - $ref: "#/components/parameters/CompanyId"
+      responses:
+        "200":
+          description: Users.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [users]
+                properties:
+                  users:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/User"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    post:
+      operationId: createCompanyUser
+      tags: [users]
+      summary: Invite a user; raw invite URL is returned once
+      parameters:
+        - $ref: "#/components/parameters/CompanyId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [login, role]
+              properties:
+                login:
+                  type: string
+                role:
+                  type: string
+                  enum: [purchaser, company_admin, company_owner]
+      responses:
+        "201":
+          description: User created with a one-time invite URL.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [user, invite_url]
+                properties:
+                  user:
+                    $ref: "#/components/schemas/User"
+                  invite_url:
+                    type: string
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /api/v1/users/{user_id}/disable:
+    post:
+      operationId: disableUser
+      tags: [users]
+      summary: Disable a user
+      parameters:
+        - $ref: "#/components/parameters/UserId"
+      responses:
+        "204":
+          description: Disabled.
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /api/v1/users/{user_id}/reset:
+    post:
+      operationId: resetUserAccess
+      tags: [users]
+      summary: Invalidate sessions and issue a new invite
+      parameters:
+        - $ref: "#/components/parameters/UserId"
+      responses:
+        "200":
+          description: New invite URL, shown once.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [invite_url]
+                properties:
+                  invite_url:
+                    type: string
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /api/v1/audit:
+    get:
+      operationId: listAudit
+      tags: [audit]
+      summary: Recent audit events (platform admin)
+      responses:
+        "200":
+          description: Audit feed.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [events]
+                properties:
+                  events:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/AuditEvent"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /api/v1/status:
+    get:
+      operationId: listStatus
+      tags: [status]
+      summary: Dependency health for platform admin
+      responses:
+        "200":
+          description: Component health.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [components]
+                properties:
+                  components:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/StatusComponent"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /api/v1/jobs/order-fill:
+    post:
+      operationId: createOrderFillJob
+      tags: [jobs]
+      summary: Create an order-fill workbook processing job
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              $ref: "#/components/schemas/OrderFillRequest"
+      responses:
+        "202":
+          description: Job accepted.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Job"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+  /api/v1/jobs/north-merge:
+    post:
+      operationId: createNorthMergeJob
+      tags: [jobs]
+      summary: Create a North merge workbook processing job
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              $ref: "#/components/schemas/NorthMergeRequest"
+      responses:
+        "202":
+          description: Job accepted.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Job"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+  /api/v1/jobs/{job_id}:
+    get:
+      operationId: getJob
+      tags: [jobs]
+      summary: Get job status and metadata
+      parameters:
+        - $ref: "#/components/parameters/JobId"
+      responses:
+        "200":
+          description: Job state.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Job"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /api/v1/jobs/{job_id}/report:
+    get:
+      operationId: getJobReport
+      tags: [jobs]
+      summary: Get report rows for a job
+      parameters:
+        - $ref: "#/components/parameters/JobId"
+      responses:
+        "200":
+          description: Job report.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/JobReport"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /api/v1/jobs/{job_id}/edits:
+    post:
+      operationId: submitJobEdits
+      tags: [jobs]
+      summary: Submit manual edits before finalization
+      parameters:
+        - $ref: "#/components/parameters/JobId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [edits]
+              properties:
+                edits:
+                  type: array
+                  items:
+                    $ref: "#/components/schemas/ManualEdit"
+      responses:
+        "202":
+          description: Edits accepted and finalization queued.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Job"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /api/v1/jobs/{job_id}/files:
+    get:
+      operationId: listJobFiles
+      tags: [files]
+      summary: List generated output files
+      parameters:
+        - $ref: "#/components/parameters/JobId"
+      responses:
+        "200":
+          description: Generated files.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [files]
+                properties:
+                  files:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/OutputFile"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /api/v1/jobs/{job_id}/archive:
+    get:
+      operationId: downloadJobArchive
+      tags: [files]
+      summary: Download every generated workbook as one zip archive
+      parameters:
+        - $ref: "#/components/parameters/JobId"
+      responses:
+        "200":
+          description: Zip archive of generated workbooks.
+          content:
+            application/zip:
+              schema:
+                type: string
+                format: binary
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /api/v1/jobs/{job_id}/files/{file_id}:
+    get:
+      operationId: downloadJobFile
+      tags: [files]
+      summary: Download one generated output file
+      parameters:
+        - $ref: "#/components/parameters/JobId"
+        - $ref: "#/components/parameters/FileId"
+      responses:
+        "200":
+          description: The generated workbook.
+          content:
+            application/vnd.openxmlformats-officedocument.spreadsheetml.sheet:
+              schema:
+                type: string
+                format: binary
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /api/v1/jobs/{job_id}/files/{file_id}/preview:
+    get:
+      operationId: getJobFilePreview
+      tags: [preview]
+      summary: Grid metadata for an Excel-like preview of a generated workbook
+      description: >
+        Returns used-range bounds so the browser can virtualize the sheet.
+        The article index stays on the server; jump-to-SKU uses preview/find.
+        Never returns cell values.
+      parameters:
+        - $ref: "#/components/parameters/JobId"
+        - $ref: "#/components/parameters/FileId"
+      responses:
+        "200":
+          description: Preview metadata.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PreviewMeta"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /api/v1/jobs/{job_id}/files/{file_id}/preview/window:
+    get:
+      operationId: getJobFilePreviewWindow
+      tags: [preview]
+      summary: A short row window of the generated workbook
+      description: >
+        Loads one or two sidecar chunks. The window cannot exceed 200 rows so
+        api-service never inflates a 100k-row sheet.
+      parameters:
+        - $ref: "#/components/parameters/JobId"
+        - $ref: "#/components/parameters/FileId"
+        - name: sheet
+          in: query
+          schema:
+            type: integer
+            minimum: 0
+            default: 0
+        - name: from_row
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+        - name: to_row
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+      responses:
+        "200":
+          description: Dense cell values for the requested rows.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PreviewWindow"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /api/v1/jobs/{job_id}/files/{file_id}/preview/find:
+    get:
+      operationId: findJobFilePreviewArticle
+      tags: [preview]
+      summary: Jump to the first row that holds an article
+      parameters:
+        - $ref: "#/components/parameters/JobId"
+        - $ref: "#/components/parameters/FileId"
+        - name: sheet
+          in: query
+          schema:
+            type: integer
+            minimum: 0
+            default: 0
+        - name: q
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Whether the article was found and where.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PreviewHit"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+components:
+  securitySchemes:
+    sessionCookie:
+      type: apiKey
+      in: cookie
+      name: order_fill_session
+  parameters:
+    JobId:
+      name: job_id
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    FileId:
+      name: file_id
+      in: path
+      required: true
+      schema:
+        type: string
+        examples: [output-1]
+    CompanyId:
+      name: company_id
+      in: path
+      required: true
+      schema:
+        type: string
+    UserId:
+      name: user_id
+      in: path
+      required: true
+      schema:
+        type: string
+  responses:
+    BadRequest:
+      description: Invalid request.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ApiError"
+    Unauthorized:
+      description: Session missing or invalid.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ApiError"
+    NotFound:
+      description: Resource not found or not visible to the current user.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ApiError"
+    Conflict:
+      description: Resource already exists.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ApiError"
+  schemas:
+    User:
+      type: object
+      required: [id, login, role]
+      properties:
+        id:
+          type: string
+        login:
+          type: string
+        role:
+          type: string
+          enum: [platform_admin, company_owner, company_admin, purchaser]
+        company_id:
+          type: string
+        company_name:
+          type: string
+        login_slug:
+          type: string
+        has_logo:
+          type: boolean
+        two_factor_enabled:
+          type: boolean
+        has_passkey:
+          type: boolean
+        last_seen_at:
+          type: string
+          format: date-time
+        disabled_at:
+          type: string
+          format: date-time
+    TwoFactorChallenge:
+      type: object
+      required: [two_factor_required, challenge_id]
+      properties:
+        two_factor_required:
+          type: boolean
+          enum: [true]
+        challenge_id:
+          type: string
+    Passkey:
+      type: object
+      required: [id, name, created_at]
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+        last_used_at:
+          type: string
+          format: date-time
+    Session:
+      type: object
+      required: [id, device, current, created_at]
+      properties:
+        id:
+          type: string
+        device:
+          type: string
+        current:
+          type: boolean
+        created_at:
+          type: string
+          format: date-time
+    PasskeyBegin:
+      type: object
+      required: [challenge_id, options]
+      properties:
+        challenge_id:
+          type: string
+        options:
+          type: object
+          additionalProperties: true
+    Company:
+      type: object
+      required: [id, name, created_at]
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+        login_slug:
+          type: string
+        has_logo:
+          type: boolean
+        disabled_at:
+          type: string
+          format: date-time
+        matching_mode:
+          type: string
+          enum: [standard, smart]
+          description: Present only for platform admin.
+    JobListItem:
+      type: object
+      required: [id, type, status, created_at]
+      properties:
+        id:
+          type: string
+        type:
+          type: string
+          enum: [order_fill, north_merge]
+        status:
+          $ref: "#/components/schemas/JobStatus"
+        brand:
+          type: string
+        order_month:
+          type: string
+        company_id:
+          type: string
+        created_by:
+          type: string
+        created_by_login:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+        progress:
+          type: number
+    AuditEvent:
+      type: object
+      properties:
+        id:
+          type: string
+        at:
+          type: string
+          format: date-time
+        actor_id:
+          type: string
+        actor_login:
+          type: string
+        action:
+          type: string
+        company_id:
+          type: string
+        company_name:
+          type: string
+        job_id:
+          type: string
+    StatusComponent:
+      type: object
+      required: [id, ok]
+      properties:
+        id:
+          type: string
+          enum: [api, worker, postgres, queue, files]
+        ok:
+          type: boolean
+    Job:
+      type: object
+      required: [id, type, status, created_at, updated_at, input_files, output_files]
+      properties:
+        id:
+          type: string
+          format: uuid
+        type:
+          type: string
+          enum: [order_fill, north_merge]
+        status:
+          $ref: "#/components/schemas/JobStatus"
+        brand:
+          type: string
+          examples: [angiopharm]
+        order_month:
+          type: string
+          pattern: "^\\d{4}-\\d{2}$"
+          examples: ["2026-08"]
+        company_id:
+          type: string
+        created_by:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+        error:
+          anyOf:
+            - $ref: "#/components/schemas/ApiError"
+            - type: "null"
+        input_files:
+          type: array
+          items:
+            $ref: "#/components/schemas/StoredFile"
+        output_files:
+          type: array
+          items:
+            $ref: "#/components/schemas/OutputFile"
+        progress:
+          type: number
+          format: double
+          minimum: 0
+          maximum: 1
+          description: Honest fraction of work completed by the worker. Absent or 0 while the job is still queued.
+        progress_message:
+          type: string
+          description: Short Russian status shown on the progress bar while the job is running.
+    JobStatus:
+      type: string
+      enum: [queued, processing, needs_review, finalizing, completed, failed]
+    OrderFillRequest:
+      type: object
+      required: [source_file, blank_files]
+      properties:
+        brand:
+          type: string
+          enum: [angiopharm, christina, levissime, sothys, novacutan, skin_synergy, klapp]
+          description: Optional. The worker reads the brand from the 1C nomenclature group filter.
+        order_month:
+          type: string
+          pattern: "^\\d{4}-\\d{2}$"
+          description: Optional. The worker reconstructs the order month from the 1C period captions.
+        source_file:
+          type: string
+          format: binary
+        blank_files:
+          type: array
+          minItems: 1
+          items:
+            type: string
+            format: binary
+        company_id:
+          type: string
+          description: Required when the actor is platform_admin.
+    NorthMergeRequest:
+      type: object
+      required: [brand, blank_files]
+      properties:
+        brand:
+          type: string
+          enum: [angiopharm, christina, levissime, sothys, novacutan, skin_synergy, klapp]
+        blank_files:
+          type: array
+          minItems: 1
+          items:
+            type: string
+            format: binary
+        tyumen_source_file:
+          type: string
+          format: binary
+        company_id:
+          type: string
+          description: Required when the actor is platform_admin.
+    JobReport:
+      type: object
+      required: [job_id, summary, rows]
+      properties:
+        job_id:
+          type: string
+          format: uuid
+        summary:
+          $ref: "#/components/schemas/ReportSummary"
+        rows:
+          type: array
+          items:
+            $ref: "#/components/schemas/ReportRow"
+    ReportSummary:
+      type: object
+      description: Aggregate counters and the period metadata shown above the review table.
+      properties:
+        brand:
+          type: string
+          examples: [ANGIOPHARM]
+        order_month_label:
+          type: string
+          examples: ["сентябрь 2026"]
+        adjustment_label:
+          type: string
+          examples: ["Шт. в коробке"]
+        actual_main_period:
+          type: string
+        actual_previous_period:
+          type: string
+        source_city:
+          type: string
+        city_rule:
+          type: string
+        delivery_weeks:
+          type: number
+        filled:
+          type: integer
+        left_blank:
+          type: integer
+        suspicious:
+          type: integer
+        unmatched:
+          type: integer
+        duplicates:
+          type: integer
+        not_in_blank:
+          type: integer
+          description: Source SKUs that need an order but are not on the blank. The row list may be capped.
+        blank_duplicate_articles:
+          type: integer
+        source_items:
+          type: integer
+        source_articles:
+          type: integer
+        source_sheet:
+          type: string
+        source_header_row:
+          type: integer
+        blank_sheet:
+          type: string
+        blank_header_row:
+          type: integer
+    ReportRow:
+      type: object
+      required: [key, status, editable]
+      properties:
+        key:
+          type: string
+          description: Stable row identifier, also used as the manual edit key.
+          examples: ["blank-1:7"]
+        status:
+          type: string
+          enum:
+            - matched
+            - matched_by_name
+            - warning_name_differs
+            - warning_name_only
+            - left_blank_nonpositive
+            - not_in_source
+            - not_in_blank
+            - source_duplicate
+        blank_id:
+          type: string
+          examples: [blank-1]
+        blank_label:
+          type: string
+        blank_row:
+          type: integer
+          minimum: 1
+        blank_quantity_col:
+          type: integer
+          minimum: 1
+        blank_article:
+          type: string
+        blank_name:
+          type: string
+        blank_unit:
+          type: string
+        blank_box_size:
+          type: string
+        source_row:
+          type: [integer, "null"]
+          minimum: 1
+        source_article:
+          type: string
+        source_name:
+          type: string
+        has_ordered_fact:
+          type: boolean
+        ordered_fact:
+          type: [number, "null"]
+        source_comment:
+          type: string
+        similarity:
+          type: number
+          minimum: 0
+          maximum: 1
+        stock:
+          type: string
+        in_transit:
+          type: string
+        recommended:
+          type: [number, "null"]
+        rounded:
+          type: [integer, "null"]
+        base_rounded:
+          type: [integer, "null"]
+          description: Quantity before the brand rounding rule was applied.
+        inserted:
+          type: [number, "null"]
+          description: Quantity written into the blank; null means the cell was left empty.
+        auto_comment:
+          type: string
+        adjustment_label:
+          type: string
+        box_adjusted:
+          type: boolean
+        duplicate:
+          type: boolean
+        editable:
+          type: boolean
+        duplicate_candidates:
+          type: array
+          items:
+            $ref: "#/components/schemas/DuplicateCandidate"
+    DuplicateCandidate:
+      type: object
+      properties:
+        source_row:
+          type: integer
+          minimum: 1
+        source_article:
+          type: string
+        source_name:
+          type: string
+        recommended:
+          type: number
+        rounded:
+          type: integer
+        stock:
+          type: string
+        in_transit:
+          type: string
+    ManualEdit:
+      type: object
+      required: [key, value]
+      properties:
+        key:
+          type: string
+        value:
+          type: string
+        comment:
+          type: string
+    StoredFile:
+      type: object
+      required: [id, role, name, content_type, size_bytes]
+      properties:
+        id:
+          type: string
+        role:
+          type: string
+          enum: [source, blank]
+        name:
+          type: string
+        content_type:
+          type: string
+        size_bytes:
+          type: integer
+          minimum: 0
+    OutputFile:
+      type: object
+      required: [id, label, name, content_type, size_bytes, download_path]
+      properties:
+        id:
+          type: string
+          examples: [output-1]
+        label:
+          type: string
+        name:
+          type: string
+        content_type:
+          type: string
+        size_bytes:
+          type: integer
+          minimum: 0
+        download_path:
+          type: string
+          description: >-
+            Path of the download endpoint relative to the API base URL. The client
+            composes the absolute URL, so the API stays independent of how it is
+            published.
+          examples: ["/api/v1/jobs/job-1/files/output-1"]
+    ApiError:
+      type: object
+      required: [code, message]
+      properties:
+        code:
+          type: string
+        message:
+          type: string
+        details:
+          type: object
+          additionalProperties: true
+    PreviewMeta:
+      type: object
+      required: [chunk_rows, sheets]
+      properties:
+        chunk_rows:
+          type: integer
+          minimum: 1
+        sheets:
+          type: array
+          items:
+            $ref: "#/components/schemas/PreviewSheet"
+    PreviewSheet:
+      type: object
+      required: [name, index, max_row, max_column]
+      properties:
+        name:
+          type: string
+        index:
+          type: integer
+          minimum: 0
+        max_row:
+          type: integer
+          minimum: 0
+        max_column:
+          type: integer
+          minimum: 0
+        header_row:
+          type: integer
+        article_column:
+          type: integer
+        quantity_column:
+          type: integer
+          description: 1-based column for live quantity edits (blank qty or 1C ordered-fact).
+        comment_column:
+          type: integer
+          description: 1-based column for live comment edits on the 1C table.
+        styles:
+          type: array
+          items:
+            $ref: "#/components/schemas/PreviewCellStyle"
+        columns:
+          type: array
+          items:
+            type: number
+          description: Column widths in CSS pixels, index 0 = column A.
+        row_height:
+          type: number
+          description: Default row height in CSS pixels.
+        row_heights:
+          type: object
+          additionalProperties:
+            type: number
+          description: Sparse 1-based row → height in CSS pixels.
+        merges:
+          type: array
+          items:
+            $ref: "#/components/schemas/PreviewMerge"
+        formulas:
+          type: array
+          items:
+            $ref: "#/components/schemas/PreviewFormula"
+          description: Excel formulas the browser re-evaluates when the reviewer edits a quantity.
+        formula_values:
+          type: object
+          additionalProperties:
+            type: string
+          description: Captured numeric inputs referenced by formulas, keyed as row:column.
+    PreviewCellStyle:
+      type: object
+      properties:
+        fill:
+          type: string
+        color:
+          type: string
+        bold:
+          type: boolean
+        italic:
+          type: boolean
+        size:
+          type: integer
+        align:
+          type: string
+        valign:
+          type: string
+        wrap:
+          type: boolean
+        border_t:
+          type: boolean
+        border_r:
+          type: boolean
+        border_b:
+          type: boolean
+        border_l:
+          type: boolean
+    PreviewMerge:
+      type: object
+      required: [row, column, height, width]
+      properties:
+        row:
+          type: integer
+          minimum: 1
+        column:
+          type: integer
+          minimum: 1
+        height:
+          type: integer
+          minimum: 1
+        width:
+          type: integer
+          minimum: 1
+    PreviewFormula:
+      type: object
+      required: [row, column, formula]
+      properties:
+        row:
+          type: integer
+          minimum: 1
+        column:
+          type: integer
+          minimum: 1
+        formula:
+          type: string
+    PreviewWindow:
+      type: object
+      required: [sheet_index, from_row, to_row, rows]
+      properties:
+        sheet_index:
+          type: integer
+          minimum: 0
+        from_row:
+          type: integer
+          minimum: 1
+        to_row:
+          type: integer
+          minimum: 1
+        rows:
+          type: array
+          items:
+            type: array
+            items:
+              type: string
+        styles:
+          type: array
+          items:
+            type: array
+            items:
+              type: integer
+            description: Catalog indexes aligned with rows, 0 = default.
+    PreviewHit:
+      type: object
+      required: [found]
+      properties:
+        found:
+          type: boolean
+        row:
+          type: integer
+        column:
+          type: integer
+        sheet_index:
+          type: integer

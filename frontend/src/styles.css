@@ -179,16 +179,10 @@ a:focus-visible,
 @keyframes tour-pulse {
   0%,
   100% {
-    box-shadow:
-      0 0 0 2px #fff,
-      0 0 0 10px color-mix(in srgb, var(--color-brand) 24%, transparent),
-      0 0 0 9999px rgba(15, 23, 42, 0.55);
+    outline-color: color-mix(in srgb, var(--color-brand) 28%, transparent);
   }
   50% {
-    box-shadow:
-      0 0 0 2px #fff,
-      0 0 0 16px color-mix(in srgb, var(--color-brand) 12%, transparent),
-      0 0 0 9999px rgba(15, 23, 42, 0.55);
+    outline-color: color-mix(in srgb, var(--color-brand) 8%, transparent);
   }
 }
 
@@ -205,21 +199,11 @@ a:focus-visible,
   opacity: 1;
 }
 
-.tour-spot,
-.tour-card {
-  transition:
-    left 0.5s cubic-bezier(0.22, 1, 0.36, 1),
-    top 0.5s cubic-bezier(0.22, 1, 0.36, 1),
-    width 0.5s cubic-bezier(0.22, 1, 0.36, 1),
-    height 0.5s cubic-bezier(0.22, 1, 0.36, 1);
-}
-
-.tour-shell:not(.tour-shell-ready) .tour-spot,
-.tour-shell:not(.tour-shell-ready) .tour-card {
-  transition: none;
-}
-
 .tour-spot {
+  box-shadow:
+    0 0 0 2px #fff,
+    0 0 0 9999px rgba(15, 23, 42, 0.55);
+  outline: 10px solid color-mix(in srgb, var(--color-brand) 24%, transparent);
   animation: tour-pulse 2s ease-in-out infinite;
 }
 
@@ -258,17 +242,6 @@ a:focus-visible,
 
 .help-modal-card {
   animation: tour-card-in 0.35s cubic-bezier(0.22, 1, 0.36, 1) both;
-}
-
-.input,
-button,
-select {
-  transition:
-    color 0.2s ease,
-    background-color 0.2s ease,
-    border-color 0.2s ease,
-    box-shadow 0.2s ease,
-    opacity 0.2s ease;
 }
 
 @media (prefers-reduced-motion: reduce) {

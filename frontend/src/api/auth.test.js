@@ -43,11 +43,12 @@ test("createCompany posts name and latin login slug", async () => {
     });
   };
   try {
-    const company = await createCompany("Кристайл", "kristail");
+    const company = await createCompany("Кристайл", "kristail", "smart");
     assert.equal(company.login_slug, "kristail");
     assert.equal(calls[0].url, "/api/v1/companies");
     assert.match(calls[0].options.body, /login_slug/);
     assert.match(calls[0].options.body, /kristail/);
+    assert.match(calls[0].options.body, /"matching_mode":"smart"/);
   } finally {
     apiClient.fetcher = originalFetcher;
     apiClient.baseUrl = originalBase;
@@ -94,12 +95,13 @@ test("updateCompany posts name and latin login slug", async () => {
     });
   };
   try {
-    const company = await updateCompany("c1", "Кристайл", "kristail");
+    const company = await updateCompany("c1", "Кристайл", "kristail", "smart");
     assert.equal(company.name, "Кристайл");
     assert.equal(calls[0].url, "/api/v1/companies/c1/profile");
     assert.equal(calls[0].options.method, "POST");
     assert.match(calls[0].options.body, /Кристайл/);
     assert.match(calls[0].options.body, /kristail/);
+    assert.match(calls[0].options.body, /"matching_mode":"smart"/);
   } finally {
     apiClient.fetcher = originalFetcher;
     apiClient.baseUrl = originalBase;

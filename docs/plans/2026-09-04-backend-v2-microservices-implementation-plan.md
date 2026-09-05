@@ -26,6 +26,47 @@
 GOCACHE="$PWD/.gocache" go test ./...
 ```
 
+## Product overlay (2026-09-05)
+
+Keep the service split from the v2 design. Fold in product decisions that landed after that design, or are designed but not yet in code. Do not invent a new architecture for them.
+
+Source docs:
+
+- `docs/plans/2026-09-05-order-matching-modes-design.md`
+- `docs/plans/2026-09-05-blank-preview-quantity-edits-design.md`
+- `docs/plans/2026-09-05-purchaser-upload-preview-downloads.md`
+- Already on `artemch`: blank qty overlays, pinned preview header, purchaser home → upload, per-file downloads, Christina one-blank HOME/PROFF.
+
+### Matching modes — not in current code, must be in v2 contracts
+
+Ownership:
+
+- `identity-service` owns company `matching_mode`: `standard` (default) or `smart`. Only platform admin can change it for now.
+- `job-service` snapshots `matching_mode` onto the job at create time. History must show which mode produced the report.
+- `matching-service` accepts that mode on `MatchRows`. Mode changes how pairs are chosen and how strictly rows go to `needs_decision`. Report categories are the same in both modes.
+- `document-service` does not pick the mode. It passes the job snapshot to matching.
+- Soft/usual/strict severity stays internal later. Do not expose it in OpenAPI now.
+
+Report categories (shared, mode-independent): `needs_decision`, `not_in_source`, `check_name_or_volume`, `not_in_blank`, `to_order`, `order_not_needed`. Do not keep `empty` as a user-facing status.
+
+Download blockers stay the designed set: ambiguous duplicate, ambiguous ЧЗ, name-only match with positive qty, manual qty without comment. `check_name_or_volume` is a warning, not a hard stop, when article matched, volume does not conflict, and there is one candidate.
+
+### Preserve current frontend/API behavior
+
+- Preview qty edits stay one `edits` Map. Blank qty and 1C «Заказано по факту» are the same edit. No new preview API. Formula overlay stays in the browser.
+- Gateway keeps `/api/v1/jobs/{id}/files`, `/api/v1/jobs/{id}/files/{file_id}`, and `/archive`. Frontend downloads generated files separately; do not remove archive until a later explicit cut.
+- Christina: one blank file; `HOME`/`PROFF` from workbook sections, filename only as fallback. Brand detection stays nomenclature-group filter.
+- Purchaser home opens upload. Pinned preview header is frontend-only.
+
+### Task patches
+
+- Task 3: `Company.matching_mode`; `Job.matching_mode`; `MatchRowsRequest.matching_mode`; match results carry `category` and reason codes, not a single fill-percent. Add `UpdateCompany` field, do not add a separate matching-mode RPC.
+- Task 6: persist `matching_mode` on companies, default `standard`.
+- Task 10: copy company mode onto the job; include it in queue payload.
+- Task 12 / 15: port `DetectBrand`, `PlanBlanks` (one Christina file), `LabelChristinaBlank`.
+- Task 13: standard mode = current matcher; smart mode = article-first plus volume/form/duplicate/ЧЗ gates from the matching-modes design. Port current tests as the standard suite.
+- Task 17: no new OpenAPI for preview qty; keep archive route; frontend tests already cover per-file download and blank qty overlays.
+
 ## Current behavior map
 
 Use these files as the source for existing behavior while extracting services:
@@ -190,6 +231,8 @@ DisableUser
 ResetUserAccess
 ```
 
+`CreateCompany` / `UpdateCompany` / company messages include `matching_mode` (`standard` | `smart`). Default is `standard`. Platform admin only.
+
 TwoFA:
 
 ```text
@@ -225,6 +268,8 @@ CompleteJob
 FailJob
 ```
 
+Job messages include `matching_mode` snapshotted at create. Report summary uses the shared categories from the product overlay, not fill-percent as the primary number.
+
 Files:
 
 ```text
@@ -249,6 +294,8 @@ MatchRows
 NormalizeArticle
 NormalizeName
 ```
+
+`MatchRowsRequest` includes `matching_mode`. Each result includes `category` and reason codes (`article`, `name`, `volume`, `form`, `duplicates`, `source`). Smart mode is a second implementation behind the same RPC, not a second service.
 
 Brand:
 

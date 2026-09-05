@@ -10,8 +10,11 @@ testdata/private/
 .vercel/
 .DS_Store
 .gocache
+__pycache__/
+*.pyc
 .idea/
-.vscode/
+.vscode/*
+!.vscode/settings.json
 .cursor/
 .cursorrules
 .cursorignore

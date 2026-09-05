@@ -1,0 +1,83 @@
+syntax = "proto3";
+
+package orderfill.passkey.v1;
+
+option go_package = "order-fill/backend/proto/gen/go/orderfill/passkey/v1;passkeyv1";
+
+service PasskeyService {
+  rpc BeginRegistration(BeginRegistrationRequest) returns (BeginRegistrationResponse);
+  rpc FinishRegistration(FinishRegistrationRequest) returns (FinishRegistrationResponse);
+  rpc ListCredentials(ListCredentialsRequest) returns (ListCredentialsResponse);
+  rpc DeleteCredential(DeleteCredentialRequest) returns (DeleteCredentialResponse);
+  rpc BeginLogin(BeginLoginRequest) returns (BeginLoginResponse);
+  rpc FinishLogin(FinishLoginRequest) returns (FinishLoginResponse);
+}
+
+message Credential {
+  string id = 1;
+  string user_id = 2;
+  string name = 3;
+  string created_at = 4;
+  string last_used_at = 5;
+}
+
+message BeginRegistrationRequest {
+  string request_id = 1;
+  string actor_user_id = 2;
+  string origin = 3;
+}
+
+message BeginRegistrationResponse {
+  string challenge_id = 1;
+  bytes options_json = 2;
+}
+
+message FinishRegistrationRequest {
+  string request_id = 1;
+  string actor_user_id = 2;
+  string challenge_id = 3;
+  bytes credential_json = 4;
+  string origin = 5;
+}
+
+message FinishRegistrationResponse {
+  Credential credential = 1;
+}
+
+message ListCredentialsRequest {
+  string actor_user_id = 1;
+}
+
+message ListCredentialsResponse {
+  repeated Credential credentials = 1;
+}
+
+message DeleteCredentialRequest {
+  string request_id = 1;
+  string actor_user_id = 2;
+  string credential_id = 3;
+}
+
+message DeleteCredentialResponse {}
+
+message BeginLoginRequest {
+  string request_id = 1;
+  string login = 2;
+  string origin = 3;
+}
+
+message BeginLoginResponse {
+  string challenge_id = 1;
+  bytes options_json = 2;
+}
+
+message FinishLoginRequest {
+  string request_id = 1;
+  string challenge_id = 2;
+  bytes credential_json = 3;
+  string origin = 4;
+}
+
+message FinishLoginResponse {
+  string user_id = 1;
+}

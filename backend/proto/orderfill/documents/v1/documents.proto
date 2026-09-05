@@ -1,0 +1,33 @@
+syntax = "proto3";
+
+package orderfill.documents.v1;
+
+option go_package = "order-fill/backend/proto/gen/go/orderfill/documents/v1;documentsv1";
+
+import "orderfill/common/v1/common.proto";
+
+service DocumentService {
+  rpc AnalyzeInputs(AnalyzeInputsRequest) returns (AnalyzeInputsResponse);
+  rpc BuildPreview(BuildPreviewRequest) returns (BuildPreviewResponse);
+}
+
+message AnalyzeInputsRequest {
+  orderfill.common.v1.RequestMeta meta = 1;
+  string job_id = 2;
+  repeated string input_file_ids = 3;
+}
+
+message AnalyzeInputsResponse {
+  string brand = 1;
+  string blank_label = 2;
+}
+
+message BuildPreviewRequest {
+  orderfill.common.v1.RequestMeta meta = 1;
+  string job_id = 2;
+  string file_id = 3;
+}
+
+message BuildPreviewResponse {
+  string snapshot_id = 1;
+}

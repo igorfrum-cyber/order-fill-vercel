@@ -52,7 +52,7 @@ export function ExcelGrid({
   const cacheRef = useRef(new Map());
   const fetchRef = useRef(0);
   const headerFetchRef = useRef(0);
-  const timerRef = useRef(0);
+  const rafRef = useRef(0);
   const readyRef = useRef(false);
   const alignedRef = useRef(false);
   const onReadyRef = useRef(onReady);
@@ -171,7 +171,8 @@ export function ExcelGrid({
     const observer = node ? new ResizeObserver(syncWindow) : null;
     if (node && observer) observer.observe(node);
     return () => {
-      window.clearTimeout(timerRef.current);
+      window.cancelAnimationFrame(rafRef.current);
+      rafRef.current = 0;
       observer?.disconnect();
     };
   }, [fileId, jobId, sheetIndex, maxRow, columnCount, refreshKey, syncWindow]);
@@ -198,18 +199,11 @@ export function ExcelGrid({
   }, [freezeHeader, syncWindow]);
 
   function onScroll() {
-    const node = scrollerRef.current;
-    if (node) {
-      const pinnedNow = isHeaderPinned({
-        freeze: freezeRef.current,
-        headerRow: headerRowNumber,
-        scrollTop: node.scrollTop,
-        offsets,
-      });
-      setPinned((prev) => (prev === pinnedNow ? prev : pinnedNow));
-    }
-    window.clearTimeout(timerRef.current);
-    timerRef.current = window.setTimeout(syncWindow, 40);
+    if (rafRef.current) return;
+    rafRef.current = window.requestAnimationFrame(() => {
+      rafRef.current = 0;
+      syncWindow();
+    });
   }
 
   const rows = [];

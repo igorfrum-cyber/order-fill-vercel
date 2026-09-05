@@ -1,0 +1,67 @@
+syntax = "proto3";
+
+package orderfill.matching.v1;
+
+option go_package = "order-fill/backend/proto/gen/go/orderfill/matching/v1;matchingv1";
+
+import "orderfill/common/v1/common.proto";
+
+service MatchingService {
+  rpc MatchRows(MatchRowsRequest) returns (MatchRowsResponse);
+  rpc NormalizeArticle(NormalizeArticleRequest) returns (NormalizeArticleResponse);
+  rpc NormalizeName(NormalizeNameRequest) returns (NormalizeNameResponse);
+}
+
+message Item {
+  string id = 1;
+  string article = 2;
+  string name = 3;
+  string volume = 4;
+  string form = 5;
+  bool chestny_znak = 6;
+}
+
+message MatchReasons {
+  string article = 1;
+  string name = 2;
+  string volume = 3;
+  string form = 4;
+  string duplicates = 5;
+  string source = 6;
+}
+
+message MatchResult {
+  string blank_item_id = 1;
+  string source_item_id = 2;
+  orderfill.common.v1.ReportCategory category = 3;
+  MatchReasons reasons = 4;
+  double score = 5;
+  repeated string candidate_ids = 6;
+}
+
+message MatchRowsRequest {
+  orderfill.common.v1.RequestMeta meta = 1;
+  orderfill.common.v1.MatchingMode matching_mode = 2;
+  repeated Item source_items = 3;
+  repeated Item blank_items = 4;
+}
+
+message MatchRowsResponse {
+  repeated MatchResult results = 1;
+}
+
+message NormalizeArticleRequest {
+  string article = 1;
+}
+
+message NormalizeArticleResponse {
+  string normalized = 1;
+}
+
+message NormalizeNameRequest {
+  string name = 1;
+}
+
+message NormalizeNameResponse {
+  string normalized = 1;
+}

@@ -1,0 +1,148 @@
+syntax = "proto3";
+
+package orderfill.jobs.v1;
+
+option go_package = "order-fill/backend/proto/gen/go/orderfill/jobs/v1;jobsv1";
+
+import "orderfill/common/v1/common.proto";
+
+service JobService {
+  rpc CreateJob(CreateJobRequest) returns (CreateJobResponse);
+  rpc GetJob(GetJobRequest) returns (GetJobResponse);
+  rpc ListJobs(ListJobsRequest) returns (ListJobsResponse);
+  rpc GetReport(GetReportRequest) returns (GetReportResponse);
+  rpc ListFiles(ListFilesRequest) returns (ListFilesResponse);
+  rpc SubmitEdits(SubmitEditsRequest) returns (SubmitEditsResponse);
+  rpc UpdateProgress(UpdateProgressRequest) returns (UpdateProgressResponse);
+  rpc CompleteJob(CompleteJobRequest) returns (CompleteJobResponse);
+  rpc FailJob(FailJobRequest) returns (FailJobResponse);
+}
+
+message Job {
+  string id = 1;
+  string type = 2;
+  string status = 3;
+  string owner_user_id = 4;
+  string company_id = 5;
+  orderfill.common.v1.MatchingMode matching_mode = 6;
+  string created_at = 7;
+  string error_message = 8;
+  double progress = 9;
+  string progress_message = 10;
+  string updated_at = 11;
+}
+
+message FileRef {
+  string id = 1;
+  string job_id = 2;
+  string kind = 3;
+  string object_key = 4;
+  string name = 5;
+  string content_type = 6;
+}
+
+message ReportSummary {
+  int32 needs_decision = 1;
+  int32 not_in_source = 2;
+  int32 check_name_or_volume = 3;
+  int32 not_in_blank = 4;
+  int32 to_order = 5;
+  int32 order_not_needed = 6;
+}
+
+message ReportRow {
+  string id = 1;
+  orderfill.common.v1.ReportCategory category = 2;
+  string article = 3;
+  string name = 4;
+  repeated string reasons = 5;
+}
+
+message Edit {
+  string row_key = 1;
+  string field = 2;
+  string value = 3;
+  string comment = 4;
+}
+
+message CreateJobRequest {
+  orderfill.common.v1.RequestMeta meta = 1;
+  string type = 2;
+  repeated string input_file_ids = 3;
+  string brand = 4;
+}
+
+message CreateJobResponse {
+  Job job = 1;
+}
+
+message GetJobRequest {
+  orderfill.common.v1.RequestMeta meta = 1;
+  string job_id = 2;
+}
+
+message GetJobResponse {
+  Job job = 1;
+}
+
+message ListJobsRequest {
+  orderfill.common.v1.RequestMeta meta = 1;
+}
+
+message ListJobsResponse {
+  repeated Job jobs = 1;
+}
+
+message GetReportRequest {
+  orderfill.common.v1.RequestMeta meta = 1;
+  string job_id = 2;
+}
+
+message GetReportResponse {
+  ReportSummary summary = 1;
+  repeated ReportRow rows = 2;
+}
+
+message ListFilesRequest {
+  orderfill.common.v1.RequestMeta meta = 1;
+  string job_id = 2;
+}
+
+message ListFilesResponse {
+  repeated FileRef files = 1;
+}
+
+message SubmitEditsRequest {
+  orderfill.common.v1.RequestMeta meta = 1;
+  string job_id = 2;
+  repeated Edit edits = 3;
+}
+
+message SubmitEditsResponse {
+  Job job = 1;
+}
+
+message UpdateProgressRequest {
+  string job_id = 1;
+  string status = 2;
+  string message = 3;
+  double progress = 4;
+}
+
+message UpdateProgressResponse {}
+
+message CompleteJobRequest {
+  string job_id = 1;
+  ReportSummary summary = 2;
+  repeated ReportRow rows = 3;
+  repeated FileRef files = 4;
+}
+
+message CompleteJobResponse {}
+
+message FailJobRequest {
+  string job_id = 1;
+  string error_message = 2;
+}
+
+message FailJobResponse {}

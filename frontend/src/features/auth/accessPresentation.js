@@ -27,6 +27,21 @@ export function canEditCompanyProfile(role) {
   return role === "company_owner" || role === "company_admin";
 }
 
+export function canSetMatchingMode(role) {
+  return role === "platform_admin";
+}
+
+export function matchingModeOptions() {
+  return [
+    { value: "standard", label: "Стандартный", hint: "Артикул и текущие правила заполнения." },
+    { value: "smart", label: "Умное сопоставление", hint: "Дополнительно сверяет название, объём и дубли." },
+  ];
+}
+
+export function normalizeMatchingMode(raw) {
+  return raw === "smart" ? "smart" : "standard";
+}
+
 export function needsSecurityNudge(me) {
   if (!me || me.two_factor_enabled || me.has_passkey) return false;
   return true;

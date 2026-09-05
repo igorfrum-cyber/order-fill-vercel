@@ -1,0 +1,242 @@
+syntax = "proto3";
+
+package orderfill.identity.v1;
+
+option go_package = "order-fill/backend/proto/gen/go/orderfill/identity/v1;identityv1";
+
+import "orderfill/common/v1/common.proto";
+
+service IdentityService {
+  rpc Login(LoginRequest) returns (LoginResponse);
+  rpc CompleteTwoFactorLogin(CompleteTwoFactorLoginRequest) returns (CompleteTwoFactorLoginResponse);
+  rpc Logout(LogoutRequest) returns (LogoutResponse);
+  rpc LogoutEverywhere(LogoutEverywhereRequest) returns (LogoutEverywhereResponse);
+  rpc ListSessions(ListSessionsRequest) returns (ListSessionsResponse);
+  rpc RevokeSession(RevokeSessionRequest) returns (RevokeSessionResponse);
+  rpc ValidateSession(ValidateSessionRequest) returns (ValidateSessionResponse);
+  rpc GetMe(GetMeRequest) returns (GetMeResponse);
+  rpc AcceptInvite(AcceptInviteRequest) returns (AcceptInviteResponse);
+  rpc FinishPasskeyLogin(FinishPasskeyLoginRequest) returns (FinishPasskeyLoginResponse);
+  rpc ChangePassword(ChangePasswordRequest) returns (ChangePasswordResponse);
+  rpc CreateCompany(CreateCompanyRequest) returns (CreateCompanyResponse);
+  rpc ListCompanies(ListCompaniesRequest) returns (ListCompaniesResponse);
+  rpc UpdateCompany(UpdateCompanyRequest) returns (UpdateCompanyResponse);
+  rpc DisableCompany(DisableCompanyRequest) returns (DisableCompanyResponse);
+  rpc CreateUser(CreateUserRequest) returns (CreateUserResponse);
+  rpc ListUsers(ListUsersRequest) returns (ListUsersResponse);
+  rpc DisableUser(DisableUserRequest) returns (DisableUserResponse);
+  rpc ResetUserAccess(ResetUserAccessRequest) returns (ResetUserAccessResponse);
+}
+
+message User {
+  string id = 1;
+  string login = 2;
+  string role = 3;
+  string company_id = 4;
+  string company_name = 5;
+  string login_slug = 6;
+  bool has_logo = 7;
+  bool two_factor_enabled = 8;
+  bool has_passkey = 9;
+  string last_seen_at = 10;
+  string disabled_at = 11;
+}
+
+message Company {
+  string id = 1;
+  string name = 2;
+  string created_at = 3;
+  string login_slug = 4;
+  bool has_logo = 5;
+  string disabled_at = 6;
+  orderfill.common.v1.MatchingMode matching_mode = 7;
+}
+
+message Session {
+  string id = 1;
+  string user_id = 2;
+  string token = 3;
+  string device = 4;
+  bool current = 5;
+  string created_at = 6;
+}
+
+message LoginRequest {
+  string request_id = 1;
+  string login = 2;
+  string password = 3;
+}
+
+message LoginResponse {
+  User user = 1;
+  Session session = 2;
+  bool two_factor_required = 3;
+  string challenge_id = 4;
+}
+
+message CompleteTwoFactorLoginRequest {
+  string request_id = 1;
+  string challenge_id = 2;
+  string code = 3;
+}
+
+message CompleteTwoFactorLoginResponse {
+  User user = 1;
+  Session session = 2;
+}
+
+message LogoutRequest {
+  string request_id = 1;
+  string session_token = 2;
+}
+
+message LogoutResponse {}
+
+message LogoutEverywhereRequest {
+  string request_id = 1;
+  string actor_user_id = 2;
+  string session_token = 3;
+}
+
+message LogoutEverywhereResponse {}
+
+message ListSessionsRequest {
+  string actor_user_id = 1;
+  string session_token = 2;
+}
+
+message ListSessionsResponse {
+  repeated Session sessions = 1;
+}
+
+message RevokeSessionRequest {
+  string actor_user_id = 1;
+  string session_token = 2;
+  string session_id = 3;
+}
+
+message RevokeSessionResponse {}
+
+message ValidateSessionRequest {
+  string session_token = 1;
+}
+
+message ValidateSessionResponse {
+  User user = 1;
+  Session session = 2;
+}
+
+message GetMeRequest {
+  string session_token = 1;
+}
+
+message GetMeResponse {
+  User user = 1;
+}
+
+message AcceptInviteRequest {
+  string request_id = 1;
+  string token = 2;
+  string password = 3;
+}
+
+message AcceptInviteResponse {
+  User user = 1;
+  Session session = 2;
+}
+
+message FinishPasskeyLoginRequest {
+  string request_id = 1;
+  string challenge_id = 2;
+  bytes credential_json = 3;
+  string origin = 4;
+}
+
+message FinishPasskeyLoginResponse {
+  User user = 1;
+  Session session = 2;
+}
+
+message ChangePasswordRequest {
+  string request_id = 1;
+  string actor_user_id = 2;
+  string current_password = 3;
+  string new_password = 4;
+}
+
+message ChangePasswordResponse {}
+
+message CreateCompanyRequest {
+  orderfill.common.v1.RequestMeta meta = 1;
+  string name = 2;
+  string login_slug = 3;
+  orderfill.common.v1.MatchingMode matching_mode = 4;
+}
+
+message CreateCompanyResponse {
+  Company company = 1;
+}
+
+message ListCompaniesRequest {
+  orderfill.common.v1.RequestMeta meta = 1;
+}
+
+message ListCompaniesResponse {
+  repeated Company companies = 1;
+}
+
+message UpdateCompanyRequest {
+  orderfill.common.v1.RequestMeta meta = 1;
+  string company_id = 2;
+  string name = 3;
+  string login_slug = 4;
+  orderfill.common.v1.MatchingMode matching_mode = 5;
+}
+
+message UpdateCompanyResponse {
+  Company company = 1;
+}
+
+message DisableCompanyRequest {
+  orderfill.common.v1.RequestMeta meta = 1;
+  string company_id = 2;
+}
+
+message DisableCompanyResponse {}
+
+message CreateUserRequest {
+  orderfill.common.v1.RequestMeta meta = 1;
+  string company_id = 2;
+  string login = 3;
+  string role = 4;
+}
+
+message CreateUserResponse {
+  User user = 1;
+  string invite_token = 2;
+}
+
+message ListUsersRequest {
+  orderfill.common.v1.RequestMeta meta = 1;
+  string company_id = 2;
+}
+
+message ListUsersResponse {
+  repeated User users = 1;
+}
+
+message DisableUserRequest {
+  orderfill.common.v1.RequestMeta meta = 1;
+  string user_id = 2;
+}
+
+message DisableUserResponse {}
+
+message ResetUserAccessRequest {
+  orderfill.common.v1.RequestMeta meta = 1;
+  string user_id = 2;
+}
+
+message ResetUserAccessResponse {
+  string invite_token = 1;
+}

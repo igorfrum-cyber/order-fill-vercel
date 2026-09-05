@@ -154,7 +154,7 @@ export function PreviewStage({
     autoScrolledRef.current = true;
     const frame = window.requestAnimationFrame(() => {
       workAreaRef.current?.scrollIntoView({
-        behavior: "smooth",
+        behavior: "auto",
         block: "start",
       });
     });

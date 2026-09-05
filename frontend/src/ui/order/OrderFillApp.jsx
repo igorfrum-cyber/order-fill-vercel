@@ -112,8 +112,10 @@ export function OrderFillApp({ companyId, resumeJob, onHome, onHelp, onStage }) 
           companyId,
         },
         onStatus: (text, job) => {
-          setStatus(text);
-          if (job) setProgress(jobProgress(job));
+          setStatus((prev) => (prev === text ? prev : text));
+          if (!job) return;
+          const next = jobProgress(job);
+          setProgress((prev) => (prev === next ? prev : next));
         },
       });
       setJobId(result.jobId);

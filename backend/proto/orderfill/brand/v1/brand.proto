@@ -1,0 +1,45 @@
+syntax = "proto3";
+
+package orderfill.brand.v1;
+
+option go_package = "order-fill/backend/proto/gen/go/orderfill/brand/v1;brandv1";
+
+service BrandService {
+  rpc GetBrandPolicy(GetBrandPolicyRequest) returns (GetBrandPolicyResponse);
+  rpc ListBrands(ListBrandsRequest) returns (ListBrandsResponse);
+  rpc DetectBrand(DetectBrandRequest) returns (DetectBrandResponse);
+}
+
+message BrandPolicy {
+  string brand = 1;
+  string variant = 2;
+  int32 quantity_multiple = 3;
+  int32 min_quantity = 4;
+}
+
+message GetBrandPolicyRequest {
+  string request_id = 1;
+  string brand = 2;
+  string variant = 3;
+}
+
+message GetBrandPolicyResponse {
+  BrandPolicy policy = 1;
+}
+
+message ListBrandsRequest {}
+
+message ListBrandsResponse {
+  repeated string brands = 1;
+}
+
+message DetectBrandRequest {
+  string request_id = 1;
+  string nomenclature_group = 2;
+  string file_name = 3;
+}
+
+message DetectBrandResponse {
+  string brand = 1;
+  string variant = 2;
+}
