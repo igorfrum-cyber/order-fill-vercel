@@ -204,7 +204,7 @@ export function PreviewStage({
           })}
         </div>
         <span className="text-[13px] text-[var(--color-ink-faint)]">
-          Править «Заказано по факту» и комментарий — количество в бланке подтянется само
+          Количество в бланке и «Заказано по факту» — одно число; суммы пересчитаются сами
         </span>
         {sheets.length > 1 && (
           <div className="flex gap-1">

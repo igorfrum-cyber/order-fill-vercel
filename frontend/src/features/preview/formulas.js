@@ -22,6 +22,8 @@ export function formulaOverlays(formulas = [], { overlays = new Map(), values = 
     items.filter((item) => /^SUBTOTAL\s*\(/i.test(item.formula)).map((item) => `${item.row}:${item.column}`),
   );
 
+  let allowCachedFormula = false;
+
   function getNumber(row, column) {
     const key = `${row}:${column}`;
     const overlay = overlays.get(key);
@@ -34,14 +36,16 @@ export function formulaOverlays(formulas = [], { overlays = new Map(), values = 
       if (number != null) return number;
     }
     if (formulaCells.has(key) && !computed.has(key)) {
-      throw new Error("pending");
+      if (!allowCachedFormula) throw new Error("pending");
+      const cached = toNumber(values[key]);
+      return cached == null ? 0 : cached;
     }
     const number = toNumber(values[key]);
     return number == null ? 0 : number;
   }
 
   let pending = items;
-  for (let pass = 0; pass < items.length + 2 && pending.length; pass += 1) {
+  for (let pass = 0; pass < items.length + 4 && pending.length; pass += 1) {
     const next = [];
     for (const item of pending) {
       const key = `${item.row}:${item.column}`;
@@ -59,7 +63,13 @@ export function formulaOverlays(formulas = [], { overlays = new Map(), values = 
       if (result == null || !Number.isFinite(result)) continue;
       computed.set(key, { field: "formula", value: quantityDisplay(result) });
     }
-    if (next.length === pending.length) break;
+    if (next.length === pending.length) {
+      if (!allowCachedFormula && next.length) {
+        allowCachedFormula = true;
+        continue;
+      }
+      break;
+    }
     pending = next;
   }
   return computed;
@@ -100,7 +110,14 @@ function tokenize(source) {
       index = end;
       continue;
     }
-    if ("+-*/(),".includes(char)) {
+    if (char === '"') {
+      const end = text.indexOf('"', index + 1);
+      if (end < 0) throw new Error("token");
+      tokens.push({ type: "num", value: 0 });
+      index = end + 1;
+      continue;
+    }
+    if ("+-*/(),=".includes(char)) {
       tokens.push({ type: char });
       index += 1;
       continue;
@@ -111,6 +128,15 @@ function tokenize(source) {
 }
 
 function parseExpr(parser) {
+  const value = parseAdd(parser);
+  if (match(parser, "=")) {
+    const right = parseAdd(parser);
+    return value === right ? 1 : 0;
+  }
+  return value;
+}
+
+function parseAdd(parser) {
   let value = parseTerm(parser);
   while (match(parser, "+") || match(parser, "-")) {
     const op = parser.tokens[parser.index - 1].type;
@@ -162,6 +188,22 @@ function parseFactor(parser) {
       expect(parser, ")");
       const factor = 10 ** Math.max(0, Math.min(10, Math.trunc(digits)));
       return Math.round(value * factor) / factor;
+    }
+    if (token.value === "IFERROR") {
+      const value = parseExpr(parser);
+      expect(parser, ",");
+      const fallback = parseExpr(parser);
+      expect(parser, ")");
+      return Number.isFinite(value) ? value : fallback;
+    }
+    if (token.value === "IF") {
+      const cond = parseExpr(parser);
+      expect(parser, ",");
+      const left = parseExpr(parser);
+      expect(parser, ",");
+      const right = parseExpr(parser);
+      expect(parser, ")");
+      return cond ? left : right;
     }
     throw new Error("fn");
   }

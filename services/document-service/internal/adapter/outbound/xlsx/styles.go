@@ -356,6 +356,12 @@ func parseSheetAppearance(root *etree.Element, rows map[int]*etree.Element, maxC
 			if max < min {
 				max = min
 			}
+			if attrInt(col, "hidden") != 0 {
+				for column := min; column <= max && column <= maxColumn; column++ {
+					look.columns[column-1] = 0
+				}
+				continue
+			}
 			width, err := strconv.ParseFloat(strings.TrimSpace(col.SelectAttrValue("width", "")), 64)
 			if err != nil || width <= 0 {
 				continue

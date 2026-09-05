@@ -545,7 +545,7 @@ function GridCell({
       {quantity ? (
         <input
           value={cellText(overlay.value)}
-          aria-label="Заказано по факту"
+          aria-label="Количество"
           onFocus={() => onActivate?.(overlay.key)}
           onBlur={(event) => {
             if (event.currentTarget.parentElement?.contains(event.relatedTarget)) return;
