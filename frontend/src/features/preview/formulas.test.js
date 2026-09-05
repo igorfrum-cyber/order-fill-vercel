@@ -75,3 +75,34 @@ test("formulaOverlays skips a million-cell range instead of freezing the preview
 test("formulaOverlays ignores a non-array formulas payload", () => {
   assert.equal(formulaOverlays({ 0: { row: 1, column: 1, formula: "A1" } }).size, 0);
 });
+
+test("formulaOverlays unwraps IFERROR so qty * cached price still updates", () => {
+  const formulas = [
+    { row: 2, column: 4, formula: "VLOOKUP(A2,Z:Z,1,0)" },
+    { row: 2, column: 6, formula: "IFERROR(D2*E2,\"\")" },
+  ];
+  const values = { "2:4": "2795", "2:5": "0" };
+  const overlays = new Map([["2:5", { field: "value", value: "3" }]]);
+  const derived = formulaOverlays(formulas, { overlays, values });
+  assert.equal(derived.get("2:6").value, "8385");
+});
+
+test("formulaOverlays treats IF(qty*price=0,\"\",qty*price) as the amount", () => {
+  const formulas = [{ row: 2, column: 9, formula: "IFERROR(IF(E2*H2=0,\"\",E2*H2),\"\")" }];
+  const values = { "2:8": "100" };
+  const overlays = new Map([["2:5", { field: "value", value: "3" }]]);
+  const derived = formulaOverlays(formulas, { overlays, values });
+  assert.equal(derived.get("2:9").value, "300");
+});
+
+test("formulaOverlays prefers a computable price formula over a stale cached value", () => {
+  const formulas = [
+    { row: 2, column: 8, formula: "I2*(1-$J$1)" },
+    { row: 2, column: 11, formula: "H2*E2" },
+  ];
+  const values = { "2:9": "4020", "1:10": "0", "2:8": "9999" };
+  const overlays = new Map([["2:5", { field: "value", value: "2" }]]);
+  const derived = formulaOverlays(formulas, { overlays, values });
+  assert.equal(derived.get("2:8").value, "4020");
+  assert.equal(derived.get("2:11").value, "8040");
+});

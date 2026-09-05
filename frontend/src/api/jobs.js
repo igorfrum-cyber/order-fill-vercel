@@ -56,8 +56,12 @@ export async function listJobFiles(jobId) {
   return { files: (payload.files || []).map((file) => mapOutputFile(file, absoluteUrl)) };
 }
 
-export function downloadJobArchive(jobId) {
-  return apiClient.requestDownload(`/api/v1/jobs/${encodeURIComponent(jobId)}/archive`);
+export function jobFileDownloadPath(jobId, fileId) {
+  return `/api/v1/jobs/${encodeURIComponent(jobId)}/files/${encodeURIComponent(fileId)}`;
+}
+
+export function downloadJobFile(jobId, fileId) {
+  return apiClient.requestDownload(jobFileDownloadPath(jobId, fileId));
 }
 
 export async function pollJob(jobId, { intervalMs = DEFAULT_POLL_INTERVAL_MS, timeoutMs = DEFAULT_POLL_TIMEOUT_MS, onUpdate = () => {}, until = TERMINAL_STATUSES } = {}) {

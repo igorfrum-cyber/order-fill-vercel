@@ -10,3 +10,9 @@ testdata/private/
 .vercel/
 .DS_Store
 .gocache
+.idea/
+.vscode/
+.cursor/
+.cursorrules
+.cursorignore
+.agents/

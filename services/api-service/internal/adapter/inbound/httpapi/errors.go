@@ -15,7 +15,7 @@ const (
 	msgGeneric       = "Что-то пошло не так. Попробуйте ещё раз."
 	msgExcelFile     = "Нужен файл Excel: .xlsx или .xlsm."
 	msgLoginSlug     = "Адрес входа — латиницей, цифрами и дефисом."
-	msgPassword      = "Пароль не подходит. Проверьте требования и попробуйте снова."
+	msgPassword      = "Пароль не подходит. Проверьте требования и попробуйте снова." // #nosec G101 -- user-facing error, not a secret
 	msgCompanyName   = "Напишите название компании."
 	msgLoginRequired = "Напишите логин."
 	msgLogo          = "Логотип должен быть картинкой PNG, JPEG или WebP."

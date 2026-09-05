@@ -18,7 +18,7 @@ test("blankIdForPreviewFile maps the first blank file onto blank-1", () => {
   assert.equal(blankIdForPreviewFile(files, "output-2"), "");
 });
 
-test("previewOverlays mirrors fact onto the blank quantity cell without making the blank editable", () => {
+test("previewOverlays makes the blank quantity cell editable with the same key as 1C fact", () => {
   const rows = [
     {
       key: "blank-1:22",
@@ -41,7 +41,9 @@ test("previewOverlays mirrors fact onto the blank quantity cell without making t
   assert.equal(fact.value, "18");
   assert.equal(isQuantityOverlay(fact), true);
   assert.equal(blank.value, "18");
-  assert.equal(isQuantityOverlay(blank), false);
+  assert.equal(isQuantityOverlay(blank), true);
+  assert.equal(blank.key, fact.key);
+  assert.equal(blank.comment, "договорились");
 });
 
 test("defaultPreviewFileId opens the 1C table so fact can be edited first", () => {

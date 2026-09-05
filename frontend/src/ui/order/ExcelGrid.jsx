@@ -19,6 +19,7 @@ import {
   scrollTopForRow,
   sheetHeight,
   spanSize,
+  scrollLeftToRevealColumn,
   visibleWindow,
 } from "../../features/preview/viewport.js";
 
@@ -35,6 +36,7 @@ export function ExcelGrid({
   freezeHeader = false,
   highlightRow,
   focusRow,
+  focusColumn,
   columns,
   rowHeight,
   rowHeights,
@@ -52,6 +54,7 @@ export function ExcelGrid({
   const headerFetchRef = useRef(0);
   const timerRef = useRef(0);
   const readyRef = useRef(false);
+  const alignedRef = useRef(false);
   const onReadyRef = useRef(onReady);
   const onErrorRef = useRef(onError);
   onReadyRef.current = onReady;
@@ -62,6 +65,8 @@ export function ExcelGrid({
   const [pinned, setPinned] = useState(false);
   const freezeRef = useRef(freezeHeader);
   freezeRef.current = freezeHeader;
+  const focusColumnRef = useRef(focusColumn);
+  focusColumnRef.current = focusColumn;
   const columnCount = visibleColumnCount(maxColumn);
   const letters = columnLetters(columnCount);
   const defaultHeight = Number(rowHeight) > 0 ? Number(rowHeight) : PREVIEW_ROW_HEIGHT;
@@ -86,6 +91,15 @@ export function ExcelGrid({
   const syncWindow = useCallback(() => {
     const node = scrollerRef.current;
     if (!node || !maxRow) return;
+    if (!alignedRef.current && Number(focusColumnRef.current) > 0 && node.clientWidth > 0) {
+      node.scrollLeft = scrollLeftToRevealColumn({
+        column: focusColumnRef.current,
+        colOffsets,
+        viewportWidth: node.clientWidth,
+        trailingColumns: 1,
+      });
+      alignedRef.current = true;
+    }
     const pinnedNow = isHeaderPinned({
       freeze: freezeRef.current,
       headerRow: headerRowNumber,
@@ -133,17 +147,21 @@ export function ExcelGrid({
         if (requestId !== fetchRef.current) return;
         if (!readyRef.current) onErrorRef.current?.(err);
       });
-  }, [defaultHeight, fileId, headerRowHeight, headerRowNumber, jobId, maxRow, offsets, sheetIndex]);
+  }, [colOffsets, defaultHeight, fileId, headerRowHeight, headerRowNumber, jobId, maxRow, offsets, sheetIndex]);
 
   useLayoutEffect(() => {
     cacheRef.current = new Map();
     readyRef.current = false;
+    alignedRef.current = false;
     setCells(new Map());
     setPinned(false);
     fetchRef.current += 1;
     headerFetchRef.current += 1;
     const node = scrollerRef.current;
-    if (node) node.scrollTop = 0;
+    if (node) {
+      node.scrollTop = 0;
+      node.scrollLeft = 0;
+    }
     if (!maxRow) {
       readyRef.current = true;
       onReadyRef.current?.();
@@ -157,6 +175,12 @@ export function ExcelGrid({
       observer?.disconnect();
     };
   }, [fileId, jobId, sheetIndex, maxRow, columnCount, refreshKey, syncWindow]);
+
+  useEffect(() => {
+    if (!Number(focusColumn) || !scrollerRef.current) return;
+    alignedRef.current = false;
+    syncWindow();
+  }, [focusColumn, syncWindow]);
 
   useEffect(() => {
     if (!focusRow || !scrollerRef.current) return;
@@ -521,7 +545,7 @@ function GridCell({
       {quantity ? (
         <input
           value={cellText(overlay.value)}
-          aria-label="Заказано по факту"
+          aria-label="Количество"
           onFocus={() => onActivate?.(overlay.key)}
           onBlur={(event) => {
             if (event.currentTarget.parentElement?.contains(event.relatedTarget)) return;

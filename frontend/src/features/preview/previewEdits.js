@@ -65,8 +65,10 @@ function blankOverlays(rows, edits, { files, fileId }) {
     const key = rowKey(row);
     const edit = edits.get(key) || { value: row.inserted ?? "", comment: "" };
     overlays.set(`${sheetRow}:${column}`, {
+      key,
       field: "value",
       value: quantityDisplay(edit.value),
+      comment: String(edit.comment || "").trim(),
     });
   }
   return overlays;

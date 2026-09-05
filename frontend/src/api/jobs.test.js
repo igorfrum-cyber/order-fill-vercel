@@ -1,7 +1,11 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { isPollDone } from "./jobs.js";
+import { jobFileDownloadPath, isPollDone } from "./jobs.js";
+
+test("jobFileDownloadPath points to a single generated file, not an archive", () => {
+  assert.equal(jobFileDownloadPath("job 1", "output/2"), "/api/v1/jobs/job%201/files/output%2F2");
+});
 
 test("isPollDone treats needs_review as finished during the first fill", () => {
   assert.equal(isPollDone("needs_review"), true);

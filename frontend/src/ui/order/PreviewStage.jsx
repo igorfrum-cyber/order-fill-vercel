@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import { findPreviewArticle, getPreviewMeta, getPreviewWindow } from "../../api/preview.js";
 import { userFacingError } from "../../features/help/errors.js";
@@ -21,7 +21,7 @@ import {
   previewOverlays,
 } from "../../features/preview/previewEdits.js";
 import { ErrorBoundary } from "../ErrorBoundary.jsx";
-import { IconDownload, IconPin, IconSearch, IconX } from "../icons.jsx";
+import { IconDownload, IconSearch, IconX } from "../icons.jsx";
 import { GhostButton, PrimaryButton, ProgressBar } from "../widgets.jsx";
 import { ExcelGrid } from "./ExcelGrid.jsx";
 
@@ -50,7 +50,8 @@ export function PreviewStage({
   const [headerCells, setHeaderCells] = useState([]);
   const [gridReady, setGridReady] = useState(false);
   const [overlays, setOverlays] = useState(() => new Map());
-  const [freezeHeader, setFreezeHeader] = useState(true);
+  const workAreaRef = useRef(null);
+  const autoScrolledRef = useRef(false);
 
   const file = files.find((item) => item.id === fileId) || files[0];
   const sheets = meta?.sheets || [];
@@ -85,6 +86,10 @@ export function PreviewStage({
       cancelled = true;
     };
   }, [file?.id, jobId, refreshKey]);
+
+  useEffect(() => {
+    autoScrolledRef.current = false;
+  }, [file?.id, jobId, refreshKey, sheetIndex]);
 
   const sourceFile = isSourcePreviewFile(file);
   const editColumns = useMemo(() => {
@@ -143,6 +148,19 @@ export function PreviewStage({
     sheet,
     gridReady,
   });
+
+  useEffect(() => {
+    if (bodyState !== "ready" || autoScrolledRef.current) return undefined;
+    autoScrolledRef.current = true;
+    const frame = window.requestAnimationFrame(() => {
+      workAreaRef.current?.scrollIntoView({
+        behavior: "smooth",
+        block: "start",
+      });
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [bodyState]);
+
   const stats = sheet ? `${sheet.max_row} строк · до ${columnName(sheet.max_column)}` : "";
   const canFreezeHeader = Number(sheet?.header_row) > 0;
 
@@ -186,7 +204,7 @@ export function PreviewStage({
           })}
         </div>
         <span className="text-[13px] text-[var(--color-ink-faint)]">
-          Править «Заказано по факту» и комментарий — количество в бланке подтянется само
+          Количество в бланке и «Заказано по факту» — одно число; суммы пересчитаются сами
         </span>
         {sheets.length > 1 && (
           <div className="flex gap-1">
@@ -207,20 +225,6 @@ export function PreviewStage({
             ))}
           </div>
         )}
-        <button
-          type="button"
-          aria-pressed={freezeHeader && canFreezeHeader}
-          disabled={!canFreezeHeader}
-          onClick={() => setFreezeHeader((on) => !on)}
-          className={`flex items-center gap-1.5 rounded-lg px-3 py-2 text-[14px] font-medium transition ${
-            freezeHeader && canFreezeHeader
-              ? "bg-[var(--color-brand-soft)] text-[var(--color-brand-strong)]"
-              : "text-[var(--color-ink-soft)] hover:bg-[var(--color-line-soft)]"
-          } disabled:cursor-not-allowed disabled:opacity-40`}
-        >
-          <IconPin className="h-4 w-4" />
-          {freezeHeader ? "Шапка закреплена" : "Закрепить шапку"}
-        </button>
         <form onSubmit={jumpToArticle} className="relative ml-auto min-w-64">
           <IconSearch className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--color-ink-faint)]" />
           <input
@@ -241,7 +245,7 @@ export function PreviewStage({
         <span className="font-mono text-[12px] text-[var(--color-ink-faint)]">{findStatus || stats}</span>
       </div>
 
-      <div className="relative min-h-0 flex-1">
+      <div ref={workAreaRef} className="relative min-h-0 flex-1">
         {file?.id && sheet ? (
           <div className="absolute inset-0">
             <ErrorBoundary
@@ -266,9 +270,10 @@ export function PreviewStage({
                 maxRow={sheet.max_row}
                 maxColumn={sheet.max_column}
                 headerRow={sheet.header_row}
-                freezeHeader={canFreezeHeader && freezeHeader}
+                freezeHeader={canFreezeHeader}
                 highlightRow={highlightRow}
                 focusRow={focusRow}
+                focusColumn={editColumns.quantity}
                 columns={sheet.columns}
                 rowHeight={sheet.row_height}
                 rowHeights={sheet.row_heights}
@@ -314,7 +319,7 @@ export function PreviewStage({
         <div className="ml-auto flex items-center gap-3">
           <span className="font-mono text-[13px] text-[var(--color-ink-soft)]">{status}</span>
           <PrimaryButton dataTour="preview-download" onClick={onDownload} disabled={busy}>
-            {busy ? "Готовлю архив..." : "Скачать файлы"}
+            {busy ? "Готовлю файлы..." : "Скачать файлы"}
             <IconDownload className="h-4 w-4" />
           </PrimaryButton>
         </div>
