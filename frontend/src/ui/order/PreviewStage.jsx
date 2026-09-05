@@ -21,7 +21,7 @@ import {
   previewOverlays,
 } from "../../features/preview/previewEdits.js";
 import { ErrorBoundary } from "../ErrorBoundary.jsx";
-import { IconDownload, IconPin, IconSearch, IconX } from "../icons.jsx";
+import { IconDownload, IconSearch, IconX } from "../icons.jsx";
 import { GhostButton, PrimaryButton, ProgressBar } from "../widgets.jsx";
 import { ExcelGrid } from "./ExcelGrid.jsx";
 
@@ -50,7 +50,6 @@ export function PreviewStage({
   const [headerCells, setHeaderCells] = useState([]);
   const [gridReady, setGridReady] = useState(false);
   const [overlays, setOverlays] = useState(() => new Map());
-  const [freezeHeader, setFreezeHeader] = useState(true);
   const workAreaRef = useRef(null);
   const autoScrolledRef = useRef(false);
 
@@ -226,20 +225,6 @@ export function PreviewStage({
             ))}
           </div>
         )}
-        <button
-          type="button"
-          aria-pressed={freezeHeader && canFreezeHeader}
-          disabled={!canFreezeHeader}
-          onClick={() => setFreezeHeader((on) => !on)}
-          className={`flex items-center gap-1.5 rounded-lg px-3 py-2 text-[14px] font-medium transition ${
-            freezeHeader && canFreezeHeader
-              ? "bg-[var(--color-brand-soft)] text-[var(--color-brand-strong)]"
-              : "text-[var(--color-ink-soft)] hover:bg-[var(--color-line-soft)]"
-          } disabled:cursor-not-allowed disabled:opacity-40`}
-        >
-          <IconPin className="h-4 w-4" />
-          {freezeHeader ? "Шапка закреплена" : "Закрепить шапку"}
-        </button>
         <form onSubmit={jumpToArticle} className="relative ml-auto min-w-64">
           <IconSearch className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--color-ink-faint)]" />
           <input
@@ -285,7 +270,7 @@ export function PreviewStage({
                 maxRow={sheet.max_row}
                 maxColumn={sheet.max_column}
                 headerRow={sheet.header_row}
-                freezeHeader={canFreezeHeader && freezeHeader}
+                freezeHeader={canFreezeHeader}
                 highlightRow={highlightRow}
                 focusRow={focusRow}
                 columns={sheet.columns}
