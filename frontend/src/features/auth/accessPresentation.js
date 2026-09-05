@@ -48,7 +48,9 @@ export function needsUsersCompanyPicker(role) {
 }
 
 export function homeScreen(role) {
-  return role === "platform_admin" ? "overview" : "history";
+  if (role === "platform_admin") return "overview";
+  if (role === "purchaser") return "order";
+  return "history";
 }
 
 export function resolveUsersCompanyId(role, selectedCompanyId, actorCompanyId) {

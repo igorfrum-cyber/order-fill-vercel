@@ -131,6 +131,12 @@ export default function App() {
     setScreen(homeScreen(me.role));
   }
 
+  function openHistory() {
+    setResume(null);
+    setOrderStage("upload");
+    setScreen("history");
+  }
+
   function closeTour() {
     setSeenTourScenes((prev) => new Set(prev).add(tourScene));
     setQuickStartOpen(false);
@@ -144,7 +150,7 @@ export default function App() {
         <OrderFillApp
           companyId={companyId}
           resumeJob={resume}
-          onHome={goHome}
+          onHome={openHistory}
           onHelp={() => setHelpOpen(true)}
           onStage={setOrderStage}
         />
