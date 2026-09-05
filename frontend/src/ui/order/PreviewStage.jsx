@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import { findPreviewArticle, getPreviewMeta, getPreviewWindow } from "../../api/preview.js";
 import { userFacingError } from "../../features/help/errors.js";
@@ -51,6 +51,8 @@ export function PreviewStage({
   const [gridReady, setGridReady] = useState(false);
   const [overlays, setOverlays] = useState(() => new Map());
   const [freezeHeader, setFreezeHeader] = useState(true);
+  const workAreaRef = useRef(null);
+  const autoScrolledRef = useRef(false);
 
   const file = files.find((item) => item.id === fileId) || files[0];
   const sheets = meta?.sheets || [];
@@ -85,6 +87,10 @@ export function PreviewStage({
       cancelled = true;
     };
   }, [file?.id, jobId, refreshKey]);
+
+  useEffect(() => {
+    autoScrolledRef.current = false;
+  }, [file?.id, jobId, refreshKey, sheetIndex]);
 
   const sourceFile = isSourcePreviewFile(file);
   const editColumns = useMemo(() => {
@@ -143,6 +149,19 @@ export function PreviewStage({
     sheet,
     gridReady,
   });
+
+  useEffect(() => {
+    if (bodyState !== "ready" || autoScrolledRef.current) return undefined;
+    autoScrolledRef.current = true;
+    const frame = window.requestAnimationFrame(() => {
+      workAreaRef.current?.scrollIntoView({
+        behavior: "smooth",
+        block: "start",
+      });
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [bodyState]);
+
   const stats = sheet ? `${sheet.max_row} строк · до ${columnName(sheet.max_column)}` : "";
   const canFreezeHeader = Number(sheet?.header_row) > 0;
 
@@ -241,7 +260,7 @@ export function PreviewStage({
         <span className="font-mono text-[12px] text-[var(--color-ink-faint)]">{findStatus || stats}</span>
       </div>
 
-      <div className="relative min-h-0 flex-1">
+      <div ref={workAreaRef} className="relative min-h-0 flex-1">
         {file?.id && sheet ? (
           <div className="absolute inset-0">
             <ErrorBoundary
