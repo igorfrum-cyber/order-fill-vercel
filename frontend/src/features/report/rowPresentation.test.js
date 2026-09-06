@@ -9,34 +9,35 @@ import {
   countByTab,
   displayArticle,
   displayName,
-  FILL_COMPOSITION_ORDER,
-  fillReadiness,
   matchLayerHint,
-  pairedRowCount,
+  matchReasonLabel,
   presentationStatus,
   attentionReason,
   reviewTableHeaders,
+  rowCategory,
   rowMatchesQuery,
   rowMatchesTab,
   visibleFillTabs,
   visibleReportRows,
   firstReviewTab,
   reviewQueueLine,
+  REPORT_TABS,
 } from "./rowPresentation.js";
 
-test("presentationStatus maps API row states onto fill-stage tabs", () => {
-  assert.equal(presentationStatus({ status: "matched", inserted: 12 }), "filled");
-  assert.equal(presentationStatus({ status: "matched_by_name", inserted: 4 }), "filled");
-  assert.equal(presentationStatus({ status: "left_blank_nonpositive" }), "empty");
-  assert.equal(presentationStatus({ status: "warning_name_differs" }), "check");
-  assert.equal(presentationStatus({ status: "warning_name_only" }), "check");
-  assert.equal(presentationStatus({ status: "not_in_source" }), "not_in_table");
+test("presentationStatus maps API row states onto canonical categories", () => {
+  assert.equal(presentationStatus({ status: "matched", inserted: 12 }), "to_order");
+  assert.equal(presentationStatus({ status: "matched_by_name", inserted: 4 }), "to_order");
+  assert.equal(presentationStatus({ status: "left_blank_nonpositive" }), "order_not_needed");
+  assert.equal(presentationStatus({ status: "warning_name_differs" }), "check_name_or_volume");
+  assert.equal(presentationStatus({ status: "warning_name_only" }), "needs_decision");
+  assert.equal(presentationStatus({ status: "not_in_source" }), "not_in_source");
   assert.equal(presentationStatus({ status: "not_in_blank" }), "not_in_blank");
-  assert.equal(presentationStatus({ status: "matched", duplicate: true, inserted: 2 }), "duplicate");
-  assert.equal(presentationStatus({ status: "source_duplicate" }), "duplicate");
+  assert.equal(presentationStatus({ status: "matched", duplicate: true, inserted: 2 }), "needs_decision");
+  assert.equal(presentationStatus({ status: "source_duplicate" }), "needs_decision");
+  assert.equal(presentationStatus({ category: "order_not_needed", status: "left_blank_nonpositive" }), "order_not_needed");
 });
 
-test("countByTab and rowMatchesTab follow presentation status, not raw API status", () => {
+test("countByTab and rowMatchesTab follow canonical categories", () => {
   const rows = [
     { status: "matched", inserted: 12, blankName: "Крем", blankArticle: "A1" },
     { status: "left_blank_nonpositive", blankName: "Тоник", blankArticle: "A2" },
@@ -48,13 +49,12 @@ test("countByTab and rowMatchesTab follow presentation status, not raw API statu
 
   const counts = countByTab(rows);
   assert.equal(counts.all, 6);
-  assert.equal(counts.filled, 1);
-  assert.equal(counts.empty, 1);
-  assert.equal(counts.check, 1);
-  assert.equal(counts.duplicate, 1);
-  assert.equal(counts.not_in_table, 1);
+  assert.equal(counts.to_order, 1);
+  assert.equal(counts.order_not_needed, 1);
+  assert.equal(counts.needs_decision, 2);
+  assert.equal(counts.not_in_source, 1);
   assert.equal(counts.not_in_blank, 1);
-  assert.equal(rows.filter((row) => rowMatchesTab(row, "empty")).length, 1);
+  assert.equal(rows.filter((row) => rowMatchesTab(row, "order_not_needed")).length, 1);
 });
 
 test("visibleReportRows filters by tab and searches article or name", () => {
@@ -64,7 +64,7 @@ test("visibleReportRows filters by tab and searches article or name", () => {
     { status: "matched", inserted: 3, blankName: "Крем ночной", blankArticle: "AP-300" },
   ];
 
-  assert.equal(visibleReportRows(rows, { tab: "empty", query: "крем" }).length, 1);
+  assert.equal(visibleReportRows(rows, { tab: "order_not_needed", query: "крем" }).length, 1);
   assert.equal(visibleReportRows(rows, { tab: "all", query: "AP-" }).length, 2);
   assert.equal(rowMatchesQuery(rows[1], "тоник"), true);
 });
@@ -83,51 +83,34 @@ test("displayArticle and displayName fall back to source identity when the row i
   assert.equal(displayName(row), "Сыворотка");
 });
 
-test("fill composition excludes unmatched rows so the ring can reach 100%", () => {
-  assert.deepEqual(FILL_COMPOSITION_ORDER, ["filled", "empty", "check", "duplicate"]);
-
-  const counts = {
-    filled: 139,
-    empty: 91,
-    check: 0,
-    duplicate: 2,
-    not_in_table: 124,
-    not_in_blank: 36,
-    all: 392,
-  };
-
-  assert.equal(pairedRowCount(counts), 232);
-  assert.equal(fillReadiness(counts), 139 / 232);
-  assert.equal(pairedRowCount({}), 0);
-  assert.equal(fillReadiness({}), 0);
-});
-
-test("visibleFillTabs hides empty fill buckets but always keeps matching and all", () => {
-  const tabs = visibleFillTabs({
-    filled: 139,
-    empty: 91,
-    check: 0,
-    duplicate: 2,
-    not_in_table: 124,
-    not_in_blank: 0,
-    all: 356,
-  });
-
-  assert.deepEqual(tabs.map((tab) => tab.key), [
-    "empty",
-    "duplicate",
-    "not_in_table",
+test("REPORT_TABS follow the required buyer-facing order and do not include Пусто", () => {
+  assert.deepEqual(REPORT_TABS.map((tab) => tab.key), [
+    "needs_decision",
+    "not_in_source",
+    "check_name_or_volume",
     "not_in_blank",
-    "filled",
+    "to_order",
+    "order_not_needed",
     "all",
   ]);
+  assert.equal(REPORT_TABS.some((tab) => tab.label === "Пусто"), false);
 });
 
-test("reviewTableHeaders use short operational labels", () => {
+test("visibleFillTabs keep the canonical order", () => {
+  assert.deepEqual(visibleFillTabs().map((tab) => tab.key), REPORT_TABS.map((tab) => tab.key));
+});
+
+test("reviewTableHeaders use a reason column instead of similarity", () => {
   const labels = Object.fromEntries(reviewTableHeaders().map((header) => [header.key, header.label]));
   assert.equal(labels.recommended, "Расчёт");
-  assert.equal(labels.match, "Похоже");
+  assert.equal(labels.match, "Причина");
   assert.equal(labels.inserted, "Вставлено");
+});
+
+test("matchReasonLabel prefers an explainable reason over a percent", () => {
+  assert.equal(matchReasonLabel({ matchReasons: { duplicates: "needs_choice" } }), "Дубль: нужно выбрать");
+  assert.equal(matchReasonLabel({ matchReasons: { volume: "conflict" } }), "Проверить объём");
+  assert.equal(matchReasonLabel({ matchReasons: { article: "exact" } }), "Надёжно");
 });
 
 test("attentionReason explains why a row needs a closer look", () => {
@@ -137,15 +120,15 @@ test("attentionReason explains why a row needs a closer look", () => {
   );
   assert.equal(
     attentionReason({ status: "not_in_source" }),
-    "Позиция есть в бланке, но не нашлась в таблице заказа.",
+    "Позиция есть в бланке, но не нашлась в 1С.",
   );
   assert.equal(attentionReason({ status: "matched", inserted: 2 }), "");
 });
 
 test("matchLayerHint explains unmatched tabs and stays quiet for fill tabs", () => {
-  assert.match(matchLayerHint("not_in_table"), /не нашлись в таблице заказа/i);
+  assert.match(matchLayerHint("not_in_source"), /не нашлись в 1С/i);
   assert.match(matchLayerHint("not_in_blank"), /не нашлись в бланке/i);
-  assert.equal(matchLayerHint("empty"), "");
+  assert.equal(matchLayerHint("order_not_needed"), "");
   assert.equal(matchLayerHint("all"), "");
 });
 
@@ -178,14 +161,18 @@ test("displayArticle and displayName keep blank identity when both sides exist",
   assert.equal(displayName(row), "Крем");
 });
 
-test("firstReviewTab prefers duplicates then empty then check", () => {
-  assert.equal(firstReviewTab({ duplicate: 2, empty: 1, check: 1 }), "duplicate");
-  assert.equal(firstReviewTab({ duplicate: 0, empty: 3, check: 1 }), "empty");
-  assert.equal(firstReviewTab({ duplicate: 0, empty: 0, check: 2 }), "check");
-  assert.equal(firstReviewTab({ duplicate: 0, empty: 0, check: 0, filled: 10 }), "filled");
+test("firstReviewTab prefers unresolved decisions", () => {
+  assert.equal(firstReviewTab({ needs_decision: 2, order_not_needed: 1, check_name_or_volume: 1 }), "needs_decision");
+  assert.equal(firstReviewTab({ needs_decision: 0, not_in_source: 3, check_name_or_volume: 1 }), "not_in_source");
+  assert.equal(firstReviewTab({ needs_decision: 0, not_in_source: 0, check_name_or_volume: 2 }), "check_name_or_volume");
+  assert.equal(firstReviewTab({ needs_decision: 0, to_order: 10 }), "to_order");
 });
 
 test("reviewQueueLine counts work left", () => {
-  assert.match(reviewQueueLine({ duplicate: 2, empty: 1, check: 3 }), /6/);
-  assert.equal(reviewQueueLine({ duplicate: 0, empty: 0, check: 0, filled: 4 }), "");
+  assert.match(reviewQueueLine({ needs_decision: 6 }), /6/);
+  assert.equal(reviewQueueLine({ needs_decision: 0, to_order: 4 }), "");
+});
+
+test("rowCategory prefers canonical category over legacy status", () => {
+  assert.equal(rowCategory({ category: "order_not_needed", status: "left_blank_nonpositive" }), "order_not_needed");
 });

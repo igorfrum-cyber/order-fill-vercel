@@ -35,9 +35,9 @@ export function FillStage({
   const [expanded, setExpanded] = useState(null);
   const [acknowledgedDuplicates, setAcknowledgedDuplicates] = useState(() => new Set());
   const counts = useMemo(() => countByTab(rows), [rows]);
-  const duplicateCount = counts.duplicate ?? 0;
+  const duplicateCount = counts.needs_decision ?? 0;
   const duplicateKeys = useMemo(
-    () => rows.filter((row) => presentationStatus(row) === "duplicate").map(rowKey),
+    () => rows.filter((row) => presentationStatus(row) === "needs_decision").map(rowKey),
     [rows],
   );
   const tabs = useMemo(() => visibleFillTabs(counts), [counts]);
@@ -109,7 +109,7 @@ export function FillStage({
             ) : canProceed ? (
               <span className="text-[var(--color-ok)]">{duplicateCount ? "Дубли подтверждены" : "Критичных проблем нет"}</span>
             ) : (
-              <button type="button" className="text-[var(--color-danger)] hover:underline" onClick={() => setTab("duplicate")}>
+              <button type="button" className="text-[var(--color-danger)] hover:underline" onClick={() => setTab("needs_decision")}>
                 Сначала подтвердите дубли: {duplicateCount - acknowledgedCount}
               </button>
             )}

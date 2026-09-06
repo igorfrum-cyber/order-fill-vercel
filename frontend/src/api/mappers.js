@@ -65,6 +65,11 @@ export function mapSummary(summary) {
     duplicates: source.duplicates || 0,
     notInBlank: source.not_in_blank || 0,
     blankDuplicateArticles: source.blank_duplicate_articles || 0,
+    needsDecision: source.needs_decision || 0,
+    notInSource: source.not_in_source || 0,
+    checkNameOrVolume: source.check_name_or_volume || 0,
+    toOrder: source.to_order || 0,
+    orderNotNeeded: source.order_not_needed || 0,
   };
 }
 
@@ -72,6 +77,8 @@ export function mapReportRow(row) {
   return {
     key: row.key,
     status: row.status,
+    category: row.category || "",
+    matchReasons: row.match_reasons || row.matchReasons || {},
     blankId: row.blank_id || "main",
     blankLabel: row.blank_label || "",
     blankRow: row.blank_row || "",

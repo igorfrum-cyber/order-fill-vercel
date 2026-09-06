@@ -61,7 +61,7 @@ test("combinedSummary prefers the engine notInBlank count over sampled report ro
 });
 
 test("statusLabel never shows a raw API code", () => {
-  assert.equal(statusLabel("matched"), "Заполнено");
+  assert.equal(statusLabel("matched"), "К заказу");
   assert.equal(statusLabel("custom"), "Другое");
 });
 

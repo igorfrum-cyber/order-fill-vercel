@@ -2,17 +2,17 @@ import { editRequiresComment, normalizeOrderValue } from "../../../features/orde
 import { quantityDivergesFromRecommendation, roundingComment } from "../../../features/order/quantityPresentation.js";
 import { rowKey } from "../../../features/order/reviewEdits.js";
 import { duplicateDescription } from "../../../features/report/issueReport.js";
-import { baselineForReportRow, statusLabel } from "../../../features/report/reportModel.js";
-import { boxStep, displayArticle, displayName, matchPercent, presentationStatus, quantityDisplay, attentionReason } from "../../../features/report/rowPresentation.js";
+import { baselineForReportRow } from "../../../features/report/reportModel.js";
+import { boxStep, displayArticle, displayName, matchPercent, matchReasonLabel, presentationStatus, quantityDisplay, attentionReason } from "../../../features/report/rowPresentation.js";
 import { IconChevron } from "../../icons.jsx";
 import { Stepper } from "../../widgets.jsx";
 
 export const STATUS_META = {
-  filled: { label: "Заполнено", tone: "ok", bar: "bg-[var(--color-ok)]" },
-  empty: { label: "Пусто", tone: "warn", bar: "bg-[var(--color-warn)]" },
-  check: { label: "Нужно проверить", tone: "warn", bar: "bg-[var(--color-warn)]" },
-  duplicate: { label: "Дубли", tone: "danger", bar: "bg-[var(--color-danger)]" },
-  not_in_table: { label: "Нет в таблице", tone: "neutral", bar: "bg-[var(--color-neutral)]" },
+  to_order: { label: "К заказу", tone: "ok", bar: "bg-[var(--color-ok)]" },
+  order_not_needed: { label: "Заказ не нужен", tone: "neutral", bar: "bg-[var(--color-ink-faint)]" },
+  check_name_or_volume: { label: "Проверить название или объём", tone: "warn", bar: "bg-[var(--color-warn)]" },
+  needs_decision: { label: "Требует решения", tone: "danger", bar: "bg-[var(--color-danger)]" },
+  not_in_source: { label: "Нет в 1С", tone: "neutral", bar: "bg-[var(--color-neutral)]" },
   not_in_blank: { label: "Нет в бланке", tone: "neutral", bar: "bg-[var(--color-neutral)]" },
 };
 
@@ -25,15 +25,16 @@ const TONE_CHIP = {
 
 export function ReportRow({ row, edit, expanded, invalid, acknowledged, boxLabel, onToggle, onEdit, onAcknowledge }) {
   const status = presentationStatus(row);
-  const meta = STATUS_META[status];
+  const meta = STATUS_META[status] || STATUS_META.order_not_needed;
   const diverges = row.editable !== false && quantityDivergesFromRecommendation(row, edit?.value);
   const note = roundingComment(row);
   const cell = `border-b border-[var(--color-line-soft)] px-4 py-4 align-middle text-[14px] ${invalid ? "bg-[var(--color-danger-soft)]" : acknowledged ? "bg-[var(--color-ok-soft)]" : diverges ? "bg-[var(--color-warn-soft)]" : ""}`;
   const num = `${cell} text-right font-mono tabular-nums`;
   const key = rowKey(row);
   const match = matchPercent(row);
+  const reasonLabel = matchReasonLabel(row);
   const needsComment = rowNeedsComment(row, edit);
-  const isDuplicate = status === "duplicate";
+  const isDuplicate = status === "needs_decision" && (row.duplicate || row.matchReasons?.duplicates === "needs_choice" || row.status === "source_duplicate");
   const reason = attentionReason(row);
 
   return (
@@ -88,7 +89,17 @@ export function ReportRow({ row, edit, expanded, invalid, acknowledged, boxLabel
         </td>
         <td className={cell}>
           <div className="flex justify-end">
-            {match == null ? <span className="px-2 text-[var(--color-ink-faint)]">—</span> : <MatchPill value={match} />}
+            {reasonLabel ? (
+              <span className="max-w-40 truncate text-[13px] text-[var(--color-ink-soft)]" title={reasonLabel}>
+                {reasonLabel}
+              </span>
+            ) : match == null ? (
+              <span className="px-2 text-[var(--color-ink-faint)]">—</span>
+            ) : (
+              <span className="px-2 font-mono text-[12px] text-[var(--color-ink-faint)]" title="Техническая похожесть">
+                {match}%
+              </span>
+            )}
           </div>
         </td>
         <td className={cell}>
@@ -139,10 +150,8 @@ export function ReportRow({ row, edit, expanded, invalid, acknowledged, boxLabel
               <p className="mb-3 pl-5 text-[14px] leading-relaxed text-[var(--color-ink)]">{reason}</p>
             ) : null}
             <div className="grid gap-x-8 gap-y-3 pl-5 text-[14px] sm:grid-cols-3">
-              <Detail label="Статус">
-                <span className={`inline-flex rounded-md px-2 py-0.5 text-[13px] font-medium ${TONE_CHIP[meta.tone]}`}>
-                  {statusLabel(row.status)}
-                </span>
+              <Detail label="Похожесть">
+                {match == null ? "—" : `${match}%`}
               </Detail>
               <Detail label={boxLabel}>{quantityDisplay(row.blankBoxSize) || "—"}</Detail>
               <Detail label="Заказано по факту">{row.hasOrderedFact ? quantityDisplay(row.orderedFact) : "—"}</Detail>
@@ -176,15 +185,6 @@ function Detail({ label, children }) {
       <div className="mb-0.5 text-[13px] text-[var(--color-ink-faint)]">{label}</div>
       <div>{children}</div>
     </div>
-  );
-}
-
-function MatchPill({ value }) {
-  const tone = value >= 85 ? "ok" : value >= 60 ? "warn" : "danger";
-  return (
-    <span className={`rounded-md px-2 py-0.5 font-mono text-[13px] font-medium tabular-nums ${TONE_CHIP[tone]}`}>
-      {value}%
-    </span>
   );
 }
 

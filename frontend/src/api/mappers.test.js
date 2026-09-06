@@ -1,7 +1,18 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { mapJob, mapOutputFile, mapReport, toManualEditPayload } from "./mappers.js";
+import { mapJob, mapOutputFile, mapReport, mapReportRow, toManualEditPayload } from "./mappers.js";
+
+test("mapReportRow preserves canonical category and match reasons", () => {
+  const row = mapReportRow({
+    key: "r1",
+    status: "left_blank_nonpositive",
+    category: "order_not_needed",
+    match_reasons: { article: "exact", source: "article" },
+  });
+  assert.equal(row.category, "order_not_needed");
+  assert.deepEqual(row.matchReasons, { article: "exact", source: "article" });
+});
 
 const absoluteUrl = (path) => `http://api.test${path}`;
 

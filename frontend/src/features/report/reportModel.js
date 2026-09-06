@@ -1,13 +1,13 @@
 export function statusLabel(status) {
   const labels = {
-    matched: "Заполнено",
-    matched_by_name: "По названию",
-    warning_name_differs: "Проверить название",
-    warning_name_only: "Проверить без артикула",
-    left_blank_nonpositive: "Пусто",
-    not_in_source: "Нет в таблице",
+    matched: "К заказу",
+    matched_by_name: "К заказу",
+    warning_name_differs: "Проверить название или объём",
+    warning_name_only: "Требует решения",
+    left_blank_nonpositive: "Заказ не нужен",
+    not_in_source: "Нет в 1С",
     not_in_blank: "Нет в бланке",
-    source_duplicate: "Дубль в таблице",
+    source_duplicate: "Требует решения",
   };
   return labels[status] || "Другое";
 }
