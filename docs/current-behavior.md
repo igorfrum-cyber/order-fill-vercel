@@ -60,16 +60,29 @@ Rules:
 
 The UI can generate `отчет для исправления в 1С.csv`.
 
-Rows are included when they need source-data cleanup or manual review:
+Rows are included when they help clean 1C or the blank:
 
-- name-only matches;
-- article matches with suspicious name differences;
-- rows present in the blank but missing from the source workbook;
-- source duplicate rows.
+- unresolved duplicates and ambiguous Chestny Znak merges (`needs_decision`);
+- blank rows missing from 1C (`not_in_source`);
+- source rows with need missing from the blank (`not_in_blank`);
+- volume or form conflicts;
+- name-only matches.
 
-The CSV uses semicolon separators and includes reason, blank row, blank article/name, source row, source article/name, similarity, recommended quantity, inserted quantity, and duplicate candidates.
+The CSV uses semicolon separators. Reason text is canonical (for example
+`неоднозначный дубль`, `конфликт объёма`), not a raw similarity percent.
 
 ### File Downloads
+
+Download is blocked until matching decisions and commented quantity edits are
+resolved:
+
+- unresolved duplicate articles;
+- ambiguous Chestny Znak merges;
+- positive name-only matches;
+- manual quantity changes without a comment.
+
+A single article match that only has `check_name_or_volume` does not block
+download. `order_not_needed` is a normal result, not an error.
 
 For standard order fill, downloads include:
 
@@ -84,36 +97,49 @@ For North mode, downloads include:
 
 Workbook output forces formula recalculation on open and removes `calcChain.xml`.
 
-## Report Row Statuses
+## Report Row Categories
 
-### `matched`
+New reports use `category` and `match_reasons`. The same six categories appear
+in `standard` and `smart` matching mode. `status` remains on the payload for
+older clients.
 
-The blank row matched one or more source rows by article. The best source candidate was selected, name similarity was acceptable, and the row can be filled or left blank according to quantity rules.
+Review tabs, in this order: `needs_decision`, `not_in_source`,
+`check_name_or_volume`, `not_in_blank`, `to_order`, `order_not_needed`, then
+all rows.
 
-### `matched_by_name`
+### `needs_decision`
 
-The blank row matched a source row by name fallback. This is used when there is no article candidate and the matched source item does not require a positive order quantity.
-
-### `warning_name_differs`
-
-The blank row matched by article, but the source name and blank name similarity is below the warning threshold. The row stays editable and is shown in the priority review section.
-
-### `warning_name_only`
-
-The blank row had no article match and was matched only by name to a source row with positive recommended quantity. The blank quantity is cleared until reviewed, and the row is shown as priority.
-
-### `left_blank_nonpositive`
-
-The row matched a source item, but the calculated inserted quantity is empty because the recommendation is below the minimum threshold or non-positive after brand rules. The blank quantity cell is cleared.
+The matcher cannot choose one source row. Typical reasons: duplicate articles
+or an ambiguous Chestny Znak merge. Quantity is not written until the user
+chooses.
 
 ### `not_in_source`
 
-The blank row could not be matched to the source workbook by article or accepted name fallback. The blank quantity cell is cleared and the row is not editable because there is no source row to update.
+The blank row has no accepted source match. The blank quantity cell is cleared
+and the row is not editable.
+
+### `check_name_or_volume`
+
+The pair is usable, but name, volume, or form should be checked. A single
+article match in this bucket does not block download.
 
 ### `not_in_blank`
 
-The source item is not represented by a matched blank row. These rows are synthesized in the UI after processing by comparing matched source rows with source items.
+The source item needs an order and is not represented by a matched blank row.
 
-### `source_duplicate`
+### `to_order`
 
-The source workbook has multiple rows for the same normalized article. Duplicate source candidates are included in the report so the user can correct source data or choose the right row manually.
+The pair is trusted and the calculated quantity is positive.
+
+### `order_not_needed`
+
+The pair is trusted, but the calculated quantity is empty (below the brand
+minimum or non-positive). This is a normal outcome, not an error.
+
+### Legacy `status`
+
+Older completed jobs may only have `status`. The UI maps those values onto the
+categories above: `source_duplicate` and `warning_name_only` → `needs_decision`;
+`warning_name_differs` → `check_name_or_volume`; `left_blank_nonpositive` →
+`order_not_needed`; `matched` / `matched_by_name` → `to_order` or
+`order_not_needed` from whether a quantity was inserted.

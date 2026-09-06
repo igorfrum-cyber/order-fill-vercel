@@ -1496,17 +1496,37 @@ components:
           type: number
         filled:
           type: integer
+          description: Legacy filled-row count kept for older clients.
         left_blank:
           type: integer
+          description: Legacy empty-quantity count kept for older clients.
         suspicious:
           type: integer
+          description: Legacy warning count kept for older clients.
         unmatched:
           type: integer
+          description: Legacy unmatched-blank count kept for older clients.
         duplicates:
           type: integer
+          description: Legacy duplicate-group count kept for older clients.
+        needs_decision:
+          type: integer
+          description: Canonical count of rows that need a human choice. Independent of matching mode.
+        not_in_source:
+          type: integer
+          description: Canonical count of blank rows missing from 1C. Independent of matching mode.
+        check_name_or_volume:
+          type: integer
+          description: Canonical count of rows whose name or volume should be checked. Independent of matching mode.
         not_in_blank:
           type: integer
-          description: Source SKUs that need an order but are not on the blank. The row list may be capped.
+          description: Canonical count of source SKUs that need an order but are not on the blank. The row list may be capped. Independent of matching mode.
+        to_order:
+          type: integer
+          description: Canonical count of rows with a positive quantity to order. Independent of matching mode.
+        order_not_needed:
+          type: integer
+          description: Canonical count of matched rows that do not need an order. Independent of matching mode. Not an error.
         blank_duplicate_articles:
           type: integer
         source_items:
@@ -1529,8 +1549,25 @@ components:
           type: string
           description: Stable row identifier, also used as the manual edit key.
           examples: ["blank-1:7"]
+        category:
+          type: string
+          description: Canonical review bucket. Prefer this over status.
+          enum:
+            - needs_decision
+            - not_in_source
+            - check_name_or_volume
+            - not_in_blank
+            - to_order
+            - order_not_needed
+        match_reasons:
+          type: object
+          description: Explainable matching signals (article, name, volume, form, duplicates, source). The same keys appear in standard and smart mode; smart fills more of them.
+          additionalProperties:
+            type: string
         status:
           type: string
+          deprecated: true
+          description: Legacy row status kept for older clients. Use category and match_reasons.
           enum:
             - matched
             - matched_by_name

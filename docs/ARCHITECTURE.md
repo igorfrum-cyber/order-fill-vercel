@@ -99,13 +99,18 @@ S3-compatible storage с непустыми credentials и TLS endpoint.
 - `document-api`: gRPC API для preview/report операций;
 - `document-worker`: Redis consumer, который выполняет тяжелую Excel-обработку.
 
-Отвечает за чтение `.xlsx`, нормализацию, matching, правила брендов, режим
+Отвечает за чтение `.xlsx`, нормализацию, правила брендов, режим
 "Север", генерацию отчетов, preview sidecar objects и итоговых workbook files.
+Сопоставление товаров не считает сам: передаёт структурированные строки в
+`matching-service` и записывает возвращённые `category` / `match_reasons` в
+`report.json`. Режим сопоставления берёт из snapshot `matching_mode` в Redis
+message, а не из identity-service.
 
 ### brand-service, matching-service, calculation-service
 
 Внутренние вычислительные сервисы под правила брендов, сопоставление и расчеты.
-Они не доступны из браузера напрямую.
+Они не доступны из браузера напрямую. `matching-service` возвращает канонические
+категории отчёта; Excel не читает.
 
 ### audit-service
 
@@ -138,7 +143,7 @@ outputs и архивов.
 5. job-service сохраняет metadata в PostgreSQL и публикует Redis message.
 6. document-worker читает сообщение из consumer group.
 7. document-worker получает input files через file-service/object storage.
-8. document-worker выполняет Excel pipeline и сохраняет output artifacts.
+8. document-worker читает Excel, вызывает matching-service с matching_mode из сообщения очереди и сохраняет report.json плюс output artifacts.
 9. document-worker обновляет job status/report/output metadata через job-service.
 10. frontend читает status/report/preview через gateway-service.
 11. Пользователь отправляет ручные правки.
