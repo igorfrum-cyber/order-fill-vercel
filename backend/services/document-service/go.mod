@@ -1,6 +1,6 @@
 module order-fill/backend/services/document-service
 
-go 1.25.5
+go 1.26.7
 
 require (
 	order-fill/backend/pkg v0.0.0
@@ -16,6 +16,8 @@ require (
 
 require (
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect
+	github.com/klauspost/cpuid/v2 v2.4.0 // indirect
+	github.com/stretchr/testify v1.12.1 // indirect
 	go.uber.org/atomic v1.11.0 // indirect
 	golang.org/x/net v0.58.0 // indirect
 	golang.org/x/sys v0.47.0 // indirect

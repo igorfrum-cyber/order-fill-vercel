@@ -1,6 +1,6 @@
 module order-fill/backend/services/calculation-service
 
-go 1.25.5
+go 1.26.7
 
 require (
 	order-fill/backend/pkg v0.0.0

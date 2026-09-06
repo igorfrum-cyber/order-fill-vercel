@@ -24,9 +24,10 @@ fi
 export PATH="$(go env GOPATH)/bin:${PATH}"
 
 root=$(cd "$(dirname "$0")/.." && pwd)
-export GOTOOLCHAIN="${GOTOOLCHAIN:-local}"
+export GOTOOLCHAIN="${GOTOOLCHAIN:-auto}"
 export GOCACHE="${GOCACHE:-${root}/.cache/go-build}"
 export GOMODCACHE="${GOMODCACHE:-${root}/.cache/go-mod}"
+export GOWORK=off
 export GOLANGCI_LINT_CACHE="${root}/.cache/golangci-lint"
 mkdir -p "$GOCACHE" "$GOMODCACHE" "$GOLANGCI_LINT_CACHE"
 cd "$root/$dir"

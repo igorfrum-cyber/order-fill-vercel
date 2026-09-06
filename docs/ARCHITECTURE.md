@@ -1,316 +1,183 @@
 # Архитектура
 
-## Цель
+## Текущее состояние
 
-Переписать текущий инструмент заполнения заказных Excel-бланков в сервисную систему, пригодную для коммерческого использования, параллельной обработки документов и дальнейшей интеграции с 1С.
+Проект работает как backend v2: браузер общается только с публичным
+`gateway-service`, а бизнес-операции разнесены по внутренним Go-сервисам.
+Старые root-level Go-модули удалены из рабочего пути.
 
-На первом этапе источником данных остаются Excel-файлы. Архитектура при этом сразу проектируется так, чтобы позже заменить ручную загрузку таблиц на автоматическую интеграцию с 1С без переписывания расчетного ядра.
+```text
+browser
+  |
+  v
+frontend nginx
+  |
+  v
+gateway-service  --gRPC--> identity-service
+      |          --gRPC--> job-service
+      |          --gRPC--> file-service
+      |          --gRPC--> twofa-service
+      |          --gRPC--> passkey-service
+      |          --gRPC--> document-api
+      |
+      +-- Redis stream --> document-worker
+
+internal services --> PostgreSQL
+file-service      --> S3-compatible object storage
+document-worker   --> S3-compatible object storage
+```
+
+Frontend в production отдает статические файлы через nginx и проксирует
+`/api/` в `gateway-service:8080`. Прямых browser-запросов к внутренним
+сервисам нет.
 
 ## Принципы
 
 - Frontend не содержит бизнес-логики обработки документов.
-- Обработка документов выполняется в фоновых workers, а не в HTTP-request lifecycle.
-- Все длительные операции оформляются как jobs со статусами.
-- Каждый сервис имеет одну основную ответственность.
-- Контракты между сервисами описываются явно: API, события, DTO, ошибки.
-- Python вводится позже отдельным сервисом, а не как зависимость Go API.
-- Excel остается внешним форматом ввода/вывода, но внутренняя модель данных должна быть структурированной.
-- Все сервисы с первого дня запускаются через Docker, включая локальную разработку.
-
-## Целевая схема
-
-```text
-frontend
-  |
-  v
-api-service
-  |
-  +--> postgres
-  |
-  +--> object-storage
-  |
-  v
-queue
-  |
-  v
-document-service
-  |
-  +--> object-storage
-  |
-  v
-calculation-service / python-service later
-```
-
-## Docker-first подход
-
-Проект нужно сразу вести как контейнерную систему. Это не вопрос production-оптимизации, а базовая инженерная гигиена для сервисной архитектуры: одинаковый запуск у всех разработчиков, воспроизводимые зависимости, понятные сетевые имена сервисов и нормальная подготовка к staging/production.
-
-Минимальный локальный стенд:
-
-```text
-docker-compose
-  frontend
-  api-service
-  document-service
-  postgres
-  redis или nats
-  minio
-```
-
-Каждый собственный сервис должен иметь отдельный `Dockerfile`:
-
-```text
-frontend/Dockerfile
-services/api-service/Dockerfile
-services/document-service/Dockerfile
-```
-
-Для разработки используется `docker compose`, для production позже можно перейти на Kubernetes, Nomad, Docker Swarm или managed container platform. Важно, чтобы приложение не зависело от локально установленного Go, Node.js, Python, PostgreSQL или Redis.
-
-Правило для MVP: новый сервис считается готовым только когда он запускается контейнером, имеет healthcheck и участвует в общем compose-стенде.
+- Единственная внешняя HTTP-граница backend: `gateway-service`.
+- Межсервисные вызовы внутри backend идут по protobuf/gRPC.
+- Долгие Excel-операции выполняются в `document-worker`, а не в HTTP request
+  lifecycle.
+- Jobs, входные файлы, результаты и audit-события хранятся в durable
+  зависимостях.
+- Production-конфигурация fail-fast: без PostgreSQL, Redis, object storage,
+  корректного CORS и secure cookies сервис не стартует.
+- Внутренний insecure gRPC допустим только для локальной разработки. Для
+  production предусмотрен `GRPC_TLS_MODE=tls|mtls`.
 
 ## Сервисы
 
 ### frontend
 
-Назначение: пользовательский интерфейс.
+Пользовательский интерфейс: загрузка файлов, выбор компании и режима,
+отображение статуса job, просмотр отчета, ручные правки и скачивание результата.
+Excel не парсит.
+
+### gateway-service
+
+Публичный HTTP API продукта.
 
 Отвечает за:
 
-- выбор бренда, месяца, режима обработки;
-- загрузку Excel-файлов;
-- отображение статуса задачи;
-- отображение отчета и спорных строк;
-- ввод ручных правок и комментариев;
-- скачивание результата.
+- CORS, secure headers, cookies и session middleware;
+- проверку авторизации на публичных маршрутах;
+- прием пользовательских запросов и файлов;
+- оркестрацию gRPC-вызовов во внутренние сервисы;
+- streaming/download endpoints;
+- ограничение размера upload и preview windows.
 
-Не отвечает за:
+### identity-service
 
-- чтение XML Excel;
-- расчет заказов;
-- сопоставление номенклатуры;
-- хранение исходных файлов;
-- управление очередью.
+Владение пользователями, компаниями, членством, сессиями и bootstrap invite.
+PostgreSQL является обязательным в production.
 
-### api-service
+### twofa-service
 
-Язык: Go.
+TOTP-секреты, backup codes и шифрование 2FA данных. В production требует
+durable PostgreSQL/Redis и непустой 32+ byte master key.
 
-Назначение: внешний API продукта и координатор пользовательских действий.
+### passkey-service
 
-Отвечает за:
+WebAuthn/passkey ceremonies и credentials. В production запрещает HTTP origins
+и требует корректный RP ID.
 
-- прием файлов;
-- создание job;
-- валидацию входных параметров;
-- авторизацию в будущих версиях;
-- выдачу статусов;
-- выдачу отчетов и ссылок на результат;
-- хранение метаданных задач в БД;
-- публикацию задач в очередь.
+### job-service
 
-Примеры API:
+Владение job metadata, статусами, report rows, output metadata и публикацией
+work messages в Redis stream.
 
-```text
-POST /api/v1/jobs/order-fill
-POST /api/v1/jobs/north-merge
-GET  /api/v1/jobs/{job_id}
-GET  /api/v1/jobs/{job_id}/report
-GET  /api/v1/jobs/{job_id}/files
-POST /api/v1/jobs/{job_id}/edits
-```
+### file-service
+
+Единственный владелец object storage операций для входных и выходных файлов.
+Локально может работать с MinIO, в production должен использовать
+S3-compatible storage с непустыми credentials и TLS endpoint.
 
 ### document-service
 
-Язык: Go.
+Один Go-модуль с двумя процессами:
 
-Назначение: обработка Excel-документов и генерация выходных файлов.
+- `document-api`: gRPC API для preview/report операций;
+- `document-worker`: Redis consumer, который выполняет тяжелую Excel-обработку.
 
-Отвечает за:
+Отвечает за чтение `.xlsx`, нормализацию, matching, правила брендов, режим
+"Север", генерацию отчетов, preview sidecar objects и итоговых workbook files.
 
-- чтение `.xlsx`, `.xlsm`, частично `.xls` после конвертации;
-- поиск листов и колонок;
-- нормализацию артикулов и названий;
-- валидацию периодов;
-- сопоставление строк источника и бланка;
-- применение правил брендов;
-- генерацию отчета;
-- применение ручных правок;
-- запись итоговых Excel-файлов;
-- подготовку файлов перемещения для режима "Север".
+### brand-service, matching-service, calculation-service
 
-Внутри сервиса должны быть отдельные слои:
+Внутренние вычислительные сервисы под правила брендов, сопоставление и расчеты.
+Они не доступны из браузера напрямую.
 
-```text
-document-service
-  /cmd/worker
-  /internal/excel
-  /internal/domain
-  /internal/brands
-  /internal/matching
-  /internal/orderfill
-  /internal/north
-  /internal/reports
-  /internal/jobs
-```
+### audit-service
 
-### calculation-service
-
-Язык: Python, позже.
-
-Назначение: сложные расчеты, прогнозирование, модели, улучшенное сопоставление.
-
-На первом этапе не нужен. Контракт под него стоит заложить заранее:
-
-```text
-document-service -> calculation-service
-```
-
-Возможные задачи:
-
-- прогноз спроса;
-- ML matching номенклатуры;
-- расчет сезонности;
-- проверка аномалий;
-- рекомендации к заказу без готовой Excel-выгрузки.
-
-### integration-service-1c
-
-Язык: Go или Python, позже.
-
-Назначение: получение данных из 1С.
-
-На первом этапе не реализуется. Но внутренняя модель данных должна быть такой, чтобы источник мог быть любым:
-
-```text
-Excel source -> normalized order source
-1C API source -> normalized order source
-```
+Запись audit-событий пользовательских и системных действий в PostgreSQL.
 
 ## Хранилища
 
 ### PostgreSQL
 
-Хранит:
+Хранит пользователей, компании, сессии, passkeys, 2FA, jobs, статусы, report
+rows, output metadata и audit log.
 
-- jobs;
-- пользователей и организации в будущих версиях;
-- статусы задач;
-- параметры запуска;
-- отчетные строки;
-- ссылки на файлы в object storage;
-- audit log ручных правок.
+### Redis
+
+Используется для очереди `order-fill:jobs`, rate/session-related volatile
+state и межпроцессной координации там, где нужна короткоживущая mutable state.
 
 ### Object Storage
 
-S3-compatible хранилище: локально MinIO, в production AWS S3, Selectel, Yandex Object Storage или аналог.
-
-Хранит:
-
-- исходные Excel-файлы;
-- промежуточные normalized artifacts;
-- итоговые Excel-файлы;
-- CSV/JSON отчеты.
-
-### Queue
-
-Рекомендуемый старт: Redis Queue, Asynq или NATS.
-
-Задачи:
-
-- отделить HTTP API от долгой обработки;
-- дать параллельность;
-- включить retry;
-- масштабировать workers отдельно;
-- не терять задачи при временных ошибках.
+S3-compatible хранилище для входных Excel-файлов, preview chunks, draft/final
+outputs и архивов.
 
 ## Поток "Заполнение бланка"
 
 ```text
-1. Пользователь загружает таблицу заказа и бланк.
-2. frontend отправляет файлы в api-service.
-3. api-service сохраняет файлы в object storage.
-4. api-service создает job в PostgreSQL.
-5. api-service публикует сообщение в queue.
-6. document-service забирает job.
-7. document-service читает Excel-файлы.
-8. document-service строит normalized source и blank model.
-9. document-service применяет правила бренда.
-10. document-service сохраняет отчет и draft output files.
-11. frontend показывает отчет.
-12. Пользователь вносит ручные правки.
-13. api-service создает finalize job.
-14. document-service применяет правки и сохраняет итоговые файлы.
-15. frontend отдает ссылки на скачивание.
+1. Пользователь загружает source workbook и blank workbook во frontend.
+2. frontend отправляет multipart request в gateway-service.
+3. gateway-service проверяет session и вызывает file-service для сохранения inputs.
+4. gateway-service вызывает job-service для создания job.
+5. job-service сохраняет metadata в PostgreSQL и публикует Redis message.
+6. document-worker читает сообщение из consumer group.
+7. document-worker получает input files через file-service/object storage.
+8. document-worker выполняет Excel pipeline и сохраняет output artifacts.
+9. document-worker обновляет job status/report/output metadata через job-service.
+10. frontend читает status/report/preview через gateway-service.
+11. Пользователь отправляет ручные правки.
+12. job-service публикует finalize message.
+13. document-worker применяет правки и сохраняет финальные файлы.
+14. frontend скачивает результат через gateway-service.
 ```
 
 ## Поток "Север"
 
 ```text
 1. Пользователь загружает заполненные бланки городов.
-2. Опционально загружает заполненную таблицу Тюмени.
-3. api-service создает north-merge job.
-4. document-service определяет города и типы бланков.
-5. document-service собирает потребности по городам.
-6. document-service учитывает остаток, товар в пути и целевой запас Тюмени.
-7. document-service строит план: из Тюмени / у поставщика.
-8. frontend показывает расчет для проверки.
-9. Пользователь правит фактический заказ у поставщика.
-10. document-service формирует общий бланк, перемещения и таблицу заказа.
+2. gateway-service создает north-merge job через job-service.
+3. document-worker определяет города и типы бланков.
+4. document-worker собирает потребности по городам.
+5. document-worker учитывает остаток, товар в пути и целевой запас Тюмени.
+6. document-worker строит план: из Тюмени / у поставщика.
+7. frontend показывает расчет для проверки.
+8. Пользователь правит фактический заказ у поставщика.
+9. document-worker формирует общий бланк, перемещения и таблицу заказа.
 ```
 
-## Ошибки и надежность
+## Production Минимум
 
-Каждая ошибка должна быть машинно читаемой и человеко-понятной:
-
-```json
-{
-  "code": "source_period_mismatch",
-  "message": "Таблица расчета заказа сформирована не за тот период.",
-  "details": {
-    "expected_main_period": "01.06.2025 - 31.05.2026",
-    "actual_main_period": "01.05.2025 - 30.04.2026"
-  }
-}
-```
-
-Классы ошибок:
-
-- неправильный формат файла;
-- не найден лист;
-- не найдены обязательные колонки;
-- неверный период;
-- неизвестный город;
-- неподдерживаемый бренд;
-- дубли в источнике;
-- спорное сопоставление;
-- ошибка записи результата;
-- внутренняя ошибка worker.
-
-## Масштабирование
-
-Минимальная production-схема:
+Минимальный production-стенд:
 
 ```text
-1 frontend
+2 frontend replicas behind HTTPS ingress
 2 gateway-service replicas
-2-5 document-service workers
-1 postgres
-1 redis/nats
-1 object storage
+2 identity-service replicas
+2 job-service replicas
+2 file-service replicas
+2 document-api replicas
+2-5 document-worker replicas
+1+ PostgreSQL primary/managed cluster
+1+ Redis/managed queue
+1 S3-compatible object storage
 ```
 
-Масштабируется в первую очередь `document-service`, потому что именно он выполняет тяжелую работу.
-
-## Важное архитектурное решение
-
-Сразу пишем сервисную систему, но не дробим чрезмерно. Стартовый набор:
-
-- `frontend`;
-- `gateway-service`;
-- `document-service`;
-- `postgres`;
-- `queue`;
-- `object-storage`.
-
-Python и 1С интеграция добавляются после стабилизации Excel-пайплайна.
+`document-worker` масштабируется отдельно от HTTP API, потому что именно он
+выполняет CPU/RAM тяжелую работу. `gateway-service` должен оставаться тонким
+edge/orchestration слоем.

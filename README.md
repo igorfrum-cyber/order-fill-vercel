@@ -6,7 +6,7 @@
 - внутренние сервисы общаются по gRPC;
 - Redis — очередь jobs, Excel считает `document-worker`.
 
-Старый `services/api-service` в compose больше не поднимается.
+Старые root-level микросервисы удалены; активный backend живет в `backend/services/`.
 
 ```text
 frontend --> gateway-service --> identity / jobs / files / …

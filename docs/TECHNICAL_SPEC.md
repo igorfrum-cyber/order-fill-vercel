@@ -138,7 +138,7 @@
 - Все сервисы должны запускаться через Docker.
 - Локальная разработка должна подниматься одной командой через Docker Compose.
 - Каждый собственный сервис должен иметь отдельный `Dockerfile`.
-- Compose-стенд должен включать frontend, api-service, document-service, PostgreSQL, queue и object storage.
+- Compose-стенд должен включать frontend, gateway-service, backend gRPC services, document-worker, PostgreSQL, queue и object storage.
 - Сервис считается готовым к интеграции только при наличии контейнерного запуска и healthcheck.
 - Production-сборка не должна зависеть от локально установленных runtime на машине разработчика.
 

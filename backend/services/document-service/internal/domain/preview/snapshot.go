@@ -7,7 +7,7 @@ import (
 	"order-fill/backend/services/document-service/internal/domain/spreadsheet"
 )
 
-// DefaultChunkRows is small enough that one or two chunks fit the api-service
+// DefaultChunkRows is small enough that one or two chunks fit the gateway-service
 // memory budget even for a 35-column 1C sheet, and large enough that a typical
 // viewport (~80 rows) is one request.
 const DefaultChunkRows = 256

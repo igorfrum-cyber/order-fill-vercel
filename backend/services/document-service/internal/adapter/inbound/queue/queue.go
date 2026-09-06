@@ -1,4 +1,4 @@
-// Package queue consumes job messages published by api-service through Redis.
+// Package queue consumes job messages published by job-service through Redis.
 package queue
 
 import (

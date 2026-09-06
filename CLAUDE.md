@@ -7,18 +7,21 @@ This file provides guidance to Claude Code and Cursor when working in this repos
 Order-fill processes supplier Excel workbooks. The browser never parses Excel; that stays in `document-service`.
 
 ```text
-frontend  -->  api-service  -->  postgres
-                    |               redis (job queue)
-                    |               minio (workbooks)
-                    v
-            document-service
+frontend  -->  gateway-service  -->  identity / job / file / audit / 2fa / passkey
+                         |          redis (job queue)
+                         |          minio (workbooks)
+                         v
+                  document-worker
 ```
 
 - `frontend/` — Vite browser app: upload UI, report, manual edits, polling, download links. Talks to the API only through `frontend/src/api/`.
-- `services/api-service/` — public HTTP API, job metadata, uploads, queue publish, object-storage boundary.
-- `services/document-service/` — Excel read/write, brand rules, matching, job processing, reports.
-- `packages/contracts/openapi.yaml` — HTTP contract between frontend and api-service.
-- `deploy/docker-compose.yml` — local runtime for all three apps plus Postgres, Redis, MinIO.
+- `backend/services/gateway-service/` — public HTTP API, session gate, request validation, service orchestration.
+- `backend/services/job-service/` — job metadata, queue publishing, report state.
+- `backend/services/file-service/` — object-storage boundary and file metadata.
+- `backend/services/document-service/` — Excel read/write, job processing, reports; runs as `document-api` and `document-worker`.
+- `backend/proto/` — internal protobuf/gRPC contracts.
+- `backend/services/gateway-service/api/openapi.yaml` — public HTTP contract between frontend and gateway.
+- `deploy/docker-compose.yml` — local runtime; includes `backend/deploy/docker-compose.yml`.
 
 Do not put workbook rules in HTTP handlers or in the browser. Match existing brand-specific behavior before generalizing. Do not execute macros from uploaded `.xlsm` files.
 
@@ -44,14 +47,15 @@ npm run dev --prefix frontend    # UI only, http://127.0.0.1:3200, API still fro
 Service health:
 
 - frontend: http://127.0.0.1:3200
-- api-service: http://127.0.0.1:8080/healthz
-- document-service: http://127.0.0.1:8081/healthz
+- gateway-service: http://127.0.0.1:8080/healthz
+- document-api: http://127.0.0.1:8087/healthz inside compose network
+- document-worker: http://127.0.0.1:8092/healthz inside compose network
 
 From a service directory:
 
 ```bash
-cd services/api-service && go test ./...
-cd services/document-service && go test ./internal/domain/orderfill -run TestFill
+cd backend/services/gateway-service && go test ./...
+cd backend/services/document-service && go test ./internal/domain/orderfill -run TestFill
 ```
 
 ## Pre-commit gate — mandatory before every commit
@@ -67,8 +71,10 @@ That is `bash scripts/verify.sh`, which runs:
 ```bash
 bash scripts/verify-toolchain.sh          # Node/Go pins: engines, go.mod, Docker, CI
 npm run verify --prefix frontend          # ESLint + syntax, node:test, vite build
-bash scripts/verify-go.sh services/api-service
-bash scripts/verify-go.sh services/document-service
+bash scripts/verify-go.sh backend/pkg
+bash scripts/verify-go.sh backend/proto
+bash scripts/verify-go.sh backend/services/*
+docker compose -f backend/deploy/docker-compose.yml config
 ```
 
 Each Go module is checked with:
@@ -83,17 +89,17 @@ go build ./...
 go test ./...
 ```
 
-Local Node must be ≥ `engines.node` (24). Local Go must be ≥ the `go` line in both `go.mod` files, and those lines must match. `golangci-lint` v2 and `gosec` are installed on first run if missing.
+Local Node must be ≥ `engines.node` (24). Local Go must be ≥ the `go` line in `backend/**/go.mod`, and those lines must match. `golangci-lint` v2 and `gosec` are installed on first run if missing.
 
 For vulnerability reachability checks, install and run the official Go scanner:
 
 ```bash
 go install golang.org/x/vuln/cmd/govulncheck@latest
-cd services/api-service && go run golang.org/x/vuln/cmd/govulncheck@latest ./...
-cd services/document-service && go run golang.org/x/vuln/cmd/govulncheck@latest ./...
+cd backend/services/gateway-service && govulncheck ./...
+cd backend/services/document-service && govulncheck ./...
 ```
 
-Prefer the `go run ...@latest` form in this repo so the scanner follows the module toolchain when `go.mod` requires a newer Go version than the locally installed default.
+Use the installed scanner in this repo; verification pins `GOTOOLCHAIN=local` so the gate does not silently download a different Go toolchain.
 
 `npm run precommit` is an alias for the same gate.
 

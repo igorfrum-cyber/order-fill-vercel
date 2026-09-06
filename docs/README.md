@@ -2,9 +2,12 @@
 
 ## Источник истины по архитектуре
 
-Текущие `ARCHITECTURE.md` и `service-boundaries.md` описывают старую схему `api-service` + `document-service`. Их не расширять.
+Текущий backend v2:
 
-Целевой backend:
+- [Архитектура](./ARCHITECTURE.md)
+- [Service boundaries](./service-boundaries.md)
+
+Дизайн и план миграции:
 
 - [Backend v2 architecture](./plans/2026-09-04-microservice-architecture-v2-design.md)
 - [Backend v2 implementation plan](./plans/2026-09-04-backend-v2-microservices-implementation-plan.md)

@@ -12,7 +12,7 @@ import (
 )
 
 func TestDefaultStreamName(t *testing.T) {
-	// api-service publishes onto this exact stream; renaming it silently breaks the
+	// job-service publishes onto this exact stream; renaming it silently breaks the
 	// handover between the two services.
 	if DefaultStreamName != "order-fill:jobs" {
 		t.Fatalf("stream name: got %q", DefaultStreamName)
@@ -42,7 +42,7 @@ func TestStreamMessagePayloadRejectsMissingPayload(t *testing.T) {
 	}
 }
 
-func TestDecodeMessageFromAPIService(t *testing.T) {
+func TestDecodeMessageFromJobService(t *testing.T) {
 	payload := []byte(`{
 		"job_id": "job-123",
 		"type": "order_fill",
@@ -112,7 +112,7 @@ func TestDecodeMessageFromAPIService(t *testing.T) {
 }
 
 func TestDecodeMessageDefaultsStageToEmpty(t *testing.T) {
-	// A process-stage message from api-service may omit the field; the use case
+	// A process-stage message from job-service may omit the field; the use case
 	// treats an empty stage as StageProcess.
 	message, err := decodeMessage([]byte(`{"job_id":"job-1","type":"order_fill","inputs":[]}`))
 	if err != nil {

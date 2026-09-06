@@ -36,7 +36,7 @@ func RelativeChunkName(sheetIndex int, chunkIndex int) string {
 	return fmt.Sprintf("s%d/c%d.json.gz", sheetIndex, chunkIndex)
 }
 
-// Encode compresses meta and every chunk so api-service never inflates a 100k
+// Encode compresses meta and every chunk so gateway-service never inflates a 100k
 // sheet. Objects are ordered meta first, then chunks in sheet/chunk order.
 func Encode(snapshot Snapshot) ([]Object, error) {
 	objects := make([]Object, 0, 1+len(snapshot.Chunks)*4)
@@ -62,7 +62,7 @@ func Encode(snapshot Snapshot) ([]Object, error) {
 }
 
 // Decode rebuilds a snapshot from Encode's object list. Used by tests and by
-// the worker when it needs to assert a round-trip; api-service decodes one
+// the worker when it needs to assert a round-trip; gateway-service decodes one
 // object at a time.
 func Decode(objects []Object) (Snapshot, error) {
 	var snapshot Snapshot

@@ -54,7 +54,7 @@ echo "==> поднимаю https для ${host}"
 docker compose --env-file "$env_file" \
   -f "$root/deploy/docker-compose.yml" \
   -f "$root/deploy/docker-compose.https.yml" \
-  up -d --build frontend api-service document-service caddy
+  up -d --build frontend gateway-service caddy
 
 cat <<EOF
 

@@ -1088,7 +1088,7 @@ paths:
       summary: A short row window of the generated workbook
       description: >
         Loads one or two sidecar chunks. The window cannot exceed 200 rows so
-        api-service never inflates a 100k-row sheet.
+        gateway-service never inflates a 100k-row sheet.
       parameters:
         - $ref: "#/components/parameters/JobId"
         - $ref: "#/components/parameters/FileId"

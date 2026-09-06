@@ -1,6 +1,6 @@
 module order-fill/backend/services/file-service
 
-go 1.25.5
+go 1.26.7
 
 require (
 	order-fill/backend/pkg v0.0.0
@@ -27,6 +27,7 @@ require (
 	github.com/minio/md5-simd v1.1.2 // indirect
 	github.com/philhofer/fwd v1.2.0 // indirect
 	github.com/rs/xid v1.6.0 // indirect
+	github.com/stretchr/testify v1.12.1 // indirect
 	github.com/tinylib/msgp v1.6.4 // indirect
 	github.com/zeebo/xxh3 v1.1.0 // indirect
 	go.yaml.in/yaml/v3 v3.0.5 // indirect

@@ -22,7 +22,7 @@ const (
 	RoleBlank  = "blank"
 )
 
-// JobMessage is the queue contract published by api-service.
+// JobMessage is the queue contract published by job-service.
 type JobMessage struct {
 	JobID        string        `json:"job_id"`
 	Type         string        `json:"type"`
@@ -65,7 +65,7 @@ type OutputFile struct {
 }
 
 // JobStore is the narrow slice of the shared job table the worker touches.
-// api-service owns the schema; the worker only advances a job it was given.
+// job-service owns the schema; the worker only advances a job it was given.
 type JobStore interface {
 	MarkProcessing(ctx context.Context, jobID string, at time.Time) error
 	MarkFailed(ctx context.Context, jobID string, code string, message string, at time.Time) error

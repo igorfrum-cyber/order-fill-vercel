@@ -263,7 +263,7 @@ func TestEncodeRoundTripGzipJSON(t *testing.T) {
 		t.Fatalf("first object %q", objects[0].Name)
 	}
 	if !bytes.HasPrefix(objects[0].Content, []byte{0x1f, 0x8b}) {
-		t.Fatal("preview objects must be gzip-compressed so api-service stays small")
+		t.Fatal("preview objects must be gzip-compressed so gateway-service stays small")
 	}
 	restored, err := Decode(objects)
 	if err != nil {

@@ -39,6 +39,11 @@ version_ge() {
 
 backend_go=$(go_mod_version backend/pkg/go.mod)
 [[ -n $backend_go ]] || fail "could not read go version from backend/pkg/go.mod"
+work_go=$(go_mod_version backend/go.work)
+[[ $work_go == "$backend_go" ]] || fail "backend/go.work go=$work_go must match backend/pkg/go.mod go=$backend_go"
+work_toolchain=$(awk '/^toolchain / { sub(/^go/, "", $2); print $2; exit }' backend/go.work)
+[[ -z $work_toolchain || $work_toolchain == "$backend_go" ]] ||
+  fail "backend/go.work toolchain go${work_toolchain} must match go.mod ${backend_go}"
 while IFS= read -r modfile; do
   module_go=$(go_mod_version "$modfile")
   [[ $module_go == "$backend_go" ]] || fail "go.mod versions differ: backend/pkg=$backend_go $modfile=$module_go"

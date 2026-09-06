@@ -1,6 +1,6 @@
 module order-fill/backend/proto
 
-go 1.25.5
+go 1.26.7
 
 require (
 	google.golang.org/grpc v1.83.2

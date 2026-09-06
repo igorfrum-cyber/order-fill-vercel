@@ -10,7 +10,7 @@ import (
 	"unicode"
 )
 
-// MaxWindowRows is the largest range api-service will inflate in one request.
+// MaxWindowRows is the largest range gateway-service will inflate in one request.
 // Two 256-row chunks already cover a viewport; 200 is a hard cap against
 // accidental full-sheet fetches that would blow the 256 MiB process limit.
 const MaxWindowRows = 200
