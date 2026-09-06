@@ -154,3 +154,31 @@ func TestFormConflictSetsCheckNameOrVolume(t *testing.T) {
 		t.Fatalf("%+v", got)
 	}
 }
+
+func TestSmartModeExplainsArticleVolumeFormAndDuplicateReasons(t *testing.T) {
+	t.Parallel()
+	svc := matching.New()
+	got := svc.Match(
+		[]domain.Item{{ID: "b1", Article: "A1", Name: "Крем 50 мл"}},
+		[]domain.Item{{ID: "s1", Article: "A1", Name: "Сыворотка 30 мл"}},
+		matching.Options{Mode: domain.ModeSmart},
+	)
+	if got[0].Category != domain.CategoryCheckNameOrVolume {
+		t.Fatalf("%+v", got[0])
+	}
+	if got[0].Reasons.Article != "exact" || got[0].Reasons.Volume != "conflict" || got[0].Reasons.Form != "conflict" {
+		t.Fatalf("%+v", got[0].Reasons)
+	}
+}
+
+func TestSmartModeKeepsSingleArticleWarningNonBlocking(t *testing.T) {
+	t.Parallel()
+	got := matching.New().Match(
+		[]domain.Item{{ID: "b1", Article: "A1", Name: "Крем"}},
+		[]domain.Item{{ID: "s1", Article: "A1", Name: "Крем ночной"}},
+		matching.Options{Mode: domain.ModeSmart},
+	)
+	if got[0].Category == domain.CategoryNeedsDecision {
+		t.Fatalf("single article match with no conflict must not block: %+v", got[0])
+	}
+}

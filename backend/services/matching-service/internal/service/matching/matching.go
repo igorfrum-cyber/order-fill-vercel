@@ -16,7 +16,7 @@ type scored struct {
 	score float64
 }
 
-var volumePattern = regexp.MustCompile(`(?i)(\d+(?:[,.]\d+)?)\s*(мл|ml|гр|г|g)\b`)
+var volumePattern = regexp.MustCompile(`(?i)(\d+(?:[,.]\d+)?)\s*(мл|ml|гр|г|g)(?:\s|$)`)
 
 var lcsPool = sync.Pool{New: func() any {
 	buf := make([]int, 0, 64)

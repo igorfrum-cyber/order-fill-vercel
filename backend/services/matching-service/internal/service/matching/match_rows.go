@@ -9,7 +9,21 @@ import (
 	"order-fill/backend/services/matching-service/internal/normalize"
 )
 
-const nameMatchThreshold = 0.32
+const (
+	nameMatchThreshold = 0.32
+
+	reasonExact       = "exact"
+	reasonAlias       = "alias"
+	reasonMissing     = "missing"
+	reasonSimilar     = "similar"
+	reasonDifferent   = "different"
+	reasonConflict    = "conflict"
+	reasonArticle     = "article"
+	reasonName        = "name"
+	reasonNone        = "none"
+	reasonChosenBest  = "chosen_best"
+	reasonNeedsChoice = "needs_choice"
+)
 
 var digitsPattern = regexp.MustCompile(`^\d+$`)
 
@@ -84,14 +98,14 @@ func resolve(blank domain.Item, index sourceIndex, opts Options) domain.Result {
 	if len(candidates) == 0 {
 		fallback, ok := chooseNameFallback(index.noArticle, blank.Name, blank.Volume)
 		if !ok {
-			return domain.Result{BlankItemID: blank.ID, Category: domain.CategoryNotInSource, Reasons: domain.Reasons{Source: "none"}}
+			return domain.Result{BlankItemID: blank.ID, Category: domain.CategoryNotInSource, Reasons: domain.Reasons{Source: reasonNone}}
 		}
 		return domain.Result{
 			BlankItemID:  blank.ID,
 			SourceItemID: fallback.item.ID,
 			Category:     domain.CategoryNeedsDecision,
 			Score:        fallback.score,
-			Reasons:      domain.Reasons{Article: "missing", Name: "similar", Source: "name"},
+			Reasons:      domain.Reasons{Article: reasonMissing, Name: reasonSimilar, Source: reasonName},
 			CandidateIDs: []string{fallback.item.ID},
 		}
 	}
@@ -108,31 +122,31 @@ func resolve(blank domain.Item, index sourceIndex, opts Options) domain.Result {
 		CandidateIDs: ids,
 		Reasons: domain.Reasons{
 			Article: articleReason(article, chosen.item.Article, opts.PrefixAliases),
-			Name:    "similar",
-			Source:  "article",
+			Name:    reasonSimilar,
+			Source:  reasonArticle,
 		},
 	}
 	if len(candidates) > 1 {
-		result.Reasons.Duplicates = "chosen_best"
+		result.Reasons.Duplicates = reasonChosenBest
 	}
 	if opts.Mode == domain.ModeSmart && len(candidates) > 1 {
 		second := secondScore(candidates, blank, chosen.item.ID)
 		if chosen.score < 0.85 || chosen.score-second < 0.10 {
 			result.Category = domain.CategoryNeedsDecision
-			result.Reasons.Duplicates = "needs_choice"
+			result.Reasons.Duplicates = reasonNeedsChoice
 			return result
 		}
 	}
 	if volumesConflict(blank, chosen.item) || formsConflict(blank, chosen.item) || chosen.score < nameMatchThreshold {
 		result.Category = domain.CategoryCheckNameOrVolume
 		if volumesConflict(blank, chosen.item) {
-			result.Reasons.Volume = "conflict"
+			result.Reasons.Volume = reasonConflict
 		}
 		if formsConflict(blank, chosen.item) {
-			result.Reasons.Form = "conflict"
+			result.Reasons.Form = reasonConflict
 		}
 		if chosen.score < nameMatchThreshold {
-			result.Reasons.Name = "different"
+			result.Reasons.Name = reasonDifferent
 		}
 		return result
 	}
@@ -167,14 +181,14 @@ func uniqueItems(items []domain.Item) []domain.Item {
 
 func articleReason(blank, source string, prefixes []string) string {
 	if blank != "" && blank == source {
-		return "exact"
+		return reasonExact
 	}
 	for _, key := range articleKeys(blank, prefixes) {
 		if key == source {
-			return "alias"
+			return reasonAlias
 		}
 	}
-	return "exact"
+	return reasonExact
 }
 
 func secondScore(candidates []domain.Item, blank domain.Item, winnerID string) float64 {
