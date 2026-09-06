@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { lastSeenLabel, userInitial, usersByHierarchy } from "./userHierarchy.js";
+import { hierarchyEmptyHint, lastSeenLabel, userInitial, usersByHierarchy } from "./userHierarchy.js";
 
 test("usersByHierarchy splits a company into three bands", () => {
   const bands = usersByHierarchy([
@@ -27,6 +27,12 @@ test("lastSeenLabel is plain Russian", () => {
   today.setHours(14, 32, 0, 0);
   assert.match(lastSeenLabel(today.toISOString()), /Вход сегодня,/);
   assert.match(lastSeenLabel("2020-01-15T08:15:00Z"), /Вход /);
+});
+
+test("hierarchyEmptyHint tells what that role is for", () => {
+  assert.match(hierarchyEmptyHint("purchasers"), /бланк/i);
+  assert.match(hierarchyEmptyHint("admins"), /приглаш/i);
+  assert.match(hierarchyEmptyHint("owners"), /сервис/i);
 });
 
 test("userInitial uses the first letter of the login", () => {

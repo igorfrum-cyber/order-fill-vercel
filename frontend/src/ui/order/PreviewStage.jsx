@@ -52,6 +52,7 @@ export function PreviewStage({
   const [overlays, setOverlays] = useState(() => new Map());
   const workAreaRef = useRef(null);
   const autoScrolledRef = useRef(false);
+  const [narrow] = useState(() => window.matchMedia("(max-width: 768px)").matches);
 
   const file = files.find((item) => item.id === fileId) || files[0];
   const sheets = meta?.sheets || [];
@@ -64,7 +65,11 @@ export function PreviewStage({
   }, [fileId, files]);
 
   useEffect(() => {
-    if (!jobId || !file?.id) return;
+    if (narrow) onReady?.();
+  }, [narrow]);
+
+  useEffect(() => {
+    if (narrow || !jobId || !file?.id) return;
     let cancelled = false;
     setError("");
     setMeta(null);
@@ -85,7 +90,7 @@ export function PreviewStage({
     return () => {
       cancelled = true;
     };
-  }, [file?.id, jobId, refreshKey]);
+  }, [file?.id, jobId, narrow, refreshKey]);
 
   useEffect(() => {
     autoScrolledRef.current = false;
@@ -100,7 +105,7 @@ export function PreviewStage({
   }, [headerCells, sheet?.comment_column, sheet?.quantity_column]);
 
   useEffect(() => {
-    if (!needsHeaderScan(sheet, { sourceFile, jobId, fileId: file?.id })) return;
+    if (narrow || !needsHeaderScan(sheet, { sourceFile, jobId, fileId: file?.id })) return;
     const headerRow = Number(sheet.header_row);
     let cancelled = false;
     getPreviewWindow(jobId, file.id, {
@@ -117,9 +122,10 @@ export function PreviewStage({
     return () => {
       cancelled = true;
     };
-  }, [file?.id, jobId, sheet, sheetIndex, sourceFile]);
+  }, [file?.id, jobId, narrow, sheet, sheetIndex, sourceFile]);
 
   useEffect(() => {
+    if (narrow) return undefined;
     const frame = window.requestAnimationFrame(() => {
       try {
         const quantity = previewOverlays(rows, edits instanceof Map ? edits : new Map(), {
@@ -139,7 +145,7 @@ export function PreviewStage({
       }
     });
     return () => window.cancelAnimationFrame(frame);
-  }, [editColumns.comment, editColumns.quantity, edits, file?.id, files, rows, sheet?.formula_values, sheet?.formulas]);
+  }, [editColumns.comment, editColumns.quantity, edits, file?.id, files, narrow, rows, sheet?.formula_values, sheet?.formulas]);
 
   const bodyState = previewBodyState({
     error,
@@ -181,6 +187,30 @@ export function PreviewStage({
     } catch (err) {
       setFindStatus(userFacingError(err, "Не удалось найти артикул"));
     }
+  }
+
+  if (narrow) {
+    return (
+      <div className="flex h-full flex-col">
+        <div className="grid min-h-0 flex-1 place-items-center px-6">
+          <p className="max-w-md text-center text-[16px] leading-relaxed text-[var(--color-ink-soft)]">
+            Превью таблицы удобнее на компьютере. Файлы можно скачать.
+          </p>
+        </div>
+        <footer className="flex flex-wrap items-center gap-3 border-t border-[var(--color-line)] bg-[var(--color-surface)] px-6 py-3">
+          <GhostButton onClick={onBack} disabled={busy}>
+            Назад к правкам
+          </GhostButton>
+          <div className="ml-auto flex items-center gap-3">
+            <span className="font-mono text-[13px] text-[var(--color-ink-soft)]">{status}</span>
+            <PrimaryButton dataTour="preview-download" onClick={onDownload} disabled={busy}>
+              {busy ? "Готовлю файлы..." : "Скачать файлы"}
+              <IconDownload className="h-4 w-4" />
+            </PrimaryButton>
+          </div>
+        </footer>
+      </div>
+    );
   }
 
   return (

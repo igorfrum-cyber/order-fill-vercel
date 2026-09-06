@@ -21,6 +21,7 @@ import {
   inviteRoleOptions,
   needsSecurityNudge,
   homeScreen,
+  navItemsForRole,
   needsUsersCompanyPicker,
   pickDefaultCompanyId,
   resolveUsersCompanyId,
@@ -107,21 +108,29 @@ test("matchingModeOptions are standard and smart", () => {
   assert.equal(normalizeMatchingMode("nope"), "standard");
 });
 
-test("needsSecurityNudge prompts every signed-in user until a passkey or code is on", () => {
-  assert.equal(needsSecurityNudge({ role: "purchaser" }), true);
+test("needsSecurityNudge skips purchasers until they finished a job", () => {
+  assert.equal(needsSecurityNudge({ role: "purchaser" }), false);
+  assert.equal(needsSecurityNudge({ role: "purchaser" }, { completedJob: true }), true);
   assert.equal(needsSecurityNudge({ role: "company_owner" }), true);
   assert.equal(needsSecurityNudge({ role: "company_admin" }), true);
   assert.equal(needsSecurityNudge({ role: "platform_admin" }), true);
   assert.equal(needsSecurityNudge({ role: "purchaser", two_factor_enabled: true }), false);
-  assert.equal(needsSecurityNudge({ role: "purchaser", has_passkey: true }), false);
+  assert.equal(needsSecurityNudge({ role: "purchaser", has_passkey: true }, { completedJob: true }), false);
   assert.equal(needsSecurityNudge({ role: "company_owner", two_factor_enabled: true }), false);
 });
 
-test("homeScreen lands company users on history and platform admin on overview", () => {
+test("homeScreen sends purchasers to order and keepers to their desks", () => {
+  assert.equal(homeScreen("purchaser"), "order");
   assert.equal(homeScreen("platform_admin"), "overview");
-  assert.equal(homeScreen("company_owner"), "history");
-  assert.equal(homeScreen("company_admin"), "history");
-  assert.equal(homeScreen("purchaser"), "history");
+  assert.equal(homeScreen("company_owner"), "queue");
+  assert.equal(homeScreen("company_admin"), "queue");
+});
+
+test("navItemsForRole lists only what the role may open", () => {
+  assert.deepEqual(navItemsForRole("purchaser").map((item) => item.id), ["order", "history"]);
+  assert.deepEqual(navItemsForRole("company_admin").map((item) => item.id), ["queue", "users", "company", "history"]);
+  assert.deepEqual(navItemsForRole("company_owner").map((item) => item.id), ["queue", "users", "company", "history"]);
+  assert.deepEqual(navItemsForRole("platform_admin").map((item) => item.id), ["overview", "history", "companies", "users"]);
 });
 
 test("platform admin must pick a company to manage users", () => {

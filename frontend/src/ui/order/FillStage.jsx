@@ -4,8 +4,10 @@ import { rowKey } from "../../features/order/reviewEdits.js";
 import {
   canProceedPastDuplicates,
   countByTab,
+  firstReviewTab,
   matchLayerHint,
   presentationStatus,
+  reviewQueueLine,
   visibleFillTabs,
   visibleReportRows,
 } from "../../features/report/rowPresentation.js";
@@ -28,7 +30,7 @@ export function FillStage({
   onDownloadFiles,
   onIssueReport,
 }) {
-  const [tab, setTab] = useState("empty");
+  const [tab, setTab] = useState("");
   const [query, setQuery] = useState("");
   const [expanded, setExpanded] = useState(null);
   const [acknowledgedDuplicates, setAcknowledgedDuplicates] = useState(() => new Set());
@@ -39,7 +41,9 @@ export function FillStage({
     [rows],
   );
   const tabs = useMemo(() => visibleFillTabs(counts), [counts]);
-  const activeTab = tabs.some((item) => item.key === tab) ? tab : (tabs[0]?.key ?? "all");
+  const preferred = firstReviewTab(counts);
+  const activeTab = tabs.some((item) => item.key === tab) ? tab : preferred;
+  const queueLine = reviewQueueLine(counts);
   const visible = useMemo(() => visibleReportRows(rows, { tab: activeTab, query }), [rows, activeTab, query]);
   const boxLabel = summary.adjustmentLabel || adjustmentLabelForBrand(brand);
   const canProceed = canProceedPastDuplicates({ duplicateKeys, acknowledgedKeys: acknowledgedDuplicates });
@@ -58,6 +62,7 @@ export function FillStage({
   return (
     <div className="relative flex h-full flex-col">
       <ReviewSummary counts={counts} summary={summary} activeTab={activeTab} onTab={setTab} />
+      {queueLine ? <p className="border-b border-[var(--color-line)] bg-[var(--color-surface)] px-6 py-2 text-[14px] text-[var(--color-ink-soft)]">{queueLine}</p> : null}
 
       <ReviewTabs
         tabs={tabs}

@@ -1,5 +1,5 @@
 import { useRef, useState } from "react";
-import { blankSlotsForSource } from "../../features/brands/brandPresentation.js";
+import { blankSlotsForSource, looksLikeChristinaSource } from "../../features/brands/brandPresentation.js";
 import { excelAcceptHint, orderSelectedCount, orderUploadSteps, selectedFileCountLabel } from "../../features/jobs/uploadCopy.js";
 import { IconCheck, IconChevron, IconFile, IconUpload } from "../icons.jsx";
 import { PrimaryButton, ProgressBar, StageHeading } from "../widgets.jsx";
@@ -32,6 +32,7 @@ export function UploadStage({
         </ol>
         <p className="mt-2 text-[14px] text-[var(--color-ink-faint)]">
           {excelAcceptHint} {selectedFileCountLabel(selectedCount)}
+          {looksLikeChristinaSource(sourceFile?.name) ? " Похоже, Christina: достаточно одного бланка." : ""}
         </p>
       </StageHeading>
 

@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { combinedSummary, initialComment, jobProgress, jobStatusText, jobStatusLabel, jobsEmptyState, jobStatusHint, liveJobs, reportSummaryFromRows, statusLabel } from "./reportModel.js";
+import { combinedSummary, filterJobs, historyDeskLine, initialComment, jobNextAction, jobProgress, jobStatusText, jobStatusLabel, jobsEmptyState, jobStatusHint, liveJobs, queueJobs, reportSummaryFromRows, statusLabel } from "./reportModel.js";
 
 test("reportSummaryFromRows derives dashboard metrics from API report rows", () => {
   const rows = [
@@ -134,8 +134,48 @@ test("liveJobs keeps only work that is still in flight", () => {
   );
 });
 
+test("queueJobs lists stuck work with failed first", () => {
+  assert.deepEqual(
+    queueJobs([
+      { id: "ok", status: "completed" },
+      { id: "wait", status: "needs_review", created_at: "2026-09-01" },
+      { id: "down", status: "failed", created_at: "2026-09-02" },
+    ]).map((job) => job.id),
+    ["down", "wait"],
+  );
+});
+
 test("initialComment prefers the 1C table comment over the auto box note", () => {
   assert.equal(initialComment({ sourceComment: "договорились", autoComment: "до коробки" }), "договорились");
   assert.equal(initialComment({ sourceComment: "", autoComment: "до коробки" }), "до коробки");
   assert.equal(initialComment({}), "");
+});
+
+test("historyDeskLine names leftover review work", () => {
+  assert.equal(historyDeskLine([]), "");
+  assert.equal(historyDeskLine([{ status: "needs_review" }]), "Одна выгрузка ждёт проверки.");
+  assert.equal(
+    historyDeskLine([{ status: "needs_review" }, { status: "needs_review" }]),
+    "2 выгрузки ждут проверки.",
+  );
+  assert.equal(historyDeskLine([{ status: "failed" }]), "Есть выгрузки со сбоем.");
+  assert.equal(historyDeskLine([{ status: "completed" }]), "Готовые файлы и текущие выгрузки.");
+});
+
+test("jobNextAction is the row's next step", () => {
+  assert.equal(jobNextAction({ status: "needs_review" }), "Проверить");
+  assert.equal(jobNextAction({ status: "failed" }), "Открыть");
+  assert.equal(jobNextAction({ status: "completed", type: "order_fill" }), "Скачать");
+  assert.equal(jobNextAction({ status: "completed", type: "north_merge" }), "");
+  assert.equal(jobNextAction({ status: "processing" }), "");
+});
+
+test("filterJobs keeps brand status and month", () => {
+  const jobs = [
+    { id: "1", brand: "christina", status: "completed", type: "order_fill", created_at: "2026-09-01T10:00:00Z" },
+    { id: "2", brand: "klapp", status: "needs_review", type: "order_fill", created_at: "2026-08-01T10:00:00Z" },
+  ];
+  assert.equal(filterJobs(jobs, { brand: "christina" }).length, 1);
+  assert.equal(filterJobs(jobs, { status: "needs_review" })[0].id, "2");
+  assert.equal(filterJobs(jobs, { month: "2026-09" })[0].id, "1");
 });

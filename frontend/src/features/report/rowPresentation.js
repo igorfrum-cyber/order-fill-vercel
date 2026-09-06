@@ -94,6 +94,18 @@ export function fillReadiness(counts) {
   return paired ? (counts.filled || 0) / paired : 0;
 }
 
+export function firstReviewTab(counts = {}) {
+  if (counts.duplicate) return "duplicate";
+  if (counts.empty) return "empty";
+  if (counts.check) return "check";
+  return "filled";
+}
+
+export function reviewQueueLine(counts = {}) {
+  const n = (counts.duplicate || 0) + (counts.empty || 0) + (counts.check || 0);
+  return n ? `Осталось ${n} спорных` : "";
+}
+
 export function visibleFillTabs(counts) {
   return FILL_TABS.filter((tab) => {
     if (tab.key === "all" || MATCH_LAYER_TABS.includes(tab.key)) return true;

@@ -9,17 +9,17 @@ import {
   roleLabel,
   usersCompanyPrompt,
 } from "../../features/auth/accessPresentation.js";
-import { lastSeenLabel, userInitial, usersByHierarchy } from "../../features/auth/userHierarchy.js";
+import { hierarchyEmptyHint, lastSeenLabel, userInitial, usersByHierarchy } from "../../features/auth/userHierarchy.js";
 import { userFacingError } from "../../features/help/errors.js";
 import { IconCopy } from "../icons.jsx";
-import { GhostButton, Modal, PrimaryButton } from "../widgets.jsx";
+import { Field, GhostButton, Modal, PrimaryButton } from "../widgets.jsx";
 
-export function UsersScreen({ companyId, actorRole, onCompany }) {
+export function UsersScreen({ companyId, actorRole, actorId, onCompany }) {
   const [users, setUsers] = useState([]);
   const [companies, setCompanies] = useState([]);
   const [login, setLogin] = useState("");
   const roles = inviteRoleOptions(actorRole);
-  const [role, setRole] = useState(roles[0] || "purchaser");
+  const [role, setRole] = useState(() => (roles.includes("purchaser") ? "purchaser" : roles[0] || "purchaser"));
   const [invite, setInvite] = useState("");
   const [copied, setCopied] = useState(false);
   const [error, setError] = useState("");
@@ -61,7 +61,7 @@ export function UsersScreen({ companyId, actorRole, onCompany }) {
     <section className="animate-enter mx-auto max-w-5xl space-y-5 p-6">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h1 className="text-[22px] font-semibold">Пользователи</h1>
+          <h1 className="text-[22px] font-semibold">{actorRole === "platform_admin" ? "Пользователи" : "Люди"}</h1>
           <p className="mt-1 text-[14px] text-[var(--color-ink-soft)]">
             Новый человек входит только по ссылке-приглашению. Пароль ему не задаёте — он сам его поставит.
           </p>
@@ -91,7 +91,7 @@ export function UsersScreen({ companyId, actorRole, onCompany }) {
         <>
           <form
             data-tour="invite"
-            className="flex flex-wrap gap-2"
+            className="grid gap-3 rounded-xl border border-[var(--color-line)] bg-[var(--color-surface)] p-4 sm:grid-cols-[1fr_14rem_auto] sm:items-end"
             onSubmit={async (event) => {
               event.preventDefault();
               setError("");
@@ -105,15 +105,19 @@ export function UsersScreen({ companyId, actorRole, onCompany }) {
               }
             }}
           >
-            <input className="input flex-1" value={login} onChange={(event) => setLogin(event.target.value)} placeholder="Логин" />
+            <Field label="Логин">
+              <input className="input w-full" value={login} onChange={(event) => setLogin(event.target.value)} autoComplete="off" placeholder="ivanov" />
+            </Field>
             {roles.length ? (
-              <select className="input" value={role} onChange={(event) => setRole(event.target.value)} aria-label="Роль">
-                {roles.map((value) => (
-                  <option key={value} value={value}>
-                    {roleLabel(value)}
-                  </option>
-                ))}
-              </select>
+              <Field label="Роль">
+                <select className="input w-full" value={role} onChange={(event) => setRole(event.target.value)}>
+                  {roles.map((value) => (
+                    <option key={value} value={value}>
+                      {roleLabel(value)}
+                    </option>
+                  ))}
+                </select>
+              </Field>
             ) : null}
             <PrimaryButton type="submit" disabled={!login.trim()}>
               Пригласить
@@ -132,8 +136,21 @@ export function UsersScreen({ companyId, actorRole, onCompany }) {
                       <li key={user.id}>
                         <UserCard
                           user={user}
+                          isSelf={user.id === actorId}
                           canManage={canManageListedUser(actorRole, user.role)}
-                          onReset={() => setResetTarget(user)}
+                          onReset={async () => {
+                            if (user.last_seen_at) {
+                              setResetTarget(user);
+                              return;
+                            }
+                            setError("");
+                            try {
+                              const payload = await resetUser(user.id);
+                              await showInvite(payload.invite_url);
+                            } catch (err) {
+                              setError(userFacingError(err, "Не удалось скопировать ссылку."));
+                            }
+                          }}
                           onDisable={async () => {
                             setError("");
                             try {
@@ -149,7 +166,7 @@ export function UsersScreen({ companyId, actorRole, onCompany }) {
                   </ul>
                 ) : (
                   <p className="rounded-[10px] border border-dashed border-[var(--color-line)] px-4 py-5 text-[14px] text-[var(--color-ink-faint)]">
-                    Пока никого
+                    {hierarchyEmptyHint(band.key)}
                   </p>
                 )}
               </section>
@@ -183,7 +200,7 @@ export function UsersScreen({ companyId, actorRole, onCompany }) {
   );
 }
 
-function UserCard({ user, canManage, onReset, onDisable }) {
+function UserCard({ user, canManage, isSelf, onReset, onDisable }) {
   return (
     <article
       className={`rounded-[10px] border border-[var(--color-line)] bg-[var(--color-surface)] p-4 ${
@@ -199,13 +216,16 @@ function UserCard({ user, canManage, onReset, onDisable }) {
           <div className="mt-0.5 text-[13px] text-[var(--color-ink-soft)]">
             {roleLabel(user.role)}
             {user.disabled_at ? " · выключен" : ""}
+            {isSelf ? " · это вы" : ""}
           </div>
-          <div className="mt-1 text-[13px] text-[var(--color-ink-faint)]">{lastSeenLabel(user.last_seen_at)}</div>
+          <div className="mt-1 text-[13px] text-[var(--color-ink-faint)]">
+            {isSelf && !user.last_seen_at ? "Сейчас в системе" : lastSeenLabel(user.last_seen_at)}
+          </div>
         </div>
       </div>
-      {canManage ? (
+      {canManage && !isSelf ? (
         <div className="mt-3 flex flex-wrap gap-2">
-          <GhostButton onClick={onReset}>Сброс доступа</GhostButton>
+          <GhostButton onClick={onReset}>{user.last_seen_at ? "Сброс доступа" : "Скопировать ссылку снова"}</GhostButton>
           <GhostButton onClick={onDisable}>Выключить</GhostButton>
         </div>
       ) : null}

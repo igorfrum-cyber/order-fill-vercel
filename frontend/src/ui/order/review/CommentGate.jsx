@@ -19,6 +19,24 @@ export function CommentGate({ rows, edits, onEdit, onCancel, onConfirm }) {
       <div className="help-modal-card w-full max-w-2xl rounded-modal border border-[var(--color-line)] bg-[var(--color-surface)] p-6 shadow-xl">
         <h2 className="text-[18px] font-semibold tracking-tight">{commentGateTitle}</h2>
         <p className="mt-2 text-[14px] leading-relaxed text-[var(--color-ink-soft)]">{commentGateHint}</p>
+        <div className="mt-3 flex flex-wrap gap-2">
+          {["Округление", "Нет на складе", "Поставщик"].map((text) => (
+            <button
+              key={text}
+              type="button"
+              className="rounded-lg border border-[var(--color-line)] px-3 py-1.5 text-[13px] text-[var(--color-ink-soft)] hover:border-[var(--color-brand)] hover:text-[var(--color-ink)]"
+              onClick={() => {
+                rows.forEach((row) => {
+                  const key = rowKey(row);
+                  const edit = edits.get(key) || { value: row.inserted ?? "", comment: "" };
+                  if (!String(edit.comment || "").trim()) onEdit(key, { comment: text });
+                });
+              }}
+            >
+              {text}
+            </button>
+          ))}
+        </div>
         <div className="mt-4 max-h-[50vh] space-y-3 overflow-auto">
           {rows.map((row, index) => {
             const key = rowKey(row);

@@ -35,11 +35,11 @@ export function profileCompanyLabel(me) {
 
 export function headerContext(me) {
   if (me?.role === "platform_admin") {
-    return { companyLine: "Сервис", roleLine: roleLabel(me.role) };
+    return { companyLine: "Сервис", roleLine: "" };
   }
   return {
-    companyLine: me?.company_name ? `Компания: ${me.company_name}` : "Компания",
-    roleLine: roleLabel(me?.role),
+    companyLine: me?.company_name || "Компания",
+    roleLine: "",
   };
 }
 
@@ -336,34 +336,34 @@ export function tourForScene(scene, role) {
   if (role === "company_owner" || role === "company_admin") {
     return [
       {
+        target: "queue",
+        placement: "bottom",
+        title: "Очередь",
+        body: "Сначала то, что застряло: проверка, сбой и приглашение закупщика.",
+      },
+      {
+        target: "users",
+        placement: "bottom",
+        title: "Люди",
+        body: "Пригласите людей одноразовой ссылкой. Пароль они поставят сами.",
+      },
+      {
         target: "company",
         placement: "bottom",
         title: "Компания",
         body: "Здесь название и латинский адрес входа. По этой ссылке входят сотрудники.",
       },
       {
-        target: "users",
-        placement: "bottom",
-        title: "Сотрудники",
-        body: "Пригласите людей одноразовой ссылкой. Пароль они поставят сами.",
-      },
-      {
-        target: "order",
-        placement: "bottom",
-        title: "Бланк закупки",
-        body: "Отсюда загружают таблицу продаж из 1С и бланк поставщика.",
-      },
-      {
         target: "jobs",
         placement: "top",
-        title: "История",
-        body: "Готовые и незавершённые выгрузки открываются из этой таблицы.",
+        title: "Застрявшие выгрузки",
+        body: "Откройте строку, проверьте количества и скачайте файлы.",
       },
       {
         target: "help",
         placement: "bottom",
         title: "Справка",
-        body: "Знак вопроса открывает короткие ответы, если запутались.",
+        body: "Если что-то непонятно, откройте знак вопроса — подсказка всегда рядом.",
       },
     ];
   }
@@ -433,3 +433,11 @@ export const helpSections = [
     body: "В профиле добавьте Face ID, Touch ID или Windows Hello — на работе код не понадобится. Если нужен запасной вход, откройте код из приложения и нажмите «Добавить в приложение».",
   },
 ];
+
+export function helpSectionsForRole(role) {
+  return helpSections.filter((section) => {
+    if (section.title === "Обзор сервиса") return role === "platform_admin";
+    if (section.title === "Пользователи и доступ") return role !== "purchaser";
+    return true;
+  });
+}

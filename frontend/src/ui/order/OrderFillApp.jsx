@@ -40,7 +40,7 @@ function triggerBlobDownload(blob, fileName) {
   window.setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
-export function OrderFillApp({ companyId, resumeJob, onHome, onHelp, onStage }) {
+export function OrderFillApp({ companyId, resumeJob, onHome, onHelp, onStage, embedded = false }) {
   const [stage, setStage] = useState(resumeJob ? (resumeJob.finalized ? "preview" : "fill") : "upload");
   const [brand, setBrand] = useState(resumeJob?.brand || "");
   const [month, setMonth] = useState(resumeJob?.month || "");
@@ -284,14 +284,16 @@ export function OrderFillApp({ companyId, resumeJob, onHome, onHelp, onStage }) 
 
   return (
     <div className="flex h-full flex-col bg-[var(--color-ground)]">
-      <TopBar
-        brandLabel={brandLabel(brand)}
-        monthLabel={monthLabel}
-        stage={stage}
-        format="order"
-        onHome={onHome}
-        onHelp={onHelp}
-      />
+      {!embedded ? (
+        <TopBar
+          brandLabel={brandLabel(brand)}
+          monthLabel={monthLabel}
+          stage={stage}
+          format="order"
+          onHome={onHome}
+          onHelp={onHelp}
+        />
+      ) : null}
       <StageRail
         stage={stage}
         brandLabel={brandLabel(brand)}

@@ -40,8 +40,29 @@ export function jobStatusHint(status) {
 
 const LIVE_JOB_STATUSES = new Set(["queued", "processing", "needs_review", "finalizing"]);
 
+export function filterJobs(jobs = [], { brand = "", status = "", month = "" } = {}) {
+  return jobs.filter((job) => {
+    if (brand && job.brand !== brand) return false;
+    if (status === "live" && !["queued", "processing", "finalizing"].includes(job.status)) return false;
+    if (status && status !== "live" && job.status !== status) return false;
+    if (month && String(job.created_at || "").slice(0, 7) !== month) return false;
+    return true;
+  });
+}
+
 export function liveJobs(jobs = []) {
   return (jobs || []).filter((job) => LIVE_JOB_STATUSES.has(job.status));
+}
+
+const QUEUE_RANK = { failed: 0, needs_review: 1, processing: 2, queued: 3, finalizing: 4 };
+
+export function queueJobs(jobs = []) {
+  return (jobs || [])
+    .filter((job) => Object.hasOwn(QUEUE_RANK, job.status))
+    .sort(
+      (a, b) =>
+        QUEUE_RANK[a.status] - QUEUE_RANK[b.status] || String(b.created_at || "").localeCompare(String(a.created_at || "")),
+    );
 }
 
 export function jobsEmptyState(role) {
@@ -49,6 +70,23 @@ export function jobsEmptyState(role) {
     return "Пока нет выгрузок по выбранной компании.";
   }
   return "Пока нет выгрузок. Начните с бланка закупки или объединения Севера.";
+}
+
+export function historyDeskLine(jobs = []) {
+  const list = jobs || [];
+  if (!list.length) return "";
+  const waiting = list.filter((job) => job.status === "needs_review").length;
+  if (waiting === 1) return "Одна выгрузка ждёт проверки.";
+  if (waiting > 1) return `${waiting} выгрузки ждут проверки.`;
+  if (list.some((job) => job.status === "failed")) return "Есть выгрузки со сбоем.";
+  return "Готовые файлы и текущие выгрузки.";
+}
+
+export function jobNextAction(job) {
+  if (job?.status === "needs_review") return "Проверить";
+  if (job?.status === "failed") return "Открыть";
+  if (job?.status === "completed" && job.type !== "north_merge") return "Скачать";
+  return "";
 }
 
 export function jobStatusText(job) {

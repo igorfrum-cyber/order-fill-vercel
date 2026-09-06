@@ -5,6 +5,7 @@ import {
   accessSummaryForRole,
   accountPasswordHint,
   helpSections,
+  helpSectionsForRole,
   loginAccessHint,
   loginFailedMessage,
   logoutEverywhereConfirm,
@@ -65,7 +66,7 @@ test("quickStartForRole returns non-technical steps", () => {
 });
 
 test("tourForRole points at on-screen controls without jargon", () => {
-  const known = new Set(["overview", "order", "north", "jobs", "help", "users", "companies", "company", "company-select"]);
+  const known = new Set(["overview", "order", "north", "jobs", "help", "users", "companies", "company", "company-select", "queue"]);
   const purchaser = tourForRole("purchaser");
   assert.deepEqual(
     purchaser.map((step) => step.target),
@@ -120,22 +121,22 @@ test("profileCompanyLabel prefers the company name and keeps platform admin at t
 
 test("headerContext shows company and role for company users", () => {
   assert.deepEqual(headerContext({ role: "company_owner", company_name: "Сияние" }), {
-    companyLine: "Компания: Сияние",
-    roleLine: "Владелец компании",
+    companyLine: "Сияние",
+    roleLine: "",
   });
 });
 
 test("headerContext keeps platform admin at the service", () => {
   assert.deepEqual(headerContext({ role: "platform_admin" }), {
     companyLine: "Сервис",
-    roleLine: "Администратор сервиса",
+    roleLine: "",
   });
 });
 
 test("headerContext falls back when the company name is missing", () => {
   assert.deepEqual(headerContext({ role: "purchaser" }), {
     companyLine: "Компания",
-    roleLine: "Закупщик",
+    roleLine: "",
   });
 });
 
@@ -215,4 +216,13 @@ test("helpSections stay plain and cover the required topics", () => {
   const text = helpSections.map((section) => `${section.title} ${section.body}`).join("\n");
   assert.equal(/api|token|cookie|backend|frontend|endpoint/i.test(text), false);
   assert.ok(helpSections.every((section) => section.body.split(/(?<=[.!?])\s+/).length <= 2));
+});
+
+test("helpSectionsForRole hides ops and people topics the role cannot use", () => {
+  const titles = (role) => helpSectionsForRole(role).map((section) => section.title);
+  assert.equal(titles("purchaser").includes("Обзор сервиса"), false);
+  assert.equal(titles("purchaser").includes("Пользователи и доступ"), false);
+  assert.equal(titles("company_admin").includes("Обзор сервиса"), false);
+  assert.equal(titles("company_admin").includes("Пользователи и доступ"), true);
+  assert.equal(titles("platform_admin").includes("Обзор сервиса"), true);
 });

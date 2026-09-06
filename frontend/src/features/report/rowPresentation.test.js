@@ -19,6 +19,8 @@ import {
   rowMatchesTab,
   visibleFillTabs,
   visibleReportRows,
+  firstReviewTab,
+  reviewQueueLine,
 } from "./rowPresentation.js";
 
 test("presentationStatus maps API row states onto fill-stage tabs", () => {
@@ -169,4 +171,16 @@ test("displayArticle and displayName keep blank identity when both sides exist",
 
   assert.equal(displayArticle(row), "AP-100");
   assert.equal(displayName(row), "Крем");
+});
+
+test("firstReviewTab prefers duplicates then empty then check", () => {
+  assert.equal(firstReviewTab({ duplicate: 2, empty: 1, check: 1 }), "duplicate");
+  assert.equal(firstReviewTab({ duplicate: 0, empty: 3, check: 1 }), "empty");
+  assert.equal(firstReviewTab({ duplicate: 0, empty: 0, check: 2 }), "check");
+  assert.equal(firstReviewTab({ duplicate: 0, empty: 0, check: 0, filled: 10 }), "filled");
+});
+
+test("reviewQueueLine counts work left", () => {
+  assert.match(reviewQueueLine({ duplicate: 2, empty: 1, check: 3 }), /6/);
+  assert.equal(reviewQueueLine({ duplicate: 0, empty: 0, check: 0, filled: 4 }), "");
 });
