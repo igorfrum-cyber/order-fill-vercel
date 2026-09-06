@@ -167,6 +167,11 @@ func Fill(command FillCommand) (Result, error) {
 		addCategory(&summary, row.Category)
 	}
 	rows = append(rows, dups...)
+	chzRows := chzDecisionRows(source, command, rule)
+	for _, row := range chzRows {
+		addCategory(&summary, row.Category)
+	}
+	rows = append(rows, chzRows...)
 	command.report(1, "Сверяю итог")
 
 	return Result{

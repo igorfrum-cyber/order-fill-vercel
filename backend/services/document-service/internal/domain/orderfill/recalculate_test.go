@@ -68,6 +68,17 @@ func chzBlankGrid() [][]string {
 
 func chzFixture(t *testing.T) Result {
 	t.Helper()
+	return chzFixtureWithMerger(t, stubChzMerger{})
+}
+
+type ambiguousChzMerger struct{}
+
+func (ambiguousChzMerger) MergeChz(_ context.Context, _ []MatchItem, _ MatchOptions) ([]ChzMerge, error) {
+	return []ChzMerge{{CloneIDs: []string{"6"}, NeedsDecision: true}}, nil
+}
+
+func chzFixtureWithMerger(t *testing.T, merger ChzMerger) Result {
+	t.Helper()
 	result, err := Fill(FillCommand{
 		Source:     newFakeWorkbook("Заказ", chzSourceGrid()),
 		Blank:      newFakeWorkbook("Бланк", chzBlankGrid()),
@@ -76,12 +87,29 @@ func chzFixture(t *testing.T) Result {
 		BlankID:    "blank-1",
 		BlankLabel: "Бланк",
 		Matcher:    exactMatcher{},
-		Chz:        stubChzMerger{},
+		Chz:        merger,
 	})
 	if err != nil {
 		t.Fatalf("fill failed: %v", err)
 	}
 	return result
+}
+
+func hasReportCategory(rows []ReportRow, category string) bool {
+	for _, row := range rows {
+		if row.Category == category {
+			return true
+		}
+	}
+	return false
+}
+
+func TestSmartChzAmbiguityCreatesNeedsDecisionReportRow(t *testing.T) {
+	t.Parallel()
+	result := chzFixtureWithMerger(t, ambiguousChzMerger{})
+	if !hasReportCategory(result.Rows, CategoryNeedsDecision) {
+		t.Fatalf("expected ambiguous ЧЗ row in report: %+v", result.Rows)
+	}
 }
 
 func TestChzMergeRemovesTheCloneRow(t *testing.T) {

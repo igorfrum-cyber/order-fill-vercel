@@ -205,6 +205,37 @@ func missingFromBlankRows(source Source, rows []ReportRow, command FillCommand, 
 	return missing, total
 }
 
+func chzDecisionRows(source Source, command FillCommand, rule brand.RuleConfig) []ReportRow {
+	rows := make([]ReportRow, 0, len(source.ChzDecisions))
+	byRow := map[int]SourceItem{}
+	for _, item := range source.Items {
+		byRow[item.RowIndex] = item
+	}
+	for _, decision := range source.ChzDecisions {
+		cloneRow := decision.CloneRow
+		row := ReportRow{
+			Key:                 keyForSourceRow(command.BlankID, "chz", cloneRow),
+			Status:              StatusSourceDuplicate,
+			Category:            CategoryNeedsDecision,
+			MatchReasons:        MatchReasons{Source: "chz", Duplicates: "needs_choice"},
+			BlankID:             command.BlankID,
+			BlankLabel:          command.BlankLabel,
+			SourceRow:           &cloneRow,
+			AdjustmentLabel:     rule.AdjustmentLabel,
+			DuplicateCandidates: []DuplicateCandidate{},
+			Editable:            false,
+		}
+		if item, ok := byRow[cloneRow]; ok {
+			row.SourceArticle = item.ArticleRaw
+			row.SourceName = item.Name
+			row.Stock = item.Stock
+			row.InTransit = item.InTransit
+		}
+		rows = append(rows, row)
+	}
+	return rows
+}
+
 // sourceDuplicateRows surfaces articles the 1C export repeats so the buyer can
 // clean up the source data. Groups already attached to a blank row are skipped:
 // the original UI counted those once, as "Пусто / Дубль" on the matched line.

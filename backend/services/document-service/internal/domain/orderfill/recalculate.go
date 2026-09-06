@@ -109,9 +109,9 @@ func calculationColumnsFromUrengoy(info urengoyInfo) calculationColumns {
 	return calculationColumns{salesColumns: info.salesColumns, category: info.categoryColumn}
 }
 
-func applyChestnyZnak(command FillCommand, detection Detection, rule brand.RuleConfig, columns calculationColumns, onProgress func(float64)) error {
+func applyChestnyZnak(command FillCommand, detection Detection, rule brand.RuleConfig, columns calculationColumns, onProgress func(float64)) ([]ChzDecision, error) {
 	if command.Chz == nil {
-		return nil
+		return nil, nil
 	}
 	report := func(fraction float64) {
 		if onProgress == nil {
@@ -131,12 +131,23 @@ func applyChestnyZnak(command FillCommand, detection Detection, rule brand.RuleC
 		PreserveHyphen: rule.PreserveArticleHyphen,
 	})
 	if err != nil {
-		return err
+		return nil, err
 	}
 	report(0.45)
+	pending := make([]ChzDecision, 0)
 	rowsToDelete := make([]int, 0)
 	for _, merge := range merges {
-		if merge.NeedsDecision || merge.TargetID == "" || len(merge.CloneIDs) == 0 {
+		if merge.NeedsDecision {
+			for _, id := range merge.CloneIDs {
+				row, err := strconv.Atoi(id)
+				if err != nil {
+					continue
+				}
+				pending = append(pending, ChzDecision{CloneRow: row, Reason: "needs_choice"})
+			}
+			continue
+		}
+		if merge.TargetID == "" || len(merge.CloneIDs) == 0 {
 			continue
 		}
 		targetRow, err := strconv.Atoi(merge.TargetID)
@@ -177,7 +188,7 @@ func applyChestnyZnak(command FillCommand, detection Detection, rule brand.RuleC
 		detection.Sheet.DeleteRows(rowsToDelete)
 	}
 	report(1)
-	return nil
+	return pending, nil
 }
 
 func applyRecommendations(command FillCommand, detection Detection, rule brand.RuleConfig, columns calculationColumns, weeks float64, cityRule string) error {

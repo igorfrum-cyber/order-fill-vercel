@@ -29,13 +29,14 @@ type SourceItem struct {
 
 // Source is the parsed 1C export together with the metadata the report shows.
 type Source struct {
-	Workbook   spreadsheet.Workbook
-	Detection  Detection
-	Items      []SourceItem
-	PeriodInfo PeriodInfo
-	SourceCity string
-	CityRule   string
-	Delivery   float64
+	Workbook     spreadsheet.Workbook
+	Detection    Detection
+	Items        []SourceItem
+	PeriodInfo   PeriodInfo
+	SourceCity   string
+	CityRule     string
+	Delivery     float64
+	ChzDecisions []ChzDecision
 }
 
 // SourceContext indexes source items for matching.
@@ -63,6 +64,12 @@ type DuplicateCandidate struct {
 	InTransit     string  `json:"in_transit"`
 }
 
+// ChzDecision is a Chestny Znak clone that matching-service could not merge.
+type ChzDecision struct {
+	CloneRow int
+	Reason   string
+}
+
 var digitsPattern = regexp.MustCompile(`^\d+$`)
 
 // ReadSource validates the export period and extracts every product row.
@@ -85,13 +92,16 @@ func readSource(command FillCommand, rule brand.RuleConfig, report func(fraction
 
 	deliveryWeeks := math.Max(1, detectDeliveryWeeks(workbook))
 	calculationColumns := detectCalculationColumns(detection)
+	var chzDecisions []ChzDecision
 	if calculationColumns != nil {
 		reportProgress(report, 0.08, "Объединяю строки ЧЗ")
-		if err := applyChestnyZnak(command, detection, rule, *calculationColumns, func(fraction float64) {
+		pending, err := applyChestnyZnak(command, detection, rule, *calculationColumns, func(fraction float64) {
 			reportProgress(report, 0.08+0.45*fraction, "Объединяю строки ЧЗ")
-		}); err != nil {
+		})
+		if err != nil {
 			return Source{}, err
 		}
+		chzDecisions = pending
 	}
 
 	urengoy := (*urengoyInfo)(nil)
@@ -124,12 +134,13 @@ func readSource(command FillCommand, rule brand.RuleConfig, report func(fraction
 	reportProgress(report, 1, "Читаю таблицу заказа")
 
 	return Source{
-		Workbook:   workbook,
-		Detection:  detection,
-		Items:      items,
-		PeriodInfo: periodInfo,
-		CityRule:   cityRule,
-		Delivery:   deliveryWeeks,
+		Workbook:     workbook,
+		Detection:    detection,
+		Items:        items,
+		PeriodInfo:   periodInfo,
+		CityRule:     cityRule,
+		Delivery:     deliveryWeeks,
+		ChzDecisions: chzDecisions,
 	}, nil
 }
 
