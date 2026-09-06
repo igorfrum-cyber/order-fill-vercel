@@ -13,10 +13,10 @@ import { runOrderFillJob } from "../../features/jobs/orderJobWorkflow.js";
 import { formatOrderMonthLabel } from "../../features/order/monthPolicy.js";
 import { collectReviewEdits, downloadBlockerKeys, hasManualDeviations, initialEditState, patchEdit, rowKey, validateReviewEdits } from "../../features/order/reviewEdits.js";
 import { needsEditResubmit } from "../../features/preview/previewEdits.js";
-import { issueReportCsv } from "../../features/report/issueReport.js";
+import { issueReportCsv, isCleanupIssueRow } from "../../features/report/issueReport.js";
 import { combinedSummary, jobProgress, jobStatusText } from "../../features/report/reportModel.js";
 import { matchingDecisionBanner } from "../../features/report/rowPresentation.js";
-import { issueReportRows, qualityWarningLines, qualityWarningSummary } from "../../features/report/qualityWarnings.js";
+import { qualityWarningLines, qualityWarningSummary } from "../../features/report/qualityWarnings.js";
 import { userFacingError } from "../../features/help/errors.js";
 import { StageRail, TopBar } from "../chrome.jsx";
 import { ErrorBoundary } from "../ErrorBoundary.jsx";
@@ -164,7 +164,7 @@ export function OrderFillApp({ companyId, resumeJob, onHome, onHelp, onStage, em
   }
 
   function downloadIssueReport() {
-    const issueRows = issueReportRows(rows);
+    const issueRows = rows.filter(isCleanupIssueRow);
     if (!issueRows.length) {
       setBanner("Нет спорных строк для отчета.");
       return;
