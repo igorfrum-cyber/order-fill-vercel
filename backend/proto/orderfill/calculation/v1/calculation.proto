@@ -24,12 +24,19 @@ message OrderRow {
   repeated double monthly_sales = 7;
   double recommended_qty = 8;
   string abc_category = 9;
+  double target_stock = 10;
+  double revenue_percent = 11;
+  double cumulative_percent = 12;
+  double average_monthly = 13;
+  double total_quantity = 14;
 }
 
 message CalculateOrderRecommendationsRequest {
   orderfill.common.v1.RequestMeta meta = 1;
   string brand = 2;
   repeated OrderRow rows = 3;
+  double delivery_weeks = 4;
+  string city_rule = 5;
 }
 
 message CalculateOrderRecommendationsResponse {
@@ -40,10 +47,20 @@ message CalculateAdjustedQuantityRequest {
   string brand = 1;
   double recommended_qty = 2;
   double ordered_fact = 3;
+  bool has_ordered_fact = 4;
+  string box_size = 5;
+  string adjustment = 6;
+  int32 quantity_multiple = 7;
+  string adjustment_comment = 8;
+  bool allow_small_positive_order = 9;
 }
 
 message CalculateAdjustedQuantityResponse {
   double qty = 1;
+  int32 rounded = 2;
+  string auto_comment = 3;
+  bool box_adjusted = 4;
+  bool inserted = 5;
 }
 
 message NorthCityNeed {

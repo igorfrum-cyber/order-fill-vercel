@@ -8,6 +8,7 @@ import "orderfill/common/v1/common.proto";
 
 service MatchingService {
   rpc MatchRows(MatchRowsRequest) returns (MatchRowsResponse);
+  rpc MergeChestnyZnak(MergeChestnyZnakRequest) returns (MergeChestnyZnakResponse);
   rpc NormalizeArticle(NormalizeArticleRequest) returns (NormalizeArticleResponse);
   rpc NormalizeName(NormalizeNameRequest) returns (NormalizeNameResponse);
 }
@@ -19,6 +20,7 @@ message Item {
   string volume = 4;
   string form = 5;
   bool chestny_znak = 6;
+  int32 rounded = 7;
 }
 
 message MatchReasons {
@@ -44,14 +46,34 @@ message MatchRowsRequest {
   orderfill.common.v1.MatchingMode matching_mode = 2;
   repeated Item source_items = 3;
   repeated Item blank_items = 4;
+  repeated string prefix_aliases = 5;
+  bool preserve_hyphen = 6;
 }
 
 message MatchRowsResponse {
   repeated MatchResult results = 1;
 }
 
+message MergeChestnyZnakRequest {
+  orderfill.common.v1.MatchingMode matching_mode = 1;
+  repeated Item items = 2;
+  repeated string prefix_aliases = 3;
+  bool preserve_hyphen = 4;
+}
+
+message ChestnyZnakMerge {
+  string target_id = 1;
+  repeated string clone_ids = 2;
+  bool needs_decision = 3;
+}
+
+message MergeChestnyZnakResponse {
+  repeated ChestnyZnakMerge merges = 1;
+}
+
 message NormalizeArticleRequest {
   string article = 1;
+  bool preserve_hyphen = 2;
 }
 
 message NormalizeArticleResponse {

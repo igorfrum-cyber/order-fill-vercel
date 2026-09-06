@@ -49,6 +49,7 @@ var policies = map[string]domain.Policy{
 		Adjustment:          domain.AdjustmentNone,
 		AdjustmentLabel:     "Без округления",
 		BlankQuantityHeader: "exactQuantity",
+		RequireUnit:         boolPtr(false),
 	},
 	"klapp": {
 		Key:                 "klapp",
@@ -71,3 +72,5 @@ func Policy(brand string) domain.Policy {
 func List() []string {
 	return []string{"angiopharm", "christina", "klapp", "levissime", "novacutan", "skin_synergy", "sothys"}
 }
+
+func boolPtr(v bool) *bool { return &v }

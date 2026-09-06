@@ -10,6 +10,8 @@ type Config struct {
 	JobAddr         string
 	FileAddr        string
 	CalculationAddr string
+	MatchingAddr    string
+	BrandAddr       string
 }
 
 func Load() Config {
@@ -21,6 +23,8 @@ func Load() Config {
 		JobAddr:         getenv("JOB_GRPC_ADDR", ""),
 		FileAddr:        getenv("FILE_GRPC_ADDR", ""),
 		CalculationAddr: getenv("CALCULATION_GRPC_ADDR", ""),
+		MatchingAddr:    getenv("MATCHING_GRPC_ADDR", ""),
+		BrandAddr:       getenv("BRAND_GRPC_ADDR", ""),
 	}
 }
 

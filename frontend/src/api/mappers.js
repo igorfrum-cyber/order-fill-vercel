@@ -31,9 +31,10 @@ export function mapOutputFile(file, absoluteUrl) {
 // report delivered: a number for untouched rows and a string once the reviewer
 // types. Normalising here keeps that difference out of the request body.
 export function toManualEditPayload(edit) {
+  const value = edit.value ?? edit.actualSupplierOrder;
   return {
     key: edit.key,
-    value: edit.value == null ? "" : String(edit.value),
+    value: value == null ? "" : String(value),
     comment: edit.comment == null ? "" : String(edit.comment),
   };
 }

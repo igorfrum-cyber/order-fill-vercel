@@ -3,12 +3,11 @@ package orderfill
 import (
 	"fmt"
 	"math"
-	"regexp"
 	"sort"
+	"strconv"
 	"strings"
 
 	"order-fill/backend/services/document-service/internal/domain/brand"
-	"order-fill/backend/services/document-service/internal/domain/matching"
 	"order-fill/backend/services/document-service/internal/domain/normalize"
 	"order-fill/backend/services/document-service/internal/domain/spreadsheet"
 )
@@ -28,26 +27,15 @@ type calculationColumns struct {
 }
 
 type urengoyInfo struct {
-	rule                brand.RuleConfig
-	deliveryCoefficient float64
-	categoryColumn      int
-	salesColumns        []int
+	categoryColumn int
+	salesColumns   []int
 }
 
 type sourceRowRef struct {
 	row     int
 	article string
 	name    string
-	isChz   bool
 }
-
-var (
-	chzCombinedPattern = regexp.MustCompile(`^\s*чз\s*\+`)
-	chzPrefixPattern   = regexp.MustCompile(`^чз\s+`)
-	chzWordPattern     = regexp.MustCompile(`\bчз\b`)
-	brandNoisePattern  = regexp.MustCompile(`\b(ан|angiopharm)\b`)
-	spacesPattern      = regexp.MustCompile(`\s+`)
-)
 
 func detectCalculationColumns(detection Detection) *calculationColumns {
 	bounds := detection.Sheet.Bounds()
@@ -117,299 +105,134 @@ func detectUrengoyColumns(detection Detection) (*urengoyInfo, error) {
 	return &info, nil
 }
 
-func (u *urengoyInfo) recommendedFor(sheet spreadsheet.Sheet, row int) float64 {
-	maxSales := maxMonthlySales(sheet, row, u.salesColumns)
-	category := sheet.Value(row, u.categoryColumn)
-	categoryPart := maxSales * brand.CategoryCoefficient(category, u.rule)
-	deliveryPart := maxSales * u.deliveryCoefficient
-	return roundTo2(categoryPart + deliveryPart)
+func calculationColumnsFromUrengoy(info urengoyInfo) calculationColumns {
+	return calculationColumns{salesColumns: info.salesColumns, category: info.categoryColumn}
 }
 
-func maxMonthlySales(sheet spreadsheet.Sheet, row int, columns []int) float64 {
-	highest := 0.0
-	for _, column := range columns {
-		if value, ok := normalize.ParseNumber(sheet.Value(row, column)); ok {
-			highest = math.Max(highest, value)
-		}
+func applyChestnyZnak(command FillCommand, detection Detection, rule brand.RuleConfig, columns calculationColumns, onProgress func(float64)) error {
+	if command.Chz == nil {
+		return nil
 	}
-	return highest
-}
-
-// rebuildSourceWithChz merges "ЧЗ" clone rows into their base article and then
-// recalculates the whole table, mirroring the 1C workflow.
-func rebuildSourceWithChz(detection Detection, deliveryWeeks float64, rule brand.RuleConfig, columns calculationColumns, onProgress func(float64)) {
 	report := func(fraction float64) {
-		if onProgress != nil {
-			if fraction < 0 {
-				fraction = 0
-			}
-			if fraction > 1 {
-				fraction = 1
-			}
-			onProgress(fraction)
+		if onProgress == nil {
+			return
 		}
+		onProgress(min(1, max(0, fraction)))
 	}
-	rows := readSourceRowRefs(detection, rule)
-	byArticle := map[string][]sourceRowRef{}
-	articles := make([]string, 0)
-	for _, row := range rows {
-		if row.article == "" {
-			continue
-		}
-		if _, seen := byArticle[row.article]; !seen {
-			articles = append(articles, row.article)
-		}
-		byArticle[row.article] = append(byArticle[row.article], row)
+	refs := readSourceRowRefs(detection, rule)
+	items := make([]MatchItem, 0, len(refs))
+	for _, ref := range refs {
+		items = append(items, MatchItem{ID: strconv.Itoa(ref.row), Article: ref.article, Name: ref.name})
 	}
 	report(0.05)
-
-	type chzPlan struct {
-		target  sourceRowRef
-		matched []int
-	}
-	plans := make([]chzPlan, len(articles))
-	runWorkers(len(articles), func(index int) {
-		group := byArticle[articles[index]]
-		normalRows := make([]sourceRowRef, 0, len(group))
-		chzRows := make([]sourceRowRef, 0, len(group))
-		for _, row := range group {
-			if row.isChz {
-				chzRows = append(chzRows, row)
-				continue
-			}
-			normalRows = append(normalRows, row)
-		}
-		if len(normalRows) == 0 || len(chzRows) == 0 {
-			return
-		}
-		target := normalRows[0]
-		matched := make([]int, 0, len(chzRows))
-		for _, row := range chzRows {
-			if matching.Similarity(comparableChzName(target.name), comparableChzName(row.name)) >= 0.9 {
-				matched = append(matched, row.row)
-			}
-		}
-		if len(matched) == 0 {
-			return
-		}
-		plans[index] = chzPlan{target: target, matched: matched}
+	merges, err := command.Chz.MergeChz(command.ctx(), items, MatchOptions{
+		Mode:           command.MatchingMode,
+		PrefixAliases:  rule.ArticlePrefixAliases,
+		PreserveHyphen: rule.PreserveArticleHyphen,
 	})
+	if err != nil {
+		return err
+	}
 	report(0.45)
-
 	rowsToDelete := make([]int, 0)
-	for _, plan := range plans {
-		if len(plan.matched) == 0 {
+	for _, merge := range merges {
+		if merge.NeedsDecision || merge.TargetID == "" || len(merge.CloneIDs) == 0 {
 			continue
 		}
-		merged := append([]int{plan.target.row}, plan.matched...)
-		mergedName := "ЧЗ + " + plan.target.name
-		detection.Sheet.SetText(plan.target.row, detection.Columns[ColumnName], mergedName)
-		if detection.Columns[ColumnName] != 1 {
-			detection.Sheet.SetText(plan.target.row, 1, mergedName)
+		targetRow, err := strconv.Atoi(merge.TargetID)
+		if err != nil {
+			continue
 		}
-		sumInto(detection.Sheet, plan.target.row, merged, append(append([]int{}, columns.salesColumns...),
+		matched := make([]int, 0, len(merge.CloneIDs))
+		for _, id := range merge.CloneIDs {
+			row, err := strconv.Atoi(id)
+			if err != nil {
+				continue
+			}
+			matched = append(matched, row)
+		}
+		if len(matched) == 0 {
+			continue
+		}
+		targetName := normalize.AsText(detection.Sheet.Value(targetRow, detection.Columns[ColumnName]))
+		mergedName := "ЧЗ + " + targetName
+		detection.Sheet.SetText(targetRow, detection.Columns[ColumnName], mergedName)
+		if detection.Columns[ColumnName] != 1 {
+			detection.Sheet.SetText(targetRow, 1, mergedName)
+		}
+		sumInto(detection.Sheet, targetRow, append([]int{targetRow}, matched...), append(append([]int{}, columns.salesColumns...),
 			columns.totalQuantity, columns.revenue, columns.previousQuantity,
 			detection.Columns[ColumnStock], detection.Columns[ColumnInTransit]))
-
-		fact, comment := mergeFactAndComment(detection, merged)
+		fact, comment := mergeFactAndComment(detection, append([]int{targetRow}, matched...))
 		if fact != nil {
-			detection.Sheet.SetNumber(plan.target.row, detection.Columns[ColumnOrderedFact], *fact)
+			detection.Sheet.SetNumber(targetRow, detection.Columns[ColumnOrderedFact], *fact)
 		} else {
-			detection.Sheet.ClearValue(plan.target.row, detection.Columns[ColumnOrderedFact])
+			detection.Sheet.ClearValue(targetRow, detection.Columns[ColumnOrderedFact])
 		}
-		detection.Sheet.SetText(plan.target.row, detection.Columns[ColumnComment], comment)
-		rowsToDelete = append(rowsToDelete, plan.matched...)
+		detection.Sheet.SetText(targetRow, detection.Columns[ColumnComment], comment)
+		rowsToDelete = append(rowsToDelete, matched...)
 	}
-
 	if len(rowsToDelete) > 0 {
 		sort.Ints(rowsToDelete)
 		detection.Sheet.DeleteRows(rowsToDelete)
 	}
-	report(0.6)
-	recalculateSourceTable(detection, deliveryWeeks, rule, columns)
 	report(1)
+	return nil
 }
 
-// recalculateSourceTable rebuilds ABC metrics, target stock and the recommended
-// order for every product row.
-func recalculateSourceTable(detection Detection, deliveryWeeks float64, rule brand.RuleConfig, columns calculationColumns) {
-	rows := readSourceRowRefs(detection, rule)
-	safeWeeks := math.Max(1, deliveryWeeks)
-	deliveryCoefficient := 0.25 * safeWeeks
-
-	type calculatedRow struct {
-		row           int
-		values        []float64
-		totalQuantity float64
-		revenue       float64
+func applyRecommendations(command FillCommand, detection Detection, rule brand.RuleConfig, columns calculationColumns, weeks float64, cityRule string) error {
+	refs := readSourceRowRefs(detection, rule)
+	in := make([]RecommendRow, 0, len(refs))
+	for _, ref := range refs {
+		revenue, _ := normalize.ParseNumber(detection.Sheet.Value(ref.row, columns.revenue))
+		stock, _ := normalize.ParseNumber(detection.Sheet.Value(ref.row, detection.Columns[ColumnStock]))
+		inTransit, _ := normalize.ParseNumber(detection.Sheet.Value(ref.row, detection.Columns[ColumnInTransit]))
+		in = append(in, RecommendRow{
+			ID:           strconv.Itoa(ref.row),
+			Category:     normalize.AsText(detection.Sheet.Value(ref.row, columns.category)),
+			Revenue:      revenue,
+			Stock:        stock,
+			InTransit:    inTransit,
+			MonthlySales: monthlyValues(detection.Sheet, ref.row, columns.salesColumns),
+		})
 	}
-
-	totalRevenue := 0.0
-	calculated := make([]calculatedRow, len(rows))
-	runWorkers(len(rows), func(index int) {
-		row := rows[index]
-		values := monthlyValues(detection.Sheet, row.row, columns.salesColumns)
-		total := 0.0
-		for _, value := range values {
-			total += value
+	brandKey := command.Brand
+	if brandKey == "" {
+		brandKey = rule.Key
+	}
+	out, err := command.Recommender.Recommend(command.ctx(), brandKey, cityRule, weeks, in)
+	if err != nil {
+		return err
+	}
+	for _, row := range out {
+		target, err := strconv.Atoi(row.ID)
+		if err != nil {
+			continue
 		}
-		revenue, _ := normalize.ParseNumber(detection.Sheet.Value(row.row, columns.revenue))
-		calculated[index] = calculatedRow{row: row.row, values: values, totalQuantity: total, revenue: revenue}
-	})
-	for _, item := range calculated {
-		totalRevenue += item.revenue
-	}
-
-	ranked := make([]calculatedRow, len(calculated))
-	copy(ranked, calculated)
-	sort.SliceStable(ranked, func(i, j int) bool { return ranked[i].revenue > ranked[j].revenue })
-
-	type metrics struct {
-		revenuePercent    float64
-		cumulativePercent float64
-		category          string
-	}
-	rankMetrics := make(map[int]metrics, len(ranked))
-	cumulative := 0.0
-	for _, item := range ranked {
-		cumulative += item.revenue
-		revenuePercent := 0.0
-		cumulativePercent := 100.0
-		if totalRevenue > 0 {
-			revenuePercent = item.revenue / totalRevenue * 100
-			cumulativePercent = cumulative / totalRevenue * 100
+		detection.Sheet.SetNumber(target, detection.Columns[ColumnRecommended], roundTo2(row.Recommended))
+		if cityRule == "urengoy" {
+			continue
 		}
-		rankMetrics[item.row] = metrics{
-			revenuePercent:    revenuePercent,
-			cumulativePercent: cumulativePercent,
-			category:          categoryFromCumulative(cumulativePercent),
+		if columns.totalQuantity > 0 {
+			detection.Sheet.SetNumber(target, columns.totalQuantity, roundTo2(row.TotalQuantity))
+		}
+		if columns.revenuePercent > 0 {
+			detection.Sheet.SetNumber(target, columns.revenuePercent, roundTo2(row.RevenuePercent))
+		}
+		if columns.cumulativePercent > 0 {
+			detection.Sheet.SetNumber(target, columns.cumulativePercent, roundTo2(row.CumulativePercent))
+		}
+		if columns.category > 0 && row.Category != "" {
+			detection.Sheet.SetText(target, columns.category, row.Category)
+		}
+		if columns.averageMonthly > 0 {
+			detection.Sheet.SetNumber(target, columns.averageMonthly, roundTo2(row.AverageMonthly))
+		}
+		if columns.targetStock > 0 {
+			detection.Sheet.SetNumber(target, columns.targetStock, roundTo2(row.TargetStock))
 		}
 	}
-
-	for _, item := range calculated {
-		metric, ok := rankMetrics[item.row]
-		if !ok {
-			metric = metrics{cumulativePercent: 100, category: "C"}
-		}
-		novelty := newProductCalculation(item.values, safeWeeks)
-		monthlyNeed := calculateTargetNew(item.values)
-		category := metric.category
-		targetStock := 0.0
-		if novelty != nil {
-			category = metric.category + "/New"
-			targetStock = novelty.targetStock
-		} else {
-			targetStock = monthlyNeed*brand.CategoryCoefficient(metric.category, rule) + monthlyNeed*deliveryCoefficient
-		}
-
-		stock, _ := normalize.ParseNumber(detection.Sheet.Value(item.row, detection.Columns[ColumnStock]))
-		inTransit, _ := normalize.ParseNumber(detection.Sheet.Value(item.row, detection.Columns[ColumnInTransit]))
-		recommended := math.Max(0, targetStock-stock-inTransit)
-
-		detection.Sheet.SetNumber(item.row, columns.totalQuantity, roundTo2(item.totalQuantity))
-		detection.Sheet.SetNumber(item.row, columns.revenuePercent, roundTo2(metric.revenuePercent))
-		detection.Sheet.SetNumber(item.row, columns.cumulativePercent, roundTo2(metric.cumulativePercent))
-		detection.Sheet.SetText(item.row, columns.category, category)
-		detection.Sheet.SetNumber(item.row, columns.averageMonthly, roundTo2(item.totalQuantity/float64(len(columns.salesColumns))))
-		detection.Sheet.SetNumber(item.row, columns.targetStock, roundTo2(targetStock))
-		detection.Sheet.SetNumber(item.row, detection.Columns[ColumnRecommended], roundTo2(recommended))
-	}
-}
-
-type noveltyCalculation struct {
-	monthlyNeed float64
-	targetStock float64
-}
-
-// newProductCalculation recognises a product whose sales start in the last one
-// to three months and sizes the first orders from its peak month.
-func newProductCalculation(values []float64, deliveryWeeks float64) *noveltyCalculation {
-	suffix := 0
-	for index := len(values) - 1; index >= 0; index-- {
-		if values[index] <= 0 {
-			break
-		}
-		suffix++
-	}
-	if suffix < 1 || suffix > 3 {
-		return nil
-	}
-	firstNovelty := len(values) - suffix
-	for _, value := range values[:firstNovelty] {
-		if value > 0 {
-			return nil
-		}
-	}
-	maxMonth := 0.0
-	for _, value := range values[firstNovelty:] {
-		maxMonth = math.Max(maxMonth, value)
-	}
-	if maxMonth <= 0 {
-		return nil
-	}
-	deliveryCoefficient := 0.25 * math.Max(1, deliveryWeeks)
-	return &noveltyCalculation{
-		monthlyNeed: maxMonth * 1.5,
-		targetStock: maxMonth*1.5 + maxMonth*deliveryCoefficient,
-	}
-}
-
-// calculateTargetNew averages monthly sales, favouring a stable sales history.
-func calculateTargetNew(values []float64) float64 {
-	if len(values) == 0 {
-		return 0
-	}
-	total := 0.0
-	for _, value := range values {
-		total += value
-	}
-	threshold := total / 24
-	stable := true
-	lowest := math.Inf(1)
-	for _, value := range values {
-		if value <= 0 {
-			stable = false
-		}
-		lowest = math.Min(lowest, value)
-	}
-	if stable && lowest > threshold {
-		average := total / float64(len(values))
-		secondMonth := 0.0
-		if len(values) > 1 {
-			secondMonth = values[1]
-		}
-		firstThree := 0.0
-		for index := 0; index < 3 && index < len(values); index++ {
-			firstThree += values[index]
-		}
-		return (average + secondMonth + firstThree/3) / 3
-	}
-
-	filteredTotal := 0.0
-	filteredCount := 0
-	for _, value := range values {
-		if value > 0 && value > threshold {
-			filteredTotal += value
-			filteredCount++
-		}
-	}
-	if filteredCount == 0 {
-		return 0
-	}
-	return filteredTotal / float64(filteredCount)
-}
-
-func categoryFromCumulative(percent float64) string {
-	switch {
-	case percent <= 50:
-		return "A+"
-	case percent <= 80:
-		return "A"
-	case percent <= 95:
-		return "B"
-	default:
-		return "C"
-	}
+	return nil
 }
 
 func readSourceRowRefs(detection Detection, rule brand.RuleConfig) []sourceRowRef {
@@ -425,7 +248,7 @@ func readSourceRowRefs(detection Detection, rule brand.RuleConfig) []sourceRowRe
 		if article == "" && name == "" {
 			continue
 		}
-		rows = append(rows, sourceRowRef{row: row, article: article, name: name, isChz: isChzCloneName(name)})
+		rows = append(rows, sourceRowRef{row: row, article: article, name: name})
 	}
 	return rows
 }
@@ -475,19 +298,6 @@ func mergeFactAndComment(detection Detection, rows []int) (*float64, string) {
 	}
 	rounded := roundTo2(total)
 	return &rounded, strings.Join(comments, "; ")
-}
-
-func isChzCloneName(value string) bool {
-	header := normalize.NormalizeHeader(value)
-	return strings.HasPrefix(header, "чз ") && !chzCombinedPattern.MatchString(strings.ToLower(normalize.AsText(value)))
-}
-
-func comparableChzName(value string) string {
-	text := normalize.NormalizeHeader(value)
-	text = chzPrefixPattern.ReplaceAllString(text, "")
-	text = chzWordPattern.ReplaceAllString(text, " ")
-	text = brandNoisePattern.ReplaceAllString(text, " ")
-	return strings.TrimSpace(spacesPattern.ReplaceAllString(text, " "))
 }
 
 func roundTo2(value float64) float64 {

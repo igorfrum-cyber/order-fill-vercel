@@ -118,3 +118,39 @@ func TestSmartModeNeedsDecisionWhenDuplicatesAreClose(t *testing.T) {
 		t.Fatalf("%+v", got)
 	}
 }
+
+func TestMergeChzJoinsCloneToBaseRow(t *testing.T) {
+	t.Parallel()
+	got := matching.New().MergeChz([]domain.Item{
+		{ID: "5", Article: "AA04", Name: "АН Сыворотка 30 мл"},
+		{ID: "6", Article: "AA04", Name: "ЧЗ АН Сыворотка 30 мл"},
+		{ID: "7", Article: "BB01", Name: "АН Крем 50 мл"},
+	}, matching.Options{})
+	if len(got) != 1 || got[0].TargetID != "5" || len(got[0].CloneIDs) != 1 || got[0].CloneIDs[0] != "6" || got[0].NeedsDecision {
+		t.Fatalf("%+v", got)
+	}
+}
+
+func TestMergeChzSmartFlagsAmbiguousBaseRows(t *testing.T) {
+	t.Parallel()
+	got := matching.New().MergeChz([]domain.Item{
+		{ID: "n1", Article: "A1", Name: "Сыворотка салициловая 30 мл"},
+		{ID: "n2", Article: "A1", Name: "Сыворотка гиалуроновая 30 мл"},
+		{ID: "c1", Article: "A1", Name: "ЧЗ Сыворотка 30 мл"},
+	}, matching.Options{Mode: domain.ModeSmart})
+	if len(got) != 1 || !got[0].NeedsDecision || got[0].CloneIDs[0] != "c1" {
+		t.Fatalf("%+v", got)
+	}
+}
+
+func TestFormConflictSetsCheckNameOrVolume(t *testing.T) {
+	t.Parallel()
+	got := matching.New().Match(
+		[]domain.Item{{ID: "b1", Article: "A1", Name: "Крем 50 мл"}},
+		[]domain.Item{{ID: "s1", Article: "A1", Name: "Сыворотка 50 мл"}},
+		matching.Options{},
+	)
+	if got[0].Category != domain.CategoryCheckNameOrVolume || got[0].Reasons.Form != "conflict" {
+		t.Fatalf("%+v", got)
+	}
+}

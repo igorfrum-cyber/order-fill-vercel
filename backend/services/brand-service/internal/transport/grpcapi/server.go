@@ -27,9 +27,26 @@ func New(handler brandv1.BrandServiceServer) *grpc.Server {
 
 func (s *Server) GetBrandPolicy(ctx context.Context, req *brandv1.GetBrandPolicyRequest) (*brandv1.GetBrandPolicyResponse, error) {
 	p := s.svc.GetPolicy(ctx, req.GetBrand(), req.GetVariant())
-	return &brandv1.GetBrandPolicyResponse{Policy: &brandv1.BrandPolicy{
-		Brand: p.Key, Variant: p.Variant, QuantityMultiple: int32(p.Multiple), MinQuantity: int32(p.MinQuantity),
-	}}, nil
+	policy := &brandv1.BrandPolicy{
+		Brand:                   p.Key,
+		Variant:                 p.Variant,
+		QuantityMultiple:        int32(p.Multiple),
+		MinQuantity:             int32(p.MinQuantity),
+		Label:                   p.Label,
+		Adjustment:              string(p.Adjustment),
+		AdjustmentLabel:         p.AdjustmentLabel,
+		AdjustmentComment:       p.AdjustmentComment,
+		PreserveHyphen:          p.PreserveArticleHyphen,
+		PrefixAliases:           p.ArticlePrefixAliases,
+		BlankQuantityHeader:     p.BlankQuantityHeader,
+		BlankBoxHeader:          p.BlankBoxHeader,
+		BlankLayout:             p.BlankLayout,
+		AllowSmallPositiveOrder: p.AllowSmallPositiveOrder,
+	}
+	if p.RequireUnit != nil {
+		policy.RequireUnit = p.RequireUnit
+	}
+	return &brandv1.GetBrandPolicyResponse{Policy: policy}, nil
 }
 
 func (s *Server) ListBrands(ctx context.Context, _ *brandv1.ListBrandsRequest) (*brandv1.ListBrandsResponse, error) {

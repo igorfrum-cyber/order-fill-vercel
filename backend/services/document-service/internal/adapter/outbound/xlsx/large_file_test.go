@@ -1,6 +1,7 @@
 package xlsx
 
 import (
+	"context"
 	"os"
 	"path/filepath"
 	"testing"
@@ -8,6 +9,25 @@ import (
 
 	"order-fill/backend/services/document-service/internal/domain/orderfill"
 )
+
+type articleMatcher struct{}
+
+func (articleMatcher) Match(_ context.Context, blank, source []orderfill.MatchItem, _ orderfill.MatchOptions) ([]orderfill.MatchResult, error) {
+	byArticle := map[string]orderfill.MatchItem{}
+	for _, item := range source {
+		byArticle[item.Article] = item
+	}
+	out := make([]orderfill.MatchResult, 0, len(blank))
+	for _, item := range blank {
+		src, ok := byArticle[item.Article]
+		if !ok {
+			out = append(out, orderfill.MatchResult{BlankID: item.ID, Category: orderfill.CategoryNotInSource})
+			continue
+		}
+		out = append(out, orderfill.MatchResult{BlankID: item.ID, SourceID: src.ID, Category: orderfill.CategoryToOrder, Score: 1})
+	}
+	return out, nil
+}
 
 func TestManualEditsSurviveSaveOnTyumenSource(t *testing.T) {
 	sourceBytes, err := os.ReadFile(privateTestdata(t, "Ангио Тюмень .xlsx"))
@@ -34,7 +54,7 @@ func TestManualEditsSurviveSaveOnTyumenSource(t *testing.T) {
 		OrderMonth: "2026-09",
 		Brand:      "angiopharm",
 		BlankID:    "blank-1",
-		BlankLabel: "Бланк",
+		Matcher:    articleMatcher{},
 	})
 	if err != nil {
 		t.Fatalf("fill: %v", err)
@@ -130,7 +150,7 @@ func TestBenchPrivate100kPipeline(t *testing.T) {
 		OrderMonth: "2026-09",
 		Brand:      "angiopharm",
 		BlankID:    "blank-1",
-		BlankLabel: "Бланк",
+		Matcher:    articleMatcher{},
 	})
 	if err != nil {
 		t.Fatalf("fill: %v", err)

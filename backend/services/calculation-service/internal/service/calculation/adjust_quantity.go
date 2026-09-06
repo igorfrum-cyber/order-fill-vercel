@@ -23,11 +23,14 @@ type AdjustedQuantity struct {
 }
 
 func AdjustQuantity(recommended float64, brand string, orderedFact float64, hasFact bool, boxSizeValue string) AdjustedQuantity {
+	return AdjustQuantityWithRule(recommended, brandAdjustment(brand), orderedFact, hasFact, boxSizeValue)
+}
+
+func AdjustQuantityWithRule(recommended float64, rule brandRule, orderedFact float64, hasFact bool, boxSizeValue string) AdjustedQuantity {
 	qty := recommended
 	if hasFact {
 		qty = orderedFact
 	}
-	rule := brandAdjustment(brand)
 	if boxSizeValue == "" && rule.multiple > 0 {
 		boxSizeValue = strconv.Itoa(rule.multiple)
 	}
@@ -36,6 +39,13 @@ func AdjustQuantity(recommended float64, brand string, orderedFact float64, hasF
 		result.AutoComment = ""
 	}
 	return result
+}
+
+func RuleFromPolicy(adjustment string, multiple int, comment string, allowSmall bool) brandRule {
+	if adjustment == "" {
+		return brandRule{}
+	}
+	return brandRule{kind: Adjustment(adjustment), multiple: multiple, comment: comment, allowSmallPositiveOrder: allowSmall}
 }
 
 type brandRule struct {

@@ -87,6 +87,11 @@ test("toManualEditPayload sends every edit value as contract text", () => {
     value: "",
     comment: "",
   });
+  assert.deepEqual(toManualEditPayload({ key: "A1", actualSupplierOrder: 12 }), {
+    key: "A1",
+    value: "12",
+    comment: "",
+  });
 });
 
 test("mapOutputFile turns the API resource path into an absolute download URL", () => {

@@ -23,18 +23,23 @@ const (
 )
 
 type OrderRow struct {
-	state          protoimpl.MessageState `protogen:"open.v1"`
-	Id             string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
-	Article        string                 `protobuf:"bytes,2,opt,name=article,proto3" json:"article,omitempty"`
-	Name           string                 `protobuf:"bytes,3,opt,name=name,proto3" json:"name,omitempty"`
-	Revenue        float64                `protobuf:"fixed64,4,opt,name=revenue,proto3" json:"revenue,omitempty"`
-	Stock          float64                `protobuf:"fixed64,5,opt,name=stock,proto3" json:"stock,omitempty"`
-	InTransit      float64                `protobuf:"fixed64,6,opt,name=in_transit,json=inTransit,proto3" json:"in_transit,omitempty"`
-	MonthlySales   []float64              `protobuf:"fixed64,7,rep,packed,name=monthly_sales,json=monthlySales,proto3" json:"monthly_sales,omitempty"`
-	RecommendedQty float64                `protobuf:"fixed64,8,opt,name=recommended_qty,json=recommendedQty,proto3" json:"recommended_qty,omitempty"`
-	AbcCategory    string                 `protobuf:"bytes,9,opt,name=abc_category,json=abcCategory,proto3" json:"abc_category,omitempty"`
-	unknownFields  protoimpl.UnknownFields
-	sizeCache      protoimpl.SizeCache
+	state             protoimpl.MessageState `protogen:"open.v1"`
+	Id                string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	Article           string                 `protobuf:"bytes,2,opt,name=article,proto3" json:"article,omitempty"`
+	Name              string                 `protobuf:"bytes,3,opt,name=name,proto3" json:"name,omitempty"`
+	Revenue           float64                `protobuf:"fixed64,4,opt,name=revenue,proto3" json:"revenue,omitempty"`
+	Stock             float64                `protobuf:"fixed64,5,opt,name=stock,proto3" json:"stock,omitempty"`
+	InTransit         float64                `protobuf:"fixed64,6,opt,name=in_transit,json=inTransit,proto3" json:"in_transit,omitempty"`
+	MonthlySales      []float64              `protobuf:"fixed64,7,rep,packed,name=monthly_sales,json=monthlySales,proto3" json:"monthly_sales,omitempty"`
+	RecommendedQty    float64                `protobuf:"fixed64,8,opt,name=recommended_qty,json=recommendedQty,proto3" json:"recommended_qty,omitempty"`
+	AbcCategory       string                 `protobuf:"bytes,9,opt,name=abc_category,json=abcCategory,proto3" json:"abc_category,omitempty"`
+	TargetStock       float64                `protobuf:"fixed64,10,opt,name=target_stock,json=targetStock,proto3" json:"target_stock,omitempty"`
+	RevenuePercent    float64                `protobuf:"fixed64,11,opt,name=revenue_percent,json=revenuePercent,proto3" json:"revenue_percent,omitempty"`
+	CumulativePercent float64                `protobuf:"fixed64,12,opt,name=cumulative_percent,json=cumulativePercent,proto3" json:"cumulative_percent,omitempty"`
+	AverageMonthly    float64                `protobuf:"fixed64,13,opt,name=average_monthly,json=averageMonthly,proto3" json:"average_monthly,omitempty"`
+	TotalQuantity     float64                `protobuf:"fixed64,14,opt,name=total_quantity,json=totalQuantity,proto3" json:"total_quantity,omitempty"`
+	unknownFields     protoimpl.UnknownFields
+	sizeCache         protoimpl.SizeCache
 }
 
 func (x *OrderRow) Reset() {
@@ -130,11 +135,48 @@ func (x *OrderRow) GetAbcCategory() string {
 	return ""
 }
 
+func (x *OrderRow) GetTargetStock() float64 {
+	if x != nil {
+		return x.TargetStock
+	}
+	return 0
+}
+
+func (x *OrderRow) GetRevenuePercent() float64 {
+	if x != nil {
+		return x.RevenuePercent
+	}
+	return 0
+}
+
+func (x *OrderRow) GetCumulativePercent() float64 {
+	if x != nil {
+		return x.CumulativePercent
+	}
+	return 0
+}
+
+func (x *OrderRow) GetAverageMonthly() float64 {
+	if x != nil {
+		return x.AverageMonthly
+	}
+	return 0
+}
+
+func (x *OrderRow) GetTotalQuantity() float64 {
+	if x != nil {
+		return x.TotalQuantity
+	}
+	return 0
+}
+
 type CalculateOrderRecommendationsRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Meta          *v1.RequestMeta        `protobuf:"bytes,1,opt,name=meta,proto3" json:"meta,omitempty"`
 	Brand         string                 `protobuf:"bytes,2,opt,name=brand,proto3" json:"brand,omitempty"`
 	Rows          []*OrderRow            `protobuf:"bytes,3,rep,name=rows,proto3" json:"rows,omitempty"`
+	DeliveryWeeks float64                `protobuf:"fixed64,4,opt,name=delivery_weeks,json=deliveryWeeks,proto3" json:"delivery_weeks,omitempty"`
+	CityRule      string                 `protobuf:"bytes,5,opt,name=city_rule,json=cityRule,proto3" json:"city_rule,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -190,6 +232,20 @@ func (x *CalculateOrderRecommendationsRequest) GetRows() []*OrderRow {
 	return nil
 }
 
+func (x *CalculateOrderRecommendationsRequest) GetDeliveryWeeks() float64 {
+	if x != nil {
+		return x.DeliveryWeeks
+	}
+	return 0
+}
+
+func (x *CalculateOrderRecommendationsRequest) GetCityRule() string {
+	if x != nil {
+		return x.CityRule
+	}
+	return ""
+}
+
 type CalculateOrderRecommendationsResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Rows          []*OrderRow            `protobuf:"bytes,1,rep,name=rows,proto3" json:"rows,omitempty"`
@@ -235,12 +291,18 @@ func (x *CalculateOrderRecommendationsResponse) GetRows() []*OrderRow {
 }
 
 type CalculateAdjustedQuantityRequest struct {
-	state          protoimpl.MessageState `protogen:"open.v1"`
-	Brand          string                 `protobuf:"bytes,1,opt,name=brand,proto3" json:"brand,omitempty"`
-	RecommendedQty float64                `protobuf:"fixed64,2,opt,name=recommended_qty,json=recommendedQty,proto3" json:"recommended_qty,omitempty"`
-	OrderedFact    float64                `protobuf:"fixed64,3,opt,name=ordered_fact,json=orderedFact,proto3" json:"ordered_fact,omitempty"`
-	unknownFields  protoimpl.UnknownFields
-	sizeCache      protoimpl.SizeCache
+	state                   protoimpl.MessageState `protogen:"open.v1"`
+	Brand                   string                 `protobuf:"bytes,1,opt,name=brand,proto3" json:"brand,omitempty"`
+	RecommendedQty          float64                `protobuf:"fixed64,2,opt,name=recommended_qty,json=recommendedQty,proto3" json:"recommended_qty,omitempty"`
+	OrderedFact             float64                `protobuf:"fixed64,3,opt,name=ordered_fact,json=orderedFact,proto3" json:"ordered_fact,omitempty"`
+	HasOrderedFact          bool                   `protobuf:"varint,4,opt,name=has_ordered_fact,json=hasOrderedFact,proto3" json:"has_ordered_fact,omitempty"`
+	BoxSize                 string                 `protobuf:"bytes,5,opt,name=box_size,json=boxSize,proto3" json:"box_size,omitempty"`
+	Adjustment              string                 `protobuf:"bytes,6,opt,name=adjustment,proto3" json:"adjustment,omitempty"`
+	QuantityMultiple        int32                  `protobuf:"varint,7,opt,name=quantity_multiple,json=quantityMultiple,proto3" json:"quantity_multiple,omitempty"`
+	AdjustmentComment       string                 `protobuf:"bytes,8,opt,name=adjustment_comment,json=adjustmentComment,proto3" json:"adjustment_comment,omitempty"`
+	AllowSmallPositiveOrder bool                   `protobuf:"varint,9,opt,name=allow_small_positive_order,json=allowSmallPositiveOrder,proto3" json:"allow_small_positive_order,omitempty"`
+	unknownFields           protoimpl.UnknownFields
+	sizeCache               protoimpl.SizeCache
 }
 
 func (x *CalculateAdjustedQuantityRequest) Reset() {
@@ -294,9 +356,55 @@ func (x *CalculateAdjustedQuantityRequest) GetOrderedFact() float64 {
 	return 0
 }
 
+func (x *CalculateAdjustedQuantityRequest) GetHasOrderedFact() bool {
+	if x != nil {
+		return x.HasOrderedFact
+	}
+	return false
+}
+
+func (x *CalculateAdjustedQuantityRequest) GetBoxSize() string {
+	if x != nil {
+		return x.BoxSize
+	}
+	return ""
+}
+
+func (x *CalculateAdjustedQuantityRequest) GetAdjustment() string {
+	if x != nil {
+		return x.Adjustment
+	}
+	return ""
+}
+
+func (x *CalculateAdjustedQuantityRequest) GetQuantityMultiple() int32 {
+	if x != nil {
+		return x.QuantityMultiple
+	}
+	return 0
+}
+
+func (x *CalculateAdjustedQuantityRequest) GetAdjustmentComment() string {
+	if x != nil {
+		return x.AdjustmentComment
+	}
+	return ""
+}
+
+func (x *CalculateAdjustedQuantityRequest) GetAllowSmallPositiveOrder() bool {
+	if x != nil {
+		return x.AllowSmallPositiveOrder
+	}
+	return false
+}
+
 type CalculateAdjustedQuantityResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Qty           float64                `protobuf:"fixed64,1,opt,name=qty,proto3" json:"qty,omitempty"`
+	Rounded       int32                  `protobuf:"varint,2,opt,name=rounded,proto3" json:"rounded,omitempty"`
+	AutoComment   string                 `protobuf:"bytes,3,opt,name=auto_comment,json=autoComment,proto3" json:"auto_comment,omitempty"`
+	BoxAdjusted   bool                   `protobuf:"varint,4,opt,name=box_adjusted,json=boxAdjusted,proto3" json:"box_adjusted,omitempty"`
+	Inserted      bool                   `protobuf:"varint,5,opt,name=inserted,proto3" json:"inserted,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -336,6 +444,34 @@ func (x *CalculateAdjustedQuantityResponse) GetQty() float64 {
 		return x.Qty
 	}
 	return 0
+}
+
+func (x *CalculateAdjustedQuantityResponse) GetRounded() int32 {
+	if x != nil {
+		return x.Rounded
+	}
+	return 0
+}
+
+func (x *CalculateAdjustedQuantityResponse) GetAutoComment() string {
+	if x != nil {
+		return x.AutoComment
+	}
+	return ""
+}
+
+func (x *CalculateAdjustedQuantityResponse) GetBoxAdjusted() bool {
+	if x != nil {
+		return x.BoxAdjusted
+	}
+	return false
+}
+
+func (x *CalculateAdjustedQuantityResponse) GetInserted() bool {
+	if x != nil {
+		return x.Inserted
+	}
+	return false
 }
 
 type NorthCityNeed struct {
@@ -866,7 +1002,7 @@ var File_orderfill_calculation_v1_calculation_proto protoreflect.FileDescriptor
 
 const file_orderfill_calculation_v1_calculation_proto_rawDesc = "" +
 	"\n" +
-	"*orderfill/calculation/v1/calculation.proto\x12\x18orderfill.calculation.v1\x1a orderfill/common/v1/common.proto\"\x88\x02\n" +
+	"*orderfill/calculation/v1/calculation.proto\x12\x18orderfill.calculation.v1\x1a orderfill/common/v1/common.proto\"\xd3\x03\n" +
 	"\bOrderRow\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x18\n" +
 	"\aarticle\x18\x02 \x01(\tR\aarticle\x12\x12\n" +
@@ -877,19 +1013,39 @@ const file_orderfill_calculation_v1_calculation_proto_rawDesc = "" +
 	"in_transit\x18\x06 \x01(\x01R\tinTransit\x12#\n" +
 	"\rmonthly_sales\x18\a \x03(\x01R\fmonthlySales\x12'\n" +
 	"\x0frecommended_qty\x18\b \x01(\x01R\x0erecommendedQty\x12!\n" +
-	"\fabc_category\x18\t \x01(\tR\vabcCategory\"\xaa\x01\n" +
+	"\fabc_category\x18\t \x01(\tR\vabcCategory\x12!\n" +
+	"\ftarget_stock\x18\n" +
+	" \x01(\x01R\vtargetStock\x12'\n" +
+	"\x0frevenue_percent\x18\v \x01(\x01R\x0erevenuePercent\x12-\n" +
+	"\x12cumulative_percent\x18\f \x01(\x01R\x11cumulativePercent\x12'\n" +
+	"\x0faverage_monthly\x18\r \x01(\x01R\x0eaverageMonthly\x12%\n" +
+	"\x0etotal_quantity\x18\x0e \x01(\x01R\rtotalQuantity\"\xee\x01\n" +
 	"$CalculateOrderRecommendationsRequest\x124\n" +
 	"\x04meta\x18\x01 \x01(\v2 .orderfill.common.v1.RequestMetaR\x04meta\x12\x14\n" +
 	"\x05brand\x18\x02 \x01(\tR\x05brand\x126\n" +
-	"\x04rows\x18\x03 \x03(\v2\".orderfill.calculation.v1.OrderRowR\x04rows\"_\n" +
+	"\x04rows\x18\x03 \x03(\v2\".orderfill.calculation.v1.OrderRowR\x04rows\x12%\n" +
+	"\x0edelivery_weeks\x18\x04 \x01(\x01R\rdeliveryWeeks\x12\x1b\n" +
+	"\tcity_rule\x18\x05 \x01(\tR\bcityRule\"_\n" +
 	"%CalculateOrderRecommendationsResponse\x126\n" +
-	"\x04rows\x18\x01 \x03(\v2\".orderfill.calculation.v1.OrderRowR\x04rows\"\x84\x01\n" +
+	"\x04rows\x18\x01 \x03(\v2\".orderfill.calculation.v1.OrderRowR\x04rows\"\x82\x03\n" +
 	" CalculateAdjustedQuantityRequest\x12\x14\n" +
 	"\x05brand\x18\x01 \x01(\tR\x05brand\x12'\n" +
 	"\x0frecommended_qty\x18\x02 \x01(\x01R\x0erecommendedQty\x12!\n" +
-	"\fordered_fact\x18\x03 \x01(\x01R\vorderedFact\"5\n" +
+	"\fordered_fact\x18\x03 \x01(\x01R\vorderedFact\x12(\n" +
+	"\x10has_ordered_fact\x18\x04 \x01(\bR\x0ehasOrderedFact\x12\x19\n" +
+	"\bbox_size\x18\x05 \x01(\tR\aboxSize\x12\x1e\n" +
+	"\n" +
+	"adjustment\x18\x06 \x01(\tR\n" +
+	"adjustment\x12+\n" +
+	"\x11quantity_multiple\x18\a \x01(\x05R\x10quantityMultiple\x12-\n" +
+	"\x12adjustment_comment\x18\b \x01(\tR\x11adjustmentComment\x12;\n" +
+	"\x1aallow_small_positive_order\x18\t \x01(\bR\x17allowSmallPositiveOrder\"\xb1\x01\n" +
 	"!CalculateAdjustedQuantityResponse\x12\x10\n" +
-	"\x03qty\x18\x01 \x01(\x01R\x03qty\"O\n" +
+	"\x03qty\x18\x01 \x01(\x01R\x03qty\x12\x18\n" +
+	"\arounded\x18\x02 \x01(\x05R\arounded\x12!\n" +
+	"\fauto_comment\x18\x03 \x01(\tR\vautoComment\x12!\n" +
+	"\fbox_adjusted\x18\x04 \x01(\bR\vboxAdjusted\x12\x1a\n" +
+	"\binserted\x18\x05 \x01(\bR\binserted\"O\n" +
 	"\rNorthCityNeed\x12\x12\n" +
 	"\x04city\x18\x01 \x01(\tR\x04city\x12\x18\n" +
 	"\aarticle\x18\x02 \x01(\tR\aarticle\x12\x10\n" +

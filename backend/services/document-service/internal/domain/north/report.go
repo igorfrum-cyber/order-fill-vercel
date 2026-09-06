@@ -2,8 +2,18 @@ package north
 
 import (
 	"cmp"
+	"fmt"
+	"math"
 	"slices"
+	"strconv"
+	"strings"
+
+	"order-fill/backend/services/document-service/internal/domain/orderfill"
 )
+
+type Edit struct {
+	Key, Value string
+}
 
 type CityQty struct {
 	Key      string  `json:"key"`
@@ -137,4 +147,30 @@ func BuildReport(brand string, needs []Need, stock []Stock, planned []Planned, g
 		ConfirmationGroups: groups,
 		Summary:            Summary{Kind: brand},
 	}
+}
+
+func ApplyEdits(report *Report, edits []Edit) error {
+	if report == nil || len(edits) == 0 {
+		return nil
+	}
+	byKey := make(map[string]string, len(edits))
+	for _, edit := range edits {
+		byKey[edit.Key] = edit.Value
+	}
+	for i := range report.PlanRows {
+		raw, ok := byKey[report.PlanRows[i].Key]
+		if !ok {
+			continue
+		}
+		text := strings.TrimSpace(strings.ReplaceAll(raw, ",", "."))
+		if text == "" {
+			continue
+		}
+		n, err := strconv.ParseFloat(text, 64)
+		if err != nil || math.IsNaN(n) || math.IsInf(n, 0) || n < 0 {
+			return fmt.Errorf("%w: количество должно быть неотрицательным числом", orderfill.ErrInvalidInput)
+		}
+		report.PlanRows[i].ActualSupplierOrder = n
+	}
+	return nil
 }

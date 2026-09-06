@@ -34,6 +34,7 @@ func protoItem(item *matchingv1.Item) domain.Item {
 	return domain.Item{
 		ID: item.GetId(), Article: item.GetArticle(), Name: item.GetName(),
 		Volume: item.GetVolume(), Form: item.GetForm(), ChestnyZnak: item.GetChestnyZnak(),
+		Rounded: int(item.GetRounded()),
 	}
 }
 
@@ -69,7 +70,11 @@ func (s *Server) MatchRows(_ context.Context, req *matchingv1.MatchRowsRequest) 
 	if req.GetMatchingMode() == commonv1.MatchingMode_MATCHING_MODE_SMART {
 		mode = domain.ModeSmart
 	}
-	results := s.svc.Match(blank, source, matching.Options{Mode: mode})
+	results := s.svc.Match(blank, source, matching.Options{
+		Mode:           mode,
+		PrefixAliases:  req.GetPrefixAliases(),
+		PreserveHyphen: req.GetPreserveHyphen(),
+	})
 	out := make([]*matchingv1.MatchResult, 0, len(results))
 	for _, r := range results {
 		out = append(out, &matchingv1.MatchResult{
@@ -84,8 +89,31 @@ func (s *Server) MatchRows(_ context.Context, req *matchingv1.MatchRowsRequest) 
 	return &matchingv1.MatchRowsResponse{Results: out}, nil
 }
 
+func (s *Server) MergeChestnyZnak(_ context.Context, req *matchingv1.MergeChestnyZnakRequest) (*matchingv1.MergeChestnyZnakResponse, error) {
+	items := make([]domain.Item, 0, len(req.GetItems()))
+	for _, item := range req.GetItems() {
+		items = append(items, protoItem(item))
+	}
+	mode := domain.ModeStandard
+	if req.GetMatchingMode() == commonv1.MatchingMode_MATCHING_MODE_SMART {
+		mode = domain.ModeSmart
+	}
+	merges := s.svc.MergeChz(items, matching.Options{
+		Mode:           mode,
+		PrefixAliases:  req.GetPrefixAliases(),
+		PreserveHyphen: req.GetPreserveHyphen(),
+	})
+	out := make([]*matchingv1.ChestnyZnakMerge, 0, len(merges))
+	for _, merge := range merges {
+		out = append(out, &matchingv1.ChestnyZnakMerge{
+			TargetId: merge.TargetID, CloneIds: merge.CloneIDs, NeedsDecision: merge.NeedsDecision,
+		})
+	}
+	return &matchingv1.MergeChestnyZnakResponse{Merges: out}, nil
+}
+
 func (s *Server) NormalizeArticle(_ context.Context, req *matchingv1.NormalizeArticleRequest) (*matchingv1.NormalizeArticleResponse, error) {
-	return &matchingv1.NormalizeArticleResponse{Normalized: s.svc.NormalizeArticle(req.GetArticle(), false)}, nil
+	return &matchingv1.NormalizeArticleResponse{Normalized: s.svc.NormalizeArticle(req.GetArticle(), req.GetPreserveHyphen())}, nil
 }
 
 func (s *Server) NormalizeName(_ context.Context, req *matchingv1.NormalizeNameRequest) (*matchingv1.NormalizeNameResponse, error) {

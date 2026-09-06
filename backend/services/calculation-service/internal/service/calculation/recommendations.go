@@ -28,17 +28,21 @@ func (s *Service) RecommendWithWeeks(brand string, rows []domain.OrderRow, deliv
 	ranked := append([]domain.OrderRow{}, rows...)
 	sort.SliceStable(ranked, func(i, j int) bool { return ranked[i].Revenue > ranked[j].Revenue })
 	type metric struct {
-		category string
+		category          string
+		revenuePercent    float64
+		cumulativePercent float64
 	}
 	metrics := map[string]metric{}
 	cumulative := 0.0
 	for _, row := range ranked {
 		cumulative += row.Revenue
+		revenuePercent := 0.0
 		percent := 100.0
 		if totalRevenue > 0 {
+			revenuePercent = row.Revenue / totalRevenue * 100
 			percent = cumulative / totalRevenue * 100
 		}
-		metrics[row.ID] = metric{category: categoryFromCumulative(percent)}
+		metrics[row.ID] = metric{category: categoryFromCumulative(percent), revenuePercent: revenuePercent, cumulativePercent: percent}
 	}
 	out := make([]domain.OrderRow, len(rows))
 	for i, row := range rows {
@@ -57,9 +61,35 @@ func (s *Service) RecommendWithWeeks(brand string, rows []domain.OrderRow, deliv
 			targetStock = monthlyNeed*categoryCoefficient(category, brand) + monthlyNeed*deliveryCoefficient
 		}
 		recommended := math.Max(0, targetStock-row.Stock-row.InTransit)
+		totalQty := 0.0
+		for _, value := range row.MonthlySales {
+			totalQty += value
+		}
+		average := 0.0
+		if len(row.MonthlySales) > 0 {
+			average = totalQty / float64(len(row.MonthlySales))
+		}
 		row.ABCCategory = category
 		row.TargetStock = roundTo2(targetStock)
 		row.Recommended = roundTo2(recommended)
+		row.RevenuePercent = roundTo2(m.revenuePercent)
+		row.CumulativePercent = roundTo2(m.cumulativePercent)
+		row.TotalQuantity = roundTo2(totalQty)
+		row.AverageMonthly = roundTo2(average)
+		out[i] = row
+	}
+	return out
+}
+
+func (s *Service) RecommendUrengoy(brand string, rows []domain.OrderRow, deliveryWeeks float64) []domain.OrderRow {
+	deliveryCoefficient := 1 + 0.25*math.Max(1, deliveryWeeks)
+	out := make([]domain.OrderRow, len(rows))
+	for i, row := range rows {
+		maxSales := 0.0
+		for _, value := range row.MonthlySales {
+			maxSales = math.Max(maxSales, value)
+		}
+		row.Recommended = roundTo2(maxSales*categoryCoefficient(row.ABCCategory, brand) + maxSales*deliveryCoefficient)
 		out[i] = row
 	}
 	return out

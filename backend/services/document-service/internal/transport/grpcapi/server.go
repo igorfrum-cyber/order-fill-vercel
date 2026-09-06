@@ -11,6 +11,7 @@ import (
 	"order-fill/backend/pkg/grpcutil"
 	documentsv1 "order-fill/backend/proto/gen/go/orderfill/documents/v1"
 	filesv1 "order-fill/backend/proto/gen/go/orderfill/files/v1"
+	"order-fill/backend/services/document-service/internal/clients/brand"
 	"order-fill/backend/services/document-service/internal/domain/orderfill"
 	"order-fill/backend/services/document-service/internal/domain/preview"
 	"order-fill/backend/services/document-service/internal/domain/spreadsheet"
@@ -18,12 +19,13 @@ import (
 
 type Server struct {
 	documentsv1.UnimplementedDocumentServiceServer
-	files filesv1.FileServiceClient
-	codec spreadsheet.Codec
+	files  filesv1.FileServiceClient
+	codec  spreadsheet.Codec
+	brands brand.Client
 }
 
-func NewServer(files filesv1.FileServiceClient, codec spreadsheet.Codec) *Server {
-	return &Server{files: files, codec: codec}
+func NewServer(files filesv1.FileServiceClient, codec spreadsheet.Codec, brands brand.Client) *Server {
+	return &Server{files: files, codec: codec, brands: brands}
 }
 
 func New(handler documentsv1.DocumentServiceServer) *grpc.Server {
@@ -35,10 +37,10 @@ func New(handler documentsv1.DocumentServiceServer) *grpc.Server {
 }
 
 func (s *Server) AnalyzeInputs(ctx context.Context, req *documentsv1.AnalyzeInputsRequest) (*documentsv1.AnalyzeInputsResponse, error) {
-	if s.files == nil || s.codec == nil {
+	if s.files == nil || s.codec == nil || s.brands == nil {
 		return nil, status.Error(codes.Unavailable, "document api is not configured")
 	}
-	var brand string
+	var group, blankName string
 	var blankNames []string
 	var blankBook spreadsheet.Workbook
 	for _, id := range req.GetInputFileIds() {
@@ -50,28 +52,39 @@ func (s *Server) AnalyzeInputs(ctx context.Context, req *documentsv1.AnalyzeInpu
 		if err != nil {
 			continue
 		}
-		if detected, err := orderfill.DetectBrand(book); err == nil {
-			brand = detected
+		if g, err := orderfill.NomenclatureGroup(book); err == nil {
+			group = g
 			continue
 		}
-		blankNames = append(blankNames, obj.GetObject().GetName())
+		name := obj.GetObject().GetName()
+		blankNames = append(blankNames, name)
+		if blankName == "" {
+			blankName = name
+		}
 		blankBook = book
 	}
-	if brand == "" {
+	if group == "" {
 		return nil, status.Error(codes.InvalidArgument, "source workbook was not found")
 	}
-	plans, err := orderfill.PlanBlanks(brand, blankNames)
+	detected, _, err := s.brands.Detect(ctx, group, blankName)
+	if err != nil {
+		return nil, err
+	}
+	if detected == "" {
+		return nil, status.Error(codes.InvalidArgument, fmt.Sprintf("не узнали бренд «%s». Проверьте отбор номенклатуры в выгрузке 1С", group))
+	}
+	plans, err := orderfill.PlanBlanks(detected, blankNames)
 	if err != nil {
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
 	blankLabel := ""
 	if len(plans) > 0 {
 		blankLabel = plans[0].Label
-		if brand == "christina" && blankBook != nil {
+		if detected == "christina" && blankBook != nil {
 			blankLabel = orderfill.LabelChristinaBlank(blankBook, blankLabel)
 		}
 	}
-	return &documentsv1.AnalyzeInputsResponse{Brand: brand, BlankLabel: blankLabel}, nil
+	return &documentsv1.AnalyzeInputsResponse{Brand: detected, BlankLabel: blankLabel}, nil
 }
 
 func (s *Server) BuildPreview(ctx context.Context, req *documentsv1.BuildPreviewRequest) (*documentsv1.BuildPreviewResponse, error) {

@@ -19,3 +19,5 @@ __pycache__/
 .cursorrules
 .cursorignore
 .agents/
+.codex/
+.shared/

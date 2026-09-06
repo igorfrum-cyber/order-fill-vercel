@@ -123,10 +123,13 @@ func resolve(blank domain.Item, index sourceIndex, opts Options) domain.Result {
 			return result
 		}
 	}
-	if volumesConflict(blank, chosen.item) || chosen.score < nameMatchThreshold {
+	if volumesConflict(blank, chosen.item) || formsConflict(blank, chosen.item) || chosen.score < nameMatchThreshold {
 		result.Category = domain.CategoryCheckNameOrVolume
 		if volumesConflict(blank, chosen.item) {
 			result.Reasons.Volume = "conflict"
+		}
+		if formsConflict(blank, chosen.item) {
+			result.Reasons.Form = "conflict"
 		}
 		if chosen.score < nameMatchThreshold {
 			result.Reasons.Name = "different"

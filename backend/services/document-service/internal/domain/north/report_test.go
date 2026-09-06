@@ -60,3 +60,16 @@ func TestBuildReportWithoutTyumenStock(t *testing.T) {
 		t.Fatal("article was not in tyumen table")
 	}
 }
+
+func TestApplyEditsSetsActualSupplierOrder(t *testing.T) {
+	t.Parallel()
+	report := BuildReport("angiopharm", []Need{{City: "surgut", Article: "A1", Qty: 3}}, nil, []Planned{{
+		Article: "A1", SupplierQty: 3,
+	}}, nil)
+	if err := ApplyEdits(&report, []Edit{{Key: "A1", Value: "12"}}); err != nil {
+		t.Fatal(err)
+	}
+	if report.PlanRows[0].ActualSupplierOrder != 12 {
+		t.Fatalf("actual=%v", report.PlanRows[0].ActualSupplierOrder)
+	}
+}

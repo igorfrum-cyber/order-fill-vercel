@@ -22,13 +22,24 @@ const (
 )
 
 type BrandPolicy struct {
-	state            protoimpl.MessageState `protogen:"open.v1"`
-	Brand            string                 `protobuf:"bytes,1,opt,name=brand,proto3" json:"brand,omitempty"`
-	Variant          string                 `protobuf:"bytes,2,opt,name=variant,proto3" json:"variant,omitempty"`
-	QuantityMultiple int32                  `protobuf:"varint,3,opt,name=quantity_multiple,json=quantityMultiple,proto3" json:"quantity_multiple,omitempty"`
-	MinQuantity      int32                  `protobuf:"varint,4,opt,name=min_quantity,json=minQuantity,proto3" json:"min_quantity,omitempty"`
-	unknownFields    protoimpl.UnknownFields
-	sizeCache        protoimpl.SizeCache
+	state                   protoimpl.MessageState `protogen:"open.v1"`
+	Brand                   string                 `protobuf:"bytes,1,opt,name=brand,proto3" json:"brand,omitempty"`
+	Variant                 string                 `protobuf:"bytes,2,opt,name=variant,proto3" json:"variant,omitempty"`
+	QuantityMultiple        int32                  `protobuf:"varint,3,opt,name=quantity_multiple,json=quantityMultiple,proto3" json:"quantity_multiple,omitempty"`
+	MinQuantity             int32                  `protobuf:"varint,4,opt,name=min_quantity,json=minQuantity,proto3" json:"min_quantity,omitempty"`
+	Label                   string                 `protobuf:"bytes,5,opt,name=label,proto3" json:"label,omitempty"`
+	Adjustment              string                 `protobuf:"bytes,6,opt,name=adjustment,proto3" json:"adjustment,omitempty"`
+	AdjustmentLabel         string                 `protobuf:"bytes,7,opt,name=adjustment_label,json=adjustmentLabel,proto3" json:"adjustment_label,omitempty"`
+	AdjustmentComment       string                 `protobuf:"bytes,8,opt,name=adjustment_comment,json=adjustmentComment,proto3" json:"adjustment_comment,omitempty"`
+	PreserveHyphen          bool                   `protobuf:"varint,9,opt,name=preserve_hyphen,json=preserveHyphen,proto3" json:"preserve_hyphen,omitempty"`
+	PrefixAliases           []string               `protobuf:"bytes,10,rep,name=prefix_aliases,json=prefixAliases,proto3" json:"prefix_aliases,omitempty"`
+	BlankQuantityHeader     string                 `protobuf:"bytes,11,opt,name=blank_quantity_header,json=blankQuantityHeader,proto3" json:"blank_quantity_header,omitempty"`
+	BlankBoxHeader          string                 `protobuf:"bytes,12,opt,name=blank_box_header,json=blankBoxHeader,proto3" json:"blank_box_header,omitempty"`
+	BlankLayout             string                 `protobuf:"bytes,13,opt,name=blank_layout,json=blankLayout,proto3" json:"blank_layout,omitempty"`
+	AllowSmallPositiveOrder bool                   `protobuf:"varint,14,opt,name=allow_small_positive_order,json=allowSmallPositiveOrder,proto3" json:"allow_small_positive_order,omitempty"`
+	RequireUnit             *bool                  `protobuf:"varint,15,opt,name=require_unit,json=requireUnit,proto3,oneof" json:"require_unit,omitempty"`
+	unknownFields           protoimpl.UnknownFields
+	sizeCache               protoimpl.SizeCache
 }
 
 func (x *BrandPolicy) Reset() {
@@ -87,6 +98,83 @@ func (x *BrandPolicy) GetMinQuantity() int32 {
 		return x.MinQuantity
 	}
 	return 0
+}
+
+func (x *BrandPolicy) GetLabel() string {
+	if x != nil {
+		return x.Label
+	}
+	return ""
+}
+
+func (x *BrandPolicy) GetAdjustment() string {
+	if x != nil {
+		return x.Adjustment
+	}
+	return ""
+}
+
+func (x *BrandPolicy) GetAdjustmentLabel() string {
+	if x != nil {
+		return x.AdjustmentLabel
+	}
+	return ""
+}
+
+func (x *BrandPolicy) GetAdjustmentComment() string {
+	if x != nil {
+		return x.AdjustmentComment
+	}
+	return ""
+}
+
+func (x *BrandPolicy) GetPreserveHyphen() bool {
+	if x != nil {
+		return x.PreserveHyphen
+	}
+	return false
+}
+
+func (x *BrandPolicy) GetPrefixAliases() []string {
+	if x != nil {
+		return x.PrefixAliases
+	}
+	return nil
+}
+
+func (x *BrandPolicy) GetBlankQuantityHeader() string {
+	if x != nil {
+		return x.BlankQuantityHeader
+	}
+	return ""
+}
+
+func (x *BrandPolicy) GetBlankBoxHeader() string {
+	if x != nil {
+		return x.BlankBoxHeader
+	}
+	return ""
+}
+
+func (x *BrandPolicy) GetBlankLayout() string {
+	if x != nil {
+		return x.BlankLayout
+	}
+	return ""
+}
+
+func (x *BrandPolicy) GetAllowSmallPositiveOrder() bool {
+	if x != nil {
+		return x.AllowSmallPositiveOrder
+	}
+	return false
+}
+
+func (x *BrandPolicy) GetRequireUnit() bool {
+	if x != nil && x.RequireUnit != nil {
+		return *x.RequireUnit
+	}
+	return false
 }
 
 type GetBrandPolicyRequest struct {
@@ -389,12 +477,27 @@ var File_orderfill_brand_v1_brand_proto protoreflect.FileDescriptor
 
 const file_orderfill_brand_v1_brand_proto_rawDesc = "" +
 	"\n" +
-	"\x1eorderfill/brand/v1/brand.proto\x12\x12orderfill.brand.v1\"\x8d\x01\n" +
+	"\x1eorderfill/brand/v1/brand.proto\x12\x12orderfill.brand.v1\"\xe4\x04\n" +
 	"\vBrandPolicy\x12\x14\n" +
 	"\x05brand\x18\x01 \x01(\tR\x05brand\x12\x18\n" +
 	"\avariant\x18\x02 \x01(\tR\avariant\x12+\n" +
 	"\x11quantity_multiple\x18\x03 \x01(\x05R\x10quantityMultiple\x12!\n" +
-	"\fmin_quantity\x18\x04 \x01(\x05R\vminQuantity\"f\n" +
+	"\fmin_quantity\x18\x04 \x01(\x05R\vminQuantity\x12\x14\n" +
+	"\x05label\x18\x05 \x01(\tR\x05label\x12\x1e\n" +
+	"\n" +
+	"adjustment\x18\x06 \x01(\tR\n" +
+	"adjustment\x12)\n" +
+	"\x10adjustment_label\x18\a \x01(\tR\x0fadjustmentLabel\x12-\n" +
+	"\x12adjustment_comment\x18\b \x01(\tR\x11adjustmentComment\x12'\n" +
+	"\x0fpreserve_hyphen\x18\t \x01(\bR\x0epreserveHyphen\x12%\n" +
+	"\x0eprefix_aliases\x18\n" +
+	" \x03(\tR\rprefixAliases\x122\n" +
+	"\x15blank_quantity_header\x18\v \x01(\tR\x13blankQuantityHeader\x12(\n" +
+	"\x10blank_box_header\x18\f \x01(\tR\x0eblankBoxHeader\x12!\n" +
+	"\fblank_layout\x18\r \x01(\tR\vblankLayout\x12;\n" +
+	"\x1aallow_small_positive_order\x18\x0e \x01(\bR\x17allowSmallPositiveOrder\x12&\n" +
+	"\frequire_unit\x18\x0f \x01(\bH\x00R\vrequireUnit\x88\x01\x01B\x0f\n" +
+	"\r_require_unit\"f\n" +
 	"\x15GetBrandPolicyRequest\x12\x1d\n" +
 	"\n" +
 	"request_id\x18\x01 \x01(\tR\trequestId\x12\x14\n" +
@@ -461,6 +564,7 @@ func file_orderfill_brand_v1_brand_proto_init() {
 	if File_orderfill_brand_v1_brand_proto != nil {
 		return
 	}
+	file_orderfill_brand_v1_brand_proto_msgTypes[0].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{

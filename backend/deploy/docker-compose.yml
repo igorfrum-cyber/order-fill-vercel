@@ -213,11 +213,14 @@ services:
       DOCUMENT_GRPC_ADDR: ":9096"
       DOCUMENT_HEALTH_ADDR: ":8087"
       FILE_GRPC_ADDR: file-service:9095
+      BRAND_GRPC_ADDR: brand-service:9098
     expose:
       - "9096"
       - "8087"
     depends_on:
       file-service:
+        condition: service_healthy
+      brand-service:
         condition: service_healthy
     healthcheck:
       test: ["CMD", "wget", "-qO-", "http://localhost:8087/healthz"]
@@ -239,6 +242,8 @@ services:
       JOB_GRPC_ADDR: job-service:9094
       FILE_GRPC_ADDR: file-service:9095
       CALCULATION_GRPC_ADDR: calculation-service:9099
+      MATCHING_GRPC_ADDR: matching-service:9097
+      BRAND_GRPC_ADDR: brand-service:9098
     expose:
       - "8092"
     depends_on:
@@ -249,6 +254,10 @@ services:
       file-service:
         condition: service_healthy
       calculation-service:
+        condition: service_healthy
+      matching-service:
+        condition: service_healthy
+      brand-service:
         condition: service_healthy
     healthcheck:
       test: ["CMD", "wget", "-qO-", "http://localhost:8092/healthz"]

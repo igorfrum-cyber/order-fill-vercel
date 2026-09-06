@@ -26,6 +26,7 @@ type FinalizeCommand struct {
 	Rows   []ReportRow
 	Edits  []ManualEdit
 	Brand  string
+	Rule   brand.RuleConfig
 }
 
 var fileNamePattern = regexp.MustCompile(`[^\p{L}\p{N}_ .-]+`)
@@ -50,7 +51,10 @@ func ParseEditValue(value string) (*float64, error) {
 // ApplyFinalEdits writes reviewer quantities into the blank and mirrors them
 // into the source workbook as "Заказано по факту" with the justification.
 func ApplyFinalEdits(command FinalizeCommand) error {
-	rule := brand.Rule(command.Brand)
+	rule := command.Rule
+	if rule.Key == "" {
+		rule = brand.Rule(command.Brand)
+	}
 	if rule.BlankLayout != "" {
 		return fmt.Errorf("%w: раскладка бланка %q для бренда %s пока не поддерживается сервисом", ErrInvalidInput, rule.BlankLayout, rule.Label)
 	}

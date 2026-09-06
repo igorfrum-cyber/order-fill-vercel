@@ -67,10 +67,12 @@ var digitsPattern = regexp.MustCompile(`^\d+$`)
 
 // ReadSource validates the export period and extracts every product row.
 func ReadSource(workbook spreadsheet.Workbook, orderMonth string, rule brand.RuleConfig) (Source, error) {
-	return readSource(workbook, orderMonth, rule, nil)
+	return readSource(FillCommand{Source: workbook, OrderMonth: orderMonth}, rule, nil)
 }
 
-func readSource(workbook spreadsheet.Workbook, orderMonth string, rule brand.RuleConfig, report func(float64, string)) (Source, error) {
+func readSource(command FillCommand, rule brand.RuleConfig, report func(fraction float64, message string)) (Source, error) {
+	workbook := command.Source
+	orderMonth := command.OrderMonth
 	reportProgress(report, 0, "Читаю таблицу заказа")
 	periodInfo, err := ValidateSourcePeriods(workbook, orderMonth)
 	if err != nil {
@@ -85,9 +87,11 @@ func readSource(workbook spreadsheet.Workbook, orderMonth string, rule brand.Rul
 	calculationColumns := detectCalculationColumns(detection)
 	if calculationColumns != nil {
 		reportProgress(report, 0.08, "Объединяю строки ЧЗ")
-		rebuildSourceWithChz(detection, deliveryWeeks, rule, *calculationColumns, func(fraction float64) {
+		if err := applyChestnyZnak(command, detection, rule, *calculationColumns, func(fraction float64) {
 			reportProgress(report, 0.08+0.45*fraction, "Объединяю строки ЧЗ")
-		})
+		}); err != nil {
+			return Source{}, err
+		}
 	}
 
 	urengoy := (*urengoyInfo)(nil)
@@ -97,14 +101,23 @@ func readSource(workbook spreadsheet.Workbook, orderMonth string, rule brand.Rul
 		if err != nil {
 			return Source{}, err
 		}
-		detected.rule = rule
-		detected.deliveryCoefficient = 1 + 0.25*deliveryWeeks
 		urengoy = detected
 		cityRule = "Новый Уренгой"
 	}
 
+	if command.Recommender != nil && calculationColumns != nil {
+		if err := applyRecommendations(command, detection, rule, *calculationColumns, deliveryWeeks, ""); err != nil {
+			return Source{}, err
+		}
+	}
+	if command.Recommender != nil && urengoy != nil {
+		if err := applyRecommendations(command, detection, rule, calculationColumnsFromUrengoy(*urengoy), deliveryWeeks, "urengoy"); err != nil {
+			return Source{}, err
+		}
+	}
+
 	bounds := detection.Sheet.Bounds()
-	items, err := collectSourceItems(detection, rule, urengoy, bounds, report)
+	items, err := collectSourceItems(detection, rule, bounds, report)
 	if err != nil {
 		return Source{}, err
 	}
@@ -126,7 +139,7 @@ type scannedSourceRow struct {
 	err  error
 }
 
-func collectSourceItems(detection Detection, rule brand.RuleConfig, urengoy *urengoyInfo, bounds spreadsheet.Bounds, report func(float64, string)) ([]SourceItem, error) {
+func collectSourceItems(detection Detection, rule brand.RuleConfig, bounds spreadsheet.Bounds, report func(float64, string)) ([]SourceItem, error) {
 	start := detection.HeaderRow + 1
 	if bounds.MaxRow < start {
 		return nil, nil
@@ -148,11 +161,7 @@ func collectSourceItems(detection Detection, rule brand.RuleConfig, urengoy *ure
 		name := normalize.AsText(detection.Sheet.Value(row, detection.Columns[ColumnName]))
 		recommendedRaw := detection.Sheet.Value(row, detection.Columns[ColumnRecommended])
 
-		if urengoy != nil && (articleRaw != "" || name != "" || normalize.AsText(recommendedRaw) != "") {
-			detection.Sheet.SetNumber(row, detection.Columns[ColumnRecommended], urengoy.recommendedFor(detection.Sheet, row))
-		}
-
-		recommendedValue, hasRecommended := normalize.ParseNumber(detection.Sheet.Value(row, detection.Columns[ColumnRecommended]))
+		recommendedValue, hasRecommended := normalize.ParseNumber(recommendedRaw)
 		orderedFactRaw := detection.Sheet.Value(row, detection.Columns[ColumnOrderedFact])
 		orderedFact, hasParsedFact := normalize.ParseNumber(orderedFactRaw)
 		hasOrderedFact := normalize.AsText(orderedFactRaw) != ""
@@ -185,7 +194,7 @@ func collectSourceItems(detection Detection, rule brand.RuleConfig, urengoy *ure
 		}
 	}
 
-	if urengoy != nil || count < 32 {
+	if count < 32 {
 		for offset := 0; offset < count; offset++ {
 			scan(offset)
 		}

@@ -20,6 +20,7 @@ const _ = grpc.SupportPackageIsVersion9
 
 const (
 	MatchingService_MatchRows_FullMethodName        = "/orderfill.matching.v1.MatchingService/MatchRows"
+	MatchingService_MergeChestnyZnak_FullMethodName = "/orderfill.matching.v1.MatchingService/MergeChestnyZnak"
 	MatchingService_NormalizeArticle_FullMethodName = "/orderfill.matching.v1.MatchingService/NormalizeArticle"
 	MatchingService_NormalizeName_FullMethodName    = "/orderfill.matching.v1.MatchingService/NormalizeName"
 )
@@ -29,6 +30,7 @@ const (
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type MatchingServiceClient interface {
 	MatchRows(ctx context.Context, in *MatchRowsRequest, opts ...grpc.CallOption) (*MatchRowsResponse, error)
+	MergeChestnyZnak(ctx context.Context, in *MergeChestnyZnakRequest, opts ...grpc.CallOption) (*MergeChestnyZnakResponse, error)
 	NormalizeArticle(ctx context.Context, in *NormalizeArticleRequest, opts ...grpc.CallOption) (*NormalizeArticleResponse, error)
 	NormalizeName(ctx context.Context, in *NormalizeNameRequest, opts ...grpc.CallOption) (*NormalizeNameResponse, error)
 }
@@ -45,6 +47,16 @@ func (c *matchingServiceClient) MatchRows(ctx context.Context, in *MatchRowsRequ
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(MatchRowsResponse)
 	err := c.cc.Invoke(ctx, MatchingService_MatchRows_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *matchingServiceClient) MergeChestnyZnak(ctx context.Context, in *MergeChestnyZnakRequest, opts ...grpc.CallOption) (*MergeChestnyZnakResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(MergeChestnyZnakResponse)
+	err := c.cc.Invoke(ctx, MatchingService_MergeChestnyZnak_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -76,6 +88,7 @@ func (c *matchingServiceClient) NormalizeName(ctx context.Context, in *Normalize
 // for forward compatibility.
 type MatchingServiceServer interface {
 	MatchRows(context.Context, *MatchRowsRequest) (*MatchRowsResponse, error)
+	MergeChestnyZnak(context.Context, *MergeChestnyZnakRequest) (*MergeChestnyZnakResponse, error)
 	NormalizeArticle(context.Context, *NormalizeArticleRequest) (*NormalizeArticleResponse, error)
 	NormalizeName(context.Context, *NormalizeNameRequest) (*NormalizeNameResponse, error)
 	mustEmbedUnimplementedMatchingServiceServer()
@@ -90,6 +103,9 @@ type UnimplementedMatchingServiceServer struct{}
 
 func (UnimplementedMatchingServiceServer) MatchRows(context.Context, *MatchRowsRequest) (*MatchRowsResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method MatchRows not implemented")
+}
+func (UnimplementedMatchingServiceServer) MergeChestnyZnak(context.Context, *MergeChestnyZnakRequest) (*MergeChestnyZnakResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method MergeChestnyZnak not implemented")
 }
 func (UnimplementedMatchingServiceServer) NormalizeArticle(context.Context, *NormalizeArticleRequest) (*NormalizeArticleResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method NormalizeArticle not implemented")
@@ -132,6 +148,24 @@ func _MatchingService_MatchRows_Handler(srv interface{}, ctx context.Context, de
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(MatchingServiceServer).MatchRows(ctx, req.(*MatchRowsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _MatchingService_MergeChestnyZnak_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(MergeChestnyZnakRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(MatchingServiceServer).MergeChestnyZnak(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: MatchingService_MergeChestnyZnak_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(MatchingServiceServer).MergeChestnyZnak(ctx, req.(*MergeChestnyZnakRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -182,6 +216,10 @@ var MatchingService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "MatchRows",
 			Handler:    _MatchingService_MatchRows_Handler,
+		},
+		{
+			MethodName: "MergeChestnyZnak",
+			Handler:    _MatchingService_MergeChestnyZnak_Handler,
 		},
 		{
 			MethodName: "NormalizeArticle",

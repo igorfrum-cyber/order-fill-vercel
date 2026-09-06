@@ -7,14 +7,15 @@ import (
 	"order-fill/backend/services/document-service/internal/clients/brand"
 	"order-fill/backend/services/document-service/internal/clients/calculation"
 	"order-fill/backend/services/document-service/internal/clients/matching"
+	filldom "order-fill/backend/services/document-service/internal/domain/orderfill"
 )
 
 type FillRequest struct {
 	NomenclatureGroup string
 	BlankFileName     string
 	MatchingMode      string
-	Blank             []matching.Item
-	Source            []matching.Item
+	Blank             []filldom.MatchItem
+	Source            []filldom.MatchItem
 	Recommended       map[string]float64
 }
 
@@ -42,7 +43,7 @@ func (p *Processor) Fill(ctx context.Context, req FillRequest) (brandKey string,
 	if err := PlanOneBlank(brandKey, []string{req.BlankFileName}); err != nil {
 		return "", nil, err
 	}
-	results, err := p.match.Match(ctx, req.MatchingMode, req.Blank, req.Source)
+	results, err := p.match.Match(ctx, req.Blank, req.Source, filldom.MatchOptions{Mode: req.MatchingMode})
 	if err != nil {
 		return "", nil, err
 	}

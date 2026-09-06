@@ -2,6 +2,7 @@ package bootstrap
 
 import (
 	"context"
+	"fmt"
 	"log/slog"
 	"net/http"
 	"time"
@@ -15,8 +16,11 @@ import (
 	"order-fill/backend/services/document-service/internal/adapter/outbound/grpcjobs"
 	"order-fill/backend/services/document-service/internal/adapter/outbound/xlsx"
 	"order-fill/backend/services/document-service/internal/app/usecase"
+	"order-fill/backend/services/document-service/internal/clients/brand"
 	"order-fill/backend/services/document-service/internal/clients/calculation"
+	"order-fill/backend/services/document-service/internal/clients/matching"
 	"order-fill/backend/services/document-service/internal/config"
+	"order-fill/backend/services/document-service/internal/domain/orderfill"
 	"order-fill/backend/services/document-service/internal/transport/grpcapi"
 )
 
@@ -30,13 +34,20 @@ func HealthHandler() http.Handler {
 func Run(ctx context.Context, cfg config.Config, log *slog.Logger) error {
 	var handler documentsv1.DocumentServiceServer
 	if cfg.FileAddr != "" {
-		conn, err := grpcutil.Dial(ctx, cfg.FileAddr)
+		if cfg.BrandAddr == "" {
+			return fmt.Errorf("BRAND_GRPC_ADDR is required")
+		}
+		fileConn, err := grpcutil.Dial(ctx, cfg.FileAddr)
 		if err != nil {
 			return err
 		}
-		handler = grpcapi.NewServer(filesv1.NewFileServiceClient(conn), xlsx.NewCodec())
+		brands, err := brand.Dial(ctx, cfg.BrandAddr)
+		if err != nil {
+			return err
+		}
+		handler = grpcapi.NewServer(filesv1.NewFileServiceClient(fileConn), xlsx.NewCodec(), brands)
 	} else {
-		handler = grpcapi.NewServer(nil, nil)
+		handler = grpcapi.NewServer(nil, nil, nil)
 	}
 	return grpcutil.Serve(ctx, cfg.GRPCAddr, cfg.HealthAddr, grpcapi.New(handler), HealthHandler())
 }
@@ -54,15 +65,29 @@ func RunWorker(ctx context.Context, cfg config.Config, log *slog.Logger) error {
 	store := grpcjobs.Files{API: filesAPI}
 	jobsAPI := grpcjobs.Jobs{API: jobsv1.NewJobServiceClient(jobConn), Files: store}
 	reports := grpcjobs.Reports{Files: store}
-	var calc calculation.Client
-	if cfg.CalculationAddr != "" {
-		client, err := calculation.Dial(ctx, cfg.CalculationAddr)
-		if err != nil {
-			return err
-		}
-		calc = client
+	if cfg.CalculationAddr == "" {
+		return fmt.Errorf("CALCULATION_GRPC_ADDR is required")
 	}
-	processor := usecase.NewProcessJob(xlsx.NewCodec(), store, jobsAPI, reports, time.Now, log, nil, calc)
+	calc, err := calculation.Dial(ctx, cfg.CalculationAddr)
+	if err != nil {
+		return err
+	}
+	if cfg.MatchingAddr == "" {
+		return fmt.Errorf("MATCHING_GRPC_ADDR is required")
+	}
+	matchClient, err := matching.Dial(ctx, cfg.MatchingAddr)
+	if err != nil {
+		return err
+	}
+	if cfg.BrandAddr == "" {
+		return fmt.Errorf("BRAND_GRPC_ADDR is required")
+	}
+	brands, err := brand.Dial(ctx, cfg.BrandAddr)
+	if err != nil {
+		return err
+	}
+	var match orderfill.Matcher = matchClient
+	processor := usecase.NewProcessJob(xlsx.NewCodec(), store, jobsAPI, reports, time.Now, log, nil, calc, match, brands)
 	consumer, err := queue.NewConsumer(cfg.QueueURL, "", log)
 	if err != nil {
 		return err

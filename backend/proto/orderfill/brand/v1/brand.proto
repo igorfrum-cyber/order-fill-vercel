@@ -15,6 +15,17 @@ message BrandPolicy {
   string variant = 2;
   int32 quantity_multiple = 3;
   int32 min_quantity = 4;
+  string label = 5;
+  string adjustment = 6;
+  string adjustment_label = 7;
+  string adjustment_comment = 8;
+  bool preserve_hyphen = 9;
+  repeated string prefix_aliases = 10;
+  string blank_quantity_header = 11;
+  string blank_box_header = 12;
+  string blank_layout = 13;
+  bool allow_small_positive_order = 14;
+  optional bool require_unit = 15;
 }
 
 message GetBrandPolicyRequest {

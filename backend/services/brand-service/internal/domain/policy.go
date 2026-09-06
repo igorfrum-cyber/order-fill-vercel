@@ -25,4 +25,5 @@ type Policy struct {
 	BlankBoxHeader          string
 	AllowSmallPositiveOrder bool
 	BlankLayout             string
+	RequireUnit             *bool
 }

@@ -1,6 +1,42 @@
 package orderfill
 
-import "testing"
+import (
+	"context"
+	"strings"
+	"testing"
+)
+
+type stubChzMerger struct{}
+
+func (stubChzMerger) MergeChz(_ context.Context, items []MatchItem, _ MatchOptions) ([]ChzMerge, error) {
+	byArticle := map[string][]MatchItem{}
+	order := make([]string, 0)
+	for _, item := range items {
+		if _, seen := byArticle[item.Article]; !seen {
+			order = append(order, item.Article)
+		}
+		byArticle[item.Article] = append(byArticle[item.Article], item)
+	}
+	out := make([]ChzMerge, 0)
+	for _, article := range order {
+		var target string
+		clones := make([]string, 0)
+		for _, item := range byArticle[article] {
+			name := strings.ToLower(strings.TrimSpace(item.Name))
+			if strings.HasPrefix(name, "чз ") && !strings.HasPrefix(name, "чз +") {
+				clones = append(clones, item.ID)
+				continue
+			}
+			if target == "" {
+				target = item.ID
+			}
+		}
+		if target != "" && len(clones) > 0 {
+			out = append(out, ChzMerge{TargetID: target, CloneIDs: clones})
+		}
+	}
+	return out, nil
+}
 
 // chzSourceGrid is a 1C export with the full ABC analysis block, which is what
 // switches the engine into recalculation mode. Article AA04 is listed twice:
@@ -39,6 +75,8 @@ func chzFixture(t *testing.T) Result {
 		Brand:      "angiopharm",
 		BlankID:    "blank-1",
 		BlankLabel: "Бланк",
+		Matcher:    exactMatcher{},
+		Chz:        stubChzMerger{},
 	})
 	if err != nil {
 		t.Fatalf("fill failed: %v", err)

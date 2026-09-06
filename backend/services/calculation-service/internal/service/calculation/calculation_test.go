@@ -39,6 +39,35 @@ func TestRecommendNonNegativeAndStockSubtract(t *testing.T) {
 	}
 }
 
+func TestRecommendFillsAbcPercentsAndAverages(t *testing.T) {
+	t.Parallel()
+	svc := calculation.New()
+	rows := svc.RecommendWithWeeks("angiopharm", []domain.OrderRow{
+		{ID: "a", Revenue: 80, MonthlySales: []float64{2, 2, 2, 2, 2, 2}},
+		{ID: "b", Revenue: 20, MonthlySales: []float64{1, 1, 1, 1, 1, 1}},
+	}, 4)
+	if rows[0].ID != "a" || rows[0].RevenuePercent != 80 || rows[0].CumulativePercent != 80 || rows[0].ABCCategory != "A" {
+		t.Fatalf("lead %+v", rows[0])
+	}
+	if rows[1].RevenuePercent != 20 || rows[1].CumulativePercent != 100 || rows[1].ABCCategory != "C" {
+		t.Fatalf("tail %+v", rows[1])
+	}
+	if rows[0].TotalQuantity != 12 || rows[0].AverageMonthly != 2 {
+		t.Fatalf("avg %+v", rows[0])
+	}
+}
+
+func TestRecommendUrengoyUsesMaxSalesAndCoefficients(t *testing.T) {
+	t.Parallel()
+	svc := calculation.New()
+	rows := svc.RecommendUrengoy("angiopharm", []domain.OrderRow{{
+		ID: "r1", ABCCategory: "C", MonthlySales: []float64{10, 4},
+	}}, 4)
+	if len(rows) != 1 || rows[0].Recommended != 30 {
+		t.Fatalf("%+v", rows)
+	}
+}
+
 func TestNoveltyAndStableAverage(t *testing.T) {
 	t.Parallel()
 	svc := calculation.New()

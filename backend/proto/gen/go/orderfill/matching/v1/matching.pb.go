@@ -30,6 +30,7 @@ type Item struct {
 	Volume        string                 `protobuf:"bytes,4,opt,name=volume,proto3" json:"volume,omitempty"`
 	Form          string                 `protobuf:"bytes,5,opt,name=form,proto3" json:"form,omitempty"`
 	ChestnyZnak   bool                   `protobuf:"varint,6,opt,name=chestny_znak,json=chestnyZnak,proto3" json:"chestny_znak,omitempty"`
+	Rounded       int32                  `protobuf:"varint,7,opt,name=rounded,proto3" json:"rounded,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -104,6 +105,13 @@ func (x *Item) GetChestnyZnak() bool {
 		return x.ChestnyZnak
 	}
 	return false
+}
+
+func (x *Item) GetRounded() int32 {
+	if x != nil {
+		return x.Rounded
+	}
+	return 0
 }
 
 type MatchReasons struct {
@@ -275,13 +283,15 @@ func (x *MatchResult) GetCandidateIds() []string {
 }
 
 type MatchRowsRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Meta          *v1.RequestMeta        `protobuf:"bytes,1,opt,name=meta,proto3" json:"meta,omitempty"`
-	MatchingMode  v1.MatchingMode        `protobuf:"varint,2,opt,name=matching_mode,json=matchingMode,proto3,enum=orderfill.common.v1.MatchingMode" json:"matching_mode,omitempty"`
-	SourceItems   []*Item                `protobuf:"bytes,3,rep,name=source_items,json=sourceItems,proto3" json:"source_items,omitempty"`
-	BlankItems    []*Item                `protobuf:"bytes,4,rep,name=blank_items,json=blankItems,proto3" json:"blank_items,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	state          protoimpl.MessageState `protogen:"open.v1"`
+	Meta           *v1.RequestMeta        `protobuf:"bytes,1,opt,name=meta,proto3" json:"meta,omitempty"`
+	MatchingMode   v1.MatchingMode        `protobuf:"varint,2,opt,name=matching_mode,json=matchingMode,proto3,enum=orderfill.common.v1.MatchingMode" json:"matching_mode,omitempty"`
+	SourceItems    []*Item                `protobuf:"bytes,3,rep,name=source_items,json=sourceItems,proto3" json:"source_items,omitempty"`
+	BlankItems     []*Item                `protobuf:"bytes,4,rep,name=blank_items,json=blankItems,proto3" json:"blank_items,omitempty"`
+	PrefixAliases  []string               `protobuf:"bytes,5,rep,name=prefix_aliases,json=prefixAliases,proto3" json:"prefix_aliases,omitempty"`
+	PreserveHyphen bool                   `protobuf:"varint,6,opt,name=preserve_hyphen,json=preserveHyphen,proto3" json:"preserve_hyphen,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
 }
 
 func (x *MatchRowsRequest) Reset() {
@@ -342,6 +352,20 @@ func (x *MatchRowsRequest) GetBlankItems() []*Item {
 	return nil
 }
 
+func (x *MatchRowsRequest) GetPrefixAliases() []string {
+	if x != nil {
+		return x.PrefixAliases
+	}
+	return nil
+}
+
+func (x *MatchRowsRequest) GetPreserveHyphen() bool {
+	if x != nil {
+		return x.PreserveHyphen
+	}
+	return false
+}
+
 type MatchRowsResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Results       []*MatchResult         `protobuf:"bytes,1,rep,name=results,proto3" json:"results,omitempty"`
@@ -386,16 +410,189 @@ func (x *MatchRowsResponse) GetResults() []*MatchResult {
 	return nil
 }
 
-type NormalizeArticleRequest struct {
+type MergeChestnyZnakRequest struct {
+	state          protoimpl.MessageState `protogen:"open.v1"`
+	MatchingMode   v1.MatchingMode        `protobuf:"varint,1,opt,name=matching_mode,json=matchingMode,proto3,enum=orderfill.common.v1.MatchingMode" json:"matching_mode,omitempty"`
+	Items          []*Item                `protobuf:"bytes,2,rep,name=items,proto3" json:"items,omitempty"`
+	PrefixAliases  []string               `protobuf:"bytes,3,rep,name=prefix_aliases,json=prefixAliases,proto3" json:"prefix_aliases,omitempty"`
+	PreserveHyphen bool                   `protobuf:"varint,4,opt,name=preserve_hyphen,json=preserveHyphen,proto3" json:"preserve_hyphen,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
+}
+
+func (x *MergeChestnyZnakRequest) Reset() {
+	*x = MergeChestnyZnakRequest{}
+	mi := &file_orderfill_matching_v1_matching_proto_msgTypes[5]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *MergeChestnyZnakRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*MergeChestnyZnakRequest) ProtoMessage() {}
+
+func (x *MergeChestnyZnakRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_orderfill_matching_v1_matching_proto_msgTypes[5]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use MergeChestnyZnakRequest.ProtoReflect.Descriptor instead.
+func (*MergeChestnyZnakRequest) Descriptor() ([]byte, []int) {
+	return file_orderfill_matching_v1_matching_proto_rawDescGZIP(), []int{5}
+}
+
+func (x *MergeChestnyZnakRequest) GetMatchingMode() v1.MatchingMode {
+	if x != nil {
+		return x.MatchingMode
+	}
+	return v1.MatchingMode(0)
+}
+
+func (x *MergeChestnyZnakRequest) GetItems() []*Item {
+	if x != nil {
+		return x.Items
+	}
+	return nil
+}
+
+func (x *MergeChestnyZnakRequest) GetPrefixAliases() []string {
+	if x != nil {
+		return x.PrefixAliases
+	}
+	return nil
+}
+
+func (x *MergeChestnyZnakRequest) GetPreserveHyphen() bool {
+	if x != nil {
+		return x.PreserveHyphen
+	}
+	return false
+}
+
+type ChestnyZnakMerge struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	Article       string                 `protobuf:"bytes,1,opt,name=article,proto3" json:"article,omitempty"`
+	TargetId      string                 `protobuf:"bytes,1,opt,name=target_id,json=targetId,proto3" json:"target_id,omitempty"`
+	CloneIds      []string               `protobuf:"bytes,2,rep,name=clone_ids,json=cloneIds,proto3" json:"clone_ids,omitempty"`
+	NeedsDecision bool                   `protobuf:"varint,3,opt,name=needs_decision,json=needsDecision,proto3" json:"needs_decision,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
+func (x *ChestnyZnakMerge) Reset() {
+	*x = ChestnyZnakMerge{}
+	mi := &file_orderfill_matching_v1_matching_proto_msgTypes[6]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ChestnyZnakMerge) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ChestnyZnakMerge) ProtoMessage() {}
+
+func (x *ChestnyZnakMerge) ProtoReflect() protoreflect.Message {
+	mi := &file_orderfill_matching_v1_matching_proto_msgTypes[6]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ChestnyZnakMerge.ProtoReflect.Descriptor instead.
+func (*ChestnyZnakMerge) Descriptor() ([]byte, []int) {
+	return file_orderfill_matching_v1_matching_proto_rawDescGZIP(), []int{6}
+}
+
+func (x *ChestnyZnakMerge) GetTargetId() string {
+	if x != nil {
+		return x.TargetId
+	}
+	return ""
+}
+
+func (x *ChestnyZnakMerge) GetCloneIds() []string {
+	if x != nil {
+		return x.CloneIds
+	}
+	return nil
+}
+
+func (x *ChestnyZnakMerge) GetNeedsDecision() bool {
+	if x != nil {
+		return x.NeedsDecision
+	}
+	return false
+}
+
+type MergeChestnyZnakResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Merges        []*ChestnyZnakMerge    `protobuf:"bytes,1,rep,name=merges,proto3" json:"merges,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *MergeChestnyZnakResponse) Reset() {
+	*x = MergeChestnyZnakResponse{}
+	mi := &file_orderfill_matching_v1_matching_proto_msgTypes[7]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *MergeChestnyZnakResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*MergeChestnyZnakResponse) ProtoMessage() {}
+
+func (x *MergeChestnyZnakResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_orderfill_matching_v1_matching_proto_msgTypes[7]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use MergeChestnyZnakResponse.ProtoReflect.Descriptor instead.
+func (*MergeChestnyZnakResponse) Descriptor() ([]byte, []int) {
+	return file_orderfill_matching_v1_matching_proto_rawDescGZIP(), []int{7}
+}
+
+func (x *MergeChestnyZnakResponse) GetMerges() []*ChestnyZnakMerge {
+	if x != nil {
+		return x.Merges
+	}
+	return nil
+}
+
+type NormalizeArticleRequest struct {
+	state          protoimpl.MessageState `protogen:"open.v1"`
+	Article        string                 `protobuf:"bytes,1,opt,name=article,proto3" json:"article,omitempty"`
+	PreserveHyphen bool                   `protobuf:"varint,2,opt,name=preserve_hyphen,json=preserveHyphen,proto3" json:"preserve_hyphen,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
+}
+
 func (x *NormalizeArticleRequest) Reset() {
 	*x = NormalizeArticleRequest{}
-	mi := &file_orderfill_matching_v1_matching_proto_msgTypes[5]
+	mi := &file_orderfill_matching_v1_matching_proto_msgTypes[8]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -407,7 +604,7 @@ func (x *NormalizeArticleRequest) String() string {
 func (*NormalizeArticleRequest) ProtoMessage() {}
 
 func (x *NormalizeArticleRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_orderfill_matching_v1_matching_proto_msgTypes[5]
+	mi := &file_orderfill_matching_v1_matching_proto_msgTypes[8]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -420,7 +617,7 @@ func (x *NormalizeArticleRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use NormalizeArticleRequest.ProtoReflect.Descriptor instead.
 func (*NormalizeArticleRequest) Descriptor() ([]byte, []int) {
-	return file_orderfill_matching_v1_matching_proto_rawDescGZIP(), []int{5}
+	return file_orderfill_matching_v1_matching_proto_rawDescGZIP(), []int{8}
 }
 
 func (x *NormalizeArticleRequest) GetArticle() string {
@@ -428,6 +625,13 @@ func (x *NormalizeArticleRequest) GetArticle() string {
 		return x.Article
 	}
 	return ""
+}
+
+func (x *NormalizeArticleRequest) GetPreserveHyphen() bool {
+	if x != nil {
+		return x.PreserveHyphen
+	}
+	return false
 }
 
 type NormalizeArticleResponse struct {
@@ -439,7 +643,7 @@ type NormalizeArticleResponse struct {
 
 func (x *NormalizeArticleResponse) Reset() {
 	*x = NormalizeArticleResponse{}
-	mi := &file_orderfill_matching_v1_matching_proto_msgTypes[6]
+	mi := &file_orderfill_matching_v1_matching_proto_msgTypes[9]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -451,7 +655,7 @@ func (x *NormalizeArticleResponse) String() string {
 func (*NormalizeArticleResponse) ProtoMessage() {}
 
 func (x *NormalizeArticleResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_orderfill_matching_v1_matching_proto_msgTypes[6]
+	mi := &file_orderfill_matching_v1_matching_proto_msgTypes[9]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -464,7 +668,7 @@ func (x *NormalizeArticleResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use NormalizeArticleResponse.ProtoReflect.Descriptor instead.
 func (*NormalizeArticleResponse) Descriptor() ([]byte, []int) {
-	return file_orderfill_matching_v1_matching_proto_rawDescGZIP(), []int{6}
+	return file_orderfill_matching_v1_matching_proto_rawDescGZIP(), []int{9}
 }
 
 func (x *NormalizeArticleResponse) GetNormalized() string {
@@ -483,7 +687,7 @@ type NormalizeNameRequest struct {
 
 func (x *NormalizeNameRequest) Reset() {
 	*x = NormalizeNameRequest{}
-	mi := &file_orderfill_matching_v1_matching_proto_msgTypes[7]
+	mi := &file_orderfill_matching_v1_matching_proto_msgTypes[10]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -495,7 +699,7 @@ func (x *NormalizeNameRequest) String() string {
 func (*NormalizeNameRequest) ProtoMessage() {}
 
 func (x *NormalizeNameRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_orderfill_matching_v1_matching_proto_msgTypes[7]
+	mi := &file_orderfill_matching_v1_matching_proto_msgTypes[10]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -508,7 +712,7 @@ func (x *NormalizeNameRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use NormalizeNameRequest.ProtoReflect.Descriptor instead.
 func (*NormalizeNameRequest) Descriptor() ([]byte, []int) {
-	return file_orderfill_matching_v1_matching_proto_rawDescGZIP(), []int{7}
+	return file_orderfill_matching_v1_matching_proto_rawDescGZIP(), []int{10}
 }
 
 func (x *NormalizeNameRequest) GetName() string {
@@ -527,7 +731,7 @@ type NormalizeNameResponse struct {
 
 func (x *NormalizeNameResponse) Reset() {
 	*x = NormalizeNameResponse{}
-	mi := &file_orderfill_matching_v1_matching_proto_msgTypes[8]
+	mi := &file_orderfill_matching_v1_matching_proto_msgTypes[11]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -539,7 +743,7 @@ func (x *NormalizeNameResponse) String() string {
 func (*NormalizeNameResponse) ProtoMessage() {}
 
 func (x *NormalizeNameResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_orderfill_matching_v1_matching_proto_msgTypes[8]
+	mi := &file_orderfill_matching_v1_matching_proto_msgTypes[11]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -552,7 +756,7 @@ func (x *NormalizeNameResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use NormalizeNameResponse.ProtoReflect.Descriptor instead.
 func (*NormalizeNameResponse) Descriptor() ([]byte, []int) {
-	return file_orderfill_matching_v1_matching_proto_rawDescGZIP(), []int{8}
+	return file_orderfill_matching_v1_matching_proto_rawDescGZIP(), []int{11}
 }
 
 func (x *NormalizeNameResponse) GetNormalized() string {
@@ -566,14 +770,15 @@ var File_orderfill_matching_v1_matching_proto protoreflect.FileDescriptor
 
 const file_orderfill_matching_v1_matching_proto_rawDesc = "" +
 	"\n" +
-	"$orderfill/matching/v1/matching.proto\x12\x15orderfill.matching.v1\x1a orderfill/common/v1/common.proto\"\x93\x01\n" +
+	"$orderfill/matching/v1/matching.proto\x12\x15orderfill.matching.v1\x1a orderfill/common/v1/common.proto\"\xad\x01\n" +
 	"\x04Item\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x18\n" +
 	"\aarticle\x18\x02 \x01(\tR\aarticle\x12\x12\n" +
 	"\x04name\x18\x03 \x01(\tR\x04name\x12\x16\n" +
 	"\x06volume\x18\x04 \x01(\tR\x06volume\x12\x12\n" +
 	"\x04form\x18\x05 \x01(\tR\x04form\x12!\n" +
-	"\fchestny_znak\x18\x06 \x01(\bR\vchestnyZnak\"\xa0\x01\n" +
+	"\fchestny_znak\x18\x06 \x01(\bR\vchestnyZnak\x12\x18\n" +
+	"\arounded\x18\a \x01(\x05R\arounded\"\xa0\x01\n" +
 	"\fMatchReasons\x12\x18\n" +
 	"\aarticle\x18\x01 \x01(\tR\aarticle\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12\x16\n" +
@@ -589,17 +794,31 @@ const file_orderfill_matching_v1_matching_proto_rawDesc = "" +
 	"\bcategory\x18\x03 \x01(\x0e2#.orderfill.common.v1.ReportCategoryR\bcategory\x12=\n" +
 	"\areasons\x18\x04 \x01(\v2#.orderfill.matching.v1.MatchReasonsR\areasons\x12\x14\n" +
 	"\x05score\x18\x05 \x01(\x01R\x05score\x12#\n" +
-	"\rcandidate_ids\x18\x06 \x03(\tR\fcandidateIds\"\x8e\x02\n" +
+	"\rcandidate_ids\x18\x06 \x03(\tR\fcandidateIds\"\xde\x02\n" +
 	"\x10MatchRowsRequest\x124\n" +
 	"\x04meta\x18\x01 \x01(\v2 .orderfill.common.v1.RequestMetaR\x04meta\x12F\n" +
 	"\rmatching_mode\x18\x02 \x01(\x0e2!.orderfill.common.v1.MatchingModeR\fmatchingMode\x12>\n" +
 	"\fsource_items\x18\x03 \x03(\v2\x1b.orderfill.matching.v1.ItemR\vsourceItems\x12<\n" +
 	"\vblank_items\x18\x04 \x03(\v2\x1b.orderfill.matching.v1.ItemR\n" +
-	"blankItems\"Q\n" +
+	"blankItems\x12%\n" +
+	"\x0eprefix_aliases\x18\x05 \x03(\tR\rprefixAliases\x12'\n" +
+	"\x0fpreserve_hyphen\x18\x06 \x01(\bR\x0epreserveHyphen\"Q\n" +
 	"\x11MatchRowsResponse\x12<\n" +
-	"\aresults\x18\x01 \x03(\v2\".orderfill.matching.v1.MatchResultR\aresults\"3\n" +
+	"\aresults\x18\x01 \x03(\v2\".orderfill.matching.v1.MatchResultR\aresults\"\xe4\x01\n" +
+	"\x17MergeChestnyZnakRequest\x12F\n" +
+	"\rmatching_mode\x18\x01 \x01(\x0e2!.orderfill.common.v1.MatchingModeR\fmatchingMode\x121\n" +
+	"\x05items\x18\x02 \x03(\v2\x1b.orderfill.matching.v1.ItemR\x05items\x12%\n" +
+	"\x0eprefix_aliases\x18\x03 \x03(\tR\rprefixAliases\x12'\n" +
+	"\x0fpreserve_hyphen\x18\x04 \x01(\bR\x0epreserveHyphen\"s\n" +
+	"\x10ChestnyZnakMerge\x12\x1b\n" +
+	"\ttarget_id\x18\x01 \x01(\tR\btargetId\x12\x1b\n" +
+	"\tclone_ids\x18\x02 \x03(\tR\bcloneIds\x12%\n" +
+	"\x0eneeds_decision\x18\x03 \x01(\bR\rneedsDecision\"[\n" +
+	"\x18MergeChestnyZnakResponse\x12?\n" +
+	"\x06merges\x18\x01 \x03(\v2'.orderfill.matching.v1.ChestnyZnakMergeR\x06merges\"\\\n" +
 	"\x17NormalizeArticleRequest\x12\x18\n" +
-	"\aarticle\x18\x01 \x01(\tR\aarticle\":\n" +
+	"\aarticle\x18\x01 \x01(\tR\aarticle\x12'\n" +
+	"\x0fpreserve_hyphen\x18\x02 \x01(\bR\x0epreserveHyphen\":\n" +
 	"\x18NormalizeArticleResponse\x12\x1e\n" +
 	"\n" +
 	"normalized\x18\x01 \x01(\tR\n" +
@@ -609,9 +828,10 @@ const file_orderfill_matching_v1_matching_proto_rawDesc = "" +
 	"\x15NormalizeNameResponse\x12\x1e\n" +
 	"\n" +
 	"normalized\x18\x01 \x01(\tR\n" +
-	"normalized2\xd2\x02\n" +
+	"normalized2\xc7\x03\n" +
 	"\x0fMatchingService\x12^\n" +
 	"\tMatchRows\x12'.orderfill.matching.v1.MatchRowsRequest\x1a(.orderfill.matching.v1.MatchRowsResponse\x12s\n" +
+	"\x10MergeChestnyZnak\x12..orderfill.matching.v1.MergeChestnyZnakRequest\x1a/.orderfill.matching.v1.MergeChestnyZnakResponse\x12s\n" +
 	"\x10NormalizeArticle\x12..orderfill.matching.v1.NormalizeArticleRequest\x1a/.orderfill.matching.v1.NormalizeArticleResponse\x12j\n" +
 	"\rNormalizeName\x12+.orderfill.matching.v1.NormalizeNameRequest\x1a,.orderfill.matching.v1.NormalizeNameResponseBBZ@order-fill/backend/proto/gen/go/orderfill/matching/v1;matchingv1b\x06proto3"
 
@@ -627,40 +847,48 @@ func file_orderfill_matching_v1_matching_proto_rawDescGZIP() []byte {
 	return file_orderfill_matching_v1_matching_proto_rawDescData
 }
 
-var file_orderfill_matching_v1_matching_proto_msgTypes = make([]protoimpl.MessageInfo, 9)
+var file_orderfill_matching_v1_matching_proto_msgTypes = make([]protoimpl.MessageInfo, 12)
 var file_orderfill_matching_v1_matching_proto_goTypes = []any{
 	(*Item)(nil),                     // 0: orderfill.matching.v1.Item
 	(*MatchReasons)(nil),             // 1: orderfill.matching.v1.MatchReasons
 	(*MatchResult)(nil),              // 2: orderfill.matching.v1.MatchResult
 	(*MatchRowsRequest)(nil),         // 3: orderfill.matching.v1.MatchRowsRequest
 	(*MatchRowsResponse)(nil),        // 4: orderfill.matching.v1.MatchRowsResponse
-	(*NormalizeArticleRequest)(nil),  // 5: orderfill.matching.v1.NormalizeArticleRequest
-	(*NormalizeArticleResponse)(nil), // 6: orderfill.matching.v1.NormalizeArticleResponse
-	(*NormalizeNameRequest)(nil),     // 7: orderfill.matching.v1.NormalizeNameRequest
-	(*NormalizeNameResponse)(nil),    // 8: orderfill.matching.v1.NormalizeNameResponse
-	(v1.ReportCategory)(0),           // 9: orderfill.common.v1.ReportCategory
-	(*v1.RequestMeta)(nil),           // 10: orderfill.common.v1.RequestMeta
-	(v1.MatchingMode)(0),             // 11: orderfill.common.v1.MatchingMode
+	(*MergeChestnyZnakRequest)(nil),  // 5: orderfill.matching.v1.MergeChestnyZnakRequest
+	(*ChestnyZnakMerge)(nil),         // 6: orderfill.matching.v1.ChestnyZnakMerge
+	(*MergeChestnyZnakResponse)(nil), // 7: orderfill.matching.v1.MergeChestnyZnakResponse
+	(*NormalizeArticleRequest)(nil),  // 8: orderfill.matching.v1.NormalizeArticleRequest
+	(*NormalizeArticleResponse)(nil), // 9: orderfill.matching.v1.NormalizeArticleResponse
+	(*NormalizeNameRequest)(nil),     // 10: orderfill.matching.v1.NormalizeNameRequest
+	(*NormalizeNameResponse)(nil),    // 11: orderfill.matching.v1.NormalizeNameResponse
+	(v1.ReportCategory)(0),           // 12: orderfill.common.v1.ReportCategory
+	(*v1.RequestMeta)(nil),           // 13: orderfill.common.v1.RequestMeta
+	(v1.MatchingMode)(0),             // 14: orderfill.common.v1.MatchingMode
 }
 var file_orderfill_matching_v1_matching_proto_depIdxs = []int32{
-	9,  // 0: orderfill.matching.v1.MatchResult.category:type_name -> orderfill.common.v1.ReportCategory
+	12, // 0: orderfill.matching.v1.MatchResult.category:type_name -> orderfill.common.v1.ReportCategory
 	1,  // 1: orderfill.matching.v1.MatchResult.reasons:type_name -> orderfill.matching.v1.MatchReasons
-	10, // 2: orderfill.matching.v1.MatchRowsRequest.meta:type_name -> orderfill.common.v1.RequestMeta
-	11, // 3: orderfill.matching.v1.MatchRowsRequest.matching_mode:type_name -> orderfill.common.v1.MatchingMode
+	13, // 2: orderfill.matching.v1.MatchRowsRequest.meta:type_name -> orderfill.common.v1.RequestMeta
+	14, // 3: orderfill.matching.v1.MatchRowsRequest.matching_mode:type_name -> orderfill.common.v1.MatchingMode
 	0,  // 4: orderfill.matching.v1.MatchRowsRequest.source_items:type_name -> orderfill.matching.v1.Item
 	0,  // 5: orderfill.matching.v1.MatchRowsRequest.blank_items:type_name -> orderfill.matching.v1.Item
 	2,  // 6: orderfill.matching.v1.MatchRowsResponse.results:type_name -> orderfill.matching.v1.MatchResult
-	3,  // 7: orderfill.matching.v1.MatchingService.MatchRows:input_type -> orderfill.matching.v1.MatchRowsRequest
-	5,  // 8: orderfill.matching.v1.MatchingService.NormalizeArticle:input_type -> orderfill.matching.v1.NormalizeArticleRequest
-	7,  // 9: orderfill.matching.v1.MatchingService.NormalizeName:input_type -> orderfill.matching.v1.NormalizeNameRequest
-	4,  // 10: orderfill.matching.v1.MatchingService.MatchRows:output_type -> orderfill.matching.v1.MatchRowsResponse
-	6,  // 11: orderfill.matching.v1.MatchingService.NormalizeArticle:output_type -> orderfill.matching.v1.NormalizeArticleResponse
-	8,  // 12: orderfill.matching.v1.MatchingService.NormalizeName:output_type -> orderfill.matching.v1.NormalizeNameResponse
-	10, // [10:13] is the sub-list for method output_type
-	7,  // [7:10] is the sub-list for method input_type
-	7,  // [7:7] is the sub-list for extension type_name
-	7,  // [7:7] is the sub-list for extension extendee
-	0,  // [0:7] is the sub-list for field type_name
+	14, // 7: orderfill.matching.v1.MergeChestnyZnakRequest.matching_mode:type_name -> orderfill.common.v1.MatchingMode
+	0,  // 8: orderfill.matching.v1.MergeChestnyZnakRequest.items:type_name -> orderfill.matching.v1.Item
+	6,  // 9: orderfill.matching.v1.MergeChestnyZnakResponse.merges:type_name -> orderfill.matching.v1.ChestnyZnakMerge
+	3,  // 10: orderfill.matching.v1.MatchingService.MatchRows:input_type -> orderfill.matching.v1.MatchRowsRequest
+	5,  // 11: orderfill.matching.v1.MatchingService.MergeChestnyZnak:input_type -> orderfill.matching.v1.MergeChestnyZnakRequest
+	8,  // 12: orderfill.matching.v1.MatchingService.NormalizeArticle:input_type -> orderfill.matching.v1.NormalizeArticleRequest
+	10, // 13: orderfill.matching.v1.MatchingService.NormalizeName:input_type -> orderfill.matching.v1.NormalizeNameRequest
+	4,  // 14: orderfill.matching.v1.MatchingService.MatchRows:output_type -> orderfill.matching.v1.MatchRowsResponse
+	7,  // 15: orderfill.matching.v1.MatchingService.MergeChestnyZnak:output_type -> orderfill.matching.v1.MergeChestnyZnakResponse
+	9,  // 16: orderfill.matching.v1.MatchingService.NormalizeArticle:output_type -> orderfill.matching.v1.NormalizeArticleResponse
+	11, // 17: orderfill.matching.v1.MatchingService.NormalizeName:output_type -> orderfill.matching.v1.NormalizeNameResponse
+	14, // [14:18] is the sub-list for method output_type
+	10, // [10:14] is the sub-list for method input_type
+	10, // [10:10] is the sub-list for extension type_name
+	10, // [10:10] is the sub-list for extension extendee
+	0,  // [0:10] is the sub-list for field type_name
 }
 
 func init() { file_orderfill_matching_v1_matching_proto_init() }
@@ -674,7 +902,7 @@ func file_orderfill_matching_v1_matching_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_orderfill_matching_v1_matching_proto_rawDesc), len(file_orderfill_matching_v1_matching_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   9,
+			NumMessages:   12,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

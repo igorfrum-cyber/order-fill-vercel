@@ -14,7 +14,9 @@ import (
 	"golang.org/x/sync/errgroup"
 
 	"order-fill/backend/services/document-service/internal/app/port"
+	brandclient "order-fill/backend/services/document-service/internal/clients/brand"
 	"order-fill/backend/services/document-service/internal/clients/calculation"
+	"order-fill/backend/services/document-service/internal/domain/brand"
 	"order-fill/backend/services/document-service/internal/domain/orderfill"
 	"order-fill/backend/services/document-service/internal/domain/preview"
 	"order-fill/backend/services/document-service/internal/domain/spreadsheet"
@@ -32,6 +34,8 @@ type ProcessJob struct {
 	logger  *slog.Logger
 	metrics port.Metrics
 	calc    calculation.Client
+	match   orderfill.Matcher
+	brands  brandclient.Client
 }
 
 func NewProcessJob(
@@ -43,8 +47,10 @@ func NewProcessJob(
 	logger *slog.Logger,
 	metrics port.Metrics,
 	calc calculation.Client,
+	match orderfill.Matcher,
+	brands brandclient.Client,
 ) *ProcessJob {
-	return &ProcessJob{codec: codec, storage: storage, jobs: jobs, reports: reports, now: now, logger: logger, metrics: metrics, calc: calc}
+	return &ProcessJob{codec: codec, storage: storage, jobs: jobs, reports: reports, now: now, logger: logger, metrics: metrics, calc: calc, match: match, brands: brands}
 }
 
 // Handle processes a message and records the outcome on the job. A failure that
@@ -192,7 +198,11 @@ func (u *ProcessJob) process(ctx context.Context, message port.JobMessage) error
 	}
 
 	progress.Set(ctx, 0.58, "Определяю бренд и месяц")
-	detectedBrand, orderMonth, err := resolveSourceIdentity(sourceLoaded.workbook)
+	blankName := ""
+	if len(blankInputs) > 0 {
+		blankName = blankInputs[0].Name
+	}
+	detectedBrand, orderMonth, rule, err := u.resolveIdentity(ctx, sourceLoaded.workbook, blankName)
 	if err != nil {
 		return err
 	}
@@ -223,6 +233,12 @@ func (u *ProcessJob) process(ctx context.Context, message port.JobMessage) error
 			BlankID:      plan.ID,
 			BlankLabel:   plan.Label,
 			MatchingMode: message.MatchingMode,
+			Matcher:      u.match,
+			Chz:          chzMerger(u.match),
+			Adjuster:     u.calc,
+			Recommender:  sourceRecommender(u.calc),
+			Rule:         rule,
+			Context:      ctx,
 			OnProgress: func(fraction float64, text string) {
 				progress.Set(ctx, 0.60+0.22*fraction, text)
 			},
@@ -310,6 +326,16 @@ func (u *ProcessJob) finalize(ctx context.Context, message port.JobMessage) erro
 		edits = append(edits, orderfill.ManualEdit{Key: edit.Key, Value: edit.Value, Comment: edit.Comment})
 	}
 
+	detectedBrand := message.Brand
+	var rule brand.RuleConfig
+	if detectedBrand != "" && u.brands != nil {
+		loaded, err := u.brands.Policy(ctx, detectedBrand, "")
+		if err != nil {
+			return fmt.Errorf("brand policy: %w", err)
+		}
+		rule = loaded
+	}
+
 	outputs := make([]port.OutputFile, 0, len(blankInputs)+1)
 	workbooks := make([]spreadsheet.Workbook, 0, len(blankInputs)+1)
 	for index, blankInput := range blankInputs {
@@ -319,20 +345,23 @@ func (u *ProcessJob) finalize(ctx context.Context, message port.JobMessage) erro
 		if err != nil {
 			return err
 		}
-		detectedBrand := message.Brand
-		if detectedBrand == "" {
-			detected, detectErr := orderfill.DetectBrand(sourceWorkbook)
+		brandKey := detectedBrand
+		blankRule := rule
+		if brandKey == "" {
+			detected, _, detectedRule, detectErr := u.resolveIdentity(ctx, sourceWorkbook, blankInput.Name)
 			if detectErr != nil {
 				return detectErr
 			}
-			detectedBrand = detected
+			brandKey = detected
+			blankRule = detectedRule
 		}
 		if err := orderfill.ApplyFinalEdits(orderfill.FinalizeCommand{
 			Source: sourceWorkbook,
 			Blank:  blankWorkbook,
 			Rows:   rowsForBlank(rows, blankID(index)),
 			Edits:  edits,
-			Brand:  detectedBrand,
+			Brand:  brandKey,
+			Rule:   blankRule,
 		}); err != nil {
 			return err
 		}
@@ -461,16 +490,30 @@ func assignOutputIDs(outputs []port.OutputFile) []port.OutputFile {
 	return outputs
 }
 
-func resolveSourceIdentity(workbook spreadsheet.Workbook) (string, string, error) {
-	detectedBrand, err := orderfill.DetectBrand(workbook)
-	if err != nil {
-		return "", "", err
-	}
+func (u *ProcessJob) resolveIdentity(ctx context.Context, workbook spreadsheet.Workbook, blankName string) (string, string, brand.RuleConfig, error) {
 	orderMonth, _, err := orderfill.InferOrderMonth(workbook)
 	if err != nil {
-		return "", "", err
+		return "", "", brand.RuleConfig{}, err
 	}
-	return detectedBrand, orderMonth, nil
+	group, err := orderfill.NomenclatureGroup(workbook)
+	if err != nil {
+		return "", "", brand.RuleConfig{}, err
+	}
+	if u.brands == nil {
+		return "", "", brand.RuleConfig{}, fmt.Errorf("brand-service is required")
+	}
+	detected, variant, err := u.brands.Detect(ctx, group, blankName)
+	if err != nil {
+		return "", "", brand.RuleConfig{}, err
+	}
+	if detected == "" {
+		return "", "", brand.RuleConfig{}, fmt.Errorf("%w: не узнали бренд «%s». Проверьте отбор номенклатуры в выгрузке 1С", orderfill.ErrInvalidInput, group)
+	}
+	rule, err := u.brands.Policy(ctx, detected, variant)
+	if err != nil {
+		return "", "", brand.RuleConfig{}, err
+	}
+	return detected, orderMonth, rule, nil
 }
 
 func splitInputs(inputs []port.MessageFile) (port.MessageFile, []port.MessageFile, error) {
@@ -533,6 +576,18 @@ func userMessage(err error) string {
 		return message
 	}
 	return "Не удалось обработать файлы. Попробуйте еще раз или обратитесь в поддержку."
+}
+
+func chzMerger(m orderfill.Matcher) orderfill.ChzMerger {
+	c, _ := m.(orderfill.ChzMerger)
+	return c
+}
+
+func sourceRecommender(c calculation.Client) orderfill.SourceRecommender {
+	if c == nil {
+		return nil
+	}
+	return c
 }
 
 func millisSince(start time.Time, end time.Time) int64 {

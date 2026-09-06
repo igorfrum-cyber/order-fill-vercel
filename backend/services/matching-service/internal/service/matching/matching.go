@@ -155,3 +155,27 @@ func volumesConflict(blank, source domain.Item) bool {
 	}
 	return true
 }
+
+var formTokens = []string{
+	"сыворотка", "serum", "молочко", "лосьон", "lotion", "шампунь", "эмульсия",
+	"бальзам", "скраб", "флюид", "тоник", "toner", "маска", "mask", "пенка",
+	"спрей", "spray", "масло", "oil", "крем", "cream", "гель", "gel",
+}
+
+func extractForm(item domain.Item) string {
+	if form := strings.ToLower(strings.TrimSpace(item.Form)); form != "" {
+		return form
+	}
+	text := normalize.NormalizeHeader(item.Name)
+	for _, token := range formTokens {
+		if strings.Contains(text, token) {
+			return token
+		}
+	}
+	return ""
+}
+
+func formsConflict(blank, source domain.Item) bool {
+	left, right := extractForm(blank), extractForm(source)
+	return left != "" && right != "" && left != right
+}

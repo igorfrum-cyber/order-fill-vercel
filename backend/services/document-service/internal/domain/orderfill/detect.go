@@ -13,8 +13,8 @@ import (
 
 var nomenclatureGroupPattern = regexp.MustCompile(`(?i)в группе\s*[«"']([^»"']+)[»"']`)
 
-// DetectBrand reads the 1C nomenclature-group filter from the export header.
-func DetectBrand(workbook spreadsheet.Workbook) (string, error) {
+// NomenclatureGroup reads the 1C filter caption from the export header.
+func NomenclatureGroup(workbook spreadsheet.Workbook) (string, error) {
 	for _, sheet := range workbook.Sheets() {
 		bounds := sheet.Bounds()
 		for row := 1; row <= min(bounds.MaxRow, 40); row++ {
@@ -27,16 +27,24 @@ func DetectBrand(workbook spreadsheet.Workbook) (string, error) {
 				if match == nil {
 					continue
 				}
-				group := strings.TrimSpace(match[1])
-				key, ok := brand.KeyFromNomenclatureGroup(group)
-				if !ok {
-					return "", fmt.Errorf("%w: не узнали бренд «%s». Проверьте отбор номенклатуры в выгрузке 1С", ErrInvalidInput, group)
-				}
-				return key, nil
+				return strings.TrimSpace(match[1]), nil
 			}
 		}
 	}
 	return "", fmt.Errorf("%w: этот файл не похож на таблицу продаж из 1С. Загрузите выгрузку с отбором номенклатуры, а не бланк поставщика", ErrInvalidInput)
+}
+
+// DetectBrand reads the 1C nomenclature-group filter from the export header.
+func DetectBrand(workbook spreadsheet.Workbook) (string, error) {
+	group, err := NomenclatureGroup(workbook)
+	if err != nil {
+		return "", err
+	}
+	key, ok := brand.KeyFromNomenclatureGroup(group)
+	if !ok {
+		return "", fmt.Errorf("%w: не узнали бренд «%s». Проверьте отбор номенклатуры в выгрузке 1С", ErrInvalidInput, group)
+	}
+	return key, nil
 }
 
 // BlankPlan is one uploaded supplier blank after brand-specific checks.

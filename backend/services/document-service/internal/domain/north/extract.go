@@ -51,8 +51,8 @@ type Stock struct {
 	Stock, InTransit, Target float64
 }
 
-func NeedsFromBlank(workbook spreadsheet.Workbook, brandKey, city string) ([]Need, error) {
-	detection, err := orderfill.DetectBlankColumns(workbook, brand.Rule(brandKey))
+func NeedsFromBlank(workbook spreadsheet.Workbook, rule brand.RuleConfig, city string) ([]Need, error) {
+	detection, err := orderfill.DetectBlankColumns(workbook, rule)
 	if err != nil {
 		return nil, err
 	}
@@ -89,6 +89,14 @@ func StockFromSource(workbook spreadsheet.Workbook) ([]Stock, error) {
 	stockCol := detection.Columns[orderfill.ColumnStock]
 	transitCol := detection.Columns[orderfill.ColumnInTransit]
 	bounds := detection.Sheet.Bounds()
+	targetCol := 0
+	for column := 1; column <= bounds.MaxColumn; column++ {
+		header := normalize.NormalizeHeader(detection.Sheet.Value(detection.HeaderRow, column))
+		if strings.Contains(header, "целевой") && strings.Contains(header, "запас") {
+			targetCol = column
+			break
+		}
+	}
 	out := make([]Stock, 0)
 	for row := detection.HeaderRow + 1; row <= bounds.MaxRow; row++ {
 		article := strings.TrimSpace(detection.Sheet.Value(row, articleCol))
@@ -104,6 +112,9 @@ func StockFromSource(workbook spreadsheet.Workbook) ([]Stock, error) {
 		}
 		if transitCol > 0 {
 			item.InTransit, _ = normalize.ParseNumber(detection.Sheet.Value(row, transitCol))
+		}
+		if targetCol > 0 {
+			item.Target, _ = normalize.ParseNumber(detection.Sheet.Value(row, targetCol))
 		}
 		out = append(out, item)
 	}

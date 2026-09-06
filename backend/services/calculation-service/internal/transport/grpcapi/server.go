@@ -26,6 +26,17 @@ func New(handler calculationv1.CalculationServiceServer) *grpc.Server {
 	return s
 }
 
+func toProtoRow(row domain.OrderRow) *calculationv1.OrderRow {
+	return &calculationv1.OrderRow{
+		Id: row.ID, Article: row.Article, Name: row.Name, Revenue: row.Revenue,
+		Stock: row.Stock, InTransit: row.InTransit, MonthlySales: row.MonthlySales,
+		RecommendedQty: row.Recommended, AbcCategory: row.ABCCategory,
+		TargetStock: row.TargetStock, RevenuePercent: row.RevenuePercent,
+		CumulativePercent: row.CumulativePercent, AverageMonthly: row.AverageMonthly,
+		TotalQuantity: row.TotalQuantity,
+	}
+}
+
 func protoRow(row *calculationv1.OrderRow) domain.OrderRow {
 	if row == nil {
 		return domain.OrderRow{}
@@ -34,14 +45,9 @@ func protoRow(row *calculationv1.OrderRow) domain.OrderRow {
 		ID: row.GetId(), Article: row.GetArticle(), Name: row.GetName(),
 		Revenue: row.GetRevenue(), Stock: row.GetStock(), InTransit: row.GetInTransit(),
 		MonthlySales: row.GetMonthlySales(), Recommended: row.GetRecommendedQty(), ABCCategory: row.GetAbcCategory(),
-	}
-}
-
-func toProtoRow(row domain.OrderRow) *calculationv1.OrderRow {
-	return &calculationv1.OrderRow{
-		Id: row.ID, Article: row.Article, Name: row.Name, Revenue: row.Revenue,
-		Stock: row.Stock, InTransit: row.InTransit, MonthlySales: row.MonthlySales,
-		RecommendedQty: row.Recommended, AbcCategory: row.ABCCategory,
+		TargetStock: row.GetTargetStock(), RevenuePercent: row.GetRevenuePercent(),
+		CumulativePercent: row.GetCumulativePercent(), AverageMonthly: row.GetAverageMonthly(),
+		TotalQuantity: row.GetTotalQuantity(),
 	}
 }
 
@@ -50,7 +56,17 @@ func (s *Server) CalculateOrderRecommendations(_ context.Context, req *calculati
 	for _, row := range req.GetRows() {
 		in = append(in, protoRow(row))
 	}
-	out := s.svc.Recommend(req.GetBrand(), in)
+	var out []domain.OrderRow
+	switch req.GetCityRule() {
+	case "urengoy":
+		out = s.svc.RecommendUrengoy(req.GetBrand(), in, req.GetDeliveryWeeks())
+	default:
+		if req.GetDeliveryWeeks() > 0 {
+			out = s.svc.RecommendWithWeeks(req.GetBrand(), in, req.GetDeliveryWeeks())
+		} else {
+			out = s.svc.Recommend(req.GetBrand(), in)
+		}
+	}
 	rows := make([]*calculationv1.OrderRow, 0, len(out))
 	for _, row := range out {
 		rows = append(rows, toProtoRow(row))
@@ -59,13 +75,19 @@ func (s *Server) CalculateOrderRecommendations(_ context.Context, req *calculati
 }
 
 func (s *Server) CalculateAdjustedQuantity(_ context.Context, req *calculationv1.CalculateAdjustedQuantityRequest) (*calculationv1.CalculateAdjustedQuantityResponse, error) {
-	hasFact := req.GetOrderedFact() != 0
-	adj := calculation.AdjustQuantity(req.GetRecommendedQty(), req.GetBrand(), req.GetOrderedFact(), hasFact, "")
-	qty := float64(adj.Rounded)
-	if adj.Inserted != nil {
-		qty = *adj.Inserted
+	rule := calculation.RuleFromPolicy(req.GetAdjustment(), int(req.GetQuantityMultiple()), req.GetAdjustmentComment(), req.GetAllowSmallPositiveOrder())
+	var adj calculation.AdjustedQuantity
+	if req.GetAdjustment() != "" {
+		adj = calculation.AdjustQuantityWithRule(req.GetRecommendedQty(), rule, req.GetOrderedFact(), req.GetHasOrderedFact(), req.GetBoxSize())
+	} else {
+		adj = calculation.AdjustQuantity(req.GetRecommendedQty(), req.GetBrand(), req.GetOrderedFact(), req.GetHasOrderedFact(), req.GetBoxSize())
 	}
-	return &calculationv1.CalculateAdjustedQuantityResponse{Qty: qty}, nil
+	resp := &calculationv1.CalculateAdjustedQuantityResponse{Rounded: int32(adj.Rounded), AutoComment: adj.AutoComment, BoxAdjusted: adj.BoxAdjusted}
+	if adj.Inserted != nil {
+		resp.Inserted = true
+		resp.Qty = *adj.Inserted
+	}
+	return resp, nil
 }
 
 func (s *Server) CalculateNorthPlan(_ context.Context, req *calculationv1.CalculateNorthPlanRequest) (*calculationv1.CalculateNorthPlanResponse, error) {

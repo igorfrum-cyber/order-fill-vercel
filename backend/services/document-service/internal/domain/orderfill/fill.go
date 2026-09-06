@@ -1,11 +1,11 @@
 package orderfill
 
 import (
+	"context"
 	"fmt"
-	"sync/atomic"
+	"strconv"
 
 	"order-fill/backend/services/document-service/internal/domain/brand"
-	"order-fill/backend/services/document-service/internal/domain/matching"
 	"order-fill/backend/services/document-service/internal/domain/normalize"
 	"order-fill/backend/services/document-service/internal/domain/spreadsheet"
 )
@@ -22,10 +22,6 @@ const (
 	StatusSourceDuplicate    = "source_duplicate"
 )
 
-// nameMatchThreshold is the similarity below which an article match is flagged
-// for review.
-const nameMatchThreshold = 0.32
-
 // FillCommand is the input of the order-fill engine.
 type FillCommand struct {
 	Source       spreadsheet.Workbook
@@ -35,7 +31,20 @@ type FillCommand struct {
 	BlankID      string
 	BlankLabel   string
 	MatchingMode string
+	Matcher      Matcher
+	Chz          ChzMerger
+	Adjuster     QuantityAdjuster
+	Recommender  SourceRecommender
+	Rule         brand.RuleConfig
+	Context      context.Context
 	OnProgress   func(fraction float64, message string)
+}
+
+func (c FillCommand) ctx() context.Context {
+	if c.Context != nil {
+		return c.Context
+	}
+	return context.Background()
 }
 
 func (c FillCommand) report(fraction float64, message string) {
@@ -78,7 +87,13 @@ type blankPosition struct {
 // Fill matches the supplier blank against the 1C export and writes the ordered
 // quantities into the blank workbook.
 func Fill(command FillCommand) (Result, error) {
-	rule := brand.Rule(command.Brand)
+	rule := command.Rule
+	if rule.Key == "" {
+		rule = brand.Rule(command.Brand)
+	}
+	if command.Matcher == nil {
+		return Result{}, fmt.Errorf("matching-service is required")
+	}
 	if rule.BlankLayout != "" {
 		return Result{}, fmt.Errorf("%w: раскладка бланка %q для бренда %s пока не поддерживается сервисом", ErrInvalidInput, rule.BlankLayout, rule.Label)
 	}
@@ -87,7 +102,7 @@ func Fill(command FillCommand) (Result, error) {
 	}
 
 	command.report(0.02, "Читаю таблицу заказа")
-	source, err := readSource(command.Source, command.OrderMonth, rule, func(fraction float64, message string) {
+	source, err := readSource(command, rule, func(fraction float64, message string) {
 		command.report(0.02+0.30*fraction, message)
 	})
 	if err != nil {
@@ -120,7 +135,10 @@ func Fill(command FillCommand) (Result, error) {
 	}
 
 	command.report(0.35, "Подбираю позиции бланка")
-	matches := matchPositions(positions, context, command, rule)
+	matches, err := matchPositions(positions, source, command, rule)
+	if err != nil {
+		return Result{}, err
+	}
 	rows := make([]ReportRow, 0, len(matches))
 	for _, match := range matches {
 		if match.clear {
@@ -165,84 +183,100 @@ type positionMatch struct {
 	duplicates int
 }
 
-func matchPositions(positions []blankPosition, context SourceContext, command FillCommand, rule brand.RuleConfig) []positionMatch {
+func matchPositions(positions []blankPosition, source Source, command FillCommand, rule brand.RuleConfig) ([]positionMatch, error) {
 	matches := make([]positionMatch, len(positions))
 	if len(positions) == 0 {
-		return matches
+		return matches, nil
 	}
-	var done atomic.Int64
-	total := len(positions)
-	runWorkers(len(positions), func(index int) {
-		matches[index] = resolvePosition(positions[index], context, command, rule)
-		current := done.Add(1)
-		if current == int64(total) || current%8 == 0 {
-			command.report(0.35+0.50*float64(current)/float64(total), "Подбираю позиции бланка")
-		}
+	blankItems := make([]MatchItem, len(positions))
+	for i, position := range positions {
+		blankItems[i] = MatchItem{ID: position.key, Article: position.article, Name: position.name, Volume: position.unit}
+	}
+	sourceItems := make([]MatchItem, len(source.Items))
+	byID := make(map[string]SourceItem, len(source.Items))
+	for i, item := range source.Items {
+		id := strconv.Itoa(item.RowIndex)
+		sourceItems[i] = MatchItem{ID: id, Article: item.Article, Name: item.Name, Rounded: item.Rounded}
+		byID[id] = item
+	}
+	results, err := command.Matcher.Match(command.ctx(), blankItems, sourceItems, MatchOptions{
+		Mode:           command.MatchingMode,
+		PrefixAliases:  rule.ArticlePrefixAliases,
+		PreserveHyphen: rule.PreserveArticleHyphen,
 	})
-	return matches
+	if err != nil {
+		return nil, err
+	}
+	byBlank := make(map[string]MatchResult, len(results))
+	for _, result := range results {
+		byBlank[result.BlankID] = result
+	}
+	for i, position := range positions {
+		match, err := applyMatch(position, byBlank[position.key], byID, command, rule)
+		if err != nil {
+			return nil, err
+		}
+		matches[i] = match
+		if i == len(positions)-1 || (i+1)%8 == 0 {
+			command.report(0.35+0.50*float64(i+1)/float64(len(positions)), "Подбираю позиции бланка")
+		}
+	}
+	return matches, nil
 }
 
-func resolvePosition(position blankPosition, context SourceContext, command FillCommand, rule brand.RuleConfig) positionMatch {
-	candidates := context.CandidatesFor(position.article, rule)
-	if len(candidates) == 0 {
-		fallback, ok := matching.ChooseNameFallback(toMatchingItems(context.NoArticleItems), position.name, position.unit)
-		if !ok {
-			return positionMatch{
-				position:  position,
-				row:       unmatchedRow(position, command, rule),
-				clear:     true,
-				unmatched: 1,
-			}
-		}
-		selected := findItem(context.NoArticleItems, fallback.Item)
-		if selected.Rounded > 0 {
-			order := orderForItem(selected, rule, position.boxSize)
-			order.Inserted = nil
-			order.AutoComment = ""
-			return positionMatch{
-				position:   position,
-				row:        matchedRow(StatusWarningNameOnly, position, selected, fallback.Score, order, command, rule),
-				clear:      true,
-				suspicious: 1,
-			}
-		}
-		order := orderForItem(selected, rule, position.boxSize)
-		status := StatusMatchedByName
-		match := positionMatch{position: position, row: matchedRow(status, position, selected, fallback.Score, order, command, rule)}
-		if order.Inserted == nil {
-			match.clear = true
-			match.leftBlank = 1
-			match.row.Status = StatusLeftBlank
-		} else {
-			match.inserted = order.Inserted
-			match.filled = 1
-		}
-		return match
-	}
-
-	if len(candidates) > 1 {
+func applyMatch(position blankPosition, result MatchResult, byID map[string]SourceItem, command FillCommand, rule brand.RuleConfig) (positionMatch, error) {
+	if len(result.CandidateIDs) > 1 {
 		position.duplicate = true
-		position.duplicateCandidates = DuplicateCandidatesFor(candidates)
+		items := make([]SourceItem, 0, len(result.CandidateIDs))
+		for _, id := range result.CandidateIDs {
+			if item, ok := byID[id]; ok {
+				items = append(items, item)
+			}
+		}
+		position.duplicateCandidates = DuplicateCandidatesFor(items)
 	}
-	candidate, _ := matching.ChooseCandidate(toMatchingItems(candidates), position.name, position.unit)
-	selected := findItem(candidates, candidate.Item)
-	if command.MatchingMode == "smart" && len(candidates) > 1 && smartDuplicateNeedsDecision(candidates, candidate, position) {
-		row := matchedRow(StatusSourceDuplicate, position, selected, candidate.Score, brand.AdjustedQuantity{}, command, rule)
+	selected := byID[result.SourceID]
+	if result.Category == CategoryNotInSource || result.SourceID == "" && result.Category != CategoryNeedsDecision {
+		return positionMatch{position: position, row: unmatchedRow(position, command, rule), clear: true, unmatched: 1}, nil
+	}
+	if result.Category == CategoryNeedsDecision && result.Reasons.Source == "name" {
+		order, err := orderForItem(selected, rule, position.boxSize, command)
+		if err != nil {
+			return positionMatch{}, err
+		}
+		order.Inserted = nil
+		order.AutoComment = ""
+		return positionMatch{
+			position:   position,
+			row:        matchedRow(StatusWarningNameOnly, position, selected, result.Score, order, command, rule),
+			clear:      true,
+			suspicious: 1,
+		}, nil
+	}
+	if result.Category == CategoryNeedsDecision {
+		row := matchedRow(StatusSourceDuplicate, position, selected, result.Score, brand.AdjustedQuantity{}, command, rule)
 		row.Duplicate = true
 		row.Editable = true
-		return positionMatch{position: position, row: row, clear: true, duplicates: 1}
+		return positionMatch{position: position, row: row, clear: true, duplicates: 1}, nil
 	}
+
 	status := StatusMatched
-	match := positionMatch{position: position, duplicates: 0}
-	if len(candidates) > 1 {
+	match := positionMatch{position: position}
+	if len(result.CandidateIDs) > 1 {
 		match.duplicates = 1
 	}
-	if candidate.Score < nameMatchThreshold {
+	if result.Category == CategoryCheckNameOrVolume {
 		status = StatusWarningNameDiffers
 		match.suspicious = 1
 	}
-	order := orderForItem(selected, rule, position.boxSize)
-	if order.Inserted == nil {
+	if result.Reasons.Source == "name" {
+		status = StatusMatchedByName
+	}
+	order, err := orderForItem(selected, rule, position.boxSize, command)
+	if err != nil {
+		return positionMatch{}, err
+	}
+	if result.Category == CategoryOrderNotNeeded || order.Inserted == nil {
 		match.clear = true
 		match.leftBlank = 1
 		status = StatusLeftBlank
@@ -250,8 +284,8 @@ func resolvePosition(position blankPosition, context SourceContext, command Fill
 		match.inserted = order.Inserted
 		match.filled = 1
 	}
-	match.row = matchedRow(status, position, selected, candidate.Score, order, command, rule)
-	return match
+	match.row = matchedRow(status, position, selected, result.Score, order, command, rule)
+	return match, nil
 }
 
 func blankPositions(blank Detection, blankID string, rule brand.RuleConfig) []blankPosition {
@@ -299,41 +333,14 @@ func countDuplicateArticles(positions []blankPosition) int {
 
 // orderForItem applies the brand rounding rule, honouring a quantity the buyer
 // already recorded in "Заказано по факту".
-func orderForItem(item SourceItem, rule brand.RuleConfig, boxSize string) brand.AdjustedQuantity {
+func orderForItem(item SourceItem, rule brand.RuleConfig, boxSize string, command FillCommand) (brand.AdjustedQuantity, error) {
+	if command.Adjuster != nil {
+		return command.Adjuster.AdjustQuantity(command.ctx(), item.Recommended, item.OrderedFact, item.HasOrderedFact, boxSize, rule)
+	}
 	if !item.HasOrderedFact {
-		return brand.CalculateAdjustedQuantity(item.Recommended, rule, boxSize)
+		return brand.CalculateAdjustedQuantity(item.Recommended, rule, boxSize), nil
 	}
 	order := brand.CalculateAdjustedQuantity(item.OrderedFact, rule, boxSize)
 	order.AutoComment = ""
-	return order
-}
-
-func toMatchingItems(items []SourceItem) []matching.Item {
-	converted := make([]matching.Item, 0, len(items))
-	for index, item := range items {
-		converted = append(converted, matching.Item{Ref: index, Article: item.Article, Name: item.Name, Rounded: item.Rounded})
-	}
-	return converted
-}
-
-func findItem(items []SourceItem, target matching.Item) SourceItem {
-	if target.Ref < 0 || target.Ref >= len(items) {
-		return SourceItem{}
-	}
-	return items[target.Ref]
-}
-
-func smartDuplicateNeedsDecision(candidates []SourceItem, chosen matching.Candidate, position blankPosition) bool {
-	rest := make([]matching.Item, 0, len(candidates)-1)
-	for index, item := range candidates {
-		if index == chosen.Item.Ref {
-			continue
-		}
-		rest = append(rest, matching.Item{Ref: index, Article: item.Article, Name: item.Name, Rounded: item.Rounded})
-	}
-	second, ok := matching.ChooseCandidate(rest, position.name, position.unit)
-	if !ok {
-		return true
-	}
-	return chosen.Score < 0.85 || chosen.Score-second.Score < 0.10
+	return order, nil
 }

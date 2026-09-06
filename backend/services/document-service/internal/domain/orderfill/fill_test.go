@@ -1,12 +1,74 @@
 package orderfill
 
 import (
+	"context"
 	"errors"
 	"fmt"
+	"strings"
 	"testing"
 
-	"order-fill/backend/services/document-service/internal/domain/matching"
+	"order-fill/backend/services/document-service/internal/domain/brand"
 )
+
+type exactMatcher struct{}
+
+func (exactMatcher) Match(_ context.Context, blank, source []MatchItem, opts MatchOptions) ([]MatchResult, error) {
+	index := map[string][]MatchItem{}
+	rule := brand.RuleConfig{ArticlePrefixAliases: opts.PrefixAliases}
+	for _, item := range source {
+		for _, key := range articleKeys(item.Article, rule) {
+			index[key] = append(index[key], item)
+		}
+	}
+	out := make([]MatchResult, 0, len(blank))
+	for _, item := range blank {
+		seen := map[string]bool{}
+		found := make([]MatchItem, 0)
+		for _, key := range articleKeys(item.Article, rule) {
+			for _, cand := range index[key] {
+				if seen[cand.ID] {
+					continue
+				}
+				seen[cand.ID] = true
+				found = append(found, cand)
+			}
+		}
+		if len(found) == 0 {
+			out = append(out, MatchResult{BlankID: item.ID, Category: CategoryNotInSource})
+			continue
+		}
+		ids := make([]string, len(found))
+		for i, cand := range found {
+			ids[i] = cand.ID
+		}
+		result := MatchResult{BlankID: item.ID, SourceID: found[0].ID, Category: CategoryToOrder, Score: 1, CandidateIDs: ids}
+		if len(found) > 1 {
+			result.Reasons.Duplicates = "chosen_best"
+			if opts.Mode == "smart" {
+				result.Category = CategoryNeedsDecision
+				result.Reasons.Duplicates = "needs_choice"
+			}
+		}
+		out = append(out, result)
+	}
+	return out, nil
+}
+
+type pickNameMatcher struct{ contains string }
+
+func (m pickNameMatcher) Match(_ context.Context, blank, source []MatchItem, _ MatchOptions) ([]MatchResult, error) {
+	chosen := source[0]
+	ids := make([]string, len(source))
+	for i, item := range source {
+		ids[i] = item.ID
+		if strings.Contains(item.Name, m.contains) {
+			chosen = item
+		}
+	}
+	return []MatchResult{{
+		BlankID: blank[0].ID, SourceID: chosen.ID, Category: CategoryToOrder, Score: 1, CandidateIDs: ids,
+	}}, nil
+}
 
 func sourceGrid() [][]string {
 	return [][]string{
@@ -30,9 +92,16 @@ func blankGrid() [][]string {
 	}
 }
 
+func testFill(cmd FillCommand) (Result, error) {
+	if cmd.Matcher == nil {
+		cmd.Matcher = exactMatcher{}
+	}
+	return Fill(cmd)
+}
+
 func fillFixture(t *testing.T) Result {
 	t.Helper()
-	result, err := Fill(FillCommand{
+	result, err := testFill(FillCommand{
 		Source:     newFakeWorkbook("Заказ", sourceGrid()),
 		Blank:      newFakeWorkbook("Бланк", blankGrid()),
 		OrderMonth: "2026-09",
@@ -167,7 +236,7 @@ func TestFillCapsMissingFromBlankRowsButKeepsTheTrueCount(t *testing.T) {
 			"",
 		})
 	}
-	result, err := Fill(FillCommand{
+	result, err := testFill(FillCommand{
 		Source:     newFakeWorkbook("Заказ", sourceRows),
 		Blank:      newFakeWorkbook("Бланк", blankGrid()),
 		OrderMonth: "2026-09",
@@ -207,7 +276,7 @@ func TestFillDoesNotRepeatSourceDuplicatesAlreadyFlaggedOnBlankRows(t *testing.T
 		{"Артикул", "Наименование", "Объем", "Кол-во", "Шт. в коробке"},
 		{"6014", "Косметичка непромокаемая", "1", "", "3"},
 	})
-	result, err := Fill(FillCommand{
+	result, err := testFill(FillCommand{
 		Source:     source,
 		Blank:      blank,
 		OrderMonth: "2026-09",
@@ -244,7 +313,7 @@ func TestFillDoesNotRepeatSourceDuplicatesAlreadyFlaggedOnBlankRows(t *testing.T
 }
 
 func TestFillRejectsExportBuiltForAnotherMonth(t *testing.T) {
-	_, err := Fill(FillCommand{
+	_, err := testFill(FillCommand{
 		Source:     newFakeWorkbook("Заказ", sourceGrid()),
 		Blank:      newFakeWorkbook("Бланк", blankGrid()),
 		OrderMonth: "2026-10",
@@ -257,22 +326,205 @@ func TestFillRejectsExportBuiltForAnotherMonth(t *testing.T) {
 }
 
 func TestFillRejectsUnsupportedBlankLayout(t *testing.T) {
-	_, err := Fill(FillCommand{
-		Source:     newFakeWorkbook("Заказ", sourceGrid()),
-		Blank:      newFakeWorkbook("Бланк", blankGrid()),
+	t.Parallel()
+	for _, brandKey := range []string{"novacutan", "sothys"} {
+		t.Run(brandKey, func(t *testing.T) {
+			t.Parallel()
+			_, err := testFill(FillCommand{
+				Source:     newFakeWorkbook("Заказ", sourceGrid()),
+				Blank:      newFakeWorkbook("Бланк", blankGrid()),
+				OrderMonth: "2026-09",
+				Brand:      brandKey,
+				BlankID:    "blank-1",
+			})
+			if !errors.Is(err, ErrInvalidInput) {
+				t.Fatalf("expected an invalid input error, got %v", err)
+			}
+		})
+	}
+}
+
+func TestFillMatchesLevissimePrefixAlias(t *testing.T) {
+	t.Parallel()
+	tests := []struct {
+		name          string
+		sourceArticle string
+		blankArticle  string
+	}{
+		{name: "blank digits source MT", sourceArticle: "MT123", blankArticle: "123"},
+		{name: "blank MT source digits", sourceArticle: "123", blankArticle: "MT123"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			result, err := testFill(FillCommand{
+				Source: newFakeWorkbook("Заказ", [][]string{
+					{"Период: 01.08.2025 - 31.07.2026"},
+					{"Прошлый период: 01.08.2025 - 31.10.2025"},
+					{"Артикул", "Товар", "Рекомендуемый заказ", "Остаток", "В пути", "Заказано по факту", "Комментарий"},
+					{tt.sourceArticle, "Cream 50 ml", "10", "0", "0", "", ""},
+				}),
+				Blank: newFakeWorkbook("Бланк", [][]string{
+					{"Артикул", "Наименование", "Объем", "Заказ", "Кол-во в уп."},
+					{tt.blankArticle, "Cream 50 ml", "50 мл", "", "1"},
+				}),
+				OrderMonth: "2026-09",
+				Brand:      "levissime",
+				BlankID:    "blank-1",
+				BlankLabel: "Бланк",
+			})
+			if err != nil {
+				t.Fatalf("fill failed: %v", err)
+			}
+			sheet, _ := result.Blank.Sheet("Бланк")
+			if got := sheet.Value(2, 4); got != "10" {
+				t.Fatalf("quantity = %q, want 10", got)
+			}
+			row := rowByKey(t, result, "blank-1:2")
+			if row.Status != StatusMatched {
+				t.Fatalf("status = %q, want %q", row.Status, StatusMatched)
+			}
+		})
+	}
+}
+
+func TestFillStandardPicksBestVolumeAmongDuplicates(t *testing.T) {
+	t.Parallel()
+	result, err := testFill(FillCommand{
+		Source: newFakeWorkbook("Заказ", [][]string{
+			{"Период: 01.08.2025 - 31.07.2026"},
+			{"Прошлый период: 01.08.2025 - 31.10.2025"},
+			{"Артикул", "Товар", "Рекомендуемый заказ", "Остаток", "В пути", "Заказано по факту", "Комментарий"},
+			{"A1", "Cream 30 ml", "8", "0", "0", "", ""},
+			{"A1", "Cream 50 ml", "10", "0", "0", "", ""},
+		}),
+		Blank: newFakeWorkbook("Бланк", [][]string{
+			{"Артикул", "Наименование", "Объем", "Кол-во", "Шт. в коробке"},
+			{"A1", "Cream 50 ml", "50 мл", "", "1"},
+		}),
 		OrderMonth: "2026-09",
-		Brand:      "novacutan",
+		Brand:      "angiopharm",
 		BlankID:    "blank-1",
+		BlankLabel: "Бланк",
+		Matcher:    pickNameMatcher{contains: "50 ml"},
 	})
-	if !errors.Is(err, ErrInvalidInput) {
-		t.Fatalf("expected an invalid input error, got %v", err)
+	if err != nil {
+		t.Fatalf("fill failed: %v", err)
+	}
+	sheet, _ := result.Blank.Sheet("Бланк")
+	if got := sheet.Value(2, 4); got != "10" {
+		t.Fatalf("quantity = %q, want 10 from the 50 ml source row", got)
+	}
+	row := rowByKey(t, result, "blank-1:2")
+	if row.Status == StatusSourceDuplicate {
+		t.Fatal("standard mode must auto-fill a clear volume winner")
+	}
+	if row.Inserted == nil || *row.Inserted != 10 {
+		t.Fatalf("inserted = %v, want 10", row.Inserted)
+	}
+}
+
+func TestFillSmartLeavesAmbiguousDuplicateEmpty(t *testing.T) {
+	t.Parallel()
+	result, err := testFill(FillCommand{
+		Source: newFakeWorkbook("Заказ", [][]string{
+			{"Период: 01.08.2025 - 31.07.2026"},
+			{"Прошлый период: 01.08.2025 - 31.10.2025"},
+			{"Артикул", "Товар", "Рекомендуемый заказ", "Остаток", "В пути", "Заказано по факту", "Комментарий"},
+			{"A1", "Cream", "10", "0", "0", "", ""},
+			{"A1", "Cream", "8", "0", "0", "", ""},
+		}),
+		Blank: newFakeWorkbook("Бланк", [][]string{
+			{"Артикул", "Наименование", "Объем", "Кол-во", "Шт. в коробке"},
+			{"A1", "Cream", "50 мл", "", "1"},
+		}),
+		OrderMonth:   "2026-09",
+		Brand:        "angiopharm",
+		BlankID:      "blank-1",
+		BlankLabel:   "Бланк",
+		MatchingMode: "smart",
+	})
+	if err != nil {
+		t.Fatalf("fill failed: %v", err)
+	}
+	sheet, _ := result.Blank.Sheet("Бланк")
+	if got := sheet.Value(2, 4); got != "" {
+		t.Fatalf("smart mode must leave quantity empty, got %q", got)
+	}
+	row := rowByKey(t, result, "blank-1:2")
+	if row.Status != StatusSourceDuplicate {
+		t.Fatalf("status = %q, want %q", row.Status, StatusSourceDuplicate)
+	}
+	if row.Inserted != nil {
+		t.Fatalf("inserted = %v, want nil", row.Inserted)
+	}
+}
+
+func TestFillSmartFillsClearVolumeWinner(t *testing.T) {
+	t.Parallel()
+	result, err := testFill(FillCommand{
+		Source: newFakeWorkbook("Заказ", [][]string{
+			{"Период: 01.08.2025 - 31.07.2026"},
+			{"Прошлый период: 01.08.2025 - 31.10.2025"},
+			{"Артикул", "Товар", "Рекомендуемый заказ", "Остаток", "В пути", "Заказано по факту", "Комментарий"},
+			{"A1", "Cream 30 ml", "8", "0", "0", "", ""},
+			{"A1", "Cream 50 ml", "10", "0", "0", "", ""},
+		}),
+		Blank: newFakeWorkbook("Бланк", [][]string{
+			{"Артикул", "Наименование", "Объем", "Кол-во", "Шт. в коробке"},
+			{"A1", "Cream 50 ml", "50 мл", "", "1"},
+		}),
+		OrderMonth:   "2026-09",
+		Brand:        "angiopharm",
+		BlankID:      "blank-1",
+		BlankLabel:   "Бланк",
+		MatchingMode: "smart",
+		Matcher:      pickNameMatcher{contains: "50 ml"},
+	})
+	if err != nil {
+		t.Fatalf("fill failed: %v", err)
+	}
+	sheet, _ := result.Blank.Sheet("Бланк")
+	if got := sheet.Value(2, 4); got != "10" {
+		t.Fatalf("quantity = %q, want 10", got)
+	}
+	row := rowByKey(t, result, "blank-1:2")
+	if row.Status == StatusSourceDuplicate {
+		t.Fatal("smart mode must still fill when the volume winner is clear")
+	}
+}
+
+func TestFillUsesOrderedFactOverRecommended(t *testing.T) {
+	t.Parallel()
+	result, err := testFill(FillCommand{
+		Source: newFakeWorkbook("Заказ", [][]string{
+			{"Период: 01.08.2025 - 31.07.2026"},
+			{"Прошлый период: 01.08.2025 - 31.10.2025"},
+			{"Артикул", "Товар", "Рекомендуемый заказ", "Остаток", "В пути", "Заказано по факту", "Комментарий"},
+			{"A100", "Крем для лица 50 мл", "10", "0", "0", "6", ""},
+		}),
+		Blank: newFakeWorkbook("Бланк", [][]string{
+			{"Артикул", "Наименование", "Объем", "Кол-во", "Шт. в коробке"},
+			{"A100", "Крем для лица", "50 мл", "", "3"},
+		}),
+		OrderMonth: "2026-09",
+		Brand:      "angiopharm",
+		BlankID:    "blank-1",
+		BlankLabel: "Бланк",
+	})
+	if err != nil {
+		t.Fatalf("fill failed: %v", err)
+	}
+	sheet, _ := result.Blank.Sheet("Бланк")
+	if got := sheet.Value(2, 4); got != "6" {
+		t.Fatalf("quantity = %q, want 6 from ordered fact", got)
 	}
 }
 
 func TestFillReportsProgressThroughThePipeline(t *testing.T) {
 	var reports []float64
 	var messages []string
-	_, err := Fill(FillCommand{
+	_, err := testFill(FillCommand{
 		Source:     newFakeWorkbook("Заказ", sourceGrid()),
 		Blank:      newFakeWorkbook("Бланк", blankGrid()),
 		OrderMonth: "2026-09",
@@ -305,18 +557,43 @@ func TestFillReportsProgressThroughThePipeline(t *testing.T) {
 	}
 }
 
-func TestSmartDuplicateNeedsDecision(t *testing.T) {
+func TestFillUsesAdjuster(t *testing.T) {
 	t.Parallel()
-	candidates := []SourceItem{
-		{Article: "A1", Name: "Cream"},
-		{Article: "A1", Name: "Cream"},
+	qty := 42.0
+	result, err := testFill(FillCommand{
+		Source:     newFakeWorkbook("Заказ", sourceGrid()),
+		Blank:      newFakeWorkbook("Бланк", blankGrid()),
+		OrderMonth: "2026-09",
+		Brand:      "angiopharm",
+		BlankID:    "blank-1",
+		BlankLabel: "Бланк",
+		Adjuster:   stubAdjuster{qty: qty},
+	})
+	if err != nil {
+		t.Fatalf("fill failed: %v", err)
 	}
-	items := toMatchingItems(candidates)
-	chosen, ok := matching.ChooseCandidate(items, "Cream", "")
-	if !ok {
-		t.Fatal("expected a candidate")
+	row := rowByKey(t, result, "blank-1:2")
+	if row.Inserted == nil || *row.Inserted != qty {
+		t.Fatalf("calculation-service must own qty, got %v", row.Inserted)
 	}
-	if !smartDuplicateNeedsDecision(candidates, chosen, blankPosition{name: "Cream"}) {
-		t.Fatal("close smart duplicates should need a decision")
+}
+
+type stubAdjuster struct{ qty float64 }
+
+func (s stubAdjuster) AdjustQuantity(context.Context, float64, float64, bool, string, brand.RuleConfig) (brand.AdjustedQuantity, error) {
+	qty := s.qty
+	return brand.AdjustedQuantity{Inserted: &qty, Rounded: int(qty)}, nil
+}
+
+func TestFillRequiresMatcher(t *testing.T) {
+	t.Parallel()
+	_, err := Fill(FillCommand{
+		Source:     newFakeWorkbook("Заказ", sourceGrid()),
+		Blank:      newFakeWorkbook("Бланк", blankGrid()),
+		OrderMonth: "2026-09",
+		Brand:      "angiopharm",
+	})
+	if err == nil {
+		t.Fatal("fill without matching-service must fail")
 	}
 }

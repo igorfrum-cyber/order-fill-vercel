@@ -13,11 +13,48 @@ import (
 
 	"order-fill/backend/services/document-service/internal/app/port"
 	"order-fill/backend/services/document-service/internal/clients/calculation"
+	"order-fill/backend/services/document-service/internal/domain/brand"
 	"order-fill/backend/services/document-service/internal/domain/north"
 	"order-fill/backend/services/document-service/internal/domain/orderfill"
 	"order-fill/backend/services/document-service/internal/domain/preview"
 	"order-fill/backend/services/document-service/internal/domain/spreadsheet"
 )
+
+type identityBrand struct{ key string }
+
+func (f identityBrand) Detect(_ context.Context, group, _ string) (string, string, error) {
+	if f.key != "" {
+		return f.key, "", nil
+	}
+	key, ok := brand.KeyFromNomenclatureGroup(group)
+	if !ok {
+		return "", "", nil
+	}
+	return key, "", nil
+}
+
+func (f identityBrand) Policy(_ context.Context, key, _ string) (brand.RuleConfig, error) {
+	return brand.Rule(key), nil
+}
+
+type exactJobMatcher struct{}
+
+func (exactJobMatcher) Match(_ context.Context, blank, source []orderfill.MatchItem, _ orderfill.MatchOptions) ([]orderfill.MatchResult, error) {
+	byArticle := map[string]orderfill.MatchItem{}
+	for _, item := range source {
+		byArticle[item.Article] = item
+	}
+	out := make([]orderfill.MatchResult, 0, len(blank))
+	for _, item := range blank {
+		src, ok := byArticle[item.Article]
+		if !ok {
+			out = append(out, orderfill.MatchResult{BlankID: item.ID, Category: orderfill.CategoryNotInSource})
+			continue
+		}
+		out = append(out, orderfill.MatchResult{BlankID: item.ID, SourceID: src.ID, Category: orderfill.CategoryToOrder, Score: 1})
+	}
+	return out, nil
+}
 
 // The fakes below stand in for MinIO, PostgreSQL and the xlsx adapter so the
 // orchestration can be tested without any infrastructure.
@@ -227,7 +264,7 @@ func testGrids() map[string][][]string {
 func newProcessor(storage *fakeStorage, jobs *fakeJobStore, reports *fakeReportStore) *ProcessJob {
 	now := func() time.Time { return time.Date(2026, 9, 1, 12, 0, 0, 0, time.UTC) }
 	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
-	return NewProcessJob(fakeCodec{grids: testGrids()}, storage, jobs, reports, now, logger, nil, nil)
+	return NewProcessJob(fakeCodec{grids: testGrids()}, storage, jobs, reports, now, logger, nil, nil, exactJobMatcher{}, identityBrand{})
 }
 
 func processMessage() port.JobMessage {
@@ -306,6 +343,20 @@ func TestProcessJobFillsTheBlankAndPublishesTheReport(t *testing.T) {
 	}
 }
 
+func TestProcessJobTakesBrandFromBrandService(t *testing.T) {
+	storage := newStorageWithInputs()
+	jobs := &fakeJobStore{}
+	now := func() time.Time { return time.Date(2026, 9, 1, 12, 0, 0, 0, time.UTC) }
+	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
+	processor := NewProcessJob(fakeCodec{grids: testGrids()}, storage, jobs, &fakeReportStore{}, now, logger, nil, nil, exactJobMatcher{}, identityBrand{key: "klapp"})
+	if err := processor.Handle(t.Context(), processMessage()); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if jobs.brand != "klapp" {
+		t.Fatalf("brand-service must own identity, got %q", jobs.brand)
+	}
+}
+
 func TestProcessJobRecordsUserFacingFailureWithoutRetrying(t *testing.T) {
 	storage := newStorageWithInputs()
 	jobs := &fakeJobStore{}
@@ -318,7 +369,7 @@ func TestProcessJobRecordsUserFacingFailureWithoutRetrying(t *testing.T) {
 	}
 	now := func() time.Time { return time.Date(2026, 9, 1, 12, 0, 0, 0, time.UTC) }
 	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
-	processor := NewProcessJob(fakeCodec{grids: grids}, storage, jobs, &fakeReportStore{}, now, logger, nil, nil)
+	processor := NewProcessJob(fakeCodec{grids: grids}, storage, jobs, &fakeReportStore{}, now, logger, nil, nil, exactJobMatcher{}, identityBrand{})
 
 	err := processor.Handle(context.Background(), processMessage())
 	if err != nil {
@@ -396,12 +447,22 @@ func TestProcessJobRejectsAMessageWithoutABlank(t *testing.T) {
 
 type fakeNorthCalc struct {
 	needs []calculation.NorthNeed
+	stock []calculation.TyumenStock
 }
 
 func (f *fakeNorthCalc) Adjust(context.Context, string, float64) (float64, error) { return 0, nil }
 
-func (f *fakeNorthCalc) NorthPlan(_ context.Context, _ string, needs []calculation.NorthNeed, _ []calculation.TyumenStock) ([]calculation.NorthRow, error) {
+func (f *fakeNorthCalc) AdjustQuantity(context.Context, float64, float64, bool, string, brand.RuleConfig) (brand.AdjustedQuantity, error) {
+	return brand.AdjustedQuantity{}, nil
+}
+
+func (f *fakeNorthCalc) Recommend(_ context.Context, _ string, _ string, _ float64, rows []orderfill.RecommendRow) ([]orderfill.RecommendRow, error) {
+	return rows, nil
+}
+
+func (f *fakeNorthCalc) NorthPlan(_ context.Context, _ string, needs []calculation.NorthNeed, stock []calculation.TyumenStock) ([]calculation.NorthRow, error) {
 	f.needs = needs
+	f.stock = stock
 	if len(needs) == 0 {
 		return nil, nil
 	}
@@ -421,7 +482,7 @@ func TestProcessJobNorthMergeBuildsReport(t *testing.T) {
 		{"Артикул", "Наименование", "Объем", "Кол-во", "Шт. в коробке"},
 		{"A1", "Cream", "50 мл", "10", "3"},
 	}
-	processor := NewProcessJob(fakeCodec{grids: grids}, storage, jobs, &fakeReportStore{}, now, logger, nil, calc)
+	processor := NewProcessJob(fakeCodec{grids: grids}, storage, jobs, &fakeReportStore{}, now, logger, nil, calc, exactJobMatcher{}, identityBrand{})
 
 	err := processor.Handle(t.Context(), port.JobMessage{
 		JobID: "job-1",
@@ -451,6 +512,9 @@ func TestProcessJobNorthMergeBuildsReport(t *testing.T) {
 	if len(calc.needs) != 1 || calc.needs[0].City != "surgut" || calc.needs[0].Qty != 10 {
 		t.Fatalf("calc needs=%v", calc.needs)
 	}
+	if _, ok := storage.objects["jobs/job-1/preview/output-1/meta.json.gz"]; !ok {
+		t.Fatal("north preview must be written")
+	}
 }
 
 func TestProcessJobNorthMergeRejectsBlankWithoutCity(t *testing.T) {
@@ -465,7 +529,7 @@ func TestProcessJobNorthMergeRejectsBlankWithoutCity(t *testing.T) {
 		{"Артикул", "Наименование", "Объем", "Кол-во", "Шт. в коробке"},
 		{"A1", "Cream", "50 мл", "10", "3"},
 	}
-	processor := NewProcessJob(fakeCodec{grids: grids}, storage, jobs, &fakeReportStore{}, now, logger, nil, &fakeNorthCalc{})
+	processor := NewProcessJob(fakeCodec{grids: grids}, storage, jobs, &fakeReportStore{}, now, logger, nil, &fakeNorthCalc{}, exactJobMatcher{}, identityBrand{})
 	err := processor.Handle(t.Context(), port.JobMessage{
 		JobID: "job-1",
 		Type:  "north_merge",
@@ -494,7 +558,7 @@ func TestProcessJobNorthMergeFinalizeCompletes(t *testing.T) {
 		{"Артикул", "Наименование", "Объем", "Кол-во", "Шт. в коробке"},
 		{"A1", "Cream", "50 мл", "10", "3"},
 	}
-	processor := NewProcessJob(fakeCodec{grids: grids}, storage, jobs, &fakeReportStore{}, now, logger, nil, &fakeNorthCalc{})
+	processor := NewProcessJob(fakeCodec{grids: grids}, storage, jobs, &fakeReportStore{}, now, logger, nil, &fakeNorthCalc{}, exactJobMatcher{}, identityBrand{})
 	msg := port.JobMessage{
 		JobID: "job-1",
 		Type:  "north_merge",
@@ -507,10 +571,58 @@ func TestProcessJobNorthMergeFinalizeCompletes(t *testing.T) {
 		t.Fatal(err)
 	}
 	msg.Stage = port.StageFinalize
+	msg.Edits = []port.MessageEdit{{Key: "A1", Value: "12"}}
 	if err := processor.Handle(t.Context(), msg); err != nil {
 		t.Fatal(err)
 	}
 	if jobs.statuses[len(jobs.statuses)-1] != "completed" {
 		t.Fatalf("statuses=%v", jobs.statuses)
+	}
+	raw, ok := storage.objects["jobs/job-1/report.json"]
+	if !ok {
+		t.Fatal("north report must remain after finalize")
+	}
+	var report north.Report
+	if err := json.Unmarshal(raw, &report); err != nil {
+		t.Fatal(err)
+	}
+	if report.PlanRows[0].ActualSupplierOrder != 12 {
+		t.Fatalf("actual after finalize=%v", report.PlanRows[0].ActualSupplierOrder)
+	}
+}
+
+func TestProcessJobNorthMergeReadsTyumenTarget(t *testing.T) {
+	storage := &fakeStorage{objects: map[string][]byte{
+		"jobs/job-1/inputs/surgut.xlsx": []byte("north-blank"),
+		"jobs/job-1/inputs/tyumen.xlsx": []byte("tyumen-source"),
+	}}
+	jobs := &fakeJobStore{}
+	calc := &fakeNorthCalc{}
+	now := func() time.Time { return time.Date(2026, 9, 1, 12, 0, 0, 0, time.UTC) }
+	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
+	grids := testGrids()
+	grids["north-blank"] = [][]string{
+		{"Артикул", "Наименование", "Объем", "Кол-во", "Шт. в коробке"},
+		{"A1", "Cream", "50 мл", "10", "3"},
+	}
+	grids["tyumen-source"] = [][]string{
+		{"Артикул", "Товар", "Рекомендуемый заказ", "Остаток", "В пути", "Заказано по факту", "Комментарий", "Целевой запас"},
+		{"A1", "Cream", "0", "20", "0", "", "", "5"},
+	}
+	processor := NewProcessJob(fakeCodec{grids: grids}, storage, jobs, &fakeReportStore{}, now, logger, nil, calc, exactJobMatcher{}, identityBrand{})
+	err := processor.Handle(t.Context(), port.JobMessage{
+		JobID: "job-1",
+		Type:  "north_merge",
+		Brand: "angiopharm",
+		Inputs: []port.MessageFile{
+			{Role: port.RoleBlank, Name: "Сургут.xlsx", StorageKey: "jobs/job-1/inputs/surgut.xlsx"},
+			{Role: port.RoleSource, Name: "Тюмень.xlsx", StorageKey: "jobs/job-1/inputs/tyumen.xlsx"},
+		},
+	})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(calc.stock) != 1 || calc.stock[0].Target != 5 || calc.stock[0].Stock != 20 {
+		t.Fatalf("tyumen stock=%+v", calc.stock)
 	}
 }
