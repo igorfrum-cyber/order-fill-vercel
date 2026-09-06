@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   createOrderFillJob,
   downloadJobFile,
@@ -11,10 +11,11 @@ import {
 import { blankSlotsForSource, brandLabel } from "../../features/brands/brandPresentation.js";
 import { runOrderFillJob } from "../../features/jobs/orderJobWorkflow.js";
 import { formatOrderMonthLabel } from "../../features/order/monthPolicy.js";
-import { collectReviewEdits, hasManualDeviations, initialEditState, patchEdit, rowKey, validateReviewEdits } from "../../features/order/reviewEdits.js";
+import { collectReviewEdits, downloadBlockerKeys, hasManualDeviations, initialEditState, patchEdit, rowKey, validateReviewEdits } from "../../features/order/reviewEdits.js";
 import { needsEditResubmit } from "../../features/preview/previewEdits.js";
 import { issueReportCsv } from "../../features/report/issueReport.js";
 import { combinedSummary, jobProgress, jobStatusText } from "../../features/report/reportModel.js";
+import { matchingDecisionBanner } from "../../features/report/rowPresentation.js";
 import { issueReportRows, qualityWarningLines, qualityWarningSummary } from "../../features/report/qualityWarnings.js";
 import { userFacingError } from "../../features/help/errors.js";
 import { StageRail, TopBar } from "../chrome.jsx";
@@ -64,6 +65,20 @@ export function OrderFillApp({ companyId, resumeJob, onHome, onHelp, onStage, em
   const [finalized, setFinalized] = useState(Boolean(resumeJob?.finalized));
   const [editsDirty, setEditsDirty] = useState(false);
   const [previewEpoch, setPreviewEpoch] = useState(0);
+  const acknowledgedKeysRef = useRef(new Set());
+
+  function rememberAcknowledgedKeys(keys = new Set()) {
+    acknowledgedKeysRef.current = keys;
+  }
+
+  function commentBlockers() {
+    return validateReviewEdits(rows, edits);
+  }
+
+  function matchingBlockers(acknowledgedKeys = acknowledgedKeysRef.current) {
+    const comments = new Set(commentBlockers());
+    return downloadBlockerKeys(rows, edits, acknowledgedKeys).filter((key) => !comments.has(key));
+  }
 
   useEffect(() => {
     onStage?.(stage);
@@ -160,12 +175,13 @@ export function OrderFillApp({ companyId, resumeJob, onHome, onHelp, onStage, em
     triggerBlobDownload(blob, "отчет для исправления в 1С.csv");
   }
 
-  async function openPreview() {
+  async function openPreview(acknowledgedKeys = acknowledgedKeysRef.current) {
     if (!jobId) {
       setBanner("Сначала заполните бланк.");
       return;
     }
-    const invalid = validateReviewEdits(rows, edits);
+    rememberAcknowledgedKeys(acknowledgedKeys);
+    const invalid = commentBlockers();
     if (invalid.length) {
       setInvalidKeys(new Set(invalid));
       setCommentGateKeys(invalid);
@@ -173,11 +189,17 @@ export function OrderFillApp({ companyId, resumeJob, onHome, onHelp, onStage, em
       setBanner("");
       return;
     }
+    const matching = matchingBlockers(acknowledgedKeys);
+    if (matching.length) {
+      setInvalidKeys(new Set(matching));
+      setBanner(matchingDecisionBanner);
+      return;
+    }
     proceedToPreview();
   }
 
   function confirmCommentGate() {
-    const invalid = validateReviewEdits(rows, edits);
+    const invalid = commentBlockers();
     if (invalid.length) {
       setInvalidKeys(new Set(invalid));
       setCommentGateKeys(invalid);
@@ -185,6 +207,12 @@ export function OrderFillApp({ companyId, resumeJob, onHome, onHelp, onStage, em
     }
     setCommentGateKeys(null);
     setInvalidKeys(new Set());
+    const matching = matchingBlockers();
+    if (matching.length) {
+      setInvalidKeys(new Set(matching));
+      setBanner(matchingDecisionBanner);
+      return;
+    }
     if (afterCommentGate === "download") {
       downloadFiles();
       return;
@@ -253,11 +281,17 @@ export function OrderFillApp({ companyId, resumeJob, onHome, onHelp, onStage, em
 
   async function downloadFiles() {
     if (!jobId) return;
-    const invalid = validateReviewEdits(rows, edits);
+    const invalid = commentBlockers();
     if (invalid.length) {
       setInvalidKeys(new Set(invalid));
       setCommentGateKeys(invalid);
       setAfterCommentGate("download");
+      return;
+    }
+    const matching = matchingBlockers();
+    if (matching.length) {
+      setInvalidKeys(new Set(matching));
+      setBanner(matchingDecisionBanner);
       return;
     }
     setBusy(true);

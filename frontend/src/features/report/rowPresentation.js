@@ -145,6 +145,9 @@ export function attentionReason(row) {
 export const reviewCommentBanner =
   "Есть строки, где изменено значение «Вставлено», но не заполнен новый комментарий.";
 
+export const matchingDecisionBanner =
+  "Есть строки, которые требуют решения, прежде чем скачивать файлы.";
+
 export const commentGateTitle = "Сначала напишите, почему изменили количество";
 export const commentGateHint = "Эти строки не пускаем в файлы, пока не будет комментария.";
 export const commentGateConfirm = "Продолжить";

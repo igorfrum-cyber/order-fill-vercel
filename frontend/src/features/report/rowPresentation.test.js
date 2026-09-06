@@ -5,6 +5,7 @@ import {
   canProceedPastDuplicates,
   commentGateHint,
   commentGateTitle,
+  matchingDecisionBanner,
   countByTab,
   displayArticle,
   displayName,
@@ -146,6 +147,10 @@ test("matchLayerHint explains unmatched tabs and stays quiet for fill tabs", () 
   assert.match(matchLayerHint("not_in_blank"), /не нашлись в бланке/i);
   assert.equal(matchLayerHint("empty"), "");
   assert.equal(matchLayerHint("all"), "");
+});
+
+test("matchingDecisionBanner is a review banner, not a comment gate", () => {
+  assert.match(matchingDecisionBanner, /требуют решения/i);
 });
 
 test("comment gate copy tells the reviewer why they cannot open files yet", () => {

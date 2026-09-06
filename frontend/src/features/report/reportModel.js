@@ -133,8 +133,9 @@ export function baselineForReportRow(row) {
     const inserted = Number(row.inserted);
     if (Number.isFinite(inserted)) return inserted;
   }
-  if (Number(row.recommended) < 1.5 || Number(row.rounded) <= 0) return null;
-  return Number(row.rounded);
+  const rounded = Number(row.rounded);
+  if (!Number.isFinite(rounded) || rounded <= 0 || Number(row.recommended) < 1.5) return null;
+  return rounded;
 }
 
 export function reportSummaryFromRows(rows, job, fallback = {}) {

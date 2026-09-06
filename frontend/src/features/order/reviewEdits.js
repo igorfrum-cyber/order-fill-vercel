@@ -44,6 +44,20 @@ export function validateReviewEdits(rows, edits) {
   return invalid;
 }
 
+export function downloadBlockerKeys(rows = [], edits = new Map(), acknowledgedKeys = new Set()) {
+  const keys = new Set(validateReviewEdits(rows, edits));
+  for (const row of rows) {
+    const key = rowKey(row);
+    const reasons = row.matchReasons || {};
+    if (acknowledgedKeys.has(key)) continue;
+    if (row.category === "needs_decision") keys.add(key);
+    if (reasons.duplicates === "needs_choice") keys.add(key);
+    if (reasons.source === "chz") keys.add(key);
+    if (reasons.source === "name" && Number(row.inserted || row.recommended || 0) > 0) keys.add(key);
+  }
+  return [...keys];
+}
+
 export function commentGateRows(rows, edits) {
   const invalid = new Set(validateReviewEdits(rows, edits));
   return rows.filter((row) => invalid.has(rowKey(row)));

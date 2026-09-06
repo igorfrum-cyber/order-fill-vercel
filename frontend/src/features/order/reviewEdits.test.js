@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { collectReviewEdits, commentGateRows, hasManualDeviations, patchEdit, validateReviewEdits } from "./reviewEdits.js";
+import { collectReviewEdits, commentGateRows, downloadBlockerKeys, hasManualDeviations, patchEdit, validateReviewEdits } from "./reviewEdits.js";
 
 function editMap(entries) {
   return new Map(entries);
@@ -85,4 +85,14 @@ test("patchEdit merges a field without dropping the other", () => {
   assert.deepEqual(afterQuantity.get("a"), { value: 18, comment: "" });
   const afterComment = patchEdit(afterQuantity, "a", { comment: "договорились" });
   assert.deepEqual(afterComment.get("a"), { value: 18, comment: "договорились" });
+});
+
+test("download blockers use canonical categories and reasons", () => {
+  const rows = [
+    { key: "dup", category: "needs_decision", matchReasons: { duplicates: "needs_choice" } },
+    { key: "chz", category: "needs_decision", matchReasons: { source: "chz" } },
+    { key: "name", category: "needs_decision", matchReasons: { source: "name" }, inserted: 3 },
+    { key: "warn", category: "check_name_or_volume", matchReasons: { article: "exact" } },
+  ];
+  assert.deepEqual(downloadBlockerKeys(rows, new Map()), ["dup", "chz", "name"]);
 });
