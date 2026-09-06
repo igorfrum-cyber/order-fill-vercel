@@ -151,14 +151,22 @@ func Fill(command FillCommand) (Result, error) {
 		summary.LeftBlank += match.leftBlank
 		summary.Filled += match.filled
 		summary.Duplicates += match.duplicates
+		addCategory(&summary, match.row.Category)
 		rows = append(rows, match.row)
 	}
 
 	command.report(0.88, "Собираю позиции вне бланка")
 	missing, notInBlank := missingFromBlankRows(source, rows, command, rule)
+	for _, row := range missing {
+		addCategory(&summary, row.Category)
+	}
 	summary.NotInBlank = notInBlank
 	rows = append(rows, missing...)
-	rows = append(rows, sourceDuplicateRows(context, rows, command, rule)...)
+	dups := sourceDuplicateRows(context, rows, command, rule)
+	for _, row := range dups {
+		addCategory(&summary, row.Category)
+	}
+	rows = append(rows, dups...)
 	command.report(1, "Сверяю итог")
 
 	return Result{
@@ -248,13 +256,13 @@ func applyMatch(position blankPosition, result MatchResult, byID map[string]Sour
 		order.AutoComment = ""
 		return positionMatch{
 			position:   position,
-			row:        matchedRow(StatusWarningNameOnly, position, selected, result.Score, order, command, rule),
+			row:        matchedRow(StatusWarningNameOnly, position, selected, result.Score, order, command, rule, CategoryNeedsDecision, result.Reasons),
 			clear:      true,
 			suspicious: 1,
 		}, nil
 	}
 	if result.Category == CategoryNeedsDecision {
-		row := matchedRow(StatusSourceDuplicate, position, selected, result.Score, brand.AdjustedQuantity{}, command, rule)
+		row := matchedRow(StatusSourceDuplicate, position, selected, result.Score, brand.AdjustedQuantity{}, command, rule, CategoryNeedsDecision, result.Reasons)
 		row.Duplicate = true
 		row.Editable = true
 		return positionMatch{position: position, row: row, clear: true, duplicates: 1}, nil
@@ -284,7 +292,7 @@ func applyMatch(position blankPosition, result MatchResult, byID map[string]Sour
 		match.inserted = order.Inserted
 		match.filled = 1
 	}
-	match.row = matchedRow(status, position, selected, result.Score, order, command, rule)
+	match.row = matchedRow(status, position, selected, result.Score, order, command, rule, reportCategory(result, order), result.Reasons)
 	return match, nil
 }
 

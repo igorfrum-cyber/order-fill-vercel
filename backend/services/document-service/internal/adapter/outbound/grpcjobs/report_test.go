@@ -34,3 +34,22 @@ func TestCompleteReportCountsCategoriesFromRows(t *testing.T) {
 		t.Fatalf("%+v", rows)
 	}
 }
+
+func TestCompleteReportPrefersCanonicalCategory(t *testing.T) {
+	t.Parallel()
+	raw, err := json.Marshal(map[string]any{
+		"rows": []orderfill.ReportRow{
+			{Key: "a", Status: orderfill.StatusLeftBlank, Category: orderfill.CategoryCheckNameOrVolume},
+		},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	summary, rows := completeReport(raw)
+	if summary.GetCheckNameOrVolume() != 1 || summary.GetOrderNotNeeded() != 0 {
+		t.Fatalf("%+v", summary)
+	}
+	if rows[0].GetCategory() != commonv1.ReportCategory_REPORT_CATEGORY_CHECK_NAME_OR_VOLUME {
+		t.Fatalf("%+v", rows)
+	}
+}

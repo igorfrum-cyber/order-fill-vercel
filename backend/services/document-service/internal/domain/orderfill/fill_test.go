@@ -101,6 +101,19 @@ func testFill(cmd FillCommand) (Result, error) {
 
 func fillFixture(t *testing.T) Result {
 	t.Helper()
+	return fillFixtureWithMatcher(t, exactMatcher{})
+}
+
+type stubMatcher struct {
+	results []MatchResult
+}
+
+func (m stubMatcher) Match(_ context.Context, _, _ []MatchItem, _ MatchOptions) ([]MatchResult, error) {
+	return m.results, nil
+}
+
+func fillFixtureWithMatcher(t *testing.T, matcher Matcher) Result {
+	t.Helper()
 	result, err := testFill(FillCommand{
 		Source:     newFakeWorkbook("Заказ", sourceGrid()),
 		Blank:      newFakeWorkbook("Бланк", blankGrid()),
@@ -108,11 +121,35 @@ func fillFixture(t *testing.T) Result {
 		Brand:      "angiopharm",
 		BlankID:    "blank-1",
 		BlankLabel: "Бланк",
+		Matcher:    matcher,
 	})
 	if err != nil {
 		t.Fatalf("fill failed: %v", err)
 	}
 	return result
+}
+
+func TestFillCarriesCanonicalCategoryAndMatchReasons(t *testing.T) {
+	t.Parallel()
+	result := fillFixtureWithMatcher(t, stubMatcher{
+		results: []MatchResult{{
+			BlankID:  "blank-1:2",
+			SourceID: "4",
+			Category: CategoryCheckNameOrVolume,
+			Reasons:  MatchReasons{Article: "exact", Volume: "conflict", Source: "article"},
+			Score:    0.7,
+		}},
+	})
+	row := result.Rows[0]
+	if row.Category != CategoryCheckNameOrVolume {
+		t.Fatalf("category = %q", row.Category)
+	}
+	if row.MatchReasons.Volume != "conflict" || row.MatchReasons.Source != "article" {
+		t.Fatalf("%+v", row.MatchReasons)
+	}
+	if row.Status == "" {
+		t.Fatal("legacy status must stay during rollout")
+	}
 }
 
 func rowByKey(t *testing.T, result Result, key string) ReportRow {

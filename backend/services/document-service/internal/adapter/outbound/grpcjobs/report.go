@@ -64,6 +64,22 @@ func int32Clamp(n int) int32 {
 }
 
 func categoryOf(row orderfill.ReportRow) commonv1.ReportCategory {
+	if row.Category != "" {
+		switch row.Category {
+		case orderfill.CategoryNeedsDecision:
+			return commonv1.ReportCategory_REPORT_CATEGORY_NEEDS_DECISION
+		case orderfill.CategoryNotInSource:
+			return commonv1.ReportCategory_REPORT_CATEGORY_NOT_IN_SOURCE
+		case orderfill.CategoryCheckNameOrVolume:
+			return commonv1.ReportCategory_REPORT_CATEGORY_CHECK_NAME_OR_VOLUME
+		case orderfill.CategoryNotInBlank:
+			return commonv1.ReportCategory_REPORT_CATEGORY_NOT_IN_BLANK
+		case orderfill.CategoryOrderNotNeeded:
+			return commonv1.ReportCategory_REPORT_CATEGORY_ORDER_NOT_NEEDED
+		case orderfill.CategoryToOrder:
+			return commonv1.ReportCategory_REPORT_CATEGORY_TO_ORDER
+		}
+	}
 	switch row.Status {
 	case orderfill.StatusNotInSource:
 		return commonv1.ReportCategory_REPORT_CATEGORY_NOT_IN_SOURCE

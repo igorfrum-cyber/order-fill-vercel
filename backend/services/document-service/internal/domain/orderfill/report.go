@@ -25,6 +25,11 @@ type Summary struct {
 	Unmatched              int     `json:"unmatched"`
 	Duplicates             int     `json:"duplicates"`
 	NotInBlank             int     `json:"not_in_blank"`
+	NeedsDecision          int     `json:"needs_decision"`
+	NotInSource            int     `json:"not_in_source"`
+	CheckNameOrVolume      int     `json:"check_name_or_volume"`
+	ToOrder                int     `json:"to_order"`
+	OrderNotNeeded         int     `json:"order_not_needed"`
 	BlankDuplicateArticles int     `json:"blank_duplicate_articles"`
 	SourceItems            int     `json:"source_items"`
 	SourceArticles         int     `json:"source_articles"`
@@ -38,6 +43,8 @@ type Summary struct {
 type ReportRow struct {
 	Key                 string               `json:"key"`
 	Status              string               `json:"status"`
+	Category            string               `json:"category,omitempty"`
+	MatchReasons        MatchReasons         `json:"match_reasons,omitempty"`
 	BlankID             string               `json:"blank_id"`
 	BlankLabel          string               `json:"blank_label"`
 	BlankRow            int                  `json:"blank_row"`
@@ -71,6 +78,8 @@ func unmatchedRow(position blankPosition, command FillCommand, rule brand.RuleCo
 	return ReportRow{
 		Key:                 position.key,
 		Status:              StatusNotInSource,
+		Category:            CategoryNotInSource,
+		MatchReasons:        MatchReasons{Source: "none"},
 		BlankID:             command.BlankID,
 		BlankLabel:          command.BlankLabel,
 		BlankRow:            position.blankRow,
@@ -94,6 +103,8 @@ func matchedRow(
 	order brand.AdjustedQuantity,
 	command FillCommand,
 	rule brand.RuleConfig,
+	category string,
+	reasons MatchReasons,
 ) ReportRow {
 	sourceRow := selected.RowIndex
 	recommended := selected.Recommended
@@ -102,6 +113,8 @@ func matchedRow(
 	row := ReportRow{
 		Key:                 position.key,
 		Status:              status,
+		Category:            category,
+		MatchReasons:        reasons,
 		BlankID:             command.BlankID,
 		BlankLabel:          command.BlankLabel,
 		BlankRow:            position.blankRow,
@@ -166,6 +179,8 @@ func missingFromBlankRows(source Source, rows []ReportRow, command FillCommand, 
 		row := ReportRow{
 			Key:                 keyForSourceRow(command.BlankID, "missing", item.RowIndex),
 			Status:              StatusNotInBlank,
+			Category:            CategoryNotInBlank,
+			MatchReasons:        MatchReasons{Source: "none"},
 			BlankID:             command.BlankID,
 			BlankLabel:          command.BlankLabel,
 			SourceRow:           &sourceRow,
@@ -210,6 +225,8 @@ func sourceDuplicateRows(context SourceContext, existing []ReportRow, command Fi
 		rows = append(rows, ReportRow{
 			Key:                 command.BlankID + ":duplicate:" + group.Article,
 			Status:              StatusSourceDuplicate,
+			Category:            CategoryNeedsDecision,
+			MatchReasons:        MatchReasons{Duplicates: "needs_choice", Source: "article"},
 			BlankID:             command.BlankID,
 			BlankLabel:          command.BlankLabel,
 			BlankArticle:        group.Article,
@@ -239,6 +256,33 @@ func duplicateSignature(candidates []DuplicateCandidate) string {
 
 func keyForSourceRow(blankID string, kind string, row int) string {
 	return blankID + ":" + kind + ":" + strconv.Itoa(row)
+}
+
+func reportCategory(result MatchResult, order brand.AdjustedQuantity) string {
+	if result.Category == CategoryToOrder && order.Inserted == nil {
+		return CategoryOrderNotNeeded
+	}
+	if result.Category != "" {
+		return result.Category
+	}
+	return CategoryToOrder
+}
+
+func addCategory(summary *Summary, category string) {
+	switch category {
+	case CategoryNeedsDecision:
+		summary.NeedsDecision++
+	case CategoryNotInSource:
+		summary.NotInSource++
+	case CategoryCheckNameOrVolume:
+		summary.CheckNameOrVolume++
+	case CategoryNotInBlank:
+		summary.NotInBlank++
+	case CategoryOrderNotNeeded:
+		summary.OrderNotNeeded++
+	case CategoryToOrder:
+		summary.ToOrder++
+	}
 }
 
 func emptyCandidates(candidates []DuplicateCandidate) []DuplicateCandidate {

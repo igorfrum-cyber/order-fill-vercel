@@ -11,6 +11,7 @@ const (
 	CategoryNeedsDecision     = "needs_decision"
 	CategoryNotInSource       = "not_in_source"
 	CategoryCheckNameOrVolume = "check_name_or_volume"
+	CategoryNotInBlank        = "not_in_blank"
 	CategoryOrderNotNeeded    = "order_not_needed"
 )
 
@@ -25,12 +26,12 @@ type MatchItem struct {
 }
 
 type MatchReasons struct {
-	Article    string
-	Name       string
-	Volume     string
-	Form       string
-	Duplicates string
-	Source     string
+	Article    string `json:"article,omitempty"`
+	Name       string `json:"name,omitempty"`
+	Volume     string `json:"volume,omitempty"`
+	Form       string `json:"form,omitempty"`
+	Duplicates string `json:"duplicates,omitempty"`
+	Source     string `json:"source,omitempty"`
 }
 
 type MatchResult struct {
