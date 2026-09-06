@@ -4,6 +4,7 @@ import (
 	"archive/zip"
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 
 	"order-fill/backend/services/file-service/internal/domain"
@@ -15,8 +16,11 @@ func (s *Service) Archive(ctx context.Context, objectIDs []string, name string) 
 	}
 	var buf bytes.Buffer
 	zw := zip.NewWriter(&buf)
-	for _, id := range objectIDs {
-		obj, err := s.Get(ctx, id, "")
+	for _, ref := range objectIDs {
+		obj, err := s.Get(ctx, ref, "")
+		if errors.Is(err, domain.ErrNotFound) {
+			obj, err = s.Get(ctx, "", ref)
+		}
 		if err != nil {
 			_ = zw.Close()
 			return domain.Object{}, err

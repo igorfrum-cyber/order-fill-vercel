@@ -16,14 +16,22 @@ import (
 )
 
 func HealthHandler() http.Handler {
+	return healthHandler(nil)
+}
+
+func healthHandler(check func(context.Context) error) http.Handler {
 	mux := http.NewServeMux()
 	mux.Handle("GET /healthz", healthz.Live())
-	mux.Handle("GET /readyz", healthz.Ready(nil))
+	mux.Handle("GET /readyz", healthz.Ready(check))
 	return mux
 }
 
 func Run(ctx context.Context, cfg config.Config, log *slog.Logger) error {
+	if err := cfg.Validate(); err != nil {
+		return err
+	}
 	var store audit.Store = memory.New()
+	var readyCheck func(context.Context) error
 	if cfg.DatabaseURL != "" {
 		pool, err := postgres.OpenPool(ctx, cfg.DatabaseURL)
 		if err != nil {
@@ -34,8 +42,9 @@ func Run(ctx context.Context, cfg config.Config, log *slog.Logger) error {
 			return err
 		}
 		store = postgres.New(pool)
+		readyCheck = pool.Ping
 		log.Info("audit-service using postgres")
 	}
 	svc := audit.New(store, nil)
-	return grpcutil.Serve(ctx, cfg.GRPCAddr, cfg.HealthAddr, grpcapi.New(grpcapi.NewServer(svc)), HealthHandler())
+	return grpcutil.Serve(ctx, cfg.GRPCAddr, cfg.HealthAddr, grpcapi.New(grpcapi.NewServer(svc)), healthHandler(readyCheck))
 }

@@ -2,6 +2,7 @@ package calculation
 
 import (
 	"context"
+	"math"
 
 	"order-fill/backend/pkg/grpcutil"
 	calculationv1 "order-fill/backend/proto/gen/go/orderfill/calculation/v1"
@@ -40,7 +41,7 @@ func (c *GRPC) AdjustQuantity(ctx context.Context, recommended, orderedFact floa
 		HasOrderedFact:          hasFact,
 		BoxSize:                 boxSize,
 		Adjustment:              string(rule.Adjustment),
-		QuantityMultiple:        int32(rule.Multiple),
+		QuantityMultiple:        int32Clamp(rule.Multiple),
 		AdjustmentComment:       rule.AdjustmentComment,
 		AllowSmallPositiveOrder: rule.AllowSmallPositiveOrder,
 	})
@@ -53,6 +54,16 @@ func (c *GRPC) AdjustQuantity(ctx context.Context, recommended, orderedFact floa
 		out.Inserted = &qty
 	}
 	return out, nil
+}
+
+func int32Clamp(n int) int32 {
+	if n > math.MaxInt32 {
+		return math.MaxInt32
+	}
+	if n < math.MinInt32 {
+		return math.MinInt32
+	}
+	return int32(n)
 }
 
 func (c *GRPC) Recommend(ctx context.Context, brandKey, cityRule string, weeks float64, rows []orderfill.RecommendRow) ([]orderfill.RecommendRow, error) {

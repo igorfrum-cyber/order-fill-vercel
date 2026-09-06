@@ -12,9 +12,27 @@ func TestLoadDefaults(t *testing.T) {
 	t.Setenv("AUDIT_GRPC_ADDR", "")
 	t.Setenv("AUDIT_HEALTH_ADDR", "")
 	t.Setenv("AUDIT_ENV", "")
+	t.Setenv("APP_ENV", "")
 	cfg := Load()
 	if cfg.GRPCAddr != ":9100" || cfg.HealthAddr != ":8091" || cfg.Environment != "local" {
 		t.Fatalf("%+v", cfg)
+	}
+	if err := cfg.Validate(); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestValidateRejectsProductionMemoryStore(t *testing.T) {
+	cfg := Config{Environment: "production"}
+	if err := cfg.Validate(); err == nil {
+		t.Fatal("expected missing database error")
+	}
+}
+
+func TestValidateAcceptsProductionConfig(t *testing.T) {
+	cfg := Config{Environment: "production", DatabaseURL: "postgres://db"}
+	if err := cfg.Validate(); err != nil {
+		t.Fatal(err)
 	}
 }
 

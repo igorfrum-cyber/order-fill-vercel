@@ -44,7 +44,7 @@ func (c FillCommand) ctx() context.Context {
 	if c.Context != nil {
 		return c.Context
 	}
-	return context.Background()
+	return context.TODO()
 }
 
 func (c FillCommand) report(fraction float64, message string) {

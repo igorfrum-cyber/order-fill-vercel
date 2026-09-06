@@ -19,3 +19,10 @@ func TestResolveRPIDRejectsLANIP(t *testing.T) {
 		t.Fatal("LAN IP must not be a passkey relying party")
 	}
 }
+
+func TestResolveRPIDRejectsPlainHTTPPublicHost(t *testing.T) {
+	t.Parallel()
+	if _, err := resolveRPID("http://example.com", "example.com"); err == nil {
+		t.Fatal("plain http public origins must not be allowed")
+	}
+}

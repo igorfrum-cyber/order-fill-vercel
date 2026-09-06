@@ -24,7 +24,7 @@ func (s *Service) SubmitEdits(ctx context.Context, actor domain.Actor, jobID str
 	for _, edit := range edits {
 		queueEdits = append(queueEdits, queue.Edit{Key: edit.RowKey, Value: edit.Value, Comment: edit.Comment})
 	}
-	if err := s.publisher.Publish(queue.Message{
+	if err := s.publisher.Publish(ctx, queue.Message{
 		Version:      queue.Version,
 		JobID:        job.ID,
 		Type:         string(job.Type),

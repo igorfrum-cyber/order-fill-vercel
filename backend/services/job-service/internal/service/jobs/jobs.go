@@ -28,7 +28,7 @@ type Companies interface {
 }
 
 type Publisher interface {
-	Publish(msg queue.Message) error
+	Publish(ctx context.Context, msg queue.Message) error
 }
 
 type Service struct {

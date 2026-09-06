@@ -30,6 +30,7 @@ const (
 	IdentityService_AcceptInvite_FullMethodName           = "/orderfill.identity.v1.IdentityService/AcceptInvite"
 	IdentityService_FinishPasskeyLogin_FullMethodName     = "/orderfill.identity.v1.IdentityService/FinishPasskeyLogin"
 	IdentityService_ChangePassword_FullMethodName         = "/orderfill.identity.v1.IdentityService/ChangePassword"
+	IdentityService_PublicCompany_FullMethodName          = "/orderfill.identity.v1.IdentityService/PublicCompany"
 	IdentityService_CreateCompany_FullMethodName          = "/orderfill.identity.v1.IdentityService/CreateCompany"
 	IdentityService_ListCompanies_FullMethodName          = "/orderfill.identity.v1.IdentityService/ListCompanies"
 	IdentityService_UpdateCompany_FullMethodName          = "/orderfill.identity.v1.IdentityService/UpdateCompany"
@@ -55,6 +56,7 @@ type IdentityServiceClient interface {
 	AcceptInvite(ctx context.Context, in *AcceptInviteRequest, opts ...grpc.CallOption) (*AcceptInviteResponse, error)
 	FinishPasskeyLogin(ctx context.Context, in *FinishPasskeyLoginRequest, opts ...grpc.CallOption) (*FinishPasskeyLoginResponse, error)
 	ChangePassword(ctx context.Context, in *ChangePasswordRequest, opts ...grpc.CallOption) (*ChangePasswordResponse, error)
+	PublicCompany(ctx context.Context, in *PublicCompanyRequest, opts ...grpc.CallOption) (*PublicCompanyResponse, error)
 	CreateCompany(ctx context.Context, in *CreateCompanyRequest, opts ...grpc.CallOption) (*CreateCompanyResponse, error)
 	ListCompanies(ctx context.Context, in *ListCompaniesRequest, opts ...grpc.CallOption) (*ListCompaniesResponse, error)
 	UpdateCompany(ctx context.Context, in *UpdateCompanyRequest, opts ...grpc.CallOption) (*UpdateCompanyResponse, error)
@@ -183,6 +185,16 @@ func (c *identityServiceClient) ChangePassword(ctx context.Context, in *ChangePa
 	return out, nil
 }
 
+func (c *identityServiceClient) PublicCompany(ctx context.Context, in *PublicCompanyRequest, opts ...grpc.CallOption) (*PublicCompanyResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(PublicCompanyResponse)
+	err := c.cc.Invoke(ctx, IdentityService_PublicCompany_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *identityServiceClient) CreateCompany(ctx context.Context, in *CreateCompanyRequest, opts ...grpc.CallOption) (*CreateCompanyResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(CreateCompanyResponse)
@@ -278,6 +290,7 @@ type IdentityServiceServer interface {
 	AcceptInvite(context.Context, *AcceptInviteRequest) (*AcceptInviteResponse, error)
 	FinishPasskeyLogin(context.Context, *FinishPasskeyLoginRequest) (*FinishPasskeyLoginResponse, error)
 	ChangePassword(context.Context, *ChangePasswordRequest) (*ChangePasswordResponse, error)
+	PublicCompany(context.Context, *PublicCompanyRequest) (*PublicCompanyResponse, error)
 	CreateCompany(context.Context, *CreateCompanyRequest) (*CreateCompanyResponse, error)
 	ListCompanies(context.Context, *ListCompaniesRequest) (*ListCompaniesResponse, error)
 	UpdateCompany(context.Context, *UpdateCompanyRequest) (*UpdateCompanyResponse, error)
@@ -328,6 +341,9 @@ func (UnimplementedIdentityServiceServer) FinishPasskeyLogin(context.Context, *F
 }
 func (UnimplementedIdentityServiceServer) ChangePassword(context.Context, *ChangePasswordRequest) (*ChangePasswordResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method ChangePassword not implemented")
+}
+func (UnimplementedIdentityServiceServer) PublicCompany(context.Context, *PublicCompanyRequest) (*PublicCompanyResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method PublicCompany not implemented")
 }
 func (UnimplementedIdentityServiceServer) CreateCompany(context.Context, *CreateCompanyRequest) (*CreateCompanyResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method CreateCompany not implemented")
@@ -572,6 +588,24 @@ func _IdentityService_ChangePassword_Handler(srv interface{}, ctx context.Contex
 	return interceptor(ctx, in, info, handler)
 }
 
+func _IdentityService_PublicCompany_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(PublicCompanyRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(IdentityServiceServer).PublicCompany(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: IdentityService_PublicCompany_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(IdentityServiceServer).PublicCompany(ctx, req.(*PublicCompanyRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _IdentityService_CreateCompany_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(CreateCompanyRequest)
 	if err := dec(in); err != nil {
@@ -766,6 +800,10 @@ var IdentityService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "ChangePassword",
 			Handler:    _IdentityService_ChangePassword_Handler,
+		},
+		{
+			MethodName: "PublicCompany",
+			Handler:    _IdentityService_PublicCompany_Handler,
 		},
 		{
 			MethodName: "CreateCompany",

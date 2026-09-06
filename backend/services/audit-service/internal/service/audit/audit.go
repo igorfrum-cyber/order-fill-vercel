@@ -1,6 +1,7 @@
 package audit
 
 import (
+	"context"
 	"crypto/rand"
 	"encoding/base64"
 	"time"
@@ -9,8 +10,8 @@ import (
 )
 
 type Store interface {
-	Record(e domain.Event)
-	List(companyID string) []domain.Event
+	Record(ctx context.Context, e domain.Event) error
+	List(ctx context.Context, companyID string) ([]domain.Event, error)
 }
 
 type Service struct {
@@ -25,20 +26,22 @@ func New(store Store, now func() time.Time) *Service {
 	return &Service{store: store, now: now}
 }
 
-func (s *Service) Record(typ, actorID, companyID, jobID, payload string) (string, error) {
+func (s *Service) Record(ctx context.Context, typ, actorID, companyID, jobID, payload string) (string, error) {
 	id, err := newID()
 	if err != nil {
 		return "", err
 	}
-	s.store.Record(domain.Event{
+	if err := s.store.Record(ctx, domain.Event{
 		ID: id, Type: typ, ActorID: actorID, CompanyID: companyID, JobID: jobID,
 		CreatedAt: s.now().UTC(), Payload: payload,
-	})
+	}); err != nil {
+		return "", err
+	}
 	return id, nil
 }
 
-func (s *Service) List(companyID string) []domain.Event {
-	return s.store.List(companyID)
+func (s *Service) List(ctx context.Context, companyID string) ([]domain.Event, error) {
+	return s.store.List(ctx, companyID)
 }
 
 func newID() (string, error) {

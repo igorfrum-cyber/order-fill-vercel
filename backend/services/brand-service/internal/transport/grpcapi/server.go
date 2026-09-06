@@ -2,6 +2,7 @@ package grpcapi
 
 import (
 	"context"
+	"math"
 
 	"google.golang.org/grpc"
 
@@ -30,8 +31,8 @@ func (s *Server) GetBrandPolicy(ctx context.Context, req *brandv1.GetBrandPolicy
 	policy := &brandv1.BrandPolicy{
 		Brand:                   p.Key,
 		Variant:                 p.Variant,
-		QuantityMultiple:        int32(p.Multiple),
-		MinQuantity:             int32(p.MinQuantity),
+		QuantityMultiple:        int32Clamp(p.Multiple),
+		MinQuantity:             int32Clamp(p.MinQuantity),
 		Label:                   p.Label,
 		Adjustment:              string(p.Adjustment),
 		AdjustmentLabel:         p.AdjustmentLabel,
@@ -47,6 +48,16 @@ func (s *Server) GetBrandPolicy(ctx context.Context, req *brandv1.GetBrandPolicy
 		policy.RequireUnit = p.RequireUnit
 	}
 	return &brandv1.GetBrandPolicyResponse{Policy: policy}, nil
+}
+
+func int32Clamp(n int) int32 {
+	if n > math.MaxInt32 {
+		return math.MaxInt32
+	}
+	if n < math.MinInt32 {
+		return math.MinInt32
+	}
+	return int32(n)
 }
 
 func (s *Server) ListBrands(ctx context.Context, _ *brandv1.ListBrandsRequest) (*brandv1.ListBrandsResponse, error) {

@@ -36,7 +36,7 @@ func Open(redisURL string) (*Store, error) {
 	return &Store{client: redis.NewClient(opt)}, nil
 }
 
-func (s *Store) Put(ch domain.PasskeyChallenge) {
+func (s *Store) Put(ctx context.Context, ch domain.PasskeyChallenge) {
 	if s.client != nil {
 		raw, err := json.Marshal(ch)
 		if err != nil {
@@ -46,7 +46,7 @@ func (s *Store) Put(ch domain.PasskeyChallenge) {
 		if ttl <= 0 {
 			ttl = time.Minute
 		}
-		_ = s.client.Set(context.Background(), keyPrefix+ch.ID, raw, ttl).Err()
+		_ = s.client.Set(ctx, keyPrefix+ch.ID, raw, ttl).Err()
 		return
 	}
 	s.mu.Lock()
@@ -54,10 +54,10 @@ func (s *Store) Put(ch domain.PasskeyChallenge) {
 	s.items[ch.ID] = ch
 }
 
-func (s *Store) Consume(id string, now time.Time) (domain.PasskeyChallenge, error) {
+func (s *Store) Consume(ctx context.Context, id string, now time.Time) (domain.PasskeyChallenge, error) {
 	if s.client != nil {
 		key := keyPrefix + id
-		raw, err := s.client.GetDel(context.Background(), key).Bytes()
+		raw, err := s.client.GetDel(ctx, key).Bytes()
 		if err != nil {
 			return domain.PasskeyChallenge{}, domain.ErrUnauthorized
 		}

@@ -1,6 +1,7 @@
 package memory
 
 import (
+	"context"
 	"sync"
 
 	"order-fill/backend/services/audit-service/internal/domain"
@@ -13,13 +14,14 @@ type Store struct {
 
 func New() *Store { return &Store{} }
 
-func (s *Store) Record(e domain.Event) {
+func (s *Store) Record(_ context.Context, e domain.Event) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.events = append(s.events, e)
+	return nil
 }
 
-func (s *Store) List(companyID string) []domain.Event {
+func (s *Store) List(_ context.Context, companyID string) ([]domain.Event, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	out := make([]domain.Event, 0)
@@ -28,5 +30,5 @@ func (s *Store) List(companyID string) []domain.Event {
 			out = append(out, e)
 		}
 	}
-	return out
+	return out, nil
 }

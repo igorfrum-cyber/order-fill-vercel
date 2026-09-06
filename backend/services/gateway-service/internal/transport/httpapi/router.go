@@ -16,7 +16,6 @@ import (
 type API struct {
 	Clients        clients.Clients
 	HTTP           *http.Client
-	IdentityHTTP   string
 	WorkerHealth   string
 	FileHealth     string
 	PostgresAddr   string
@@ -30,7 +29,6 @@ func New(cfg config.Config, c clients.Clients) http.Handler {
 	api := &API{
 		Clients:        c,
 		HTTP:           &http.Client{Timeout: 2 * time.Second},
-		IdentityHTTP:   cfg.IdentityHTTP,
 		WorkerHealth:   cfg.WorkerHealth,
 		FileHealth:     cfg.FileHealth,
 		PostgresAddr:   cfg.PostgresAddr,

@@ -1,8 +1,6 @@
 package httpapi
 
 import (
-	"archive/zip"
-	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -38,6 +36,7 @@ func (a *API) createJob(w http.ResponseWriter, r *http.Request, jobType string) 
 		writeError(w, http.StatusBadRequest, "bad_request", "company_id is required")
 		return
 	}
+	r.Body = http.MaxBytesReader(w, r.Body, grpcutil.MaxMsgSize)
 	if err := r.ParseMultipartForm(32 << 20); err != nil {
 		writeError(w, http.StatusBadRequest, "bad_request", err.Error())
 		return
@@ -101,7 +100,7 @@ func (a *API) putUpload(r *http.Request, header *multipart.FileHeader, role stri
 	if err != nil {
 		return "", err
 	}
-	defer file.Close()
+	defer func() { _ = file.Close() }()
 	body, err := io.ReadAll(file)
 	if err != nil {
 		return "", err
@@ -276,39 +275,42 @@ func (a *API) downloadArchive(w http.ResponseWriter, r *http.Request) {
 		writeGRPCError(w, "download_archive_failed", err)
 		return
 	}
-	var buf bytes.Buffer
-	zipw := zip.NewWriter(&buf)
+	objectRefs := make([]string, 0, len(files.GetFiles()))
 	for _, file := range files.GetFiles() {
 		if !strings.Contains(file.GetObjectKey(), "/outputs/") && !strings.HasPrefix(file.GetId(), "output-") {
 			continue
 		}
-		obj, err := a.Clients.Files.GetObject(r.Context(), &filesv1.GetObjectRequest{Key: file.GetObjectKey()})
-		if err != nil {
-			writeGRPCError(w, "download_archive_failed", err)
-			return
-		}
-		entry, err := zipw.Create(file.GetName())
-		if err != nil {
-			writeError(w, http.StatusInternalServerError, "download_archive_failed", err.Error())
-			return
-		}
-		if _, err := entry.Write(obj.GetBody()); err != nil {
-			writeError(w, http.StatusInternalServerError, "download_archive_failed", err.Error())
-			return
+		if file.GetObjectKey() != "" {
+			objectRefs = append(objectRefs, file.GetObjectKey())
+		} else if file.GetId() != "" {
+			objectRefs = append(objectRefs, file.GetId())
 		}
 	}
-	if err := zipw.Close(); err != nil {
-		writeError(w, http.StatusInternalServerError, "download_archive_failed", err.Error())
+	if len(objectRefs) == 0 {
+		writeError(w, http.StatusNotFound, "not_found", "archive files were not found")
 		return
 	}
-	w.Header().Set("Content-Type", "application/zip")
 	identity := map[string]string{}
 	if raw, err := a.getObjectByKey(r, "jobs/"+job.GetId()+"/identity.json"); err == nil {
 		_ = json.Unmarshal(raw, &identity)
 	}
-	w.Header().Set("Content-Disposition", contentDisposition(archiveFileName(identity["brand"], identity["order_month"])))
+	archive, err := a.Clients.Files.CreateArchive(r.Context(), &filesv1.CreateArchiveRequest{
+		Meta: a.meta(user), ObjectIds: objectRefs, Name: archiveFileName(identity["brand"], identity["order_month"]),
+	})
+	if err != nil {
+		writeGRPCError(w, "download_archive_failed", err)
+		return
+	}
+	obj, err := a.Clients.Files.GetObject(r.Context(), &filesv1.GetObjectRequest{Id: archive.GetObject().GetId()})
+	if err != nil {
+		writeGRPCError(w, "download_archive_failed", err)
+		return
+	}
+	w.Header().Set("Content-Type", "application/zip")
+	w.Header().Set("Content-Disposition", contentDisposition(obj.GetObject().GetName()))
+	w.Header().Set("Content-Length", fmt.Sprint(len(obj.GetBody())))
 	w.WriteHeader(http.StatusOK)
-	_, _ = w.Write(buf.Bytes())
+	_, _ = w.Write(obj.GetBody())
 }
 
 func (a *API) previewMeta(w http.ResponseWriter, r *http.Request) {

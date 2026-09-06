@@ -19,19 +19,27 @@ import (
 )
 
 func HealthHandler() http.Handler {
+	return healthHandler(nil)
+}
+
+func healthHandler(check func(context.Context) error) http.Handler {
 	mux := http.NewServeMux()
 	mux.Handle("GET /healthz", healthz.Live())
-	mux.Handle("GET /readyz", healthz.Ready(nil))
+	mux.Handle("GET /readyz", healthz.Ready(check))
 	return mux
 }
 
 func Run(ctx context.Context, cfg config.Config, log *slog.Logger) error {
+	if err := cfg.Validate(); err != nil {
+		return err
+	}
 	key := sha256.Sum256([]byte(cfg.MasterKey))
 	box, err := secret.NewBox(key[:])
 	if err != nil {
 		return err
 	}
 	var store twofa.Store = memory.NewStore()
+	var readyCheck func(context.Context) error
 	if cfg.DatabaseURL != "" {
 		pool, err := postgres.OpenPool(ctx, cfg.DatabaseURL)
 		if err != nil {
@@ -42,6 +50,7 @@ func Run(ctx context.Context, cfg config.Config, log *slog.Logger) error {
 			return err
 		}
 		store = postgres.NewStore(pool)
+		readyCheck = pool.Ping
 		log.Info("twofa-service using postgres")
 	}
 	limit, err := ratelimit.Open(cfg.RedisURL, nil)
@@ -50,5 +59,5 @@ func Run(ctx context.Context, cfg config.Config, log *slog.Logger) error {
 	}
 	svc := twofa.New(store, box, limit, nil)
 	log.Info("twofa-service listening", "grpc", cfg.GRPCAddr)
-	return grpcutil.Serve(ctx, cfg.GRPCAddr, cfg.HealthAddr, grpcapi.New(grpcapi.NewServer(svc)), HealthHandler())
+	return grpcutil.Serve(ctx, cfg.GRPCAddr, cfg.HealthAddr, grpcapi.New(grpcapi.NewServer(svc)), healthHandler(readyCheck))
 }

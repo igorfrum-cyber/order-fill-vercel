@@ -3,17 +3,18 @@ package httpapi
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"io"
 	"net/http"
-	"net/url"
 	"strings"
+	"time"
 
 	auditv1 "order-fill/backend/proto/gen/go/orderfill/audit/v1"
 	commonv1 "order-fill/backend/proto/gen/go/orderfill/common/v1"
 	filesv1 "order-fill/backend/proto/gen/go/orderfill/files/v1"
 	identityv1 "order-fill/backend/proto/gen/go/orderfill/identity/v1"
 )
+
+const auditTimeout = 750 * time.Millisecond
 
 func (a *API) listCompanies(w http.ResponseWriter, r *http.Request) {
 	user, _ := userFrom(r)
@@ -224,70 +225,37 @@ func (a *API) listAudit(w http.ResponseWriter, r *http.Request) {
 }
 
 func (a *API) publicCompanyLogin(w http.ResponseWriter, r *http.Request) {
-	company, err := a.publicCompany(r.Context(), r.PathValue("slug"))
+	resp, err := a.Clients.Identity.PublicCompany(r.Context(), &identityv1.PublicCompanyRequest{LoginSlug: r.PathValue("slug")})
 	if err != nil {
 		writeError(w, http.StatusNotFound, "not_found", "not found")
 		return
 	}
+	company := resp.GetCompany()
 	writeJSON(w, http.StatusOK, map[string]any{
-		"name": company.Name, "login_slug": company.LoginSlug, "has_logo": a.companyHasLogo(r.Context(), company.ID),
+		"name": company.GetName(), "login_slug": company.GetLoginSlug(), "has_logo": a.companyHasLogo(r.Context(), company.GetId()),
 	})
 }
 
 func (a *API) publicCompanyLogo(w http.ResponseWriter, r *http.Request) {
-	company, err := a.publicCompany(r.Context(), r.PathValue("slug"))
+	resp, err := a.Clients.Identity.PublicCompany(r.Context(), &identityv1.PublicCompanyRequest{LoginSlug: r.PathValue("slug")})
 	if err != nil {
 		writeError(w, http.StatusNotFound, "not_found", "not found")
 		return
 	}
-	resp, err := a.Clients.Files.GetObject(r.Context(), &filesv1.GetObjectRequest{Key: companyLogoKey(company.ID)})
-	if err != nil || len(resp.GetBody()) == 0 {
+	company := resp.GetCompany()
+	fileResp, err := a.Clients.Files.GetObject(r.Context(), &filesv1.GetObjectRequest{Key: companyLogoKey(company.GetId())})
+	if err != nil || len(fileResp.GetBody()) == 0 {
 		writeError(w, http.StatusNotFound, "not_found", "not found")
 		return
 	}
-	contentType := resp.GetObject().GetContentType()
+	contentType := fileResp.GetObject().GetContentType()
 	if contentType == "" || contentType == "application/octet-stream" {
 		contentType = "image/png"
 	}
 	w.Header().Set("Content-Type", contentType)
 	w.Header().Set("Cache-Control", "private, max-age=300")
 	w.WriteHeader(http.StatusOK)
-	_, _ = w.Write(resp.GetBody())
-}
-
-type publicCompany struct {
-	ID        string `json:"id"`
-	Name      string `json:"name"`
-	LoginSlug string `json:"login_slug"`
-}
-
-func (a *API) publicCompany(ctx context.Context, slug string) (publicCompany, error) {
-	client := a.HTTP
-	if client == nil {
-		client = &http.Client{}
-	}
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, strings.TrimRight(a.IdentityHTTP, "/")+"/public/companies/"+url.PathEscape(slug), nil)
-	if err != nil {
-		return publicCompany{}, err
-	}
-	resp, err := client.Do(req)
-	if err != nil {
-		return publicCompany{}, err
-	}
-	defer resp.Body.Close()
-	if resp.StatusCode != http.StatusOK {
-		_, _ = io.Copy(io.Discard, resp.Body)
-		return publicCompany{}, errors.New("not found")
-	}
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return publicCompany{}, err
-	}
-	var company publicCompany
-	if err := json.Unmarshal(body, &company); err != nil {
-		return publicCompany{}, err
-	}
-	return company, nil
+	_, _ = w.Write(fileResp.GetBody())
 }
 
 func (a *API) companyHasLogo(ctx context.Context, companyID string) bool {
@@ -335,6 +303,8 @@ func (a *API) recordAudit(ctx context.Context, user User, action, companyID, com
 	if a.Clients.Audit == nil {
 		return
 	}
+	ctx, cancel := context.WithTimeout(ctx, auditTimeout)
+	defer cancel()
 	payload, _ := json.Marshal(map[string]string{"actor_login": user.Login, "company_name": companyName})
 	meta := a.meta(user)
 	if companyID != "" {

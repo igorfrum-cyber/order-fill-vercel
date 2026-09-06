@@ -45,7 +45,7 @@ func (s *Service) Create(ctx context.Context, actor domain.Actor, jobType domain
 	if err := s.store.Create(ctx, job); err != nil {
 		return domain.Job{}, err
 	}
-	if err := s.publisher.Publish(queue.Message{
+	if err := s.publisher.Publish(ctx, queue.Message{
 		Version:      queue.Version,
 		JobID:        job.ID,
 		Type:         string(job.Type),

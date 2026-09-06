@@ -18,6 +18,7 @@ service IdentityService {
   rpc AcceptInvite(AcceptInviteRequest) returns (AcceptInviteResponse);
   rpc FinishPasskeyLogin(FinishPasskeyLoginRequest) returns (FinishPasskeyLoginResponse);
   rpc ChangePassword(ChangePasswordRequest) returns (ChangePasswordResponse);
+  rpc PublicCompany(PublicCompanyRequest) returns (PublicCompanyResponse);
   rpc CreateCompany(CreateCompanyRequest) returns (CreateCompanyResponse);
   rpc ListCompanies(ListCompaniesRequest) returns (ListCompaniesResponse);
   rpc UpdateCompany(UpdateCompanyRequest) returns (UpdateCompanyResponse);
@@ -165,6 +166,14 @@ message ChangePasswordRequest {
 }
 
 message ChangePasswordResponse {}
+
+message PublicCompanyRequest {
+  string login_slug = 1;
+}
+
+message PublicCompanyResponse {
+  Company company = 1;
+}
 
 message CreateCompanyRequest {
   orderfill.common.v1.RequestMeta meta = 1;

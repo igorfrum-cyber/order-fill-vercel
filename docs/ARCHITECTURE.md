@@ -293,7 +293,7 @@ S3-compatible хранилище: локально MinIO, в production AWS S3, 
 
 ```text
 1 frontend
-2 api-service replicas
+2 gateway-service replicas
 2-5 document-service workers
 1 postgres
 1 redis/nats
@@ -307,7 +307,7 @@ S3-compatible хранилище: локально MinIO, в production AWS S3, 
 Сразу пишем сервисную систему, но не дробим чрезмерно. Стартовый набор:
 
 - `frontend`;
-- `api-service`;
+- `gateway-service`;
 - `document-service`;
 - `postgres`;
 - `queue`;

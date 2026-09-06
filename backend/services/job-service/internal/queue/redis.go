@@ -44,7 +44,7 @@ func NewRedis() *Publisher {
 	return &Publisher{}
 }
 
-func (p *Publisher) Publish(msg Message) error {
+func (p *Publisher) Publish(_ context.Context, msg Message) error {
 	if msg.Version == "" {
 		msg.Version = Version
 	}
@@ -78,7 +78,7 @@ func NewStream(queueURL, stream string) (*Stream, error) {
 	return &Stream{client: redis.NewClient(options), stream: stream}, nil
 }
 
-func (s *Stream) Publish(msg Message) error {
+func (s *Stream) Publish(ctx context.Context, msg Message) error {
 	if msg.Version == "" {
 		msg.Version = Version
 	}
@@ -86,7 +86,7 @@ func (s *Stream) Publish(msg Message) error {
 	if err != nil {
 		return err
 	}
-	return s.client.XAdd(context.Background(), &redis.XAddArgs{
+	return s.client.XAdd(ctx, &redis.XAddArgs{
 		Stream: s.stream,
 		Values: map[string]any{"payload": string(payload)},
 	}).Err()

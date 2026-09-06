@@ -3,6 +3,7 @@ package files_test
 import (
 	"archive/zip"
 	"bytes"
+	"context"
 	"errors"
 	"strings"
 	"testing"
@@ -37,7 +38,7 @@ type errMeta struct {
 	saveErr error
 }
 
-func (m errMeta) SaveObject(domain.Object) error { return m.saveErr }
+func (m errMeta) SaveObject(context.Context, domain.Object) error { return m.saveErr }
 
 func TestPutSurfacesMetaError(t *testing.T) {
 	t.Parallel()

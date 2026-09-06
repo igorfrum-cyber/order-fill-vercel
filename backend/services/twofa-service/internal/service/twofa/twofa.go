@@ -111,28 +111,28 @@ func (s *Service) IsEnabled(ctx context.Context, userID string) (bool, error) {
 }
 
 func (s *Service) Verify(ctx context.Context, userID, code string) (usedRecovery bool, err error) {
-	if !s.limit.Allow(userID) {
+	if !s.limit.Allow(ctx, userID) {
 		return false, domain.ErrLocked
 	}
 	cred, err := s.load(ctx, userID)
 	if err != nil || !cred.IsEnabled() {
-		s.limit.Fail(userID)
+		s.limit.Fail(ctx, userID)
 		return false, domain.ErrUnauthorized
 	}
 	if err := totp.VerifyTOTP(cred.Secret, code, s.now()); err == nil {
-		s.limit.Clear(userID)
+		s.limit.Clear(ctx, userID)
 		return false, nil
 	}
 	remaining, recErr := totp.ConsumeRecoveryCode(slices.Clone(cred.RecoveryCodeHashes), code)
 	if recErr != nil {
-		s.limit.Fail(userID)
+		s.limit.Fail(ctx, userID)
 		return false, domain.ErrUnauthorized
 	}
 	cred.RecoveryCodeHashes = remaining
 	if err := s.save(ctx, cred); err != nil {
 		return false, err
 	}
-	s.limit.Clear(userID)
+	s.limit.Clear(ctx, userID)
 	return true, nil
 }
 

@@ -2,7 +2,6 @@ package bootstrap
 
 import (
 	"context"
-	"encoding/json"
 	"log/slog"
 	"net/http"
 
@@ -27,14 +26,22 @@ type identityDB interface {
 }
 
 func HealthHandler() http.Handler {
+	return healthHandler(nil)
+}
+
+func healthHandler(check func(context.Context) error) *http.ServeMux {
 	mux := http.NewServeMux()
 	mux.Handle("GET /healthz", healthz.Live())
-	mux.Handle("GET /readyz", healthz.Ready(nil))
+	mux.Handle("GET /readyz", healthz.Ready(check))
 	return mux
 }
 
 func Run(ctx context.Context, cfg config.Config, log *slog.Logger) error {
+	if err := cfg.Validate(); err != nil {
+		return err
+	}
 	var store identityDB = memory.NewStore()
+	var readyCheck func(context.Context) error
 	if cfg.DatabaseURL != "" {
 		pool, err := postgres.OpenPool(ctx, cfg.DatabaseURL)
 		if err != nil {
@@ -45,6 +52,7 @@ func Run(ctx context.Context, cfg config.Config, log *slog.Logger) error {
 			return err
 		}
 		store = postgres.NewStore(pool)
+		readyCheck = pool.Ping
 		log.Info("identity-service using postgres")
 	}
 	var totp twofa.Client
@@ -73,22 +81,5 @@ func Run(ctx context.Context, cfg config.Config, log *slog.Logger) error {
 	if created {
 		log.Info("bootstrap admin invite", "login", cfg.BootstrapAdminLogin, "invite_url", "/invite/"+invite)
 	}
-	mux := http.NewServeMux()
-	mux.Handle("GET /healthz", healthz.Live())
-	mux.Handle("GET /readyz", healthz.Ready(nil))
-	mux.HandleFunc("GET /public/companies/{slug}", func(w http.ResponseWriter, r *http.Request) {
-		company, err := companySvc.PublicBySlug(r.Context(), r.PathValue("slug"))
-		if err != nil {
-			http.Error(w, `{"code":"not_found","message":"not found"}`, http.StatusNotFound)
-			return
-		}
-		w.Header().Set("Content-Type", "application/json")
-		_ = json.NewEncoder(w).Encode(map[string]any{
-			"id":         company.ID,
-			"name":       company.Name,
-			"login_slug": company.LoginSlug,
-			"has_logo":   company.HasLogo(),
-		})
-	})
-	return grpcutil.Serve(ctx, cfg.GRPCAddr, cfg.HealthAddr, grpcapi.New(grpcapi.NewServer(authSvc, userSvc, companySvc)), mux)
+	return grpcutil.Serve(ctx, cfg.GRPCAddr, cfg.HealthAddr, grpcapi.New(grpcapi.NewServer(authSvc, userSvc, companySvc)), healthHandler(readyCheck))
 }

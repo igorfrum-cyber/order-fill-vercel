@@ -2,6 +2,7 @@ package grpcapi
 
 import (
 	"context"
+	"math"
 	"time"
 
 	"google.golang.org/grpc"
@@ -175,13 +176,23 @@ func (s *Server) UpdateProgress(ctx context.Context, req *jobsv1.UpdateProgressR
 
 func protoSummary(s domain.ReportSummary) *jobsv1.ReportSummary {
 	return &jobsv1.ReportSummary{
-		NeedsDecision:     int32(s.NeedsDecision),
-		NotInSource:       int32(s.NotInSource),
-		CheckNameOrVolume: int32(s.CheckNameOrVolume),
-		NotInBlank:        int32(s.NotInBlank),
-		ToOrder:           int32(s.ToOrder),
-		OrderNotNeeded:    int32(s.OrderNotNeeded),
+		NeedsDecision:     int32Clamp(s.NeedsDecision),
+		NotInSource:       int32Clamp(s.NotInSource),
+		CheckNameOrVolume: int32Clamp(s.CheckNameOrVolume),
+		NotInBlank:        int32Clamp(s.NotInBlank),
+		ToOrder:           int32Clamp(s.ToOrder),
+		OrderNotNeeded:    int32Clamp(s.OrderNotNeeded),
 	}
+}
+
+func int32Clamp(n int) int32 {
+	if n > math.MaxInt32 {
+		return math.MaxInt32
+	}
+	if n < math.MinInt32 {
+		return math.MinInt32
+	}
+	return int32(n)
 }
 
 func protoReportRows(rows []domain.ReportRow) []*jobsv1.ReportRow {

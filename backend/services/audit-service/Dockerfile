@@ -1,6 +1,6 @@
 # syntax=mirror.gcr.io/docker/dockerfile:1
 # Build context: backend/
-FROM mirror.gcr.io/library/golang:1.26-alpine AS build
+FROM mirror.gcr.io/library/golang:1.25-alpine AS build
 WORKDIR /src
 ENV GOPROXY=https://proxy.golang.org,https://goproxy.io,direct
 COPY pkg ./pkg

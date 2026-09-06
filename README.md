@@ -31,6 +31,20 @@ docker compose -f deploy/docker-compose.yml up --build
 
 Первый вход: смотрите в логах `identity-service` строку `bootstrap admin invite` и примите приглашение на `/invite`.
 
+## Production knobs
+
+Для production задайте как минимум:
+
+- `APP_ENV=production`
+- `API_ALLOWED_ORIGINS=https://<public-host>`
+- `SESSION_COOKIE_SECURE=true`
+- `WEBAUTHN_RP_ID=<public-host>`
+- `FILE_S3_ENDPOINT`, `FILE_S3_USE_SSL=true`, `S3_ACCESS_KEY`, `S3_SECRET_KEY`
+- `TWOFA_MASTER_KEY` с непустым production secret длиной от 32 байт
+- `GRPC_TLS_MODE=mtls` плюс `GRPC_TLS_CERT_FILE`, `GRPC_TLS_KEY_FILE`, `GRPC_TLS_CA_FILE`
+
+Без этих значений stateful сервисы в production падают на старте вместо in-memory fallback.
+
 Только UI:
 
 ```bash

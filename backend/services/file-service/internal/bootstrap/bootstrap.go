@@ -17,13 +17,20 @@ import (
 )
 
 func HealthHandler() http.Handler {
+	return healthHandler(nil)
+}
+
+func healthHandler(check func(context.Context) error) http.Handler {
 	mux := http.NewServeMux()
 	mux.Handle("GET /healthz", healthz.Live())
-	mux.Handle("GET /readyz", healthz.Ready(nil))
+	mux.Handle("GET /readyz", healthz.Ready(check))
 	return mux
 }
 
 func Run(ctx context.Context, cfg config.Config, log *slog.Logger) error {
+	if err := cfg.Validate(); err != nil {
+		return err
+	}
 	var blobs files.BlobStore = objectstore.NewS3()
 	if cfg.S3Endpoint != "" {
 		store, err := objectstore.NewMinIO(cfg.S3Endpoint, cfg.S3AccessKey, cfg.S3SecretKey, cfg.S3Bucket, cfg.S3UseSSL)
@@ -37,6 +44,7 @@ func Run(ctx context.Context, cfg config.Config, log *slog.Logger) error {
 		log.Info("file-service using minio", "endpoint", cfg.S3Endpoint, "bucket", cfg.S3Bucket)
 	}
 	var meta files.MetaStore = memory.NewMeta()
+	var readyCheck func(context.Context) error
 	if cfg.DatabaseURL != "" {
 		pool, err := postgres.OpenPool(ctx, cfg.DatabaseURL)
 		if err != nil {
@@ -47,9 +55,10 @@ func Run(ctx context.Context, cfg config.Config, log *slog.Logger) error {
 			return err
 		}
 		meta = postgres.NewMeta(pool)
+		readyCheck = pool.Ping
 		log.Info("file-service using postgres meta")
 	}
 	svc := files.New(blobs, meta)
 	log.Info("file-service listening", "grpc", cfg.GRPCAddr)
-	return grpcutil.Serve(ctx, cfg.GRPCAddr, cfg.HealthAddr, grpcapi.New(grpcapi.NewServer(svc)), HealthHandler())
+	return grpcutil.Serve(ctx, cfg.GRPCAddr, cfg.HealthAddr, grpcapi.New(grpcapi.NewServer(svc)), healthHandler(readyCheck))
 }

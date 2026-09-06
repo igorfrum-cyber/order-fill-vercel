@@ -121,14 +121,6 @@ func decodeJSON(w http.ResponseWriter, r *http.Request, dest any, limit int64) b
 	return true
 }
 
-func clientIP(r *http.Request) string {
-	host, _, err := net.SplitHostPort(r.RemoteAddr)
-	if err != nil {
-		return r.RemoteAddr
-	}
-	return host
-}
-
 func contentDisposition(name string) string {
 	ascii := strings.Map(func(char rune) rune {
 		if char < 32 || char > 126 || char == '"' || char == '\\' {
@@ -183,6 +175,7 @@ func originsMatch(allowed string, origin string) bool {
 	if isLoopbackHost(allowedURL.Hostname()) && isLoopbackHost(originURL.Hostname()) {
 		return true
 	}
+	// security: this is safe only while all first-level tenant subdomains serve trusted app code.
 	return hostIsCompanySubdomain(originURL.Hostname(), allowedURL.Hostname())
 }
 
@@ -284,6 +277,7 @@ func setSecurityHeaders(w http.ResponseWriter) {
 	header.Set("X-Content-Type-Options", "nosniff")
 	header.Set("X-Frame-Options", "DENY")
 	header.Set("Referrer-Policy", "no-referrer")
+	header.Set("Permissions-Policy", "camera=(), microphone=(), geolocation=()")
 }
 
 func publicErrorMessage(code, message string) string {

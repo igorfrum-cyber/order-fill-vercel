@@ -2,6 +2,7 @@ package matching
 
 import (
 	"context"
+	"math"
 
 	"order-fill/backend/pkg/grpcutil"
 	commonv1 "order-fill/backend/proto/gen/go/orderfill/common/v1"
@@ -89,8 +90,18 @@ func (c *GRPC) MergeChz(ctx context.Context, items []orderfill.MatchItem, opts o
 func protoItem(item orderfill.MatchItem) *matchingv1.Item {
 	return &matchingv1.Item{
 		Id: item.ID, Article: item.Article, Name: item.Name, Volume: item.Volume,
-		Form: item.Form, ChestnyZnak: item.ChestnyZnak, Rounded: int32(item.Rounded),
+		Form: item.Form, ChestnyZnak: item.ChestnyZnak, Rounded: int32Clamp(item.Rounded),
 	}
+}
+
+func int32Clamp(n int) int32 {
+	if n > math.MaxInt32 {
+		return math.MaxInt32
+	}
+	if n < math.MinInt32 {
+		return math.MinInt32
+	}
+	return int32(n)
 }
 
 func matchingMode(mode string) commonv1.MatchingMode {

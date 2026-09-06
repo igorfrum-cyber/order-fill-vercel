@@ -48,12 +48,12 @@ func NewRedis(now func() time.Time) *Limiter {
 	return New(now)
 }
 
-func (l *Limiter) Allow(key string) bool {
+func (l *Limiter) Allow(ctx context.Context, key string) bool {
 	if l == nil {
 		return true
 	}
 	if l.client != nil {
-		n, err := l.client.Get(context.Background(), keyPrefix+key).Int()
+		n, err := l.client.Get(ctx, keyPrefix+key).Int()
 		if err == redis.Nil {
 			return true
 		}
@@ -80,16 +80,16 @@ func (l *Limiter) Allow(key string) bool {
 	return true
 }
 
-func (l *Limiter) Fail(key string) {
+func (l *Limiter) Fail(ctx context.Context, key string) {
 	if l == nil {
 		return
 	}
 	if l.client != nil {
 		pipe := l.client.TxPipeline()
 		k := keyPrefix + key
-		pipe.Incr(context.Background(), k)
-		pipe.Expire(context.Background(), k, l.window)
-		_, _ = pipe.Exec(context.Background())
+		pipe.Incr(ctx, k)
+		pipe.Expire(ctx, k, l.window)
+		_, _ = pipe.Exec(ctx)
 		return
 	}
 	l.mu.Lock()
@@ -97,12 +97,12 @@ func (l *Limiter) Fail(key string) {
 	l.hits[key] = append(l.hits[key], l.now())
 }
 
-func (l *Limiter) Clear(key string) {
+func (l *Limiter) Clear(ctx context.Context, key string) {
 	if l == nil {
 		return
 	}
 	if l.client != nil {
-		_ = l.client.Del(context.Background(), keyPrefix+key).Err()
+		_ = l.client.Del(ctx, keyPrefix+key).Err()
 		return
 	}
 	l.mu.Lock()

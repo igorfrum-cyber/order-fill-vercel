@@ -2,6 +2,7 @@ package grpcapi
 
 import (
 	"context"
+	"math"
 
 	"google.golang.org/grpc"
 
@@ -82,12 +83,22 @@ func (s *Server) CalculateAdjustedQuantity(_ context.Context, req *calculationv1
 	} else {
 		adj = calculation.AdjustQuantity(req.GetRecommendedQty(), req.GetBrand(), req.GetOrderedFact(), req.GetHasOrderedFact(), req.GetBoxSize())
 	}
-	resp := &calculationv1.CalculateAdjustedQuantityResponse{Rounded: int32(adj.Rounded), AutoComment: adj.AutoComment, BoxAdjusted: adj.BoxAdjusted}
+	resp := &calculationv1.CalculateAdjustedQuantityResponse{Rounded: int32Clamp(adj.Rounded), AutoComment: adj.AutoComment, BoxAdjusted: adj.BoxAdjusted}
 	if adj.Inserted != nil {
 		resp.Inserted = true
 		resp.Qty = *adj.Inserted
 	}
 	return resp, nil
+}
+
+func int32Clamp(n int) int32 {
+	if n > math.MaxInt32 {
+		return math.MaxInt32
+	}
+	if n < math.MinInt32 {
+		return math.MinInt32
+	}
+	return int32(n)
 }
 
 func (s *Server) CalculateNorthPlan(_ context.Context, req *calculationv1.CalculateNorthPlanRequest) (*calculationv1.CalculateNorthPlanResponse, error) {

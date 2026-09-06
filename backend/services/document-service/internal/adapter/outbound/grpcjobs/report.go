@@ -2,6 +2,7 @@ package grpcjobs
 
 import (
 	"encoding/json"
+	"math"
 
 	commonv1 "order-fill/backend/proto/gen/go/orderfill/common/v1"
 	jobsv1 "order-fill/backend/proto/gen/go/orderfill/jobs/v1"
@@ -18,12 +19,12 @@ func completeReport(raw []byte) (*jobsv1.ReportSummary, []*jobsv1.ReportRow) {
 	}
 	rows := make([]*jobsv1.ReportRow, 0, len(payload.Rows))
 	summary := &jobsv1.ReportSummary{
-		NotInSource:       int32(payload.Summary.Unmatched),
-		CheckNameOrVolume: int32(payload.Summary.Suspicious),
-		NotInBlank:        int32(payload.Summary.NotInBlank),
-		ToOrder:           int32(payload.Summary.Filled),
-		OrderNotNeeded:    int32(payload.Summary.LeftBlank),
-		NeedsDecision:     int32(payload.Summary.Duplicates),
+		NotInSource:       int32Clamp(payload.Summary.Unmatched),
+		CheckNameOrVolume: int32Clamp(payload.Summary.Suspicious),
+		NotInBlank:        int32Clamp(payload.Summary.NotInBlank),
+		ToOrder:           int32Clamp(payload.Summary.Filled),
+		OrderNotNeeded:    int32Clamp(payload.Summary.LeftBlank),
+		NeedsDecision:     int32Clamp(payload.Summary.Duplicates),
 	}
 	if len(payload.Rows) == 0 {
 		return summary, rows
@@ -50,6 +51,16 @@ func completeReport(raw []byte) (*jobsv1.ReportSummary, []*jobsv1.ReportRow) {
 		}
 	}
 	return summary, rows
+}
+
+func int32Clamp(n int) int32 {
+	if n > math.MaxInt32 {
+		return math.MaxInt32
+	}
+	if n < math.MinInt32 {
+		return math.MinInt32
+	}
+	return int32(n)
 }
 
 func categoryOf(row orderfill.ReportRow) commonv1.ReportCategory {

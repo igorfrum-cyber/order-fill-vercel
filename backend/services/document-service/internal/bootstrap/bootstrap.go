@@ -32,6 +32,9 @@ func HealthHandler() http.Handler {
 }
 
 func Run(ctx context.Context, cfg config.Config, log *slog.Logger) error {
+	if err := cfg.ValidateAPI(); err != nil {
+		return err
+	}
 	var handler documentsv1.DocumentServiceServer
 	if cfg.FileAddr != "" {
 		if cfg.BrandAddr == "" {
@@ -53,6 +56,9 @@ func Run(ctx context.Context, cfg config.Config, log *slog.Logger) error {
 }
 
 func RunWorker(ctx context.Context, cfg config.Config, log *slog.Logger) error {
+	if err := cfg.ValidateWorker(); err != nil {
+		return err
+	}
 	fileConn, err := grpcutil.Dial(ctx, cfg.FileAddr)
 	if err != nil {
 		return err
@@ -92,7 +98,15 @@ func RunWorker(ctx context.Context, cfg config.Config, log *slog.Logger) error {
 	if err != nil {
 		return err
 	}
-	httpSrv := &http.Server{Addr: cfg.HealthAddr, Handler: HealthHandler(), ReadHeaderTimeout: 5 * time.Second}
+	httpSrv := &http.Server{
+		Addr:              cfg.HealthAddr,
+		Handler:           HealthHandler(),
+		ReadHeaderTimeout: 5 * time.Second,
+		ReadTimeout:       5 * time.Second,
+		WriteTimeout:      10 * time.Second,
+		IdleTimeout:       120 * time.Second,
+		MaxHeaderBytes:    1 << 20,
+	}
 	go func() { _ = httpSrv.ListenAndServe() }()
 	log.Info("document-worker consuming", "queue", cfg.QueueURL)
 	err = consumer.Run(ctx, processor.Handle)

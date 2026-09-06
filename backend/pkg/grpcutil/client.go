@@ -5,15 +5,17 @@ import (
 	"time"
 
 	"google.golang.org/grpc"
-	"google.golang.org/grpc/credentials/insecure"
 )
 
 const DefaultCallTimeout = 60 * time.Second
 
 func Dial(_ context.Context, target string) (*grpc.ClientConn, error) {
-	// ponytail: insecure until services leave the compose network; add TLS then.
+	creds, err := clientTransportCredentials(target)
+	if err != nil {
+		return nil, err
+	}
 	return grpc.NewClient(target,
-		grpc.WithTransportCredentials(insecure.NewCredentials()),
+		grpc.WithTransportCredentials(creds),
 		grpc.WithDefaultCallOptions(
 			grpc.MaxCallRecvMsgSize(MaxMsgSize),
 			grpc.MaxCallSendMsgSize(MaxMsgSize),

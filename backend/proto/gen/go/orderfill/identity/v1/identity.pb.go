@@ -1458,6 +1458,94 @@ func (*ChangePasswordResponse) Descriptor() ([]byte, []int) {
 	return file_orderfill_identity_v1_identity_proto_rawDescGZIP(), []int{24}
 }
 
+type PublicCompanyRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	LoginSlug     string                 `protobuf:"bytes,1,opt,name=login_slug,json=loginSlug,proto3" json:"login_slug,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *PublicCompanyRequest) Reset() {
+	*x = PublicCompanyRequest{}
+	mi := &file_orderfill_identity_v1_identity_proto_msgTypes[25]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *PublicCompanyRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*PublicCompanyRequest) ProtoMessage() {}
+
+func (x *PublicCompanyRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_orderfill_identity_v1_identity_proto_msgTypes[25]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use PublicCompanyRequest.ProtoReflect.Descriptor instead.
+func (*PublicCompanyRequest) Descriptor() ([]byte, []int) {
+	return file_orderfill_identity_v1_identity_proto_rawDescGZIP(), []int{25}
+}
+
+func (x *PublicCompanyRequest) GetLoginSlug() string {
+	if x != nil {
+		return x.LoginSlug
+	}
+	return ""
+}
+
+type PublicCompanyResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Company       *Company               `protobuf:"bytes,1,opt,name=company,proto3" json:"company,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *PublicCompanyResponse) Reset() {
+	*x = PublicCompanyResponse{}
+	mi := &file_orderfill_identity_v1_identity_proto_msgTypes[26]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *PublicCompanyResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*PublicCompanyResponse) ProtoMessage() {}
+
+func (x *PublicCompanyResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_orderfill_identity_v1_identity_proto_msgTypes[26]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use PublicCompanyResponse.ProtoReflect.Descriptor instead.
+func (*PublicCompanyResponse) Descriptor() ([]byte, []int) {
+	return file_orderfill_identity_v1_identity_proto_rawDescGZIP(), []int{26}
+}
+
+func (x *PublicCompanyResponse) GetCompany() *Company {
+	if x != nil {
+		return x.Company
+	}
+	return nil
+}
+
 type CreateCompanyRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Meta          *v1.RequestMeta        `protobuf:"bytes,1,opt,name=meta,proto3" json:"meta,omitempty"`
@@ -1470,7 +1558,7 @@ type CreateCompanyRequest struct {
 
 func (x *CreateCompanyRequest) Reset() {
 	*x = CreateCompanyRequest{}
-	mi := &file_orderfill_identity_v1_identity_proto_msgTypes[25]
+	mi := &file_orderfill_identity_v1_identity_proto_msgTypes[27]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1482,7 +1570,7 @@ func (x *CreateCompanyRequest) String() string {
 func (*CreateCompanyRequest) ProtoMessage() {}
 
 func (x *CreateCompanyRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_orderfill_identity_v1_identity_proto_msgTypes[25]
+	mi := &file_orderfill_identity_v1_identity_proto_msgTypes[27]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1495,7 +1583,7 @@ func (x *CreateCompanyRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CreateCompanyRequest.ProtoReflect.Descriptor instead.
 func (*CreateCompanyRequest) Descriptor() ([]byte, []int) {
-	return file_orderfill_identity_v1_identity_proto_rawDescGZIP(), []int{25}
+	return file_orderfill_identity_v1_identity_proto_rawDescGZIP(), []int{27}
 }
 
 func (x *CreateCompanyRequest) GetMeta() *v1.RequestMeta {
@@ -1535,7 +1623,7 @@ type CreateCompanyResponse struct {
 
 func (x *CreateCompanyResponse) Reset() {
 	*x = CreateCompanyResponse{}
-	mi := &file_orderfill_identity_v1_identity_proto_msgTypes[26]
+	mi := &file_orderfill_identity_v1_identity_proto_msgTypes[28]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1547,7 +1635,7 @@ func (x *CreateCompanyResponse) String() string {
 func (*CreateCompanyResponse) ProtoMessage() {}
 
 func (x *CreateCompanyResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_orderfill_identity_v1_identity_proto_msgTypes[26]
+	mi := &file_orderfill_identity_v1_identity_proto_msgTypes[28]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1560,7 +1648,7 @@ func (x *CreateCompanyResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CreateCompanyResponse.ProtoReflect.Descriptor instead.
 func (*CreateCompanyResponse) Descriptor() ([]byte, []int) {
-	return file_orderfill_identity_v1_identity_proto_rawDescGZIP(), []int{26}
+	return file_orderfill_identity_v1_identity_proto_rawDescGZIP(), []int{28}
 }
 
 func (x *CreateCompanyResponse) GetCompany() *Company {
@@ -1579,7 +1667,7 @@ type ListCompaniesRequest struct {
 
 func (x *ListCompaniesRequest) Reset() {
 	*x = ListCompaniesRequest{}
-	mi := &file_orderfill_identity_v1_identity_proto_msgTypes[27]
+	mi := &file_orderfill_identity_v1_identity_proto_msgTypes[29]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1591,7 +1679,7 @@ func (x *ListCompaniesRequest) String() string {
 func (*ListCompaniesRequest) ProtoMessage() {}
 
 func (x *ListCompaniesRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_orderfill_identity_v1_identity_proto_msgTypes[27]
+	mi := &file_orderfill_identity_v1_identity_proto_msgTypes[29]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1604,7 +1692,7 @@ func (x *ListCompaniesRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListCompaniesRequest.ProtoReflect.Descriptor instead.
 func (*ListCompaniesRequest) Descriptor() ([]byte, []int) {
-	return file_orderfill_identity_v1_identity_proto_rawDescGZIP(), []int{27}
+	return file_orderfill_identity_v1_identity_proto_rawDescGZIP(), []int{29}
 }
 
 func (x *ListCompaniesRequest) GetMeta() *v1.RequestMeta {
@@ -1623,7 +1711,7 @@ type ListCompaniesResponse struct {
 
 func (x *ListCompaniesResponse) Reset() {
 	*x = ListCompaniesResponse{}
-	mi := &file_orderfill_identity_v1_identity_proto_msgTypes[28]
+	mi := &file_orderfill_identity_v1_identity_proto_msgTypes[30]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1635,7 +1723,7 @@ func (x *ListCompaniesResponse) String() string {
 func (*ListCompaniesResponse) ProtoMessage() {}
 
 func (x *ListCompaniesResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_orderfill_identity_v1_identity_proto_msgTypes[28]
+	mi := &file_orderfill_identity_v1_identity_proto_msgTypes[30]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1648,7 +1736,7 @@ func (x *ListCompaniesResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListCompaniesResponse.ProtoReflect.Descriptor instead.
 func (*ListCompaniesResponse) Descriptor() ([]byte, []int) {
-	return file_orderfill_identity_v1_identity_proto_rawDescGZIP(), []int{28}
+	return file_orderfill_identity_v1_identity_proto_rawDescGZIP(), []int{30}
 }
 
 func (x *ListCompaniesResponse) GetCompanies() []*Company {
@@ -1671,7 +1759,7 @@ type UpdateCompanyRequest struct {
 
 func (x *UpdateCompanyRequest) Reset() {
 	*x = UpdateCompanyRequest{}
-	mi := &file_orderfill_identity_v1_identity_proto_msgTypes[29]
+	mi := &file_orderfill_identity_v1_identity_proto_msgTypes[31]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1683,7 +1771,7 @@ func (x *UpdateCompanyRequest) String() string {
 func (*UpdateCompanyRequest) ProtoMessage() {}
 
 func (x *UpdateCompanyRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_orderfill_identity_v1_identity_proto_msgTypes[29]
+	mi := &file_orderfill_identity_v1_identity_proto_msgTypes[31]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1696,7 +1784,7 @@ func (x *UpdateCompanyRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UpdateCompanyRequest.ProtoReflect.Descriptor instead.
 func (*UpdateCompanyRequest) Descriptor() ([]byte, []int) {
-	return file_orderfill_identity_v1_identity_proto_rawDescGZIP(), []int{29}
+	return file_orderfill_identity_v1_identity_proto_rawDescGZIP(), []int{31}
 }
 
 func (x *UpdateCompanyRequest) GetMeta() *v1.RequestMeta {
@@ -1743,7 +1831,7 @@ type UpdateCompanyResponse struct {
 
 func (x *UpdateCompanyResponse) Reset() {
 	*x = UpdateCompanyResponse{}
-	mi := &file_orderfill_identity_v1_identity_proto_msgTypes[30]
+	mi := &file_orderfill_identity_v1_identity_proto_msgTypes[32]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1755,7 +1843,7 @@ func (x *UpdateCompanyResponse) String() string {
 func (*UpdateCompanyResponse) ProtoMessage() {}
 
 func (x *UpdateCompanyResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_orderfill_identity_v1_identity_proto_msgTypes[30]
+	mi := &file_orderfill_identity_v1_identity_proto_msgTypes[32]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1768,7 +1856,7 @@ func (x *UpdateCompanyResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UpdateCompanyResponse.ProtoReflect.Descriptor instead.
 func (*UpdateCompanyResponse) Descriptor() ([]byte, []int) {
-	return file_orderfill_identity_v1_identity_proto_rawDescGZIP(), []int{30}
+	return file_orderfill_identity_v1_identity_proto_rawDescGZIP(), []int{32}
 }
 
 func (x *UpdateCompanyResponse) GetCompany() *Company {
@@ -1788,7 +1876,7 @@ type DisableCompanyRequest struct {
 
 func (x *DisableCompanyRequest) Reset() {
 	*x = DisableCompanyRequest{}
-	mi := &file_orderfill_identity_v1_identity_proto_msgTypes[31]
+	mi := &file_orderfill_identity_v1_identity_proto_msgTypes[33]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1800,7 +1888,7 @@ func (x *DisableCompanyRequest) String() string {
 func (*DisableCompanyRequest) ProtoMessage() {}
 
 func (x *DisableCompanyRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_orderfill_identity_v1_identity_proto_msgTypes[31]
+	mi := &file_orderfill_identity_v1_identity_proto_msgTypes[33]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1813,7 +1901,7 @@ func (x *DisableCompanyRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DisableCompanyRequest.ProtoReflect.Descriptor instead.
 func (*DisableCompanyRequest) Descriptor() ([]byte, []int) {
-	return file_orderfill_identity_v1_identity_proto_rawDescGZIP(), []int{31}
+	return file_orderfill_identity_v1_identity_proto_rawDescGZIP(), []int{33}
 }
 
 func (x *DisableCompanyRequest) GetMeta() *v1.RequestMeta {
@@ -1838,7 +1926,7 @@ type DisableCompanyResponse struct {
 
 func (x *DisableCompanyResponse) Reset() {
 	*x = DisableCompanyResponse{}
-	mi := &file_orderfill_identity_v1_identity_proto_msgTypes[32]
+	mi := &file_orderfill_identity_v1_identity_proto_msgTypes[34]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1850,7 +1938,7 @@ func (x *DisableCompanyResponse) String() string {
 func (*DisableCompanyResponse) ProtoMessage() {}
 
 func (x *DisableCompanyResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_orderfill_identity_v1_identity_proto_msgTypes[32]
+	mi := &file_orderfill_identity_v1_identity_proto_msgTypes[34]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1863,7 +1951,7 @@ func (x *DisableCompanyResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DisableCompanyResponse.ProtoReflect.Descriptor instead.
 func (*DisableCompanyResponse) Descriptor() ([]byte, []int) {
-	return file_orderfill_identity_v1_identity_proto_rawDescGZIP(), []int{32}
+	return file_orderfill_identity_v1_identity_proto_rawDescGZIP(), []int{34}
 }
 
 type CreateUserRequest struct {
@@ -1878,7 +1966,7 @@ type CreateUserRequest struct {
 
 func (x *CreateUserRequest) Reset() {
 	*x = CreateUserRequest{}
-	mi := &file_orderfill_identity_v1_identity_proto_msgTypes[33]
+	mi := &file_orderfill_identity_v1_identity_proto_msgTypes[35]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1890,7 +1978,7 @@ func (x *CreateUserRequest) String() string {
 func (*CreateUserRequest) ProtoMessage() {}
 
 func (x *CreateUserRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_orderfill_identity_v1_identity_proto_msgTypes[33]
+	mi := &file_orderfill_identity_v1_identity_proto_msgTypes[35]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1903,7 +1991,7 @@ func (x *CreateUserRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CreateUserRequest.ProtoReflect.Descriptor instead.
 func (*CreateUserRequest) Descriptor() ([]byte, []int) {
-	return file_orderfill_identity_v1_identity_proto_rawDescGZIP(), []int{33}
+	return file_orderfill_identity_v1_identity_proto_rawDescGZIP(), []int{35}
 }
 
 func (x *CreateUserRequest) GetMeta() *v1.RequestMeta {
@@ -1944,7 +2032,7 @@ type CreateUserResponse struct {
 
 func (x *CreateUserResponse) Reset() {
 	*x = CreateUserResponse{}
-	mi := &file_orderfill_identity_v1_identity_proto_msgTypes[34]
+	mi := &file_orderfill_identity_v1_identity_proto_msgTypes[36]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1956,7 +2044,7 @@ func (x *CreateUserResponse) String() string {
 func (*CreateUserResponse) ProtoMessage() {}
 
 func (x *CreateUserResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_orderfill_identity_v1_identity_proto_msgTypes[34]
+	mi := &file_orderfill_identity_v1_identity_proto_msgTypes[36]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1969,7 +2057,7 @@ func (x *CreateUserResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CreateUserResponse.ProtoReflect.Descriptor instead.
 func (*CreateUserResponse) Descriptor() ([]byte, []int) {
-	return file_orderfill_identity_v1_identity_proto_rawDescGZIP(), []int{34}
+	return file_orderfill_identity_v1_identity_proto_rawDescGZIP(), []int{36}
 }
 
 func (x *CreateUserResponse) GetUser() *User {
@@ -1996,7 +2084,7 @@ type ListUsersRequest struct {
 
 func (x *ListUsersRequest) Reset() {
 	*x = ListUsersRequest{}
-	mi := &file_orderfill_identity_v1_identity_proto_msgTypes[35]
+	mi := &file_orderfill_identity_v1_identity_proto_msgTypes[37]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2008,7 +2096,7 @@ func (x *ListUsersRequest) String() string {
 func (*ListUsersRequest) ProtoMessage() {}
 
 func (x *ListUsersRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_orderfill_identity_v1_identity_proto_msgTypes[35]
+	mi := &file_orderfill_identity_v1_identity_proto_msgTypes[37]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2021,7 +2109,7 @@ func (x *ListUsersRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListUsersRequest.ProtoReflect.Descriptor instead.
 func (*ListUsersRequest) Descriptor() ([]byte, []int) {
-	return file_orderfill_identity_v1_identity_proto_rawDescGZIP(), []int{35}
+	return file_orderfill_identity_v1_identity_proto_rawDescGZIP(), []int{37}
 }
 
 func (x *ListUsersRequest) GetMeta() *v1.RequestMeta {
@@ -2047,7 +2135,7 @@ type ListUsersResponse struct {
 
 func (x *ListUsersResponse) Reset() {
 	*x = ListUsersResponse{}
-	mi := &file_orderfill_identity_v1_identity_proto_msgTypes[36]
+	mi := &file_orderfill_identity_v1_identity_proto_msgTypes[38]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2059,7 +2147,7 @@ func (x *ListUsersResponse) String() string {
 func (*ListUsersResponse) ProtoMessage() {}
 
 func (x *ListUsersResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_orderfill_identity_v1_identity_proto_msgTypes[36]
+	mi := &file_orderfill_identity_v1_identity_proto_msgTypes[38]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2072,7 +2160,7 @@ func (x *ListUsersResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListUsersResponse.ProtoReflect.Descriptor instead.
 func (*ListUsersResponse) Descriptor() ([]byte, []int) {
-	return file_orderfill_identity_v1_identity_proto_rawDescGZIP(), []int{36}
+	return file_orderfill_identity_v1_identity_proto_rawDescGZIP(), []int{38}
 }
 
 func (x *ListUsersResponse) GetUsers() []*User {
@@ -2092,7 +2180,7 @@ type DisableUserRequest struct {
 
 func (x *DisableUserRequest) Reset() {
 	*x = DisableUserRequest{}
-	mi := &file_orderfill_identity_v1_identity_proto_msgTypes[37]
+	mi := &file_orderfill_identity_v1_identity_proto_msgTypes[39]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2104,7 +2192,7 @@ func (x *DisableUserRequest) String() string {
 func (*DisableUserRequest) ProtoMessage() {}
 
 func (x *DisableUserRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_orderfill_identity_v1_identity_proto_msgTypes[37]
+	mi := &file_orderfill_identity_v1_identity_proto_msgTypes[39]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2117,7 +2205,7 @@ func (x *DisableUserRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DisableUserRequest.ProtoReflect.Descriptor instead.
 func (*DisableUserRequest) Descriptor() ([]byte, []int) {
-	return file_orderfill_identity_v1_identity_proto_rawDescGZIP(), []int{37}
+	return file_orderfill_identity_v1_identity_proto_rawDescGZIP(), []int{39}
 }
 
 func (x *DisableUserRequest) GetMeta() *v1.RequestMeta {
@@ -2142,7 +2230,7 @@ type DisableUserResponse struct {
 
 func (x *DisableUserResponse) Reset() {
 	*x = DisableUserResponse{}
-	mi := &file_orderfill_identity_v1_identity_proto_msgTypes[38]
+	mi := &file_orderfill_identity_v1_identity_proto_msgTypes[40]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2154,7 +2242,7 @@ func (x *DisableUserResponse) String() string {
 func (*DisableUserResponse) ProtoMessage() {}
 
 func (x *DisableUserResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_orderfill_identity_v1_identity_proto_msgTypes[38]
+	mi := &file_orderfill_identity_v1_identity_proto_msgTypes[40]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2167,7 +2255,7 @@ func (x *DisableUserResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DisableUserResponse.ProtoReflect.Descriptor instead.
 func (*DisableUserResponse) Descriptor() ([]byte, []int) {
-	return file_orderfill_identity_v1_identity_proto_rawDescGZIP(), []int{38}
+	return file_orderfill_identity_v1_identity_proto_rawDescGZIP(), []int{40}
 }
 
 type ResetUserAccessRequest struct {
@@ -2180,7 +2268,7 @@ type ResetUserAccessRequest struct {
 
 func (x *ResetUserAccessRequest) Reset() {
 	*x = ResetUserAccessRequest{}
-	mi := &file_orderfill_identity_v1_identity_proto_msgTypes[39]
+	mi := &file_orderfill_identity_v1_identity_proto_msgTypes[41]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2192,7 +2280,7 @@ func (x *ResetUserAccessRequest) String() string {
 func (*ResetUserAccessRequest) ProtoMessage() {}
 
 func (x *ResetUserAccessRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_orderfill_identity_v1_identity_proto_msgTypes[39]
+	mi := &file_orderfill_identity_v1_identity_proto_msgTypes[41]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2205,7 +2293,7 @@ func (x *ResetUserAccessRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ResetUserAccessRequest.ProtoReflect.Descriptor instead.
 func (*ResetUserAccessRequest) Descriptor() ([]byte, []int) {
-	return file_orderfill_identity_v1_identity_proto_rawDescGZIP(), []int{39}
+	return file_orderfill_identity_v1_identity_proto_rawDescGZIP(), []int{41}
 }
 
 func (x *ResetUserAccessRequest) GetMeta() *v1.RequestMeta {
@@ -2231,7 +2319,7 @@ type ResetUserAccessResponse struct {
 
 func (x *ResetUserAccessResponse) Reset() {
 	*x = ResetUserAccessResponse{}
-	mi := &file_orderfill_identity_v1_identity_proto_msgTypes[40]
+	mi := &file_orderfill_identity_v1_identity_proto_msgTypes[42]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2243,7 +2331,7 @@ func (x *ResetUserAccessResponse) String() string {
 func (*ResetUserAccessResponse) ProtoMessage() {}
 
 func (x *ResetUserAccessResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_orderfill_identity_v1_identity_proto_msgTypes[40]
+	mi := &file_orderfill_identity_v1_identity_proto_msgTypes[42]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2256,7 +2344,7 @@ func (x *ResetUserAccessResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ResetUserAccessResponse.ProtoReflect.Descriptor instead.
 func (*ResetUserAccessResponse) Descriptor() ([]byte, []int) {
-	return file_orderfill_identity_v1_identity_proto_rawDescGZIP(), []int{40}
+	return file_orderfill_identity_v1_identity_proto_rawDescGZIP(), []int{42}
 }
 
 func (x *ResetUserAccessResponse) GetInviteToken() string {
@@ -2380,7 +2468,12 @@ const file_orderfill_identity_v1_identity_proto_rawDesc = "" +
 	"\ractor_user_id\x18\x02 \x01(\tR\vactorUserId\x12)\n" +
 	"\x10current_password\x18\x03 \x01(\tR\x0fcurrentPassword\x12!\n" +
 	"\fnew_password\x18\x04 \x01(\tR\vnewPassword\"\x18\n" +
-	"\x16ChangePasswordResponse\"\xc7\x01\n" +
+	"\x16ChangePasswordResponse\"5\n" +
+	"\x14PublicCompanyRequest\x12\x1d\n" +
+	"\n" +
+	"login_slug\x18\x01 \x01(\tR\tloginSlug\"Q\n" +
+	"\x15PublicCompanyResponse\x128\n" +
+	"\acompany\x18\x01 \x01(\v2\x1e.orderfill.identity.v1.CompanyR\acompany\"\xc7\x01\n" +
 	"\x14CreateCompanyRequest\x124\n" +
 	"\x04meta\x18\x01 \x01(\v2 .orderfill.common.v1.RequestMetaR\x04meta\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12\x1d\n" +
@@ -2431,7 +2524,7 @@ const file_orderfill_identity_v1_identity_proto_rawDesc = "" +
 	"\x04meta\x18\x01 \x01(\v2 .orderfill.common.v1.RequestMetaR\x04meta\x12\x17\n" +
 	"\auser_id\x18\x02 \x01(\tR\x06userId\"<\n" +
 	"\x17ResetUserAccessResponse\x12!\n" +
-	"\finvite_token\x18\x01 \x01(\tR\vinviteToken2\xf5\x0f\n" +
+	"\finvite_token\x18\x01 \x01(\tR\vinviteToken2\xe1\x10\n" +
 	"\x0fIdentityService\x12R\n" +
 	"\x05Login\x12#.orderfill.identity.v1.LoginRequest\x1a$.orderfill.identity.v1.LoginResponse\x12\x85\x01\n" +
 	"\x16CompleteTwoFactorLogin\x124.orderfill.identity.v1.CompleteTwoFactorLoginRequest\x1a5.orderfill.identity.v1.CompleteTwoFactorLoginResponse\x12U\n" +
@@ -2444,6 +2537,7 @@ const file_orderfill_identity_v1_identity_proto_rawDesc = "" +
 	"\fAcceptInvite\x12*.orderfill.identity.v1.AcceptInviteRequest\x1a+.orderfill.identity.v1.AcceptInviteResponse\x12y\n" +
 	"\x12FinishPasskeyLogin\x120.orderfill.identity.v1.FinishPasskeyLoginRequest\x1a1.orderfill.identity.v1.FinishPasskeyLoginResponse\x12m\n" +
 	"\x0eChangePassword\x12,.orderfill.identity.v1.ChangePasswordRequest\x1a-.orderfill.identity.v1.ChangePasswordResponse\x12j\n" +
+	"\rPublicCompany\x12+.orderfill.identity.v1.PublicCompanyRequest\x1a,.orderfill.identity.v1.PublicCompanyResponse\x12j\n" +
 	"\rCreateCompany\x12+.orderfill.identity.v1.CreateCompanyRequest\x1a,.orderfill.identity.v1.CreateCompanyResponse\x12j\n" +
 	"\rListCompanies\x12+.orderfill.identity.v1.ListCompaniesRequest\x1a,.orderfill.identity.v1.ListCompaniesResponse\x12j\n" +
 	"\rUpdateCompany\x12+.orderfill.identity.v1.UpdateCompanyRequest\x1a,.orderfill.identity.v1.UpdateCompanyResponse\x12m\n" +
@@ -2466,7 +2560,7 @@ func file_orderfill_identity_v1_identity_proto_rawDescGZIP() []byte {
 	return file_orderfill_identity_v1_identity_proto_rawDescData
 }
 
-var file_orderfill_identity_v1_identity_proto_msgTypes = make([]protoimpl.MessageInfo, 41)
+var file_orderfill_identity_v1_identity_proto_msgTypes = make([]protoimpl.MessageInfo, 43)
 var file_orderfill_identity_v1_identity_proto_goTypes = []any{
 	(*User)(nil),                           // 0: orderfill.identity.v1.User
 	(*Company)(nil),                        // 1: orderfill.identity.v1.Company
@@ -2493,27 +2587,29 @@ var file_orderfill_identity_v1_identity_proto_goTypes = []any{
 	(*FinishPasskeyLoginResponse)(nil),     // 22: orderfill.identity.v1.FinishPasskeyLoginResponse
 	(*ChangePasswordRequest)(nil),          // 23: orderfill.identity.v1.ChangePasswordRequest
 	(*ChangePasswordResponse)(nil),         // 24: orderfill.identity.v1.ChangePasswordResponse
-	(*CreateCompanyRequest)(nil),           // 25: orderfill.identity.v1.CreateCompanyRequest
-	(*CreateCompanyResponse)(nil),          // 26: orderfill.identity.v1.CreateCompanyResponse
-	(*ListCompaniesRequest)(nil),           // 27: orderfill.identity.v1.ListCompaniesRequest
-	(*ListCompaniesResponse)(nil),          // 28: orderfill.identity.v1.ListCompaniesResponse
-	(*UpdateCompanyRequest)(nil),           // 29: orderfill.identity.v1.UpdateCompanyRequest
-	(*UpdateCompanyResponse)(nil),          // 30: orderfill.identity.v1.UpdateCompanyResponse
-	(*DisableCompanyRequest)(nil),          // 31: orderfill.identity.v1.DisableCompanyRequest
-	(*DisableCompanyResponse)(nil),         // 32: orderfill.identity.v1.DisableCompanyResponse
-	(*CreateUserRequest)(nil),              // 33: orderfill.identity.v1.CreateUserRequest
-	(*CreateUserResponse)(nil),             // 34: orderfill.identity.v1.CreateUserResponse
-	(*ListUsersRequest)(nil),               // 35: orderfill.identity.v1.ListUsersRequest
-	(*ListUsersResponse)(nil),              // 36: orderfill.identity.v1.ListUsersResponse
-	(*DisableUserRequest)(nil),             // 37: orderfill.identity.v1.DisableUserRequest
-	(*DisableUserResponse)(nil),            // 38: orderfill.identity.v1.DisableUserResponse
-	(*ResetUserAccessRequest)(nil),         // 39: orderfill.identity.v1.ResetUserAccessRequest
-	(*ResetUserAccessResponse)(nil),        // 40: orderfill.identity.v1.ResetUserAccessResponse
-	(v1.MatchingMode)(0),                   // 41: orderfill.common.v1.MatchingMode
-	(*v1.RequestMeta)(nil),                 // 42: orderfill.common.v1.RequestMeta
+	(*PublicCompanyRequest)(nil),           // 25: orderfill.identity.v1.PublicCompanyRequest
+	(*PublicCompanyResponse)(nil),          // 26: orderfill.identity.v1.PublicCompanyResponse
+	(*CreateCompanyRequest)(nil),           // 27: orderfill.identity.v1.CreateCompanyRequest
+	(*CreateCompanyResponse)(nil),          // 28: orderfill.identity.v1.CreateCompanyResponse
+	(*ListCompaniesRequest)(nil),           // 29: orderfill.identity.v1.ListCompaniesRequest
+	(*ListCompaniesResponse)(nil),          // 30: orderfill.identity.v1.ListCompaniesResponse
+	(*UpdateCompanyRequest)(nil),           // 31: orderfill.identity.v1.UpdateCompanyRequest
+	(*UpdateCompanyResponse)(nil),          // 32: orderfill.identity.v1.UpdateCompanyResponse
+	(*DisableCompanyRequest)(nil),          // 33: orderfill.identity.v1.DisableCompanyRequest
+	(*DisableCompanyResponse)(nil),         // 34: orderfill.identity.v1.DisableCompanyResponse
+	(*CreateUserRequest)(nil),              // 35: orderfill.identity.v1.CreateUserRequest
+	(*CreateUserResponse)(nil),             // 36: orderfill.identity.v1.CreateUserResponse
+	(*ListUsersRequest)(nil),               // 37: orderfill.identity.v1.ListUsersRequest
+	(*ListUsersResponse)(nil),              // 38: orderfill.identity.v1.ListUsersResponse
+	(*DisableUserRequest)(nil),             // 39: orderfill.identity.v1.DisableUserRequest
+	(*DisableUserResponse)(nil),            // 40: orderfill.identity.v1.DisableUserResponse
+	(*ResetUserAccessRequest)(nil),         // 41: orderfill.identity.v1.ResetUserAccessRequest
+	(*ResetUserAccessResponse)(nil),        // 42: orderfill.identity.v1.ResetUserAccessResponse
+	(v1.MatchingMode)(0),                   // 43: orderfill.common.v1.MatchingMode
+	(*v1.RequestMeta)(nil),                 // 44: orderfill.common.v1.RequestMeta
 }
 var file_orderfill_identity_v1_identity_proto_depIdxs = []int32{
-	41, // 0: orderfill.identity.v1.Company.matching_mode:type_name -> orderfill.common.v1.MatchingMode
+	43, // 0: orderfill.identity.v1.Company.matching_mode:type_name -> orderfill.common.v1.MatchingMode
 	0,  // 1: orderfill.identity.v1.LoginResponse.user:type_name -> orderfill.identity.v1.User
 	2,  // 2: orderfill.identity.v1.LoginResponse.session:type_name -> orderfill.identity.v1.Session
 	0,  // 3: orderfill.identity.v1.CompleteTwoFactorLoginResponse.user:type_name -> orderfill.identity.v1.User
@@ -2526,64 +2622,67 @@ var file_orderfill_identity_v1_identity_proto_depIdxs = []int32{
 	2,  // 10: orderfill.identity.v1.AcceptInviteResponse.session:type_name -> orderfill.identity.v1.Session
 	0,  // 11: orderfill.identity.v1.FinishPasskeyLoginResponse.user:type_name -> orderfill.identity.v1.User
 	2,  // 12: orderfill.identity.v1.FinishPasskeyLoginResponse.session:type_name -> orderfill.identity.v1.Session
-	42, // 13: orderfill.identity.v1.CreateCompanyRequest.meta:type_name -> orderfill.common.v1.RequestMeta
-	41, // 14: orderfill.identity.v1.CreateCompanyRequest.matching_mode:type_name -> orderfill.common.v1.MatchingMode
-	1,  // 15: orderfill.identity.v1.CreateCompanyResponse.company:type_name -> orderfill.identity.v1.Company
-	42, // 16: orderfill.identity.v1.ListCompaniesRequest.meta:type_name -> orderfill.common.v1.RequestMeta
-	1,  // 17: orderfill.identity.v1.ListCompaniesResponse.companies:type_name -> orderfill.identity.v1.Company
-	42, // 18: orderfill.identity.v1.UpdateCompanyRequest.meta:type_name -> orderfill.common.v1.RequestMeta
-	41, // 19: orderfill.identity.v1.UpdateCompanyRequest.matching_mode:type_name -> orderfill.common.v1.MatchingMode
-	1,  // 20: orderfill.identity.v1.UpdateCompanyResponse.company:type_name -> orderfill.identity.v1.Company
-	42, // 21: orderfill.identity.v1.DisableCompanyRequest.meta:type_name -> orderfill.common.v1.RequestMeta
-	42, // 22: orderfill.identity.v1.CreateUserRequest.meta:type_name -> orderfill.common.v1.RequestMeta
-	0,  // 23: orderfill.identity.v1.CreateUserResponse.user:type_name -> orderfill.identity.v1.User
-	42, // 24: orderfill.identity.v1.ListUsersRequest.meta:type_name -> orderfill.common.v1.RequestMeta
-	0,  // 25: orderfill.identity.v1.ListUsersResponse.users:type_name -> orderfill.identity.v1.User
-	42, // 26: orderfill.identity.v1.DisableUserRequest.meta:type_name -> orderfill.common.v1.RequestMeta
-	42, // 27: orderfill.identity.v1.ResetUserAccessRequest.meta:type_name -> orderfill.common.v1.RequestMeta
-	3,  // 28: orderfill.identity.v1.IdentityService.Login:input_type -> orderfill.identity.v1.LoginRequest
-	5,  // 29: orderfill.identity.v1.IdentityService.CompleteTwoFactorLogin:input_type -> orderfill.identity.v1.CompleteTwoFactorLoginRequest
-	7,  // 30: orderfill.identity.v1.IdentityService.Logout:input_type -> orderfill.identity.v1.LogoutRequest
-	9,  // 31: orderfill.identity.v1.IdentityService.LogoutEverywhere:input_type -> orderfill.identity.v1.LogoutEverywhereRequest
-	11, // 32: orderfill.identity.v1.IdentityService.ListSessions:input_type -> orderfill.identity.v1.ListSessionsRequest
-	13, // 33: orderfill.identity.v1.IdentityService.RevokeSession:input_type -> orderfill.identity.v1.RevokeSessionRequest
-	15, // 34: orderfill.identity.v1.IdentityService.ValidateSession:input_type -> orderfill.identity.v1.ValidateSessionRequest
-	17, // 35: orderfill.identity.v1.IdentityService.GetMe:input_type -> orderfill.identity.v1.GetMeRequest
-	19, // 36: orderfill.identity.v1.IdentityService.AcceptInvite:input_type -> orderfill.identity.v1.AcceptInviteRequest
-	21, // 37: orderfill.identity.v1.IdentityService.FinishPasskeyLogin:input_type -> orderfill.identity.v1.FinishPasskeyLoginRequest
-	23, // 38: orderfill.identity.v1.IdentityService.ChangePassword:input_type -> orderfill.identity.v1.ChangePasswordRequest
-	25, // 39: orderfill.identity.v1.IdentityService.CreateCompany:input_type -> orderfill.identity.v1.CreateCompanyRequest
-	27, // 40: orderfill.identity.v1.IdentityService.ListCompanies:input_type -> orderfill.identity.v1.ListCompaniesRequest
-	29, // 41: orderfill.identity.v1.IdentityService.UpdateCompany:input_type -> orderfill.identity.v1.UpdateCompanyRequest
-	31, // 42: orderfill.identity.v1.IdentityService.DisableCompany:input_type -> orderfill.identity.v1.DisableCompanyRequest
-	33, // 43: orderfill.identity.v1.IdentityService.CreateUser:input_type -> orderfill.identity.v1.CreateUserRequest
-	35, // 44: orderfill.identity.v1.IdentityService.ListUsers:input_type -> orderfill.identity.v1.ListUsersRequest
-	37, // 45: orderfill.identity.v1.IdentityService.DisableUser:input_type -> orderfill.identity.v1.DisableUserRequest
-	39, // 46: orderfill.identity.v1.IdentityService.ResetUserAccess:input_type -> orderfill.identity.v1.ResetUserAccessRequest
-	4,  // 47: orderfill.identity.v1.IdentityService.Login:output_type -> orderfill.identity.v1.LoginResponse
-	6,  // 48: orderfill.identity.v1.IdentityService.CompleteTwoFactorLogin:output_type -> orderfill.identity.v1.CompleteTwoFactorLoginResponse
-	8,  // 49: orderfill.identity.v1.IdentityService.Logout:output_type -> orderfill.identity.v1.LogoutResponse
-	10, // 50: orderfill.identity.v1.IdentityService.LogoutEverywhere:output_type -> orderfill.identity.v1.LogoutEverywhereResponse
-	12, // 51: orderfill.identity.v1.IdentityService.ListSessions:output_type -> orderfill.identity.v1.ListSessionsResponse
-	14, // 52: orderfill.identity.v1.IdentityService.RevokeSession:output_type -> orderfill.identity.v1.RevokeSessionResponse
-	16, // 53: orderfill.identity.v1.IdentityService.ValidateSession:output_type -> orderfill.identity.v1.ValidateSessionResponse
-	18, // 54: orderfill.identity.v1.IdentityService.GetMe:output_type -> orderfill.identity.v1.GetMeResponse
-	20, // 55: orderfill.identity.v1.IdentityService.AcceptInvite:output_type -> orderfill.identity.v1.AcceptInviteResponse
-	22, // 56: orderfill.identity.v1.IdentityService.FinishPasskeyLogin:output_type -> orderfill.identity.v1.FinishPasskeyLoginResponse
-	24, // 57: orderfill.identity.v1.IdentityService.ChangePassword:output_type -> orderfill.identity.v1.ChangePasswordResponse
-	26, // 58: orderfill.identity.v1.IdentityService.CreateCompany:output_type -> orderfill.identity.v1.CreateCompanyResponse
-	28, // 59: orderfill.identity.v1.IdentityService.ListCompanies:output_type -> orderfill.identity.v1.ListCompaniesResponse
-	30, // 60: orderfill.identity.v1.IdentityService.UpdateCompany:output_type -> orderfill.identity.v1.UpdateCompanyResponse
-	32, // 61: orderfill.identity.v1.IdentityService.DisableCompany:output_type -> orderfill.identity.v1.DisableCompanyResponse
-	34, // 62: orderfill.identity.v1.IdentityService.CreateUser:output_type -> orderfill.identity.v1.CreateUserResponse
-	36, // 63: orderfill.identity.v1.IdentityService.ListUsers:output_type -> orderfill.identity.v1.ListUsersResponse
-	38, // 64: orderfill.identity.v1.IdentityService.DisableUser:output_type -> orderfill.identity.v1.DisableUserResponse
-	40, // 65: orderfill.identity.v1.IdentityService.ResetUserAccess:output_type -> orderfill.identity.v1.ResetUserAccessResponse
-	47, // [47:66] is the sub-list for method output_type
-	28, // [28:47] is the sub-list for method input_type
-	28, // [28:28] is the sub-list for extension type_name
-	28, // [28:28] is the sub-list for extension extendee
-	0,  // [0:28] is the sub-list for field type_name
+	1,  // 13: orderfill.identity.v1.PublicCompanyResponse.company:type_name -> orderfill.identity.v1.Company
+	44, // 14: orderfill.identity.v1.CreateCompanyRequest.meta:type_name -> orderfill.common.v1.RequestMeta
+	43, // 15: orderfill.identity.v1.CreateCompanyRequest.matching_mode:type_name -> orderfill.common.v1.MatchingMode
+	1,  // 16: orderfill.identity.v1.CreateCompanyResponse.company:type_name -> orderfill.identity.v1.Company
+	44, // 17: orderfill.identity.v1.ListCompaniesRequest.meta:type_name -> orderfill.common.v1.RequestMeta
+	1,  // 18: orderfill.identity.v1.ListCompaniesResponse.companies:type_name -> orderfill.identity.v1.Company
+	44, // 19: orderfill.identity.v1.UpdateCompanyRequest.meta:type_name -> orderfill.common.v1.RequestMeta
+	43, // 20: orderfill.identity.v1.UpdateCompanyRequest.matching_mode:type_name -> orderfill.common.v1.MatchingMode
+	1,  // 21: orderfill.identity.v1.UpdateCompanyResponse.company:type_name -> orderfill.identity.v1.Company
+	44, // 22: orderfill.identity.v1.DisableCompanyRequest.meta:type_name -> orderfill.common.v1.RequestMeta
+	44, // 23: orderfill.identity.v1.CreateUserRequest.meta:type_name -> orderfill.common.v1.RequestMeta
+	0,  // 24: orderfill.identity.v1.CreateUserResponse.user:type_name -> orderfill.identity.v1.User
+	44, // 25: orderfill.identity.v1.ListUsersRequest.meta:type_name -> orderfill.common.v1.RequestMeta
+	0,  // 26: orderfill.identity.v1.ListUsersResponse.users:type_name -> orderfill.identity.v1.User
+	44, // 27: orderfill.identity.v1.DisableUserRequest.meta:type_name -> orderfill.common.v1.RequestMeta
+	44, // 28: orderfill.identity.v1.ResetUserAccessRequest.meta:type_name -> orderfill.common.v1.RequestMeta
+	3,  // 29: orderfill.identity.v1.IdentityService.Login:input_type -> orderfill.identity.v1.LoginRequest
+	5,  // 30: orderfill.identity.v1.IdentityService.CompleteTwoFactorLogin:input_type -> orderfill.identity.v1.CompleteTwoFactorLoginRequest
+	7,  // 31: orderfill.identity.v1.IdentityService.Logout:input_type -> orderfill.identity.v1.LogoutRequest
+	9,  // 32: orderfill.identity.v1.IdentityService.LogoutEverywhere:input_type -> orderfill.identity.v1.LogoutEverywhereRequest
+	11, // 33: orderfill.identity.v1.IdentityService.ListSessions:input_type -> orderfill.identity.v1.ListSessionsRequest
+	13, // 34: orderfill.identity.v1.IdentityService.RevokeSession:input_type -> orderfill.identity.v1.RevokeSessionRequest
+	15, // 35: orderfill.identity.v1.IdentityService.ValidateSession:input_type -> orderfill.identity.v1.ValidateSessionRequest
+	17, // 36: orderfill.identity.v1.IdentityService.GetMe:input_type -> orderfill.identity.v1.GetMeRequest
+	19, // 37: orderfill.identity.v1.IdentityService.AcceptInvite:input_type -> orderfill.identity.v1.AcceptInviteRequest
+	21, // 38: orderfill.identity.v1.IdentityService.FinishPasskeyLogin:input_type -> orderfill.identity.v1.FinishPasskeyLoginRequest
+	23, // 39: orderfill.identity.v1.IdentityService.ChangePassword:input_type -> orderfill.identity.v1.ChangePasswordRequest
+	25, // 40: orderfill.identity.v1.IdentityService.PublicCompany:input_type -> orderfill.identity.v1.PublicCompanyRequest
+	27, // 41: orderfill.identity.v1.IdentityService.CreateCompany:input_type -> orderfill.identity.v1.CreateCompanyRequest
+	29, // 42: orderfill.identity.v1.IdentityService.ListCompanies:input_type -> orderfill.identity.v1.ListCompaniesRequest
+	31, // 43: orderfill.identity.v1.IdentityService.UpdateCompany:input_type -> orderfill.identity.v1.UpdateCompanyRequest
+	33, // 44: orderfill.identity.v1.IdentityService.DisableCompany:input_type -> orderfill.identity.v1.DisableCompanyRequest
+	35, // 45: orderfill.identity.v1.IdentityService.CreateUser:input_type -> orderfill.identity.v1.CreateUserRequest
+	37, // 46: orderfill.identity.v1.IdentityService.ListUsers:input_type -> orderfill.identity.v1.ListUsersRequest
+	39, // 47: orderfill.identity.v1.IdentityService.DisableUser:input_type -> orderfill.identity.v1.DisableUserRequest
+	41, // 48: orderfill.identity.v1.IdentityService.ResetUserAccess:input_type -> orderfill.identity.v1.ResetUserAccessRequest
+	4,  // 49: orderfill.identity.v1.IdentityService.Login:output_type -> orderfill.identity.v1.LoginResponse
+	6,  // 50: orderfill.identity.v1.IdentityService.CompleteTwoFactorLogin:output_type -> orderfill.identity.v1.CompleteTwoFactorLoginResponse
+	8,  // 51: orderfill.identity.v1.IdentityService.Logout:output_type -> orderfill.identity.v1.LogoutResponse
+	10, // 52: orderfill.identity.v1.IdentityService.LogoutEverywhere:output_type -> orderfill.identity.v1.LogoutEverywhereResponse
+	12, // 53: orderfill.identity.v1.IdentityService.ListSessions:output_type -> orderfill.identity.v1.ListSessionsResponse
+	14, // 54: orderfill.identity.v1.IdentityService.RevokeSession:output_type -> orderfill.identity.v1.RevokeSessionResponse
+	16, // 55: orderfill.identity.v1.IdentityService.ValidateSession:output_type -> orderfill.identity.v1.ValidateSessionResponse
+	18, // 56: orderfill.identity.v1.IdentityService.GetMe:output_type -> orderfill.identity.v1.GetMeResponse
+	20, // 57: orderfill.identity.v1.IdentityService.AcceptInvite:output_type -> orderfill.identity.v1.AcceptInviteResponse
+	22, // 58: orderfill.identity.v1.IdentityService.FinishPasskeyLogin:output_type -> orderfill.identity.v1.FinishPasskeyLoginResponse
+	24, // 59: orderfill.identity.v1.IdentityService.ChangePassword:output_type -> orderfill.identity.v1.ChangePasswordResponse
+	26, // 60: orderfill.identity.v1.IdentityService.PublicCompany:output_type -> orderfill.identity.v1.PublicCompanyResponse
+	28, // 61: orderfill.identity.v1.IdentityService.CreateCompany:output_type -> orderfill.identity.v1.CreateCompanyResponse
+	30, // 62: orderfill.identity.v1.IdentityService.ListCompanies:output_type -> orderfill.identity.v1.ListCompaniesResponse
+	32, // 63: orderfill.identity.v1.IdentityService.UpdateCompany:output_type -> orderfill.identity.v1.UpdateCompanyResponse
+	34, // 64: orderfill.identity.v1.IdentityService.DisableCompany:output_type -> orderfill.identity.v1.DisableCompanyResponse
+	36, // 65: orderfill.identity.v1.IdentityService.CreateUser:output_type -> orderfill.identity.v1.CreateUserResponse
+	38, // 66: orderfill.identity.v1.IdentityService.ListUsers:output_type -> orderfill.identity.v1.ListUsersResponse
+	40, // 67: orderfill.identity.v1.IdentityService.DisableUser:output_type -> orderfill.identity.v1.DisableUserResponse
+	42, // 68: orderfill.identity.v1.IdentityService.ResetUserAccess:output_type -> orderfill.identity.v1.ResetUserAccessResponse
+	49, // [49:69] is the sub-list for method output_type
+	29, // [29:49] is the sub-list for method input_type
+	29, // [29:29] is the sub-list for extension type_name
+	29, // [29:29] is the sub-list for extension extendee
+	0,  // [0:29] is the sub-list for field type_name
 }
 
 func init() { file_orderfill_identity_v1_identity_proto_init() }
@@ -2597,7 +2696,7 @@ func file_orderfill_identity_v1_identity_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_orderfill_identity_v1_identity_proto_rawDesc), len(file_orderfill_identity_v1_identity_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   41,
+			NumMessages:   43,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

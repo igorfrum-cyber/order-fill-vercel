@@ -56,11 +56,11 @@ func (s *Service) BeginRegistration(ctx context.Context, userID, origin string) 
 	if err != nil {
 		return Begin{}, err
 	}
-	return s.saveBegin(userID, domain.PasskeyPurposeRegister, options, session)
+	return s.saveBegin(ctx, userID, domain.PasskeyPurposeRegister, options, session)
 }
 
 func (s *Service) FinishRegistration(ctx context.Context, userID, origin, challengeID string, response []byte) (domain.PasskeyPublicView, error) {
-	ch, err := s.challenges.Consume(challengeID, s.now())
+	ch, err := s.challenges.Consume(ctx, challengeID, s.now())
 	if err != nil || ch.Purpose != domain.PasskeyPurposeRegister || ch.UserID != userID {
 		return domain.PasskeyPublicView{}, domain.ErrUnauthorized
 	}
@@ -109,7 +109,7 @@ func (s *Service) BeginLogin(ctx context.Context, login, origin string) (Begin, 
 				if beginErr != nil {
 					return Begin{}, beginErr
 				}
-				return s.saveBegin(user.ID, domain.PasskeyPurposeLogin, options, session)
+				return s.saveBegin(ctx, user.ID, domain.PasskeyPurposeLogin, options, session)
 			}
 		}
 	}
@@ -117,11 +117,11 @@ func (s *Service) BeginLogin(ctx context.Context, login, origin string) (Begin, 
 	if err != nil {
 		return Begin{}, err
 	}
-	return s.saveBegin("", domain.PasskeyPurposeLogin, options, session)
+	return s.saveBegin(ctx, "", domain.PasskeyPurposeLogin, options, session)
 }
 
 func (s *Service) FinishLogin(ctx context.Context, origin, challengeID string, response []byte) (string, error) {
-	ch, err := s.challenges.Consume(challengeID, s.now())
+	ch, err := s.challenges.Consume(ctx, challengeID, s.now())
 	if err != nil || ch.Purpose != domain.PasskeyPurposeLogin {
 		return "", domain.ErrUnauthorized
 	}
@@ -161,12 +161,12 @@ func (s *Service) FinishLogin(ctx context.Context, origin, challengeID string, r
 	return stored.UserID, nil
 }
 
-func (s *Service) saveBegin(userID, purpose string, options, session []byte) (Begin, error) {
+func (s *Service) saveBegin(ctx context.Context, userID, purpose string, options, session []byte) (Begin, error) {
 	id, err := newID()
 	if err != nil {
 		return Begin{}, err
 	}
-	s.challenges.Put(domain.PasskeyChallenge{
+	s.challenges.Put(ctx, domain.PasskeyChallenge{
 		ID:        id,
 		UserID:    userID,
 		Purpose:   purpose,

@@ -19,8 +19,8 @@ func NewMeta(pool *pgxpool.Pool) *Meta {
 	return &Meta{pool: pool}
 }
 
-func (m *Meta) SaveObject(obj domain.Object) error {
-	_, err := m.pool.Exec(context.Background(),
+func (m *Meta) SaveObject(ctx context.Context, obj domain.Object) error {
+	_, err := m.pool.Exec(ctx,
 		`INSERT INTO objects (id, key, name, content_type, size) VALUES ($1,$2,$3,$4,$5)
 		 ON CONFLICT (key) DO UPDATE SET id = EXCLUDED.id, name = EXCLUDED.name, content_type = EXCLUDED.content_type, size = EXCLUDED.size`,
 		obj.ID, obj.Key, obj.Name, obj.ContentType, obj.Size)
@@ -30,18 +30,18 @@ func (m *Meta) SaveObject(obj domain.Object) error {
 	return nil
 }
 
-func (m *Meta) GetByID(id string) (domain.Object, error) {
-	return m.scan(m.pool.QueryRow(context.Background(),
+func (m *Meta) GetByID(ctx context.Context, id string) (domain.Object, error) {
+	return m.scan(m.pool.QueryRow(ctx,
 		`SELECT id, key, name, content_type, size FROM objects WHERE id = $1`, id))
 }
 
-func (m *Meta) GetByKey(key string) (domain.Object, error) {
-	return m.scan(m.pool.QueryRow(context.Background(),
+func (m *Meta) GetByKey(ctx context.Context, key string) (domain.Object, error) {
+	return m.scan(m.pool.QueryRow(ctx,
 		`SELECT id, key, name, content_type, size FROM objects WHERE key = $1`, key))
 }
 
-func (m *Meta) SaveUpload(up domain.Upload) error {
-	_, err := m.pool.Exec(context.Background(),
+func (m *Meta) SaveUpload(ctx context.Context, up domain.Upload) error {
+	_, err := m.pool.Exec(ctx,
 		`INSERT INTO uploads (id, name, content_type, object_id) VALUES ($1,$2,$3,$4)
 		 ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name, content_type = EXCLUDED.content_type, object_id = EXCLUDED.object_id`,
 		up.ID, up.Name, up.ContentType, nullIfEmpty(up.ObjectID))
@@ -51,10 +51,10 @@ func (m *Meta) SaveUpload(up domain.Upload) error {
 	return nil
 }
 
-func (m *Meta) GetUpload(id string) (domain.Upload, error) {
+func (m *Meta) GetUpload(ctx context.Context, id string) (domain.Upload, error) {
 	var up domain.Upload
 	var objectID *string
-	err := m.pool.QueryRow(context.Background(),
+	err := m.pool.QueryRow(ctx,
 		`SELECT id, name, content_type, object_id FROM uploads WHERE id = $1`, id).Scan(&up.ID, &up.Name, &up.ContentType, &objectID)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return domain.Upload{}, domain.ErrNotFound

@@ -47,5 +47,16 @@ func originHost(origin string) (string, error) {
 	if host == "" {
 		return "", fmt.Errorf("invalid origin")
 	}
+	if parsed.Scheme == "http" && !isLoopbackHost(host) {
+		return "", fmt.Errorf("http origins are only allowed for local development")
+	}
 	return host, nil
+}
+
+func isLoopbackHost(host string) bool {
+	if host == "localhost" || strings.HasSuffix(host, ".localhost") {
+		return true
+	}
+	ip := net.ParseIP(host)
+	return ip != nil && ip.IsLoopback()
 }

@@ -9,12 +9,17 @@ import (
 const MaxMsgSize = 64 << 20
 
 func NewServer(opts ...grpc.ServerOption) *grpc.Server {
+	serverOpts, err := serverTransportOptions()
+	if err != nil {
+		panic(err)
+	}
 	chain := []grpc.UnaryServerInterceptor{requestIDUnary}
 	opts = append([]grpc.ServerOption{
 		grpc.ChainUnaryInterceptor(chain...),
 		grpc.MaxRecvMsgSize(MaxMsgSize),
 		grpc.MaxSendMsgSize(MaxMsgSize),
 	}, opts...)
+	opts = append(serverOpts, opts...)
 	return grpc.NewServer(opts...)
 }
 

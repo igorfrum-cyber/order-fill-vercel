@@ -4,6 +4,8 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
+	"math"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
@@ -98,6 +100,7 @@ func (s *Store) Delete(ctx context.Context, userID, id string) error {
 	return nil
 }
 
+// #nosec G101 -- SQL table name contains "credentials"; no secret value is embedded.
 const credSelect = `SELECT id, user_id, name, public_key, sign_count, transports, aaguid, raw, created_at, last_used_at FROM passkey_credentials`
 
 type scanner interface {
@@ -111,7 +114,11 @@ func scanCred(row scanner) (domain.PasskeyCredential, error) {
 	if err := row.Scan(&cred.ID, &cred.UserID, &cred.Name, &cred.PublicKey, &signCount, &transports, &cred.AAGUID, &cred.Raw, &cred.CreatedAt, &cred.LastUsedAt); err != nil {
 		return domain.PasskeyCredential{}, err
 	}
-	cred.SignCount = uint32(signCount)
+	count, err := uint32SignCount(signCount)
+	if err != nil {
+		return domain.PasskeyCredential{}, err
+	}
+	cred.SignCount = count
 	cred.CreatedAt = cred.CreatedAt.UTC()
 	if len(transports) > 0 {
 		_ = json.Unmarshal(transports, &cred.Transports)
@@ -120,4 +127,11 @@ func scanCred(row scanner) (domain.PasskeyCredential, error) {
 		cred.Transports = []string{}
 	}
 	return cred, nil
+}
+
+func uint32SignCount(n int64) (uint32, error) {
+	if n < 0 || n > math.MaxUint32 {
+		return 0, fmt.Errorf("invalid passkey sign count")
+	}
+	return uint32(n), nil
 }

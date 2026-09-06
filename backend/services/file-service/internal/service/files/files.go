@@ -15,11 +15,11 @@ type BlobStore interface {
 }
 
 type MetaStore interface {
-	SaveObject(obj domain.Object) error
-	GetByID(id string) (domain.Object, error)
-	GetByKey(key string) (domain.Object, error)
-	SaveUpload(up domain.Upload) error
-	GetUpload(id string) (domain.Upload, error)
+	SaveObject(ctx context.Context, obj domain.Object) error
+	GetByID(ctx context.Context, id string) (domain.Object, error)
+	GetByKey(ctx context.Context, key string) (domain.Object, error)
+	SaveUpload(ctx context.Context, up domain.Upload) error
+	GetUpload(ctx context.Context, id string) (domain.Upload, error)
 }
 
 type Service struct {
