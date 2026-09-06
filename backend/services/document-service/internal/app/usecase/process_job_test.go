@@ -39,6 +39,13 @@ func (f identityBrand) Policy(_ context.Context, key, _ string) (brand.RuleConfi
 
 type exactJobMatcher struct{}
 
+type recordingMatcher struct{ mode string }
+
+func (m *recordingMatcher) Match(ctx context.Context, blank, source []orderfill.MatchItem, opts orderfill.MatchOptions) ([]orderfill.MatchResult, error) {
+	m.mode = opts.Mode
+	return exactJobMatcher{}.Match(ctx, blank, source, opts)
+}
+
 func (exactJobMatcher) Match(_ context.Context, blank, source []orderfill.MatchItem, _ orderfill.MatchOptions) ([]orderfill.MatchResult, error) {
 	byArticle := map[string]orderfill.MatchItem{}
 	for _, item := range source {
@@ -340,6 +347,23 @@ func TestProcessJobFillsTheBlankAndPublishesTheReport(t *testing.T) {
 		if note.message == "" {
 			t.Fatal("every progress update needs a user-facing message")
 		}
+	}
+}
+
+func TestProcessJobPassesMatchingModeToMatcher(t *testing.T) {
+	storage := newStorageWithInputs()
+	jobs := &fakeJobStore{}
+	now := func() time.Time { return time.Date(2026, 9, 1, 12, 0, 0, 0, time.UTC) }
+	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
+	matcher := &recordingMatcher{}
+	processor := NewProcessJob(fakeCodec{grids: testGrids()}, storage, jobs, &fakeReportStore{}, now, logger, nil, nil, matcher, identityBrand{})
+	message := processMessage()
+	message.MatchingMode = "smart"
+	if err := processor.Handle(t.Context(), message); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if matcher.mode != "smart" {
+		t.Fatalf("matcher mode = %q", matcher.mode)
 	}
 }
 

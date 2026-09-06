@@ -58,6 +58,30 @@ func TestCreatePublishesOneVersionedMessage(t *testing.T) {
 	}
 }
 
+func createJobWithCompanyMode(t *testing.T, mode domain.MatchingMode) (domain.Job, *queue.Publisher) {
+	t.Helper()
+	now := time.Date(2026, 9, 5, 12, 0, 0, 0, time.UTC)
+	pub := queue.NewRedis()
+	svc := jobs.New(memory.NewStore(), orderFillFiles(), fakeCompanies{mode: mode}, pub, func() time.Time { return now })
+	actor := domain.Actor{UserID: "u1", CompanyID: "co", Role: domain.RolePurchaser}
+	job, err := svc.Create(t.Context(), actor, domain.TypeOrderFill, []string{"src", "blank"}, "angiopharm")
+	if err != nil {
+		t.Fatal(err)
+	}
+	return job, pub
+}
+
+func TestCreateSnapshotsCompanyMatchingModeIntoQueue(t *testing.T) {
+	t.Parallel()
+	job, publisher := createJobWithCompanyMode(t, domain.MatchingModeSmart)
+	if job.MatchingMode != domain.MatchingModeSmart {
+		t.Fatalf("job mode = %q", job.MatchingMode)
+	}
+	if got := publisher.Messages()[0].MatchingMode; got != "smart" {
+		t.Fatalf("queue mode = %q", got)
+	}
+}
+
 func TestCreateRequiresOwner(t *testing.T) {
 	t.Parallel()
 	svc := jobs.New(memory.NewStore(), orderFillFiles(), fakeCompanies{}, queue.NewRedis(), nil)

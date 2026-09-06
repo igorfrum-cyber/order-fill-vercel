@@ -123,6 +123,8 @@ func categoryName(c commonv1.ReportCategory) string {
 		return orderfill.CategoryToOrder
 	case commonv1.ReportCategory_REPORT_CATEGORY_ORDER_NOT_NEEDED:
 		return orderfill.CategoryOrderNotNeeded
+	case commonv1.ReportCategory_REPORT_CATEGORY_NOT_IN_BLANK:
+		return orderfill.CategoryNotInBlank
 	default:
 		return ""
 	}
