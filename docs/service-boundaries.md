@@ -13,8 +13,8 @@ under `backend/`.
 - `backend/services/passkey-service/` owns WebAuthn credentials and ceremony state.
 - `backend/services/job-service/` owns job metadata, job authorization context, report state, and queue publishing.
 - `backend/services/file-service/` owns object metadata and object storage.
-- `backend/services/document-service/` owns Excel parsing/writing, preview artifacts, and document job execution.
-- `backend/services/matching-service/` owns product matching decisions.
+- `backend/services/document-service/` owns Excel parsing/writing, preview artifacts, and document job execution. It maps workbook rows to matching items and applies returned identity decisions; it does not decide product identity itself.
+- `backend/services/matching-service/` owns product matching decisions. It accepts structured items and returns canonical `ReportCategory` plus `MatchReasons`; it does not parse Excel.
 - `backend/services/brand-service/` owns brand catalog and brand-specific rules.
 - `backend/services/calculation-service/` owns quantity calculations over normalized inputs.
 - `backend/proto/` owns internal gRPC contracts.

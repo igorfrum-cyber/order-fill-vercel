@@ -6,6 +6,8 @@ option go_package = "order-fill/backend/proto/gen/go/orderfill/matching/v1;match
 
 import "orderfill/common/v1/common.proto";
 
+// MatchingService decides product identity from structured items.
+// Callers must parse workbooks locally; this service never receives Excel rows.
 service MatchingService {
   rpc MatchRows(MatchRowsRequest) returns (MatchRowsResponse);
   rpc MergeChestnyZnak(MergeChestnyZnakRequest) returns (MergeChestnyZnakResponse);
@@ -13,6 +15,7 @@ service MatchingService {
   rpc NormalizeName(NormalizeNameRequest) returns (NormalizeNameResponse);
 }
 
+// Item is a structured product row already extracted from a workbook.
 message Item {
   string id = 1;
   string article = 2;

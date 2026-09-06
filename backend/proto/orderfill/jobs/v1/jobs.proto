@@ -24,6 +24,7 @@ message Job {
   string status = 3;
   string owner_user_id = 4;
   string company_id = 5;
+  // matching_mode is snapshotted from the company at job creation.
   orderfill.common.v1.MatchingMode matching_mode = 6;
   string created_at = 7;
   string error_message = 8;
@@ -41,6 +42,7 @@ message FileRef {
   string content_type = 6;
 }
 
+// ReportSummary counts canonical ReportCategory values.
 message ReportSummary {
   int32 needs_decision = 1;
   int32 not_in_source = 2;
@@ -52,6 +54,7 @@ message ReportSummary {
 
 message ReportRow {
   string id = 1;
+  // category is the canonical buyer-facing classification of this row.
   orderfill.common.v1.ReportCategory category = 2;
   string article = 3;
   string name = 4;

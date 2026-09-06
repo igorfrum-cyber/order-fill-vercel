@@ -4,12 +4,16 @@ package orderfill.common.v1;
 
 option go_package = "order-fill/backend/proto/gen/go/orderfill/common/v1;commonv1";
 
+// MatchingMode selects the product matching algorithm for one company/job.
+// The job-service snapshots the company value when it creates a job.
 enum MatchingMode {
   MATCHING_MODE_UNSPECIFIED = 0;
   MATCHING_MODE_STANDARD = 1;
   MATCHING_MODE_SMART = 2;
 }
 
+// ReportCategory is the canonical buyer-facing classification of a report row.
+// It is independent of the matching algorithm that produced the row.
 enum ReportCategory {
   REPORT_CATEGORY_UNSPECIFIED = 0;
   REPORT_CATEGORY_NEEDS_DECISION = 1;
