@@ -40,6 +40,7 @@ services:
   inbound:
     build: .
     restart: unless-stopped
+    user: "0:0"
     environment:
       INBOUND_TOKEN: ${INBOUND_TOKEN:?set INBOUND_TOKEN}
       INBOUND_ADDR: ":8787"
@@ -52,6 +53,9 @@ services:
   caddy:
     image: caddy:2-alpine
     restart: unless-stopped
+    dns:
+      - 1.1.1.1
+      - 8.8.8.8
     depends_on:
       - inbound
       - minio
