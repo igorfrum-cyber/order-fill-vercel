@@ -33,6 +33,20 @@ func TestSafeName(t *testing.T) {
 	}
 }
 
+func TestProvidedTokenBasicUser(t *testing.T) {
+	t.Parallel()
+	req := httptest.NewRequest(http.MethodPost, "/inbound", nil)
+	req.SetBasicAuth("secret", "")
+	if got := providedToken(req); got != "secret" {
+		t.Fatalf("got %q", got)
+	}
+	req = httptest.NewRequest(http.MethodPost, "/inbound", nil)
+	req.SetBasicAuth("x", "secret")
+	if got := providedToken(req); got != "secret" {
+		t.Fatalf("got %q", got)
+	}
+}
+
 func TestTokenOK(t *testing.T) {
 	t.Parallel()
 	if tokenOK("abc", "abc") != true {
@@ -81,6 +95,35 @@ func TestDumpJSONAttachmentURL(t *testing.T) {
 	}
 	if strings.TrimSpace(string(got)) != "https://example.com/a.xlsx" {
 		t.Fatalf("got %q", got)
+	}
+}
+
+func TestSummarizeForm(t *testing.T) {
+	t.Parallel()
+	got := summarizeForm(map[string][]string{
+		"envelope[from]":   {"a@b.test"},
+		"headers[subject]": {"тест"},
+		"headers[from]":    {"A <a@b.test>"},
+	})
+	if got.From != "a@b.test" || got.Subject != "тест" {
+		t.Fatalf("%+v", got)
+	}
+}
+
+func TestLoadSummaryFromFormJSON(t *testing.T) {
+	t.Parallel()
+	dir := t.TempDir()
+	folder := filepath.Join(dir, "20260908T091835.408Z")
+	if err := os.Mkdir(folder, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	raw := []byte(`{"envelope[from]":["artem@test"],"headers[subject]":["тест"]}`)
+	if err := os.WriteFile(filepath.Join(folder, "form.json"), raw, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	got := loadSummary(folder)
+	if got.From != "artem@test" || got.Subject != "тест" {
+		t.Fatalf("%+v", got)
 	}
 }
 
@@ -154,5 +197,33 @@ func TestInboxPage(t *testing.T) {
 	}
 	if !strings.Contains(string(body), "продажи") || !strings.Contains(string(body), "a@b.test") {
 		t.Fatalf("page %s", body)
+	}
+}
+
+func TestPostRootAcceptsMail(t *testing.T) {
+	t.Parallel()
+	dir := t.TempDir()
+	srv := httptest.NewServer(newMux("secret", dir))
+	t.Cleanup(srv.Close)
+	raw := `{"envelope":{"from":"a@b.test"},"headers":{"subject":"с корня"},"attachments":[]}`
+	req, err := http.NewRequest(http.MethodPost, srv.URL+"/?token=secret", strings.NewReader(raw))
+	if err != nil {
+		t.Fatal(err)
+	}
+	req.Header.Set("Content-Type", "application/json")
+	res, err := http.DefaultClient.Do(req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	res.Body.Close()
+	if res.StatusCode != http.StatusOK {
+		t.Fatalf("status %d", res.StatusCode)
+	}
+	msgs, err := listMessages(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(msgs) != 1 || msgs[0].Subject != "с корня" {
+		t.Fatalf("%+v", msgs)
 	}
 }
