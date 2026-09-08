@@ -168,7 +168,14 @@ bindFileName(sourceFile, sourceName);
 bindFileName(warehouseSourceFile, document.querySelector("#warehouseSourceName"));
 twoTyumenSources.addEventListener("change", () => {
   document.querySelector("#warehouseSourceField").classList.toggle("hidden", !twoTyumenSources.checked);
+  document.querySelector("#tyumenUploadCell").classList.toggle("enabled", twoTyumenSources.checked);
+  twoTyumenSources.setAttribute("aria-expanded", String(twoTyumenSources.checked));
   warehouseSourceFile.required = twoTyumenSources.checked;
+  warehouseSourceFile.disabled = !twoTyumenSources.checked;
+  if (!twoTyumenSources.checked) {
+    warehouseSourceFile.value = "";
+    document.querySelector("#warehouseSourceName").textContent = ".xlsx, .xlsm или .xls";
+  }
   sourceFile.closest("label").querySelector(".label").textContent = twoTyumenSources.checked ? "Офис: Склад Тюмень" : "Таблица заказа товара";
   resetFillState();
 });

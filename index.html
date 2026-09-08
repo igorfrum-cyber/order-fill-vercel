@@ -25,6 +25,7 @@
 
         <section id="orderSection">
           <form class="upload-grid" id="uploadForm">
+            <div class="brand-column">
             <label class="brand-field" for="brandSelect">
               <span class="label">Бренд</span>
               <select id="brandSelect" name="brand" required>
@@ -37,6 +38,15 @@
                 <option value="klapp">KLAPP</option>
               </select>
             </label>
+            <div class="tyumen-upload-cell" id="tyumenUploadCell">
+              <label class="tyumen-upload-toggle" for="twoTyumenSources"><input id="twoTyumenSources" type="checkbox" aria-controls="warehouseSourceField" aria-expanded="false" /><span class="label">Тюмень: 2 склада</span></label>
+              <label class="dropzone hidden" id="warehouseSourceField" for="warehouseSourceFile">
+                <span class="icon">↑</span><span class="label">СКЛАД ДОСТАВКА</span>
+                <span class="filename" id="warehouseSourceName">.xlsx, .xlsm или .xls</span>
+                <input id="warehouseSourceFile" type="file" accept=".xlsx,.xlsm,.xls" disabled />
+              </label>
+            </div>
+            </div>
 
             <label class="month-field" for="orderMonth">
               <span class="label">Месяц заказа</span>
@@ -55,13 +65,6 @@
               <span class="label">Актуальный бланк</span>
               <span class="filename" id="blankName">.xlsx, .xlsm или .xls</span>
               <input id="blankFile" name="blank" type="file" accept=".xlsx,.xlsm,.xls" required />
-            </label>
-
-            <label class="brand-field"><span class="label">Тюмень: два склада</span><input id="twoTyumenSources" type="checkbox" /></label>
-            <label class="dropzone hidden" id="warehouseSourceField" for="warehouseSourceFile">
-              <span class="icon">↑</span><span class="label">СКЛАД ДОСТАВКА</span>
-              <span class="filename" id="warehouseSourceName">.xlsx, .xlsm или .xls</span>
-              <input id="warehouseSourceFile" type="file" accept=".xlsx,.xlsm,.xls" />
             </label>
 
             <label class="dropzone christina-only hidden" id="homeField" for="homeFile">
