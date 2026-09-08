@@ -716,7 +716,7 @@ function rebuildSourceWithChz(detection, deliveryWeeks, rule, calculationColumns
     const sourceRowsList = [target, ...matchingChzRows].map((row) => row.row);
     const mergedName = `ЧЗ + ${target.name}`;
     setTextCell(sheet, target.row, columns.name, mergedName);
-    if (columns.name !== 1) setTextCell(sheet, target.row, 1, mergedName);
+    if (columns.name !== 1 && columns.article !== 1) setTextCell(sheet, target.row, 1, mergedName);
     sumColumns(sheet, target.row, sourceRowsList, [
       ...calculationColumns.salesColumns,
       calculationColumns.totalQuantity,
@@ -890,6 +890,167 @@ function readSource(workbook, orderMonth, rule = brandRule("angiopharm"), source
       deliveryCoefficient: calculationColumns ? 0.25 * deliveryWeeks : urengoyInfo?.deliveryCoefficient ?? null,
     },
   };
+}
+
+const TYUMEN_COLUMNS = {
+  officeStock: "Офис: остаток",
+  warehouseStock: "Склад: остаток",
+  officeTransit: "Офис: в пути",
+  warehouseTransit: "Склад: в пути",
+};
+
+function tyumenColumns(detection) {
+  const result = {};
+  for (const [key, header] of Object.entries(TYUMEN_COLUMNS)) {
+    for (let col = 1; col <= sheetBounds(detection.sheet).maxColumn; col += 1) {
+      if (normalizeHeader(sheetCellValue(detection.sheet, detection.headerRow, col)) === normalizeHeader(header)) result[key] = col;
+    }
+  }
+  return result;
+}
+
+function tyumenProductKey(item, brand) {
+  if (item.article) return `article:${item.article}`;
+  if (brand === "novacutan") return `name:${novacutanPositionKey(item.name)}`;
+  return `name:${normalizeName(item.name.replace(/^\s*чз\s*\+?\s*/iu, ""))}`;
+}
+
+function tyumenRows(workbook, brand) {
+  const detection = detectColumns(workbook, "source");
+  if (Object.keys(tyumenColumns(detection)).length) throw new Error("Загружена уже объединённая таблица. Для двух складов нужны отдельные исходные таблицы офиса и склада.");
+  const rule = brandRule(brand);
+  const calculation = detectCalculationColumns(detection);
+  rebuildSourceWithChz(detection, Math.max(1, detectDeliveryWeeks(workbook) ?? 1), rule, calculation);
+  const bounds = sheetBounds(detection.sheet);
+  const items = readSourceRows(detection, bounds.maxRow, bounds.maxColumn, rule);
+  const byKey = new Map();
+  for (const item of items) {
+    const key = tyumenProductKey(item, brand);
+    if (byKey.has(key)) throw new Error(`Неоднозначная позиция «${item.name}»: повторяется в одной таблице Тюмени. Проверьте строки ${byKey.get(key).row} и ${item.row}.`);
+    byKey.set(key, item);
+  }
+  return { detection, calculation, byKey };
+}
+
+function compatibleTyumenNames(left, right) {
+  const clean = (name) => normalizeName(name.replace(/^\s*чз\s*\+?\s*/iu, ""));
+  return clean(left) === clean(right);
+}
+
+function alignTyumenKeys(office, warehouse) {
+  // Exact name fallback is allowed only when an article is missing on one side.
+  // Distinct known articles must never be merged just because names coincide.
+  for (const [key, item] of [...office.byKey]) {
+    if (warehouse.byKey.has(key)) continue;
+    const candidates = [...warehouse.byKey].filter(([, other]) => (!item.article || !other.article) && compatibleTyumenNames(item.name, other.name));
+    if (candidates.length > 1) throw new Error(`Неоднозначное соответствие по названию «${item.name}» между офисом и складом.`);
+    if (candidates.length === 1) {
+      const [targetKey] = candidates[0];
+      if (office.byKey.has(targetKey)) throw new Error(`Несколько позиций офиса соответствуют одной позиции склада «${item.name}».`);
+      office.byKey.delete(key);
+      office.byKey.set(targetKey, item);
+    }
+  }
+}
+
+/**
+ * Combine raw Tyumen office/warehouse history, then recompute ABC and demand.
+ * Inputs are cloned; the returned warehouse-template workbook retains separate
+ * location columns for subsequent North calculations. See docs/tyumen.md.
+ * Ambiguous identities and mismatched periods fail instead of guessing.
+ */
+export function mergeTyumenSources({ officeWorkbook, warehouseWorkbook, brand = "angiopharm", officeFileName = "", warehouseFileName = "" }) {
+  validateNorthTyumenSourceWorkbook(officeWorkbook, officeFileName);
+  validateNorthTyumenSourceWorkbook(warehouseWorkbook, warehouseFileName);
+  if (JSON.stringify(findSourcePeriods(officeWorkbook)) !== JSON.stringify(findSourcePeriods(warehouseWorkbook))) {
+    throw new Error("Периоды продаж в таблицах офиса и склада не совпадают.");
+  }
+  const deliveryWeeks = Math.max(1, detectDeliveryWeeks(warehouseWorkbook) ?? 1);
+  if (deliveryWeeks !== Math.max(1, detectDeliveryWeeks(officeWorkbook) ?? 1)) throw new Error("Срок поставки в таблицах офиса и склада различается. Укажите одинаковый срок поставки от поставщика.");
+  const office = tyumenRows(loadXlsx(saveXlsx(officeWorkbook)), brand);
+  const workbook = loadXlsx(saveXlsx(warehouseWorkbook));
+  const warehouse = tyumenRows(workbook, brand);
+  alignTyumenKeys(office, warehouse);
+  const monthHeaders = ({ detection, calculation }) => calculation.salesColumns.map((col) => normalizeHeader(sheetCellValue(detection.sheet, detection.headerRow - 1, col)));
+  if (JSON.stringify(monthHeaders(office)) !== JSON.stringify(monthHeaders(warehouse))) throw new Error("Месяцы продаж офиса и склада не совпадают.");
+  const { detection, calculation } = warehouse;
+  const { sheet, columns, headerRow } = detection;
+  let lastRow = sheetBounds(sheet).maxRow;
+  const firstExtra = sheetBounds(sheet).maxColumn + 1;
+  const extras = Object.fromEntries(Object.entries(TYUMEN_COLUMNS).map(([key, label], index) => {
+    setTextCell(sheet, headerRow, firstExtra + index, label);
+    return [key, firstExtra + index];
+  }));
+  const keys = new Set([...warehouse.byKey.keys(), ...office.byKey.keys()]);
+  for (const key of keys) {
+    const a = office.byKey.get(key);
+    const b = warehouse.byKey.get(key);
+    if (a && b && !compatibleTyumenNames(a.name, b.name)) throw new Error(`У артикула ${a.articleRaw} разные названия: «${a.name}» и «${b.name}». Уточните соответствие перед объединением.`);
+    const row = b?.row ?? ++lastRow;
+    const value = (source, item, col) => item && col ? (parseNumber(sheetCellValue(source.detection.sheet, item.row, col)) ?? 0) : 0;
+    const stockOffice = value(office, a, office.detection.columns.stock);
+    const stockWarehouse = value(warehouse, b, columns.stock);
+    const transitOffice = value(office, a, office.detection.columns.inTransit);
+    const transitWarehouse = value(warehouse, b, columns.inTransit);
+    setTextCell(sheet, row, columns.article, b?.articleRaw || a?.articleRaw || "");
+    let mergedName = b?.name || a?.name || "";
+    if (a && b && [a.name, b.name].some((name) => /^\s*чз/iu.test(name))) mergedName = `ЧЗ + ${mergedName.replace(/^\s*чз\s*\+?\s*/iu, "")}`;
+    setTextCell(sheet, row, columns.name, mergedName);
+    calculation.salesColumns.forEach((col, index) => setNumericCell(sheet, row, col, value(office, a, office.calculation.salesColumns[index]) + value(warehouse, b, col)));
+    for (const field of ["revenue", "previousQuantity"]) setNumericCell(sheet, row, calculation[field], value(office, a, office.calculation[field]) + value(warehouse, b, calculation[field]));
+    setNumericCell(sheet, row, columns.stock, stockOffice + stockWarehouse);
+    setNumericCell(sheet, row, columns.inTransit, transitOffice + transitWarehouse);
+    setNumericCell(sheet, row, columns.orderedFact, null);
+    setTextCell(sheet, row, columns.comment, "");
+    for (const [field, amount] of Object.entries({ officeStock: stockOffice, warehouseStock: stockWarehouse, officeTransit: transitOffice, warehouseTransit: transitWarehouse })) setNumericCell(sheet, row, extras[field], amount);
+  }
+  recalculateSourceTable(detection, deliveryWeeks, brandRule(brand), calculation);
+  // Refresh source totals too: their old ranges may omit office-only appended rows.
+  const boundsAfterMerge = sheetBounds(sheet);
+  const productRows = readSourceRows(detection, boundsAfterMerge.maxRow, boundsAfterMerge.maxColumn, brandRule(brand));
+  const additiveColumns = [...calculation.salesColumns, calculation.totalQuantity, calculation.revenue, calculation.previousQuantity, calculation.targetStock, columns.stock, columns.inTransit, columns.recommended, ...Object.values(extras)];
+  for (let row = headerRow + 1; row <= boundsAfterMerge.maxRow; row += 1) {
+    if (isSourceTotalRow(detection, row, boundsAfterMerge.maxColumn)) sumColumns(sheet, row, productRows.map((item) => item.row), additiveColumns);
+  }
+  // Excel readers use dimension to bound rows/columns, including the appended location data.
+  const dimension = firstElement(sheet.xml, "dimension");
+  if (dimension) {
+    const bounds = sheetBounds(sheet);
+    dimension.setAttribute("ref", `A1:${columnNumberToName(bounds.maxColumn)}${bounds.maxRow}`);
+  }
+  return workbook;
+}
+
+/** Whole-piece office top-up to 25% of current stock; never a reverse transfer. */
+export function warehouseTransferQuantity(officeStock, warehouseStock) {
+  const office = Math.max(0, officeStock);
+  const warehouse = Math.max(0, warehouseStock);
+  return Math.min(Math.floor(warehouse), Math.max(0, roundHalfUp((office + warehouse) * 0.25) - office));
+}
+
+/** Prepare editable office-transfer rows. Supplier minima do not apply here. */
+export function buildTyumenWarehousePlan(options) {
+  const workbook = mergeTyumenSources(options);
+  const detection = detectColumns(workbook, "source");
+  const extras = tyumenColumns(detection);
+  const bounds = sheetBounds(detection.sheet);
+  return readSourceRows(detection, bounds.maxRow, bounds.maxColumn, brandRule(options.brand)).map((item) => {
+    const officeStock = parseNumber(sheetCellValue(detection.sheet, item.row, extras.officeStock)) ?? 0;
+    const warehouseStock = parseNumber(sheetCellValue(detection.sheet, item.row, extras.warehouseStock)) ?? 0;
+    if (officeStock < 0 || warehouseStock < 0 || !Number.isInteger(officeStock) || !Number.isInteger(warehouseStock)) throw new Error(`Проверьте остатки «${item.name}»: для перемещения поштучного товара нужны целые неотрицательные значения.`);
+    return { article: item.articleRaw, name: item.name, officeStock, warehouseStock, target: roundHalfUp((officeStock + warehouseStock) * 0.25), quantity: warehouseTransferQuantity(officeStock, warehouseStock) };
+  });
+}
+
+/**
+ * Projected surplus after protecting Tyumen demand, capped by stock that can
+ * physically pass through the warehouse. Office surplus cannot go north.
+ * Transit and planned supply are future availability, not goods ready to ship.
+ * Null location data preserves the legacy single-location calculation.
+ */
+export function northTyumenFreeStock(stock, inTransit, plannedOrder, target, warehouseStock = null, warehouseTransit = null) {
+  const free = Math.max(0, stock + inTransit + plannedOrder - target);
+  return warehouseStock == null ? free : Math.min(free, Math.max(0, warehouseStock + (warehouseTransit || 0) + plannedOrder));
 }
 
 function brandRule(brand) {
@@ -1858,7 +2019,7 @@ const NORTH_CITIES = [
   { key: "nizhnevartovsk", label: "Нижневартовск", warehouse: "Склад Нижневартовск", aliases: ["нижневартовск", "вартовск"] },
   { key: "urengoy", label: "Уренгой", warehouse: "Склад Уренгой", aliases: ["новый уренгой", "уренгой"] },
   { key: "surgut", label: "Сургут", warehouse: "Склад Сургут", aliases: ["сургут"] },
-  { key: "tyumen", label: "Тюмень", warehouse: "Склад Тюмень", aliases: ["тюмень"] },
+  { key: "tyumen", label: "Тюмень", warehouse: "Склад Тюмень", aliases: ["тюмень", "склад доставка"] },
 ];
 const NORTH_TRANSFER_DISPLAY_ORDER = ["surgut", "nizhnevartovsk", "urengoy"];
 
@@ -2458,6 +2619,7 @@ function readNorthTyumenAvailability(workbook, kind) {
   const calculationColumns = detectCalculationColumns(detection, { required: false });
   const { maxRow, maxColumn } = sheetBounds(detection.sheet);
   const availability = new Map();
+  const locationColumns = tyumenColumns(detection);
 
   for (let row = detection.headerRow + 1; row <= maxRow; row += 1) {
     if (isSourceTotalRow(detection, row, maxColumn)) continue;
@@ -2480,6 +2642,8 @@ function readNorthTyumenAvailability(workbook, kind) {
       name,
       stock,
       inTransit,
+      warehouseStock: locationColumns.warehouseStock ? parseNumber(sheetCellValue(detection.sheet, row, locationColumns.warehouseStock)) ?? 0 : null,
+      warehouseTransit: locationColumns.warehouseTransit ? parseNumber(sheetCellValue(detection.sheet, row, locationColumns.warehouseTransit)) ?? 0 : null,
       recommended,
       hasOrderedFact,
       orderedFact: orderedFact ?? null,
@@ -2583,7 +2747,7 @@ function northPlanRowFromTotal(summary, total, position, tyumen = null, tyumenFa
   const tyumenStock = Number(tyumen?.stock || 0);
   const tyumenInTransit = Number(tyumen?.inTransit || 0);
   const tyumenTarget = Number(tyumen?.targetStock || 0);
-  const tyumenFree = Math.max(0, tyumenStock + tyumenInTransit + tyumenPlannedOrder - tyumenTarget);
+  const tyumenFree = northTyumenFreeStock(tyumenStock, tyumenInTransit, tyumenPlannedOrder, tyumenTarget, tyumen?.warehouseStock, tyumen?.warehouseTransit);
   const allocation = allocateNorthNeedByCity(total, tyumenFree);
   const supplierUnitSize = Number(position.supplierUnitSize || 1);
   const supplierParts = [];
@@ -2612,6 +2776,8 @@ function northPlanRowFromTotal(summary, total, position, tyumen = null, tyumenFa
     tyumenPlannedOrder: Number(tyumenPlannedOrder.toFixed(2)),
     tyumenStock,
     tyumenInTransit,
+    tyumenWarehouseStock: tyumen?.warehouseStock ?? null,
+    tyumenWarehouseTransit: tyumen?.warehouseTransit ?? null,
     tyumenTarget,
     tyumenFree: Number(tyumenFree.toFixed(2)),
       fromTyumen: Number(allocation.fromTyumen.toFixed(2)),
@@ -2697,6 +2863,8 @@ function recalculateEditedNorthPlan(result, totals) {
           stock: row.tyumenStock,
           inTransit: row.tyumenInTransit,
           targetStock: row.tyumenTarget,
+          warehouseStock: row.tyumenWarehouseStock,
+          warehouseTransit: row.tyumenWarehouseTransit,
         }
       : null;
     return northPlanRowFromTotal(result.summary, total, row, tyumen, row.tyumenPlannedOrder);

@@ -10,6 +10,9 @@ import {
   saveXlsx,
   sourceOutputFileName,
   validateNorthTyumenSourceWorkbook,
+  mergeTyumenSources,
+  buildTyumenWarehousePlan,
+  northTyumenFreeStock,
 } from "./workbookProcessor.js";
 
 const form = document.querySelector("#uploadForm");
@@ -17,6 +20,12 @@ const statusEl = document.querySelector("#status");
 const brandSelect = document.querySelector("#brandSelect");
 const orderMonth = document.querySelector("#orderMonth");
 const sourceFile = document.querySelector("#sourceFile");
+const twoTyumenSources = document.querySelector("#twoTyumenSources");
+const warehouseSourceFile = document.querySelector("#warehouseSourceFile");
+const northTwoSources = document.querySelector("#northTwoSources");
+const northWarehouseFile = document.querySelector("#northWarehouseFile");
+const warehouseSection = document.querySelector("#warehouseSection");
+const warehouseModeButton = document.querySelector("#warehouseModeButton");
 const blankFile = document.querySelector("#blankFile");
 const homeFile = document.querySelector("#homeFile");
 const proffFile = document.querySelector("#proffFile");
@@ -115,16 +124,21 @@ setDefaultOrderMonth();
 
 function setActiveMode(mode) {
   const isNorth = mode === "north";
-  orderSection.classList.toggle("hidden", isNorth);
+  const isWarehouse = mode === "warehouse";
+  orderSection.classList.toggle("hidden", mode !== "order");
+  warehouseSection.classList.toggle("hidden", !isWarehouse);
+  warehouseModeButton.classList.toggle("active", isWarehouse);
+  warehouseModeButton.setAttribute("aria-pressed", String(isWarehouse));
   northSection.classList.toggle("hidden", !isNorth);
-  orderModeButton.classList.toggle("active", !isNorth);
+  orderModeButton.classList.toggle("active", mode === "order");
   northModeButton.classList.toggle("active", isNorth);
-  orderModeButton.setAttribute("aria-pressed", String(!isNorth));
+  orderModeButton.setAttribute("aria-pressed", String(mode === "order"));
   northModeButton.setAttribute("aria-pressed", String(isNorth));
 }
 
 orderModeButton.addEventListener("click", () => setActiveMode("order"));
 northModeButton.addEventListener("click", () => setActiveMode("north"));
+warehouseModeButton.addEventListener("click", () => setActiveMode("warehouse"));
 northBackButton.addEventListener("click", () => setActiveMode("order"));
 setActiveMode("order");
 
@@ -151,6 +165,24 @@ function bindFileName(input, output, placeholder = ".xlsx, .xlsm или .xls") {
 }
 
 bindFileName(sourceFile, sourceName);
+bindFileName(warehouseSourceFile, document.querySelector("#warehouseSourceName"));
+twoTyumenSources.addEventListener("change", () => {
+  document.querySelector("#warehouseSourceField").classList.toggle("hidden", !twoTyumenSources.checked);
+  warehouseSourceFile.required = twoTyumenSources.checked;
+  sourceFile.closest("label").querySelector(".label").textContent = twoTyumenSources.checked ? "Офис: Склад Тюмень" : "Таблица заказа товара";
+  resetFillState();
+});
+northTwoSources.addEventListener("change", () => {
+  document.querySelector("#northWarehouseField").classList.toggle("hidden", !northTwoSources.checked);
+  northWarehouseFile.required = northTwoSources.checked;
+  northSourceFile.required = northTwoSources.checked;
+  northSourceFile.closest("label").querySelector(".label").textContent = northTwoSources.checked ? "Офис: Склад Тюмень" : "Заполненная таблица Тюмени";
+  resetNorthCalculationState();
+});
+northWarehouseFile.addEventListener("change", () => {
+  document.querySelector("#northWarehouseName").textContent = northWarehouseFile.files[0]?.name || ".xlsx, .xlsm или .xls";
+  resetNorthCalculationState();
+});
 bindFileName(blankFile, blankName, ".xlsx, .xlsm или .xls");
 bindFileName(homeFile, homeName, ".xlsx или .xlsm");
 bindFileName(proffFile, proffName, ".xlsx или .xlsm");
@@ -763,6 +795,11 @@ async function loadWorkbook(file, options = {}) {
   return loadXlsx(await normalizeWorkbookBytes(buffer, file.name, options));
 }
 
+function assertDifferentTyumenFiles(office, warehouse) {
+  if (!office || !warehouse) throw new Error("Загрузите обе таблицы Тюмени: офис и СКЛАД ДОСТАВКА.");
+  if (office.name === warehouse.name && office.size === warehouse.size && office.lastModified === warehouse.lastModified) throw new Error("Выбран один и тот же файл для офиса и склада.");
+}
+
 function isLegacyXls(fileName) {
   return /\.xls$/i.test(fileName) && !/\.xlsx$/i.test(fileName) && !/\.xlsm$/i.test(fileName);
 }
@@ -816,7 +853,15 @@ form.addEventListener("submit", async (event) => {
   currentSourceWorkbook = null;
 
   try {
-    const sourceWorkbook = await loadWorkbook(sourceFile.files[0]);
+    let sourceWorkbook = await loadWorkbook(sourceFile.files[0]);
+    if (twoTyumenSources.checked) assertDifferentTyumenFiles(sourceFile.files[0], warehouseSourceFile.files[0]);
+    if (twoTyumenSources.checked) sourceWorkbook = mergeTyumenSources({
+      officeWorkbook: sourceWorkbook,
+      warehouseWorkbook: await loadWorkbook(warehouseSourceFile.files[0]),
+      officeFileName: sourceFile.files[0].name,
+      warehouseFileName: warehouseSourceFile.files[0].name,
+      brand,
+    });
     const blankWorkbooks = await Promise.all(blankInputs.map((item) => loadWorkbook(item.file, { allowLegacyXls: brand === "novacutan" })));
     const results = blankInputs.map((item, index) => fillWorkbook({
       sourceWorkbook,
@@ -835,7 +880,7 @@ form.addEventListener("submit", async (event) => {
       currentBlankWorkbooks.set(item.id, results[index].blankWorkbook);
       currentBlankOutputNames.set(item.id, outputFileName(item.file.name, results[index].summary.sourceCity));
     }
-    currentSourceOutputName = sourceOutputFileName(sourceFile.files[0].name);
+    currentSourceOutputName = twoTyumenSources.checked ? `${brandSelect.selectedOptions[0].textContent} Тюмень общая заполненная таблица.xlsx` : sourceOutputFileName(sourceFile.files[0].name);
 
     const rows = [...results.flatMap((result) => result.reportRows), ...sourceDuplicateRows(results), ...missingInBlankRows(results)];
     currentReportRows = rows;
@@ -1081,6 +1126,77 @@ function todayRu() {
   return `${String(date.getDate()).padStart(2, "0")}.${String(date.getMonth() + 1).padStart(2, "0")}.${date.getFullYear()}`;
 }
 
+const warehouseForm = document.querySelector("#warehouseForm");
+const warehouseBrand = document.querySelector("#warehouseBrand");
+warehouseBrand.innerHTML = brandSelect.innerHTML;
+const warehouseResult = document.querySelector("#warehouseResult");
+const warehouseRows = document.querySelector("#warehouseRows");
+const warehouseDownload = document.querySelector("#warehouseDownload");
+let warehousePlan = [];
+let warehouseDownloadUrl = null;
+let warehouseRevision = 0;
+for (const [inputId, labelId] of [["officeTransferFile", "officeTransferName"], ["warehouseTransferFile", "warehouseTransferName"]]) {
+  document.querySelector(`#${inputId}`).addEventListener("change", (event) => {
+    document.querySelector(`#${labelId}`).textContent = event.target.files[0]?.name || "Таблица не выбрана";
+    warehouseRevision += 1;
+    warehousePlan = [];
+    warehouseResult.classList.add("hidden");
+  });
+}
+warehouseBrand.addEventListener("change", () => {
+  warehouseRevision += 1;
+  warehousePlan = [];
+  warehouseResult.classList.add("hidden");
+});
+warehouseForm.addEventListener("submit", async (event) => {
+  event.preventDefault();
+  const button = warehouseForm.querySelector("button");
+  const revision = ++warehouseRevision;
+  button.disabled = true;
+  warehouseResult.classList.add("hidden");
+  try {
+    const office = document.querySelector("#officeTransferFile").files[0];
+    const warehouse = document.querySelector("#warehouseTransferFile").files[0];
+    assertDifferentTyumenFiles(office, warehouse);
+    const plan = buildTyumenWarehousePlan({
+      officeWorkbook: await loadWorkbook(office), warehouseWorkbook: await loadWorkbook(warehouse),
+      officeFileName: office.name, warehouseFileName: warehouse.name, brand: warehouseBrand.value,
+    });
+    if (revision !== warehouseRevision) return;
+    warehousePlan = plan;
+    warehouseRows.innerHTML = plan.map((row, index) => `<tr><td>${escapeHtml(row.article)}</td><td>${escapeHtml(row.name)}</td><td>${row.officeStock}</td><td>${row.warehouseStock}</td><td>${row.target}</td><td><input class="warehouse-quantity" aria-label="${escapeHtml(`Переместить: ${row.name}`)}" type="number" min="0" max="${row.warehouseStock}" step="1" value="${row.quantity}" data-index="${index}" /></td><td data-office-after>${row.officeStock + row.quantity}</td><td data-warehouse-after>${row.warehouseStock - row.quantity}</td></tr>`).join("");
+    warehouseResult.classList.remove("hidden");
+    warehouseDownload.disabled = !plan.length;
+  } catch (error) {
+    warehousePlan = [];
+    alert(error.message);
+  } finally { button.disabled = false; }
+});
+warehouseRows.addEventListener("input", (event) => {
+  const input = event.target.closest(".warehouse-quantity");
+  if (!input) return;
+  const row = warehousePlan[Number(input.dataset.index)];
+  const value = input.value === "" ? 0 : Number(input.value);
+  const valid = Number.isInteger(value) && value >= 0 && value <= row.warehouseStock;
+  input.setCustomValidity(valid ? "" : "Количество должно быть целым, неотрицательным и не больше остатка склада.");
+  input.closest("tr").querySelector("[data-office-after]").textContent = valid ? row.officeStock + value : "—";
+  input.closest("tr").querySelector("[data-warehouse-after]").textContent = valid ? row.warehouseStock - value : "—";
+  row.quantity = valid ? value : NaN;
+});
+warehouseDownload.addEventListener("click", async () => {
+  for (const input of warehouseRows.querySelectorAll("input")) if (!input.reportValidity()) return;
+  const items = warehousePlan.filter((row) => row.quantity > 0);
+  if (!items.length) { alert("Нет позиций для перемещения."); return; }
+  warehouseDownload.disabled = true;
+  try {
+    const bytes = await transferWorkbookBytes({ city: { warehouse: "Склад Тюмень" }, items });
+    if (warehouseDownloadUrl) URL.revokeObjectURL(warehouseDownloadUrl);
+    warehouseDownloadUrl = URL.createObjectURL(new Blob([bytes], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" }));
+    triggerDownload(warehouseDownloadUrl, `${warehouseBrand.selectedOptions[0].textContent} Заказ на перемещение Склад Тюмень - Офис Тюмень ${todayRu()}.xlsx`);
+  } catch (error) { alert(error.message); }
+  finally { warehouseDownload.disabled = false; }
+});
+
 function transferWorkbookBytes(transfer) {
   return import("xlsx").then(({ utils, write }) => {
     const rows = [
@@ -1090,7 +1206,7 @@ function transferWorkbookBytes(transfer) {
       ["", "", "", "", "", "", "", ""],
       ["", "", "", "", "", "", "", ""],
       ["", "", "", "", "", "", "", ""],
-      ["", "", "Отправитель:", "Склад Тюмень", "Получатель:", transfer.city.warehouse, "", ""],
+      ["", "", "Отправитель:", "СКЛАД ДОСТАВКА", "Получатель:", transfer.city.warehouse, "", ""],
       ["", "", "", "", "", "", "", ""],
       ["", "", "", "", "", "", "", ""],
       ["", "№", "Товар", "Количество", "", "", "", ""],
@@ -1236,6 +1352,10 @@ function northCityInputs(row) {
 
 function northStockText(row) {
   const parts = [`ост. ${formatNorthQuantity(row.tyumenStock) || "0"}`];
+  if (row.tyumenWarehouseStock != null) {
+    parts.push(`офис ${formatNorthQuantity(row.tyumenStock - row.tyumenWarehouseStock) || "0"}`);
+    parts.push(`склад ${formatNorthQuantity(row.tyumenWarehouseStock) || "0"}`);
+  }
   if (Number(row.tyumenInTransit || 0) > 0) parts.push(`в пути ${formatNorthQuantity(row.tyumenInTransit)}`);
   if (Number(row.tyumenTarget || 0) > 0) parts.push(`цель ${formatNorthQuantity(row.tyumenTarget)}`);
   return parts.join(", ");
@@ -1289,7 +1409,8 @@ function recalculateNorthRow(row, quantities) {
   const tyumenPlannedOrder = cityMap.has("tyumen") ? tyumenUploadedOrder : Number(row.tyumenPlannedOrder || 0);
   const tyumenSupplierNeed = Math.max(0, tyumenPlannedOrder);
   const supplierUnitSize = Number(row.supplierUnitSize || 1);
-  let freeLeft = Math.max(0, Number(row.tyumenStock || 0) + Number(row.tyumenInTransit || 0) + tyumenPlannedOrder - Number(row.tyumenTarget || 0));
+  const free = northTyumenFreeStock(Number(row.tyumenStock || 0), Number(row.tyumenInTransit || 0), tyumenPlannedOrder, Number(row.tyumenTarget || 0), row.tyumenWarehouseStock, row.tyumenWarehouseTransit);
+  let freeLeft = free;
   const supplierParts = [];
   const tyumenParts = [];
   let northNeed = 0;
@@ -1322,7 +1443,7 @@ function recalculateNorthRow(row, quantities) {
     ...row,
     northNeed: Number(northNeed.toFixed(2)),
     cities,
-    tyumenFree: Number(Math.max(0, Number(row.tyumenStock || 0) + Number(row.tyumenInTransit || 0) + tyumenPlannedOrder - Number(row.tyumenTarget || 0)).toFixed(2)),
+    tyumenFree: Number(free.toFixed(2)),
     fromTyumen: Number(fromTyumen.toFixed(2)),
     supplierNorthNeed: Number(supplierNorthNeed.toFixed(2)),
     supplierDemandNeed,
@@ -1541,7 +1662,15 @@ northForm.addEventListener("submit", async (event) => {
       variantLabel: entry.variantLabel || "",
     })));
     const tyumenSourceFile = northSourceFile.files[0] || null;
-    const tyumenSourceWorkbook = tyumenSourceFile ? await loadWorkbook(tyumenSourceFile) : null;
+    let tyumenSourceWorkbook = tyumenSourceFile ? await loadWorkbook(tyumenSourceFile) : null;
+    if (northTwoSources.checked) assertDifferentTyumenFiles(tyumenSourceFile, northWarehouseFile.files[0]);
+    if (northTwoSources.checked) tyumenSourceWorkbook = mergeTyumenSources({
+      officeWorkbook: tyumenSourceWorkbook,
+      warehouseWorkbook: await loadWorkbook(northWarehouseFile.files[0]),
+      officeFileName: tyumenSourceFile.name,
+      warehouseFileName: northWarehouseFile.files[0].name,
+      brand: selectedNorthBrand(),
+    });
     const result = buildNorthOrderFiles(blanks, {
       brand: selectedNorthBrand(),
       tyumenSourceWorkbook,

@@ -34,8 +34,14 @@ http://127.0.0.1:3200
 
 ```bash
 npm run test:workbook
+npm run test:tyumen
 npm run build
 ```
+
+## Документация расчётов
+
+- [Тюмень: схема движения товара, формулы и примеры](docs/tyumen.md)
+- [Карта кода, функции и проверка](docs/code-map.md)
 
 ## Деплой на Vercel
 

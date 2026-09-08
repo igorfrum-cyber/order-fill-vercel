@@ -813,3 +813,18 @@ tr.invalid .comment-input {
     grid-template-columns: 1fr;
   }
 }
+.warehouse-quantity {
+  width: 110px;
+  max-width: 100%;
+  padding: 8px;
+  border: 1px solid #d5ddeb;
+  border-radius: 6px;
+  font: inherit;
+}
+.warehouse-quantity:invalid { border-color: #b42318; }
+.brand-field input[type="checkbox"] { width: 22px; height: 22px; }
+#warehouseSection .upload-grid { margin-top: 20px; }
+#warehouseResult table { min-width: 1080px; table-layout: auto; }
+#warehouseResult th:nth-child(2), #warehouseResult td:nth-child(2) { min-width: 240px; }
+#warehouseResult td:nth-child(6) { min-width: 130px; }
+.mode-switch { flex-wrap: wrap; }

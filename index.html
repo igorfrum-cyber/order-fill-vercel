@@ -16,6 +16,7 @@
               <div class="mode-switch" aria-label="Разделы">
                 <button class="mode-button active" id="orderModeButton" type="button">Бланк</button>
                 <button class="mode-button" id="northModeButton" type="button">Север</button>
+                <button class="mode-button" id="warehouseModeButton" type="button">Склад Тюмень</button>
               </div>
             </div>
           </div>
@@ -54,6 +55,13 @@
               <span class="label">Актуальный бланк</span>
               <span class="filename" id="blankName">.xlsx, .xlsm или .xls</span>
               <input id="blankFile" name="blank" type="file" accept=".xlsx,.xlsm,.xls" required />
+            </label>
+
+            <label class="brand-field"><span class="label">Тюмень: два склада</span><input id="twoTyumenSources" type="checkbox" /></label>
+            <label class="dropzone hidden" id="warehouseSourceField" for="warehouseSourceFile">
+              <span class="icon">↑</span><span class="label">СКЛАД ДОСТАВКА</span>
+              <span class="filename" id="warehouseSourceName">.xlsx, .xlsm или .xls</span>
+              <input id="warehouseSourceFile" type="file" accept=".xlsx,.xlsm,.xls" />
             </label>
 
             <label class="dropzone christina-only hidden" id="homeField" for="homeFile">
@@ -179,6 +187,20 @@
           </section>
         </section>
 
+        <section class="north-panel hidden" id="warehouseSection">
+          <h2>Склад Тюмень</h2>
+          <form class="upload-grid" id="warehouseForm">
+            <label class="brand-field"><span class="label">Бренд</span><select id="warehouseBrand"></select></label>
+            <label class="dropzone"><span class="icon">↑</span><span class="label">Офис: Склад Тюмень</span><span class="filename" id="officeTransferName">Таблица офиса</span><input id="officeTransferFile" type="file" accept=".xlsx,.xlsm,.xls" required /></label>
+            <label class="dropzone"><span class="icon">↑</span><span class="label">СКЛАД ДОСТАВКА</span><span class="filename" id="warehouseTransferName">Таблица склада</span><input id="warehouseTransferFile" type="file" accept=".xlsx,.xlsm,.xls" required /></label>
+            <button class="primary" type="submit">Рассчитать перемещение</button>
+          </form>
+          <section class="result hidden" id="warehouseResult">
+            <div class="result-head"><h2>Со склада в офис Тюмени</h2><button class="download" type="button" id="warehouseDownload">Скачать заказ на перемещение</button></div>
+            <div class="table-wrap"><table><thead><tr><th>Артикул</th><th>Товар</th><th>Офис: остаток</th><th>Склад: остаток</th><th>Цель офиса 25%</th><th>Переместить</th><th>Офис: после</th><th>Склад: после</th></tr></thead><tbody id="warehouseRows"></tbody></table></div>
+          </section>
+        </section>
+
         <section class="north-panel hidden" id="northSection">
           <div class="north-head">
             <div class="north-title">
@@ -234,6 +256,10 @@
               <div class="north-file-list" id="northProffFileList"></div>
             </div>
 
+            <label class="brand-field"><span class="label">Тюмень: две исходные таблицы</span><input id="northTwoSources" type="checkbox" /></label>
+            <label class="dropzone north-dropzone hidden" id="northWarehouseField" for="northWarehouseFile">
+              <span class="icon">↑</span><span class="label">СКЛАД ДОСТАВКА</span><span class="filename" id="northWarehouseName">.xlsx, .xlsm или .xls</span><input id="northWarehouseFile" type="file" accept=".xlsx,.xlsm,.xls" />
+            </label>
             <label class="dropzone north-dropzone" for="northSourceFile">
               <span class="icon">↑</span>
               <span class="label">Заполненная таблица Тюмени</span>
