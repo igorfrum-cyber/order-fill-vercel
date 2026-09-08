@@ -1,0 +1,11 @@
+{$PUBLIC_HOST} {
+	reverse_proxy inbound:8787
+}
+
+{$PUBLIC_HOST}:9001 {
+	reverse_proxy minio:9001
+}
+
+{$PUBLIC_HOST}:9000 {
+	reverse_proxy minio:9000
+}
