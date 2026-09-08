@@ -837,7 +837,7 @@ tr.invalid .comment-input {
 .brand-column > .brand-field { min-height: 120px; }
 .tyumen-upload-cell {
   min-width: 0;
-  height: 148px;
+  height: 120px;
   display: flex;
   flex-direction: column;
   justify-content: center;
@@ -850,7 +850,7 @@ tr.invalid .comment-input {
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 14px;
+  padding: 10px 14px;
   cursor: pointer;
 }
 .tyumen-upload-toggle input { flex: 0 0 20px; width: 20px; height: 20px; margin: 0; accent-color: var(--accent); }
@@ -861,10 +861,11 @@ tr.invalid .comment-input {
   border: 0;
   border-top: 1px solid var(--line);
   border-radius: 0;
-  padding: 12px;
+  padding: 8px 12px;
   grid-template-columns: 32px minmax(0, 1fr);
   column-gap: 8px;
 }
 .tyumen-upload-cell .icon { width: 32px; height: 32px; }
+.tyumen-upload-cell .dropzone .label { font-size: 13px; }
 .tyumen-upload-cell .label { overflow-wrap: anywhere; }
 .tyumen-upload-cell:focus-within { outline: 2px solid var(--accent); outline-offset: 2px; }
