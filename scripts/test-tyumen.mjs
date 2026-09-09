@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { utils, write, read } from "xlsx";
 import { mkdir, writeFile } from "node:fs/promises";
+import { unzipSync, zipSync, strFromU8, strToU8 } from "fflate";
 import { loadXlsx, saveXlsx, mergeTyumenSources, buildTyumenWarehousePlan, warehouseTransferQuantity, northTyumenFreeStock, buildNorthOrderFiles, finalizeNorthOrderFiles, fillWorkbook } from "../src/workbookProcessor.js";
 
 function book(rows, name = "Тюмень") {
@@ -122,3 +123,18 @@ await writeFile("test-output/tyumen/Офис Тюмень Север.xlsx", save
 await writeFile("test-output/tyumen/Склад Тюмень Север.xlsx", saveXlsx(source([{ article: "P1", name: "Крем 50 мл", sales: 0, stock: 10 }])));
 await writeFile("test-output/tyumen/Skin Synergy Сургут.xlsx", saveXlsx(book([["Skin Synergy Сургут"], ["Артикул", "Наименование", "Количество"], ["P1", "Крем 50 мл", 20]], "Бланк")));
 console.log("Tyumen merge, fresh categories/recommendations, warehouse transfers, north export: passed");
+// Exercise the valid prefixed XML produced by some Excel exporters.
+const prefixFixture = book([["Артикул", "Наименование", "Количество", "Сумма"], ["P1", "Крем 50 мл", 7, 70]], "Бланк");
+const packageFiles = unzipSync(saveXlsx(prefixFixture));
+for (const path of Object.keys(packageFiles).filter((path) => path === "xl/workbook.xml" || path.startsWith("xl/worksheets/") && path.endsWith(".xml"))) {
+  const xml = strFromU8(packageFiles[path]).replace(/<(\/?)([A-Za-z][\w.-]*)(?=[\s/>])/g, "<$1s:$2").replace('xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"', 'xmlns:s="http://schemas.openxmlformats.org/spreadsheetml/2006/main"');
+  packageFiles[path] = strToU8(xml);
+}
+const prefixed = loadXlsx(zipSync(packageFiles));
+assert.equal(prefixed.sheets.length, 1);
+const prefixFilled = fillWorkbook({ sourceWorkbook: loadXlsx(saveXlsx(merged)), blankWorkbook: prefixed, brand: "skin_synergy", orderMonth: "2026-10" });
+const prefixRoundtrip = read(saveXlsx(prefixFilled.blankWorkbook), { type: "buffer" });
+assert.equal(prefixRoundtrip.Sheets.Бланк.C2?.v ?? null, null);
+assert.equal(prefixRoundtrip.Sheets.Бланк.D2.v, 70);
+assert.equal(loadXlsx(saveXlsx(prefixFilled.blankWorkbook)).sheets[0].cells.size, 8);
+console.log("Prefixed workbook XML read/write: passed");

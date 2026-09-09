@@ -136,11 +136,12 @@ function normalizeWorkbookTarget(target) {
 }
 
 function elements(root, tagName) {
-  return Array.from(root.getElementsByTagName(tagName));
+  // Spreadsheet XML may use a default namespace or prefixes such as s:sheet.
+  return Array.from(root.getElementsByTagNameNS("*", tagName));
 }
 
 function firstElement(parent, tagName) {
-  return parent.getElementsByTagName(tagName)[0] || null;
+  return parent.getElementsByTagNameNS("*", tagName)[0] || null;
 }
 
 function parseSharedStrings(xml) {
@@ -611,12 +612,12 @@ function removeWorksheetRows(sheet, rowNumbers) {
   const rowsToDeleteSet = new Set(rowsToDelete);
   const sheetData = firstElement(sheet.xml, "sheetData");
 
-  for (const rowNode of Array.from(sheetData.getElementsByTagName("row"))) {
+  for (const rowNode of elements(sheetData, "row")) {
     const rowNumber = Number(rowNode.getAttribute("r"));
     if (rowsToDeleteSet.has(rowNumber)) rowNode.parentNode?.removeChild(rowNode);
   }
 
-  for (const rowNode of Array.from(sheetData.getElementsByTagName("row"))) {
+  for (const rowNode of elements(sheetData, "row")) {
     const originalRow = Number(rowNode.getAttribute("r"));
     const deletedBefore = rowsToDelete.filter((row) => row < originalRow).length;
     if (deletedBefore) rowNode.setAttribute("r", String(originalRow - deletedBefore));
@@ -1865,7 +1866,7 @@ function findOrCreateCell(sheet, rowNumber, colNumber) {
   const existing = sheet.cells.get(key);
   if (existing) return existing.node;
   const sheetData = firstElement(sheet.xml, "sheetData");
-  let row = Array.from(sheetData.getElementsByTagName("row")).find((node) => Number(node.getAttribute("r")) === rowNumber);
+  let row = elements(sheetData, "row").find((node) => Number(node.getAttribute("r")) === rowNumber);
   if (!row) {
     row = sheet.xml.createElementNS(NS_MAIN, "row");
     row.setAttribute("r", String(rowNumber));
@@ -1874,7 +1875,7 @@ function findOrCreateCell(sheet, rowNumber, colNumber) {
   const ref = `${columnNumberToName(colNumber)}${rowNumber}`;
   const cell = sheet.xml.createElementNS(NS_MAIN, "c");
   cell.setAttribute("r", ref);
-  const cells = Array.from(row.getElementsByTagName("c"));
+  const cells = elements(row, "c");
   const next = cells.find((node) => parseCellRef(node.getAttribute("r")).col > colNumber);
   if (next) row.insertBefore(cell, next);
   else row.appendChild(cell);
