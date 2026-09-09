@@ -1,4 +1,5 @@
 import "./styles.css";
+import { openBudgetDialog, additionComment } from './budgetDialog.js';
 import {
   applyFinalEdits,
   buildNorthOrderFiles,
@@ -13,7 +14,110 @@ import {
   mergeTyumenSources,
   buildTyumenWarehousePlan,
   northTyumenFreeStock,
+  budgetReportRows,
+  budgetOrderRules,
+  applyBudgetWorkbookPricing,
+  budgetNorthWorkbookPricing,
 } from "./workbookProcessor.js";
+
+const budgetLocks = new Set();
+const northBudgetLocks = new Set();
+const budgetUndo = document.createElement('button');
+const northBudgetUndo = document.createElement('button');
+
+function budgetComment(previous, row) {
+  const delta = row.quantity - row.before;
+  const note = delta > 0 ? additionComment(delta, row.unit) : delta < 0 ? `Уменьшено на ${Math.abs(delta)} ${row.unit > 1 ? 'уп.' : 'шт.'} Для закупа до суммы.` : '';
+  return [previous, note].filter(Boolean).join('\n');
+}
+
+function installBudgetControls() {
+  for (const north of [false, true]) {
+    const anchor = north ? northDownloadButton : downloadButton;
+    const button = document.createElement('button');
+    const undo = north ? northBudgetUndo : budgetUndo;
+    button.type = undo.type = 'button';
+    button.className = undo.className = 'secondary';
+    button.textContent = 'Заказ до суммы';
+    undo.textContent = 'Отменить перерасчет суммы';
+    undo.hidden = true;
+    anchor.before(button, undo);
+    button.onclick = () => {
+      if (north && !currentNorthResult) return alert('Сначала соедините бланки.');
+      if (!north && !currentResults.length) return alert('Сначала заполните бланк.');
+      if (!north && currentResults.some(r => r.summary.sourceCity !== 'Тюмень')) return alert('Заказ до суммы доступен только для Тюмени. Для северных городов используйте раздел «Север».');
+      if (north && !currentNorthResult.hasTyumenSource) return alert('Загрузите таблицу Тюмени для учета продаж и остатков.');
+      const brand = north ? selectedNorthBrand() : selectedBrand();
+      const locks = north ? northBudgetLocks : budgetLocks;
+      const rows = north ? currentNorthResult.planRows.map(r => {
+        const tr = [...northPlanBody.querySelectorAll('tr[data-key]')].find(el => el.dataset.key === r.key);
+        const calculated = recalculateNorthRow(r,northCityQuantities(tr));
+        return { ...r.budget, ...budgetOrderRules(brand,r.name,r.novacutanMinimum ?? r.blankBoxSize),
+          key:r.key, name:r.name, group:r.variant || 'main',
+          inventoryKey:r.baseKey || r.key,
+          stock:r.tyumenStock, transit:r.tyumenInTransit, outbound:calculated.northNeed,
+          quantity:Number(tr.querySelector('.north-actual-input').value || 0), locked:locks.has(r.key),
+        };
+      }) : currentResults.flatMap(result => budgetReportRows(result,brand)).map(r=>({
+        ...r, quantity:Number(editState.get(r.key)?.value || 0), locked:locks.has(r.key),
+      }));
+      const counts = new Map();
+      for (const r of rows) counts.set(r.inventoryKey,(counts.get(r.inventoryKey)||0)+1);
+      for (const r of rows) if (counts.get(r.inventoryKey)>1) r.unsafe=true;
+      openBudgetDialog({ rows, christina:brand==='christina', apply:(planned,newLocks)=>{
+        // Validate export pricing before changing any manager edits.
+        if (north) {
+          for (const summary of currentNorthResult.summaries?.length ? currentNorthResult.summaries : [currentNorthResult.summary]) budgetNorthWorkbookPricing(summary, planned);
+        } else {
+          for (const result of currentResults) applyBudgetWorkbookPricing(result.blankWorkbook,result.blankDetection.sheetName,result.blankDetection.headerRow,planned.filter(r=>r.group===result.blankId));
+        }
+        const pricingOwners = north ? [currentNorthResult] : currentResults;
+        const oldPricing = pricingOwners.map(owner=>owner.budgetPricing);
+        for (const owner of pricingOwners) owner.budgetPricing = north ? planned : planned.filter(r=>r.group===owner.blankId);
+        // Keep the pre-apply edits, not the initial recommendations, for undo.
+        const oldLocks = new Set(locks);
+        const oldEdits = new Map([...editState].map(([k,v])=>[k,{...v}]));
+        const oldNorth = north ? currentNorthResult.planRows.map(r=>({key:r.key,comment:r.budgetComment})) : [];
+        const oldNorthValues = north ? collectNorthPlanEdits() : [];
+        locks.clear(); for(const key of newLocks) locks.add(key);
+        for(const r of planned) {
+          if(north) {
+            // Supplier quantity only: never rewrite the city inputs here.
+            const source=currentNorthResult.planRows.find(p=>p.key===r.key);
+            source.budgetComment=budgetComment(source.budgetComment,r);
+            const tr=[...northPlanBody.querySelectorAll('tr[data-key]')].find(el=>el.dataset.key===r.key);
+            const input=tr.querySelector('.north-actual-input');
+            input.value=r.quantity; input.dataset.manual='true';
+            tr.querySelector('[data-north-budget-lock]').checked=locks.has(r.key);
+            northPlanEdits.set(r.key,r.quantity); updateNorthRowDisplay(tr);
+          } else {
+            const edit=editState.get(r.key);
+            editState.set(r.key,{...edit,value:r.quantity,comment:budgetComment(edit.comment,r)});
+          }
+        }
+        if(north) clearNorthDownloadLinks(); else { clearDownloadLinks(); renderReportView(); }
+        undo.hidden=false;
+        undo.onclick=()=>{
+          pricingOwners.forEach((owner,i)=>{owner.budgetPricing=oldPricing[i];});
+          locks.clear(); for(const key of oldLocks) locks.add(key);
+          if(north) {
+            for(const old of oldNorth) currentNorthResult.planRows.find(r=>r.key===old.key).budgetComment=old.comment;
+            for(const old of oldNorthValues) {
+              const tr=[...northPlanBody.querySelectorAll('tr[data-key]')].find(el=>el.dataset.key===old.key);
+              tr.querySelector('.north-actual-input').value=old.actualSupplierOrder ?? '';
+              tr.querySelector('[data-north-budget-lock]').checked=locks.has(old.key);
+              updateNorthRowDisplay(tr);
+            }
+            clearNorthDownloadLinks();
+          } else { editState=oldEdits; renderReportView(); clearDownloadLinks(); }
+          undo.hidden=true;
+        };
+      }});
+    };
+  }
+}
+
+window.addEventListener('DOMContentLoaded', installBudgetControls, {once:true});
 
 const form = document.querySelector("#uploadForm");
 const statusEl = document.querySelector("#status");
@@ -446,6 +550,8 @@ function resetFillState() {
   currentSourceWorkbook = null;
   activeFilter = null;
   editState = new Map();
+  budgetLocks.clear();
+  budgetUndo.hidden = true;
   reportSearch.value = "";
   resultEl.classList.add("hidden");
   downloadButton.disabled = true;
@@ -635,6 +741,7 @@ function renderRows(targetBody, rows) {
           value="${escapeHtml(inserted)}"
           aria-label="Количество для строки ${row.blankRow}"
         />
+        <label class="budget-row-lock"><input type="checkbox" data-budget-lock="${escapeHtml(rowKey)}" ${budgetLocks.has(rowKey) ? 'checked' : ''}> Закрепить</label>
       `;
       const commentCell = row.editable === false ? "" : `
         <input
@@ -892,6 +999,7 @@ form.addEventListener("submit", async (event) => {
     const rows = [...results.flatMap((result) => result.reportRows), ...sourceDuplicateRows(results), ...missingInBlankRows(results)];
     currentReportRows = rows;
     editState = new Map(rows.map((row) => [row.key || `${row.blankId}:${row.blankRow}`, { value: row.inserted ?? "", comment: initialComment(row) }]));
+    for (const row of rows) if (row.hasOrderedFact && Number(row.orderedFact) === 0) budgetLocks.add(row.key);
     renderMetrics(combinedSummary(results));
     renderReportView();
     resultEl.classList.remove("hidden");
@@ -1299,7 +1407,7 @@ function northSupplierOrderText(row, actual) {
   const extraRounded = Math.max(0, actualRounded - neededRounded);
   const unitNote = Number(row.supplierUnitSize || 1) > 1 ? ` коробок по ${Number(row.supplierUnitSize)}` : "";
   if (extraRounded > 0) {
-    return `${neededRounded} + ${extraRounded} (до минимального) = ${actualRounded}${unitNote}`;
+    return `${neededRounded} + ${extraRounded} (${row.budgetComment ? 'сверх потребности' : 'до минимального'}) = ${actualRounded}${unitNote}`;
   }
   return `${formatNorthQuantity(actual)}${unitNote}`;
 }
@@ -1330,6 +1438,7 @@ function northPlanComment(row, actualValue = row.actualSupplierOrder) {
     lines.push(`Оставить в Тюмени: ${formatNorthCommentQuantity(tyumenSupplier.quantity)}`);
   }
   if (!lines.length && row.northNeed > 0) lines.push("Закрывается остатком Тюмени");
+  if (row.budgetComment) lines.push(row.budgetComment);
   return lines.join("\n");
 }
 
@@ -1369,6 +1478,8 @@ function northStockText(row) {
 }
 
 function renderNorthPlan(result) {
+  northBudgetLocks.clear();
+  northBudgetUndo.hidden = true;
   northPlanEdits = new Map();
   northPlanBody.innerHTML = result.planRows
     .map((row) => {
@@ -1386,6 +1497,7 @@ function renderNorthPlan(result) {
           <td data-role="supplier-need">${escapeHtml(formatNorthQuantity(row.supplierNeed))}</td>
           <td>
             <input class="north-actual-input" type="number" min="0" step="1" data-key="${escapeHtml(row.key)}" value="${escapeHtml(String(value))}" data-manual="false" />
+            <label class="budget-row-lock"><input type="checkbox" data-north-budget-lock="${escapeHtml(row.key)}"> Закрепить</label>
           </td>
           <td class="north-comment">${escapeHtml(northPlanComment(row, value))}</td>
         </tr>
@@ -1399,6 +1511,7 @@ function defaultNorthActual(row, supplierNeed) {
   if (currentNorthResult?.summary?.kind === "klapp") return nearestNorthMultiple(supplierNeed, 3);
   if (currentNorthResult?.summary?.kind !== "novacutan") return Number(supplierNeed.toFixed(2));
   const minimum = Number(row.novacutanMinimum || 100);
+  if (Number(row.supplierUnitSize || 1) > 1) return Math.max(minimum, Math.ceil(supplierNeed));
   return Math.round(Math.max(supplierNeed, minimum) / 10) * 10;
 }
 
@@ -1621,7 +1734,7 @@ downloadButton.addEventListener("click", async () => {
       files.push({
         label: `Скачать ${result.blankLabel || "бланк"}`,
         name: currentBlankOutputNames.get(result.blankId) || "blank заполненный.xlsx",
-        blob: new Blob([saveXlsx(result.blankWorkbook)], {
+        blob: new Blob([saveXlsx(applyBudgetWorkbookPricing(result.blankWorkbook,result.blankDetection.sheetName,result.blankDetection.headerRow,result.budgetPricing))], {
           type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
         }),
       });
@@ -1704,10 +1817,16 @@ northForm.addEventListener("submit", async (event) => {
 });
 
 northPlanBody.addEventListener("input", (event) => {
+  if (event.target.matches('[data-north-budget-lock]')) {
+    event.target.checked ? northBudgetLocks.add(event.target.dataset.northBudgetLock) : northBudgetLocks.delete(event.target.dataset.northBudgetLock);
+    return;
+  }
   if (!event.target.matches(".north-actual-input, .north-city-input")) return;
   const rowEl = event.target.closest("tr");
   if (!rowEl) return;
   if (event.target.matches(".north-actual-input")) {
+    if (event.target.value.trim() !== '' && Number(event.target.value) === 0) northBudgetLocks.add(rowEl.dataset.key);
+    rowEl.querySelector('[data-north-budget-lock]').checked = northBudgetLocks.has(rowEl.dataset.key);
     event.target.dataset.manual = "true";
     northPlanEdits.set(rowEl.dataset.key, event.target.value);
     updateNorthRowDisplay(rowEl, false);
@@ -1775,10 +1894,18 @@ northDownloadButton.addEventListener("click", async () => {
 });
 
 function handleReportInput(event) {
+  if (event.target.matches('[data-budget-lock]')) {
+    event.target.checked ? budgetLocks.add(event.target.dataset.budgetLock) : budgetLocks.delete(event.target.dataset.budgetLock);
+    return;
+  }
   if (event.target.matches(".qty-input, .comment-input")) {
     const key = event.target.dataset.key;
     const current = editState.get(key) || { value: "", comment: "" };
-    if (event.target.matches(".qty-input")) current.value = event.target.value;
+    if (event.target.matches(".qty-input")) {
+      current.value = event.target.value;
+      if (String(current.value).trim() !== '' && Number(current.value) === 0) budgetLocks.add(key);
+      event.target.closest('tr').querySelector('[data-budget-lock]').checked = budgetLocks.has(key);
+    }
     if (event.target.matches(".comment-input")) current.comment = event.target.value;
     editState.set(key, current);
     const row = event.target.closest("tr");

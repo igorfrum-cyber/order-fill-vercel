@@ -8,7 +8,8 @@
     "build": "vite build",
     "preview": "vite preview --host 127.0.0.1 --port 3200",
     "test:workbook": "node scripts/test-workbook.mjs",
-    "test:tyumen": "node scripts/test-tyumen.mjs"
+    "test:tyumen": "node scripts/test-tyumen.mjs",
+    "test:budget": "node scripts/test-budget.mjs"
   },
   "dependencies": {
     "@xmldom/xmldom": "^0.9.10",

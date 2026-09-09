@@ -864,6 +864,7 @@ function readSource(workbook, orderMonth, rule = brandRule("angiopharm"), source
     const recommended = recommendedValue ?? 0;
     items.push({
       rowIndex: row,
+      budget: budgetSourceMetrics(detection, row),
       articleRaw,
       article: normalizeArticle(articleRaw, articleNormalizeOptions(rule)),
       name,
@@ -1188,6 +1189,243 @@ function calculateAdjustedQuantity(recommended, rule, boxSizeValue) {
 export function adjustQuantityForBrand(recommended, brand = "angiopharm", boxSizeValue = null) {
   const rule = brandRule(brand);
   return calculateAdjustedQuantity(recommended, rule, boxSizeValue ?? rule.multiple);
+}
+
+function budgetSourceMetrics(detection, row) {
+  const c = detectCalculationColumns(detection, { required: false });
+  if (!c) return { demand: 0, category: '', delivery: 0.25 };
+  const values = monthlyValues(detection.sheet, row, c.salesColumns);
+  const weeks = Math.max(1, detectDeliveryWeeks({ sheets: [detection.sheet] }) || 1);
+  const novelty = newProductCalculation(values, weeks);
+  return {
+    demand: novelty?.monthlyNeed ?? calculateTargetNew(values),
+    category: normalizeCategory(sheetCellValue(detection.sheet, row, c.category)).split('/')[0],
+    delivery: weeks * 0.25,
+  };
+}
+
+// Only arithmetic and same-sheet references are accepted; workbook text is never executed.
+function budgetCellFormula(sheet, cell) {
+  if (!cell) return '';
+  const formulaNode = firstElement(cell.node, 'f');
+  let formula = formulaNode?.textContent;
+  if (!formula && formulaNode?.getAttribute('t') === 'shared') {
+    const master = [...sheet.cells.values()].find(c => {
+      const f = firstElement(c.node, 'f');
+      return f?.getAttribute('si') === formulaNode.getAttribute('si') && f.textContent;
+    });
+    if (master) formula = firstElement(master.node, 'f').textContent.replace(/(\$?)([A-Z]+)(\$?)(\d+)/g, (_, ca, col, ra, row) => {
+      const c = columnNameToNumber(col) + (ca ? 0 : cell.col-master.col);
+      const r = Number(row) + (ra ? 0 : cell.row-master.row);
+      return `${ca}${columnNumberToName(c)}${ra}${r}`;
+    });
+  }
+  return formula || '';
+}
+
+function budgetCellPrice(sheet, ref, seen = new Set()) {
+  if (seen.has(ref)) return null;
+  const cell = sheet.cells.get(ref);
+  if (!cell) return null;
+  const formula = budgetCellFormula(sheet, cell);
+  if (!formula) return parseNumber(cell.value);
+  seen = new Set([...seen, ref]);
+  const aggregate = /^(SUM|SUMPRODUCT)\(([^()]*)\)$/i.exec(formula);
+  if (aggregate) {
+    const ranges = aggregate[2].split(',').map(part => {
+      const refs = part.trim().replace(/\$/g, '').split(':');
+      if (!refs.every(r => /^[A-Z]+\d+$/.test(r))) return null;
+      const a = parseCellRef(refs[0]), b = parseCellRef(refs[1] || refs[0]);
+      if (b.row < a.row || b.col < a.col || (b.row-a.row+1)*(b.col-a.col+1) > 100000) return null;
+      const values = [];
+      for (let r=a.row; r<=b.row; r++) for (let c=a.col; c<=b.col; c++) values.push(budgetCellPrice(sheet,cellKey(r,c),seen) ?? 0);
+      return values;
+    });
+    if (ranges.every(Boolean)) {
+      if (aggregate[1].toUpperCase() === 'SUM') return ranges.flat().reduce((s,v)=>s+v,0);
+      if (ranges.every(r=>r.length===ranges[0].length)) return ranges[0].reduce((s,_,i)=>s+ranges.reduce((p,r)=>p*r[i],1),0);
+    }
+    return parseNumber(cell.value);
+  }
+  const round = /^ROUND\((.*),\s*(\d+)\)$/i.exec(formula);
+  const sourceExpression = round ? round[1] : formula;
+  let invalid = false;
+  const expression = sourceExpression.replace(/\$?([A-Z]+)\$?(\d+)/g, (_, col, row) => {
+    const address = parseCellRef(`${col}${row}`);
+    const key = cellKey(address.row, address.col);
+    const referenced = sheet.cells.get(key);
+    const value = !referenced || (referenced.value === '' && !budgetCellFormula(sheet, referenced)) ? 0 : budgetCellPrice(sheet, key, seen);
+    if (value == null) invalid = true;
+    return `(${value ?? 0})`;
+  }).replace(/%/g, '/100');
+  if (invalid || /[^\d.\s()+*/-]/.test(expression)) return parseNumber(cell.value);
+  const tokens = expression.match(/\d+(?:\.\d*)?|\.\d+|[()+*/-]/g) || [];
+  let i = 0;
+  function atom() {
+    if (tokens[i] === '-') { i++; return -atom(); }
+    if (tokens[i] === '+') { i++; return atom(); }
+    if (tokens[i] === '(') { i++; const v = sum(); if (tokens[i++] !== ')') throw Error(); return v; }
+    const v = Number(tokens[i++]); if (!Number.isFinite(v)) throw Error(); return v;
+  }
+  function product() { let v = atom(); while (tokens[i] === '*' || tokens[i] === '/') { const op = tokens[i++], b = atom(); v = op === '*' ? v*b : v/b; } return v; }
+  function sum() { let v = product(); while (tokens[i] === '+' || tokens[i] === '-') { const op = tokens[i++], b = product(); v = op === '+' ? v+b : v-b; } return v; }
+  try {
+    const v = sum();
+    if (i !== tokens.length || !Number.isFinite(v)) return null;
+    return round ? Math.round((v + Number.EPSILON) * 10 ** Number(round[2])) / 10 ** Number(round[2]) : v;
+  } catch { return null; }
+}
+
+function budgetPrices(detection, row, quantityCol) {
+  const result = [];
+  if (detection.blocks) {
+    const block = detection.blocks.find(b => b.quantity === quantityCol);
+    if (!block) return result;
+    const col = block.quantity - 1;
+    const label = asText(sheetCellValue(detection.sheet,detection.headerRow,col));
+    if (!/цена|price/i.test(label)) return result;
+    return [{ id:'block-price', column:col, label:`${label} (по блоку объема)`, price:budgetCellPrice(detection.sheet,cellKey(row,col)), quantityCol }];
+  }
+  const { maxColumn } = sheetBounds(detection.sheet);
+  for (let col = 1; col <= maxColumn; col++) {
+    const label = asText(sheetCellValue(detection.sheet, detection.headerRow, col));
+    if (!/цена|price/i.test(label)) continue;
+    const price = budgetCellPrice(detection.sheet, cellKey(row, col));
+    result.push({ id: String(col), column:col, label, price, quantityCol });
+  }
+  return result;
+}
+
+export function budgetOrderRules(brand, name, box) {
+  const rule = brandRule(brand);
+  if (brand === 'novacutan') {
+    const unit = novacutanSupplierUnitSize(name);
+    const minimum = Number(box) > 0 ? Number(box) : novacutanMinimumQuantity(name);
+    const step = unit > 1 ? 1 : 10;
+    return { unit, minimum: Math.ceil(minimum / step) * step, step };
+  }
+  const step = ['multiple', 'nearestMultiple'].includes(rule.adjustment) ? rule.multiple : rule.adjustment === 'box' ? Math.max(1, Number(box) || 1) : 1;
+  return { unit: 1, step, minimum: rule.adjustment === 'minimum' ? Math.max(1, Number(box) || 1) : step };
+}
+
+export function budgetReportRows(result, brand) {
+  return result.reportRows.filter(r => r.editable !== false).map(r => ({
+    ...r.budget, ...budgetOrderRules(brand, r.blankName, r.blankBoxSize),
+    key: r.key, name: r.blankName, group: result.blankId,
+    blankRow: r.blankRow, quantityCol: r.blankQuantityCol,
+    inventoryKey: String(r.sourceRow),
+    unsafe: Boolean(r.duplicate || r.status.startsWith('warning')),
+    stock: parseNumber(r.stock) || 0, transit: parseNumber(r.inTransit) || 0,
+    prices: budgetPrices(result.blankDetection, r.blankRow, r.blankQuantityCol),
+  }));
+}
+
+function setBudgetFormula(sheet, row, col, formula, value) {
+  const cell = findOrCreateCell(sheet, row, col);
+  while (cell.firstChild) cell.removeChild(cell.firstChild);
+  cell.removeAttribute('t');
+  const f = sheet.xml.createElementNS(NS_MAIN, 'f');
+  f.textContent = formula;
+  const v = sheet.xml.createElementNS(NS_MAIN, 'v');
+  v.textContent = String(value);
+  cell.appendChild(f); cell.appendChild(v);
+  sheet.cells.get(cellKey(row,col)).value = value;
+}
+
+function budgetInvoicePriceColumn(sheet, headerRow, entry) {
+  const qtyRef = `${columnNumberToName(entry.quantityCol)}${entry.blankRow}`;
+  const priceColumns = [...sheet.cells.values()].filter(c => c.row === headerRow && /цена|price/i.test(asText(c.value))).map(c=>c.col);
+  const referenced = new Set();
+  for (const c of sheet.cells.values()) {
+    if (c.row !== entry.blankRow) continue;
+    const refs = budgetCellFormula(sheet,c).replace(/\$/g,'').match(/[A-Z]+\d+/g) || [];
+    if (!refs.includes(qtyRef)) continue;
+    for (const ref of refs) {
+      const p = parseCellRef(ref);
+      if (p.row === entry.blankRow && priceColumns.includes(p.col)) referenced.add(p.col);
+    }
+  }
+  if (referenced.size === 1) return [...referenced][0];
+  if (referenced.size > 1) throw new Error(`Несколько цен в формуле суммы: ${entry.name}. Нужно проверить бланк.`);
+  const discounted = priceColumns.filter(col => /скид/i.test(asText(sheetCellValue(sheet,headerRow,col))));
+  if (discounted.length === 1) return discounted[0];
+  if (priceColumns.length === 1) return priceColumns[0];
+  // Repeated SOTHYS blocks each use their own price immediately before quantity.
+  if (entry.pricing.column === entry.quantityCol-1 && priceColumns.includes(entry.pricing.column)) return entry.pricing.column;
+  throw new Error(`Не удалось определить цену для суммы: ${entry.name}. Формулы бланка не изменены.`);
+}
+
+/** Apply agreed prices to an export copy only. Repeated downloads never compound discounts. */
+export function applyBudgetWorkbookPricing(workbook, sheetName, headerRow, entries = []) {
+  if (!entries.length) return workbook;
+  if (entries.some(e=>e.quantity>0 && !(e.price>0 && e.pricing?.column))) throw new Error('Не для всех заказанных позиций определена цена. Проверьте выбранную колонку цены.');
+  const output = loadXlsx(saveXlsx(workbook));
+  const sheet = output.sheets.find(s=>s.name===sheetName);
+  if (!sheet) throw new Error('Не найден лист бланка для обновления скидки.');
+  const prepared = entries.filter(e=>e.price>0 && e.pricing?.column).map(e=>({ ...e,
+    effectiveCol: budgetInvoicePriceColumn(sheet,headerRow,e),
+  }));
+  const changes = new Map();
+  for (const e of prepared) {
+    const sourceRef = `${columnNumberToName(e.pricing.column)}${e.blankRow}`;
+    let formula = budgetCellFormula(sheet,sheet.cells.get(cellKey(e.blankRow,e.effectiveCol))).replace(/\s|\$/g,'');
+    formula = formula.replace(/^ROUND\((.*),2\)$/i,'$1');
+    const direct = /^([A-Z]+\d+)\*\(1-([A-Z]+\d+)(\/100)?\)$/i.exec(formula);
+    if (!direct || direct[1] !== sourceRef) continue;
+    const address = parseCellRef(direct[2]);
+    if (address.row >= headerRow) continue;
+    const value = e.pricing.discount / (direct[3] ? 1 : 100);
+    if (changes.has(direct[2]) && changes.get(direct[2]).value !== value) throw new Error('Разные скидки ссылаются на одну ячейку бланка.');
+    changes.set(direct[2],{...address,value});
+  }
+  for (const change of changes.values()) setNumericCell(sheet,change.row,change.col,change.value);
+
+  const fallback = prepared.filter(e=>Math.abs((budgetCellPrice(sheet,cellKey(e.blankRow,e.effectiveCol)) ?? -1)-e.price)>0.000001);
+  if (fallback.length) {
+    // Materialize shared formula followers before replacing any group master.
+    const shared = [...sheet.cells.values()].filter(c=>firstElement(c.node,'f')?.getAttribute('t')==='shared')
+      .map(c=>({c,formula:budgetCellFormula(sheet,c)}));
+    for (const {c,formula} of shared) {
+      if (!formula) throw new Error('Не удалось прочитать общую формулу цены Excel.');
+      const f=firstElement(c.node,'f'); f.textContent=formula;
+      for (const attr of ['t','si','ref']) f.removeAttribute(attr);
+    }
+    const bounds=sheetBounds(sheet);
+    const baseCol=bounds.maxColumn+2, discountCol=baseCol+1;
+    setTextCell(sheet,headerRow,baseCol,'Цена до нашей скидки');
+    setTextCell(sheet,headerRow,discountCol,'Наша скидка, %');
+    // Multiple blocks on the same row need independent bases and discount cells.
+    const blocks=new Map();
+    for (const e of fallback) {
+      if (!blocks.has(e.quantityCol)) blocks.set(e.quantityCol,blocks.size);
+      const offset=blocks.get(e.quantityCol)*2;
+      const b=baseCol+offset,d=discountCol+offset;
+      setTextCell(sheet,headerRow,b,'Цена до нашей скидки');
+      setTextCell(sheet,headerRow,d,'Наша скидка, %');
+      setNumericCell(sheet,e.blankRow,b,e.pricing.basePrice);
+      setNumericCell(sheet,e.blankRow,d,e.pricing.discount);
+      const formula=`ROUND(${columnNumberToName(b)}${e.blankRow}*(1-${columnNumberToName(d)}${e.blankRow}/100),2)`;
+      setBudgetFormula(sheet,e.blankRow,e.effectiveCol,formula,e.price);
+      if (e.effectiveCol===e.pricing.column) setTextCell(sheet,headerRow,e.effectiveCol,'Цена с учетом нашей скидки');
+    }
+    const dimension=firstElement(sheet.xml,'dimension');
+    const updatedBounds=sheetBounds(sheet);
+    if (dimension) dimension.setAttribute('ref',`A1:${columnNumberToName(updatedBounds.maxColumn)}${updatedBounds.maxRow}`);
+  }
+  // Refresh numeric caches as well as preserving Excel's automatic recalculation.
+  for (const c of sheet.cells.values()) {
+    if (!budgetCellFormula(sheet,c)) continue;
+    const value=budgetCellPrice(sheet,cellKey(c.row,c.col));
+    if (value==null || !Number.isFinite(value)) continue;
+    let v=firstElement(c.node,'v');
+    if (!v) {v=sheet.xml.createElementNS(NS_MAIN,'v');c.node.appendChild(v);}
+    v.textContent=String(value); c.value=value;
+  }
+  for (const e of prepared) {
+    const actual=budgetCellPrice(sheet,cellKey(e.blankRow,e.effectiveCol));
+    if (actual==null || Math.abs(actual-e.price)>0.000001) throw new Error(`Цена в бланке не совпала с расчетом: ${e.name}`);
+  }
+  return output;
 }
 
 function orderForItem(item, rule, adjustmentValue) {
@@ -1829,6 +2067,7 @@ function makeUnmatchedReportRow(rowInfo, context) {
 
 function makeReportRow(status, rowInfo, selected, score, order, context) {
   return {
+    budget: selected.budget,
     status,
     blankId: context.blankId,
     blankLabel: context.blankLabel,
@@ -1967,7 +2206,7 @@ export function applyFinalEdits({ blankWorkbook, sourceWorkbook, reportRows, edi
   const prepared = [];
 
   for (const rowInfo of reportRows) {
-    const edit = editsByRow.get(`${rowInfo.blankId}:${rowInfo.blankRow}`) || editsByRow.get(String(Number(rowInfo.blankRow)));
+    const edit = editsByRow.get(rowInfo.key) || editsByRow.get(`${rowInfo.blankId}:${rowInfo.blankRow}`) || editsByRow.get(String(Number(rowInfo.blankRow)));
     if (!edit) continue;
 
     const quantity = parseEditValue(edit.value);
@@ -2401,6 +2640,13 @@ function northPositions(workbook, blankId, blankLabel, fileName = "", brand = ""
     : detected.kind === "splitVariants"
       ? northSplitVariantPositions(detected.detection, blankId, blankLabel)
       : northGenericPositions(detected.detection, blankId, blankLabel);
+  const boxMatcher = blankMatchers({ boxHeader: brandRule(brand).blankBoxHeader }).boxSize;
+  const boxCol = Array.from({length:sheetBounds(detected.detection.sheet).maxColumn}, (_,i)=>i+1)
+    .find(col=>boxMatcher(normalizeHeader(sheetCellValue(detected.detection.sheet,detected.detection.headerRow,col))));
+  for (const p of positions) {
+    p.budgetPrices = budgetPrices(detected.detection, p.row, p.quantityCol);
+    p.blankBoxSize = boxCol ? parseNumber(sheetCellValue(detected.detection.sheet,p.row,boxCol)) : null;
+  }
   return { ...detected, positions };
 }
 
@@ -2561,7 +2807,7 @@ function northSupplierOrderText(row, actual) {
   const extraRounded = Math.max(0, actualRounded - neededRounded);
   const unitNote = Number(row.supplierUnitSize || 1) > 1 ? ` коробок по ${Number(row.supplierUnitSize)}` : "";
   if (extraRounded > 0) {
-    return `${neededRounded} + ${extraRounded} (до минимального) = ${actualRounded}${unitNote}`;
+    return `${neededRounded} + ${extraRounded} (${row.budgetComment ? 'сверх потребности' : 'до минимального'}) = ${actualRounded}${unitNote}`;
   }
   return `${formatNorthQuantity(actual)}${unitNote}`;
 }
@@ -2581,11 +2827,12 @@ function northPlanCommentForOrderTable(row, actualValue) {
     lines.push(`Оставить в Тюмени: ${formatNorthCommentQuantity(tyumenSupplier.quantity)}`);
   }
   if (!lines.length && Number(row.northNeed || 0) > 0) lines.push("Закрывается остатком Тюмени");
+  if (row.budgetComment) lines.push(row.budgetComment);
   return lines.join("\n");
 }
 
 function novacutanNorthOrderTable(summary, planRows, actualByKey) {
-  if (summary.kind !== "novacutan") return null;
+  if (summary.kind !== "novacutan" && !planRows.some(r => r.budgetComment)) return null;
   const rows = [];
 
   for (const row of planRows) {
@@ -2601,7 +2848,7 @@ function novacutanNorthOrderTable(summary, planRows, actualByKey) {
   }
 
   return {
-    fileName: "NOVACUTAN север заполненная таблица.xlsx",
+    fileName: `${summary.kind === 'novacutan' ? 'NOVACUTAN' : 'Север'} заполненная таблица.xlsx`,
     rows,
   };
 }
@@ -2657,6 +2904,7 @@ function readNorthTyumenAvailability(workbook, kind) {
       hasOrderedFact,
       orderedFact: orderedFact ?? null,
       targetStock: targetStock ?? Math.max(0, stock + inTransit + recommended),
+      budget: budgetSourceMetrics(detection, row),
     };
 
     for (const key of sourceKeyCandidatesForNorth(item, kind)) {
@@ -2779,8 +3027,10 @@ function northPlanRowFromTotal(summary, total, position, tyumen = null, tyumenFa
     unit: total.unit || position.unit || "шт",
     supplierUnitSize,
     totalQuantity: Number(total.totalQuantity.toFixed(2)),
+    blankBoxSize: position.blankBoxSize,
     cities: northTotalCityParts(total),
     northNeed: Number(northNeed.toFixed(2)),
+    budget: { ...tyumen?.budget, prices: position.budgetPrices || [] },
     tyumenOrder: tyumenUploadedOrder,
     tyumenPlannedOrder: Number(tyumenPlannedOrder.toFixed(2)),
     tyumenStock,
@@ -2876,7 +3126,7 @@ function recalculateEditedNorthPlan(result, totals) {
           warehouseTransit: row.tyumenWarehouseTransit,
         }
       : null;
-    return northPlanRowFromTotal(result.summary, total, row, tyumen, row.tyumenPlannedOrder);
+    return { ...northPlanRowFromTotal(result.summary, total, row, tyumen, row.tyumenPlannedOrder), budgetComment: row.budgetComment };
   });
 }
 
@@ -2893,6 +3143,19 @@ function actualQuantityByKey(planRows, editsByKey, options = {}) {
   return quantities;
 }
 
+export function budgetNorthWorkbookPricing(summary, entries = []) {
+  const positions = new Map(summary.positions.map(p=>[p.key,p]));
+  const relevant = entries.filter(e=>(e.group || 'main')===(summary.variant || 'main'));
+  const mapped = relevant.map(e=>{
+    const p=positions.get(e.key);
+    if (!p) throw new Error(`Позиция отсутствует в общем бланке: ${e.name}. Проверьте шаблоны городов.`);
+    const price=budgetPrices(summary.detection,p.row,p.quantityCol).find(v=>v.label===e.pricing?.label);
+    if (!price && e.quantity>0) throw new Error(`Не найдена выбранная колонка цены в общем бланке: ${e.name}`);
+    return {...e,blankRow:p.row,quantityCol:p.quantityCol,pricing:{...e.pricing,column:price?.column}};
+  });
+  return applyBudgetWorkbookPricing(summary.workbook,summary.detection.sheetName || summary.detection.sheet.name,summary.detection.headerRow,mapped);
+}
+
 export function finalizeNorthOrderFiles(result, edits = [], options = {}) {
   const editsByKey = new Map(edits.map((edit) => [edit.key, edit]));
   const totals = editedNorthTotals(result, editsByKey);
@@ -2902,7 +3165,7 @@ export function finalizeNorthOrderFiles(result, edits = [], options = {}) {
   const summaryFiles = summaries.map((summary) => {
     const write = writeNorthSummaryWorkbook(summary, totals, actualByKey);
     return {
-      workbook: summary.workbook,
+      workbook: budgetNorthWorkbookPricing(summary,result.budgetPricing),
       fileName: summary.summaryFileName || result.summaryFileName,
       label: summary.summaryLabel || "общий бланк",
       appended: write.appended,
@@ -2960,7 +3223,7 @@ export function buildNorthOrderFiles(blanks, options = {}) {
         const summary = group.find((file) => file.city.key === "tyumen") || firstFile;
         return {
           ...summary,
-          positions: group.flatMap((file) => file.positions),
+          positions: summary.positions,
           summaryFileName: `Север общий бланк ${summary.variantLabel || variant}.${outputExtension(summary.fileName)}`,
           summaryLabel: `общий бланк ${summary.variantLabel || variant}`,
         };
@@ -2969,7 +3232,16 @@ export function buildNorthOrderFiles(blanks, options = {}) {
   const summary = summaries[0] || prepared.find((file) => file.city.key === "tyumen") || prepared[0];
   if (!summary.summaryFileName) summary.summaryFileName = `Север общий бланк.${outputExtension(summary.fileName)}`;
   if (!summary.summaryLabel) summary.summaryLabel = "общий бланк";
-  const planRows = buildNorthPlan(summary, totals, options.tyumenSourceWorkbook || null);
+  // Zero-demand items may participate in budget top-up, but never create city transfers.
+  const allPositions = prepared.flatMap(file => file.positions);
+  if (options.tyumenSourceWorkbook) {
+    const available = readNorthTyumenAvailability(options.tyumenSourceWorkbook, summary.kind);
+    for (const p of allPositions) {
+      if (totals.has(p.key) || !northAvailabilityForTotal(available, p, summary.kind)) continue;
+      totals.set(p.key, { ...p, totalQuantity: 0, cities: new Map([['tyumen', 0]]) });
+    }
+  }
+  const planRows = buildNorthPlan({ ...summary, positions: allPositions }, totals, options.tyumenSourceWorkbook || null);
   const transferCityMap = new Map(prepared.filter((file) => file.city.key !== "tyumen").map((file) => [file.city.key, file.city]));
   const transferCities = Array.from(transferCityMap.values());
   const confirmationGroups = Array.from(new Map(prepared.map((file) => [file.city.key, file.city])).values()).map((city) => ({
