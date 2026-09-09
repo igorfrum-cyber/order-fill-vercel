@@ -441,7 +441,7 @@ function detectCalculationColumns(detection, options = {}) {
   }
 
   const missing = [];
-  if (!found.salesColumns.length) missing.push("месячные продажи");
+  if (!found.salesColumns.length && !options.allowNoSales) missing.push("месячные продажи");
   for (const key of ["totalQuantity", "revenue", "revenuePercent", "cumulativePercent", "category", "averageMonthly", "previousQuantity", "targetStock"]) {
     if (!found[key]) missing.push(key);
   }
@@ -732,7 +732,7 @@ function rebuildSourceWithChz(detection, deliveryWeeks, rule, calculationColumns
   }
 
   removeWorksheetRows(sheet, rowsToDelete);
-  recalculateSourceTable(detection, deliveryWeeks, rule, calculationColumns);
+  if (calculationColumns.salesColumns.length) recalculateSourceTable(detection, deliveryWeeks, rule, calculationColumns);
 }
 
 function blankMatchers(options = {}) {
@@ -915,16 +915,19 @@ function tyumenProductKey(item, brand) {
   return `name:${normalizeName(item.name.replace(/^\s*чз\s*\+?\s*/iu, ""))}`;
 }
 
-function tyumenRows(workbook, brand) {
+function tyumenRows(workbook, brand, options = {}) {
   const detection = detectColumns(workbook, "source");
   if (Object.keys(tyumenColumns(detection)).length) throw new Error("Загружена уже объединённая таблица. Для двух складов нужны отдельные исходные таблицы офиса и склада.");
   const rule = brandRule(brand);
-  const calculation = detectCalculationColumns(detection);
+  const calculation = detectCalculationColumns(detection, options);
   rebuildSourceWithChz(detection, Math.max(1, detectDeliveryWeeks(workbook) ?? 1), rule, calculation);
   const bounds = sheetBounds(detection.sheet);
   const items = readSourceRows(detection, bounds.maxRow, bounds.maxColumn, rule);
   const byKey = new Map();
   for (const item of items) {
+    if (!calculation.salesColumns.length && [calculation.totalQuantity, calculation.revenue].some((col) => (parseNumber(sheetCellValue(detection.sheet, item.row, col)) ?? 0) !== 0)) {
+      throw new Error(`В отчёте склада нет месячных колонок, но у «${item.name}» указаны продажи или выручка. Нужен отчёт с разбивкой продаж по месяцам.`);
+    }
     const key = tyumenProductKey(item, brand);
     if (byKey.has(key)) throw new Error(`Неоднозначная позиция «${item.name}»: повторяется в одной таблице Тюмени. Проверьте строки ${byKey.get(key).row} и ${item.row}.`);
     byKey.set(key, item);
@@ -955,25 +958,30 @@ function alignTyumenKeys(office, warehouse) {
 
 /**
  * Combine raw Tyumen office/warehouse history, then recompute ABC and demand.
- * Inputs are cloned; the returned warehouse-template workbook retains separate
+ * Inputs are cloned; the returned workbook retains separate
  * location columns for subsequent North calculations. See docs/tyumen.md.
  * Ambiguous identities and mismatched periods fail instead of guessing.
  */
 export function mergeTyumenSources({ officeWorkbook, warehouseWorkbook, brand = "angiopharm", officeFileName = "", warehouseFileName = "" }) {
   validateNorthTyumenSourceWorkbook(officeWorkbook, officeFileName);
   validateNorthTyumenSourceWorkbook(warehouseWorkbook, warehouseFileName);
-  if (JSON.stringify(findSourcePeriods(officeWorkbook)) !== JSON.stringify(findSourcePeriods(warehouseWorkbook))) {
+  const officeCopy = loadXlsx(saveXlsx(officeWorkbook));
+  const warehouseCopy = loadXlsx(saveXlsx(warehouseWorkbook));
+  const office = tyumenRows(officeCopy, brand);
+  const warehouse = tyumenRows(warehouseCopy, brand, { allowNoSales: true });
+  const warehouseHasSales = warehouse.calculation.salesColumns.length > 0;
+  if (warehouseHasSales && JSON.stringify(findSourcePeriods(officeWorkbook)) !== JSON.stringify(findSourcePeriods(warehouseWorkbook))) {
     throw new Error("Периоды продаж в таблицах офиса и склада не совпадают.");
   }
-  const deliveryWeeks = Math.max(1, detectDeliveryWeeks(warehouseWorkbook) ?? 1);
-  if (deliveryWeeks !== Math.max(1, detectDeliveryWeeks(officeWorkbook) ?? 1)) throw new Error("Срок поставки в таблицах офиса и склада различается. Укажите одинаковый срок поставки от поставщика.");
-  const office = tyumenRows(loadXlsx(saveXlsx(officeWorkbook)), brand);
-  const workbook = loadXlsx(saveXlsx(warehouseWorkbook));
-  const warehouse = tyumenRows(workbook, brand);
+  const deliveryWeeks = Math.max(1, detectDeliveryWeeks(officeWorkbook) ?? 1);
+  if (warehouseHasSales && deliveryWeeks !== Math.max(1, detectDeliveryWeeks(warehouseWorkbook) ?? 1)) throw new Error("Срок поставки в таблицах офиса и склада различается. Укажите одинаковый срок поставки от поставщика.");
+  // A new warehouse may have inventory but no monthly columns yet. Use the
+  // office template so the combined report still has a complete sales timeline.
+  const workbook = warehouseHasSales ? warehouseCopy : officeCopy;
   alignTyumenKeys(office, warehouse);
   const monthHeaders = ({ detection, calculation }) => calculation.salesColumns.map((col) => normalizeHeader(sheetCellValue(detection.sheet, detection.headerRow - 1, col)));
-  if (JSON.stringify(monthHeaders(office)) !== JSON.stringify(monthHeaders(warehouse))) throw new Error("Месяцы продаж офиса и склада не совпадают.");
-  const { detection, calculation } = warehouse;
+  if (warehouseHasSales && JSON.stringify(monthHeaders(office)) !== JSON.stringify(monthHeaders(warehouse))) throw new Error("Месяцы продаж офиса и склада не совпадают.");
+  const { detection, calculation } = warehouseHasSales ? warehouse : office;
   const { sheet, columns, headerRow } = detection;
   let lastRow = sheetBounds(sheet).maxRow;
   const firstExtra = sheetBounds(sheet).maxColumn + 1;
@@ -986,18 +994,18 @@ export function mergeTyumenSources({ officeWorkbook, warehouseWorkbook, brand = 
     const a = office.byKey.get(key);
     const b = warehouse.byKey.get(key);
     if (a && b && !compatibleTyumenNames(a.name, b.name)) throw new Error(`У артикула ${a.articleRaw} разные названия: «${a.name}» и «${b.name}». Уточните соответствие перед объединением.`);
-    const row = b?.row ?? ++lastRow;
+    const row = (warehouseHasSales ? b?.row : a?.row) ?? ++lastRow;
     const value = (source, item, col) => item && col ? (parseNumber(sheetCellValue(source.detection.sheet, item.row, col)) ?? 0) : 0;
     const stockOffice = value(office, a, office.detection.columns.stock);
-    const stockWarehouse = value(warehouse, b, columns.stock);
+    const stockWarehouse = value(warehouse, b, warehouse.detection.columns.stock);
     const transitOffice = value(office, a, office.detection.columns.inTransit);
-    const transitWarehouse = value(warehouse, b, columns.inTransit);
+    const transitWarehouse = value(warehouse, b, warehouse.detection.columns.inTransit);
     setTextCell(sheet, row, columns.article, b?.articleRaw || a?.articleRaw || "");
     let mergedName = b?.name || a?.name || "";
     if (a && b && [a.name, b.name].some((name) => /^\s*чз/iu.test(name))) mergedName = `ЧЗ + ${mergedName.replace(/^\s*чз\s*\+?\s*/iu, "")}`;
     setTextCell(sheet, row, columns.name, mergedName);
-    calculation.salesColumns.forEach((col, index) => setNumericCell(sheet, row, col, value(office, a, office.calculation.salesColumns[index]) + value(warehouse, b, col)));
-    for (const field of ["revenue", "previousQuantity"]) setNumericCell(sheet, row, calculation[field], value(office, a, office.calculation[field]) + value(warehouse, b, calculation[field]));
+    calculation.salesColumns.forEach((col, index) => setNumericCell(sheet, row, col, value(office, a, office.calculation.salesColumns[index]) + value(warehouse, b, warehouse.calculation.salesColumns[index])));
+    for (const field of ["revenue", "previousQuantity"]) setNumericCell(sheet, row, calculation[field], value(office, a, office.calculation[field]) + value(warehouse, b, warehouse.calculation[field]));
     setNumericCell(sheet, row, columns.stock, stockOffice + stockWarehouse);
     setNumericCell(sheet, row, columns.inTransit, transitOffice + transitWarehouse);
     setNumericCell(sheet, row, columns.orderedFact, null);

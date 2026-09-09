@@ -88,6 +88,33 @@ assert.equal(missingArticlePlan.length, 1);
 assert.equal(missingArticlePlan[0].article, "P1");
 assert.equal(missingArticlePlan[0].quantity, 15);
 await mkdir("test-output/tyumen", { recursive: true });
+function inventorySource(items) {
+  const rows = utils.sheet_to_json(read(saveXlsx(source(items)), { type: "buffer" }).Sheets.Тюмень, { header: 1, defval: "" });
+  rows[0] = ["СКЛАД ДОСТАВКА"];
+  rows.forEach((row, index) => { if (index >= 3) row[14] = 0; if (index > 0) row.splice(2, 12); });
+  return book(rows, "СКЛАД ДОСТАВКА");
+}
+const inventory = inventorySource([
+  { article: "P1", name: "Крем 50 мл", revenue: 0, stock: 40, transit: 3 },
+  { article: "P1", name: "ЧЗ Крем 50 мл", revenue: 0, stock: 50, transit: 2 },
+  { article: "P5", name: "Новый товар склада", revenue: 0, stock: 20 },
+]);
+const inventoryOptions = { ...options, warehouseWorkbook: inventory };
+const inventoryMerged = mergeTyumenSources(inventoryOptions);
+const inventoryRows = utils.sheet_to_json(read(saveXlsx(inventoryMerged), { type: "buffer" }).Sheets.Тюмень, { header: 1 });
+const inventoryP1 = inventoryRows.find((row) => row[0] === "P1");
+assert.equal(inventoryP1[1], "ЧЗ + Крем 50 мл");
+assert.equal(inventoryP1[2], 10);
+assert.equal(inventoryP1[14], 120);
+assert.equal(inventoryP1[22], 100);
+assert.equal(inventoryP1[23], 5);
+assert.equal(inventoryP1[18], "C");
+assert.equal(inventoryP1[21], 12.5);
+assert.equal(inventoryRows.find((row) => row[0] === "P5")[2], 0);
+assert.equal(buildTyumenWarehousePlan(inventoryOptions).find((row) => row.article === "P1").quantity, 15);
+assert.throws(() => mergeTyumenSources({ ...options, warehouseWorkbook: inventorySource([{ article: "P1", name: "Крем", revenue: 100 }]) }), /указаны продажи/);
+assert.throws(() => mergeTyumenSources({ ...options, officeWorkbook: inventory }), /месячные продажи/);
+await writeFile("test-output/tyumen/СКЛАД ДОСТАВКА без продаж.xlsx", saveXlsx(inventory));
 await writeFile("test-output/tyumen/Офис Тюмень.xlsx", saveXlsx(office));
 await writeFile("test-output/tyumen/Склад Тюмень.xlsx", saveXlsx(warehouse));
 await writeFile("test-output/tyumen/Skin Synergy бланк.xlsx", saveXlsx(blank));
