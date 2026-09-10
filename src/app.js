@@ -1,5 +1,5 @@
 import "./styles.css";
-import { openBudgetDialog, additionComment } from './budgetDialog.js';
+import { openBudgetDialog, budgetChangeComment } from './budgetDialog.js';
 import { createOrderPricing, priceOrderRows, money } from './orderPricing.js';
 import {
   applyFinalEdits,
@@ -57,9 +57,9 @@ function refreshBudgetTotals() {
 }
 
 function budgetComment(previous, row) {
-  const delta = row.quantity - row.before;
-  const note = delta > 0 ? additionComment(delta, row.unit) : delta < 0 ? `Уменьшено на ${Math.abs(delta)} ${row.unit > 1 ? 'уп.' : 'шт.'} Для закупа до суммы.` : '';
-  return [previous, note].filter(Boolean).join('\n');
+  const note = budgetChangeComment(row);
+  // The report uses a single-line input, which strips newline separators.
+  return [previous, note].filter(Boolean).join('; ');
 }
 
 function installBudgetControls() {
@@ -87,13 +87,13 @@ function installBudgetControls() {
         const tr = [...northPlanBody.querySelectorAll('tr[data-key]')].find(el => el.dataset.key === r.key);
         const calculated = recalculateNorthRow(r,northCityQuantities(tr));
         return { ...r.budget, ...budgetOrderRules(brand,r.name,r.novacutanMinimum ?? r.blankBoxSize),
-          key:r.key, name:r.name, group:r.variant || 'main',
+          key:r.key, name:r.name, group:r.variant || 'main', comment:r.budgetComment || '',
           inventoryKey:r.baseKey || r.key,
           stock:r.tyumenStock, transit:r.tyumenInTransit, outbound:calculated.northNeed,
           quantity:Number(tr.querySelector('.north-actual-input').value || 0), locked:locks.has(r.key),
         };
       }) : currentResults.flatMap(result => budgetReportRows(result,brand)).map(r=>({
-        ...r, quantity:Number(editState.get(r.key)?.value || 0), locked:locks.has(r.key),
+        ...r, quantity:Number(editState.get(r.key)?.value || 0), comment:editState.get(r.key)?.comment || '', locked:locks.has(r.key),
       }));
       const counts = new Map();
       for (const r of rows) counts.set(r.inventoryKey,(counts.get(r.inventoryKey)||0)+1);

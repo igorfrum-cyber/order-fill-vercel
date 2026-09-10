@@ -53,7 +53,7 @@ export function openBudgetDialog({ rows, christina, apply, fixedPricing=false, i
       <td>${r.price ? money(r.price) : 'Нет цены'}</td>
       <td>${money(r.before ?? r.quantity)}</td><td>${money(r.quantity)}</td>
       <td>${coverage(r,r.quantity) == null ? 'Нет продаж' : money(coverage(r,r.quantity))}</td>
-      <td>${escape(r.quantity > r.before ? additionComment(r.quantity-r.before,r.unit) : r.unsafe ? 'Повтор или неоднозначное соответствие: только вручную' : r.demand > 0 ? '' : 'Только ручное изменение')}</td>
+      <td>${escape([r.comment, budgetChangeComment(r), r.unsafe ? 'Повтор или неоднозначное соответствие: только вручную' : r.demand > 0 ? '' : 'Только ручное изменение'].filter(Boolean).join('\n'))}</td>
     </tr>`).join('');
   }
   function reset() {
@@ -108,4 +108,13 @@ export function openBudgetDialog({ rows, christina, apply, fixedPricing=false, i
 
 export function additionComment(quantity, unit) {
   return `Добавилось ${money(quantity)} ${unit > 1 ? 'уп.' : 'шт.'} Для закупа до суммы.`;
+}
+
+/** One description for both preview and applied/exported comments. */
+export function budgetChangeComment(row) {
+  if (row.before == null) return '';
+  const delta = row.quantity - row.before;
+  if (delta > 0) return additionComment(delta, row.unit);
+  if (delta < 0) return `Уменьшено на ${money(-delta)} ${row.unit > 1 ? 'уп.' : 'шт.'} Для снижения заказа до указанной суммы.`;
+  return '';
 }

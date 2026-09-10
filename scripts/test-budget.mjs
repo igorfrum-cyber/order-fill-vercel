@@ -1,6 +1,12 @@
 import assert from 'node:assert/strict';
 import { planBudget, discountValue, coverage } from '../src/budgetPlanner.js';
 import { priceOrderRows } from '../src/orderPricing.js';
+import { budgetChangeComment } from '../src/budgetDialog.js';
+assert.equal(budgetChangeComment({before:13,quantity:4,unit:1}),'Уменьшено на 9 шт. Для снижения заказа до указанной суммы.');
+assert.equal(budgetChangeComment({before:3,quantity:0,unit:5}),'Уменьшено на 3 уп. Для снижения заказа до указанной суммы.');
+assert.equal(budgetChangeComment({before:0,quantity:0,unit:1}),'');
+assert.equal(budgetChangeComment({quantity:4,unit:1}),'');
+assert.equal(budgetChangeComment({before:4,quantity:13,unit:1}),'Добавилось 9 шт. Для закупа до суммы.');
 import { applyBudgetWorkbookPricing, budgetOrderRules, budgetReportRows, fillWorkbook, loadXlsx, buildNorthOrderFiles, finalizeNorthOrderFiles, saveXlsx } from '../src/workbookProcessor.js';
 import { utils, write, read } from 'xlsx';
 import { mkdirSync, writeFileSync } from 'node:fs';
