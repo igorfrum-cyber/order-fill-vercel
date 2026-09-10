@@ -7,6 +7,6 @@
     "env": {
       "GOTOOLCHAIN": "auto"
     },
-    "directoryFilters": ["-frontend", "-node_modules", "-services", "-.git", "-dist"]
+    "directoryFilters": ["-frontend", "-node_modules", "-.git", "-dist"]
   }
 }

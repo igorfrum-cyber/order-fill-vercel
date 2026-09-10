@@ -1,6 +1,9 @@
-# Current Workbook Behavior
+# Historical Frontend-Only Workbook Behavior
 
-This document captures the behavior of the current frontend-only workbook tool before the service rewrite.
+> This is a historical reference for the frontend-only implementation before the
+> service rewrite. For the current backend v2 runtime, see
+> [Architecture](./ARCHITECTURE.md), [Service Boundaries](./service-boundaries.md),
+> and the repository [README](../README.md).
 
 ## Runtime Model
 

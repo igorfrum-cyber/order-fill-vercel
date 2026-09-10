@@ -1,0 +1,79 @@
+# Order Fill
+
+> Order Fill fills supplier Excel order forms from 1C exports, lets users review
+> matching decisions, and produces final workbooks. It also supports a North
+> workflow for consolidating city demand, transfers, and supplier orders.
+
+## Current runtime
+
+- Frontend: React 19 + Vite 7, served by nginx in Docker.
+- Public backend: `backend/services/gateway-service` over HTTP.
+- Internal backend: independent Go 1.26.7 modules communicating over gRPC.
+- Async work: Redis Stream `order-fill:jobs`, consumed by `document-worker`.
+- Durable state: PostgreSQL and S3-compatible object storage.
+- Local infrastructure: PostgreSQL 18, Redis 8, and MinIO through Docker Compose.
+
+The active backend is under `backend/`. Historical design documents may mention
+retired root-level services; do not treat those paths as current runtime code.
+
+## Sources of truth
+
+- `README.md`: project overview, setup, configuration, and deployment.
+- `docs/ARCHITECTURE.md`: current system architecture and workflows.
+- `docs/service-boundaries.md`: ownership and forbidden dependencies.
+- `backend/deploy/docker-compose.yml`: local runtime topology and wiring.
+- `backend/services/gateway-service/api/openapi.yaml`: canonical public HTTP API.
+- `backend/proto/orderfill/**/*.proto`: canonical internal gRPC contracts.
+- `backend/services/*/README.md`: service-specific operation and configuration.
+- `CONTRIBUTING.md`: development workflow and verification rules.
+
+Files under `docs/plans/` are design and implementation history. When a plan
+disagrees with code, Compose, OpenAPI, protobuf, or an active service README,
+prefer the latter sources.
+
+## Components
+
+- `gateway-service`: browser-facing HTTP API and gRPC orchestration.
+- `identity-service`: users, companies, roles, invites, and sessions.
+- `twofa-service`: TOTP enrollment, verification, backup codes, and rate state.
+- `passkey-service`: WebAuthn credentials and ceremony state.
+- `job-service`: jobs, status, reports, output metadata, and Redis publishing.
+- `file-service`: file metadata and S3-compatible object operations.
+- `document-service`: `document-api` plus the Excel-processing `document-worker`.
+- `matching-service`: item normalization and matching decisions.
+- `brand-service`: brand catalog, detection, and brand policies.
+- `calculation-service`: order quantities, edit validation, and North planning.
+- `audit-service`: append/list audit events.
+
+## Common commands
+
+```bash
+cp .env.example .env
+make up
+make logs
+make down
+make test
+make lint
+make verify
+make -C backend proto-gen
+```
+
+`make verify` is the pre-commit and CI gate. It checks pinned toolchains,
+frontend lint/tests/build, every Go module, security linting, module tidiness,
+and the Docker Compose configuration.
+
+## Security and data handling
+
+- Never commit `.env`, credentials, TLS private keys, or files under
+  `testdata/private/`.
+- Production uses fail-fast config validation for stateful services.
+- Production browser origins must be explicit HTTPS origins.
+- Production session cookies must be secure.
+- Production passkeys require a matching `WEBAUTHN_RP_ID` and HTTPS origin.
+- Production 2FA requires a non-default `TWOFA_MASTER_KEY` of at least 32 bytes.
+- Internal gRPC supports `insecure`, `tls`, and `mtls`; local Compose defaults to
+  `insecure`, while the documented production baseline uses `mtls`.
+
+## License
+
+No `LICENSE` file is present. Do not infer redistribution rights.

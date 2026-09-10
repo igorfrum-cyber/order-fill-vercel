@@ -18,13 +18,12 @@ gateway-service  --gRPC--> identity-service
       |          --gRPC--> file-service
       |          --gRPC--> twofa-service
       |          --gRPC--> passkey-service
-      |          --gRPC--> document-api
       |
       +-- Redis stream --> document-worker
 
 internal services --> PostgreSQL
 file-service      --> S3-compatible object storage
-document-worker   --> S3-compatible object storage
+document-worker   --gRPC--> file / brand / matching / calculation / jobs
 ```
 
 Frontend в production отдает статические файлы через nginx и проксирует
@@ -96,7 +95,8 @@ S3-compatible storage с непустыми credentials и TLS endpoint.
 
 Один Go-модуль с двумя процессами:
 
-- `document-api`: gRPC API для preview/report операций;
+- `document-api`: внутренний gRPC API `AnalyzeInputs` / `BuildPreview`; текущий
+  gateway напрямую к нему не подключён;
 - `document-worker`: Redis consumer, который выполняет тяжелую Excel-обработку.
 
 Отвечает за чтение `.xlsx`, нормализацию, правила брендов, режим

@@ -1,0 +1,119 @@
+# Участие в разработке Order Fill
+
+Этот документ описывает проверяемый рабочий процесс для текущего backend v2 и
+React frontend.
+
+## Подготовка окружения
+
+Понадобятся:
+
+- Git;
+- Docker с `docker compose`;
+- Node.js 24+ и npm;
+- Go 1.26.7;
+- Bash и Make.
+
+Полный lint дополнительно использует `golangci-lint` 2.12.2 и `gosec` 2.22.10.
+Если утилит нет в `PATH`, `scripts/verify-go.sh` устанавливает закреплённые
+версии. Для этого нужен доступ к сети и настроенный Go toolchain.
+
+```bash
+git clone https://github.com/igorfrum-cyber/order-fill-vercel.git
+cd order-fill-vercel
+npm ci --prefix frontend
+cp .env.example .env
+make verify
+```
+
+## Локальный запуск
+
+```bash
+make up
+```
+
+Web UI будет доступен на <http://127.0.0.1:3200>, gateway health endpoint — на
+<http://127.0.0.1:8080/healthz>. Для просмотра логов используйте `make logs`,
+для остановки — `make down`.
+
+## Где вносить изменения
+
+- Browser UI и API adapters: `frontend/`.
+- Публичный HTTP-контракт и его реализация: `backend/services/gateway-service/`.
+- Межсервисные protobuf-контракты: `backend/proto/`.
+- Бизнес-логика конкретного сервиса: `backend/services/<service>/`.
+- Общий Go-код без владения бизнес-данными: `backend/pkg/`.
+- Локальный runtime: `backend/deploy/docker-compose.yml`.
+- Архитектурные документы и решения: `docs/`.
+
+Сверяйтесь с [`docs/service-boundaries.md`](./docs/service-boundaries.md):
+gateway не должен обрабатывать Excel или обращаться к чужому storage напрямую,
+а внутренние сервисы не должны становиться browser-facing API.
+
+## Контракты
+
+Канонический публичный OpenAPI расположен в
+`backend/services/gateway-service/api/openapi.yaml`. После изменения HTTP API
+обновите спецификацию и тесты gateway в том же pull request.
+
+Исходные `.proto` лежат в `backend/proto/orderfill/`. После изменения protobuf:
+
+```bash
+make -C backend proto-gen
+```
+
+Закоммитьте соответствующие изменения в `backend/proto/gen/go/` и проверьте все
+затронутые producer/consumer сервисы.
+
+## Тесты
+
+Быстрые целевые команды:
+
+```bash
+npm run test --prefix frontend
+(cd backend/services/<service> && GOWORK=off go test ./...)
+```
+
+Перед pull request запустите полный gate:
+
+```bash
+make verify
+```
+
+`make verify` соответствует текущему workflow `.github/workflows/verify.yml`.
+
+Не запускайте `go mod tidy` сразу из корня: Go workspace находится в `backend/`,
+а сервисы являются отдельными модулями. Используйте `make -C backend tidy` или
+запустите `go mod tidy` в нужном модуле.
+
+Тестовые workbook-файлы и правила работы с приватными fixtures описаны в
+[`testdata/README.md`](./testdata/README.md). Каталог `testdata/private/`
+исключён из Git; не добавляйте в репозиторий реальные коммерческие данные.
+
+## Документация
+
+При изменении поведения обновите документацию в том же pull request:
+
+- README затронутого микросервиса;
+- OpenAPI или protobuf-контракт;
+- `.env.example`, если появилась новая пользовательская переменная;
+- `docs/ARCHITECTURE.md` и `docs/service-boundaries.md`, если изменились связи
+  или владение данными;
+- корневой README, если изменились запуск, состав системы или deployment.
+
+Файлы в `docs/plans/` фиксируют дизайн и историю реализации. Они не заменяют
+документацию текущего runtime.
+
+## Checklist перед pull request
+
+- Изменение находится в сервисе, который владеет этой ответственностью.
+- Новое поведение покрыто тестами или причина отсутствия теста объяснена.
+- `make verify` проходит локально.
+- Изменения `go.mod`, `go.sum` и lock-файлов ожидаемы.
+- Изменённые API и env vars отражены в документации.
+- В diff нет `.env`, секретов и приватных workbook-файлов.
+- Миграции добавлены новым файлом; уже применённые миграции не переписаны.
+
+## Коммиты
+
+Делайте небольшие тематические коммиты. Сообщение должно описывать изменение
+поведения. Не смешивайте функциональную правку с несвязанным форматированием.
