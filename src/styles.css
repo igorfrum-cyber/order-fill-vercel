@@ -906,3 +906,7 @@ tr.invalid .comment-input {
 .budget-actions { display:flex; gap:12px; flex-wrap:wrap; margin-top:16px; }
 .order-pricing [data-group] + [data-group] { margin-top:18px; }
 .order-pricing [hidden], .budget-panel [hidden] { display:none !important; }
+#recalculateSection .dropzone { display:flex; flex-direction:column; align-items:flex-start; justify-content:center; gap:8px; min-width:0; }
+#recalculateSection .dropzone span { max-width:100%; overflow-wrap:anywhere; }
+#recalculateSection [data-review] p { padding:12px; border-left:3px solid #b7791f; background:#fff8e8; }
+#recalculateSection [data-result] > a { display:inline-block; }

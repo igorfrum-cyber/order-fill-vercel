@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { recalculateOrderTable } from '../src/workbookProcessor.js';
 import { utils, write, read } from "xlsx";
 import { mkdir, writeFile } from "node:fs/promises";
 import { unzipSync, zipSync, strFromU8, strToU8 } from "fflate";
@@ -29,6 +30,14 @@ const warehouse = source([
   { article: "P4", name: "Только склад", stock: 20, sales: 0, revenue: 0 },
 ]);
 const options = { officeWorkbook: office, warehouseWorkbook: warehouse, brand: "skin_synergy" };
+for(const second of [null,warehouse]) {
+  const recalculated=recalculateOrderTable({workbook:office,warehouseWorkbook:second,brand:'skin_synergy',orderMonth:'2026-10',fileName:'Тюмень.xlsx',warehouseFileName:'Тюмень склад.xlsx'});
+  const item=recalculated.rows.find(r=>r.article==='P1');
+  assert.equal(item.orderedFact,second?1998:999);
+  assert.equal(item.sourceComment,'Старый расчет');
+  assert.equal(item.stock,second?100:10);
+  assert.notEqual(item.recommended,999);
+}
 const merged = mergeTyumenSources(options);
 const decoded = read(saveXlsx(merged), { type: "buffer" });
 const rows = utils.sheet_to_json(decoded.Sheets[decoded.SheetNames[0]], { header: 1, defval: "" });

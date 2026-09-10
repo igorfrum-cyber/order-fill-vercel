@@ -1,6 +1,7 @@
 import "./styles.css";
 import { openBudgetDialog, budgetChangeComment } from './budgetDialog.js';
 import { createOrderPricing, priceOrderRows, money } from './orderPricing.js';
+import { installTableRecalculation } from './recalculateTable.js';
 import {
   applyFinalEdits,
   buildNorthOrderFiles,
@@ -271,6 +272,8 @@ function setDefaultOrderMonth() {
 setDefaultOrderMonth();
 
 function setActiveMode(mode) {
+  document.querySelector('#recalculateSection')?.classList.toggle('hidden',mode!=='recalculate');
+  document.querySelector('#recalculateModeButton')?.classList.toggle('active',mode==='recalculate');
   const isNorth = mode === "north";
   const isWarehouse = mode === "warehouse";
   orderSection.classList.toggle("hidden", mode !== "order");
@@ -289,6 +292,7 @@ northModeButton.addEventListener("click", () => setActiveMode("north"));
 warehouseModeButton.addEventListener("click", () => setActiveMode("warehouse"));
 northBackButton.addEventListener("click", () => setActiveMode("order"));
 setActiveMode("order");
+installTableRecalculation({loadWorkbook,activate:setActiveMode,brands:brandSelect.innerHTML,month:orderMonth.value});
 
 function scrollTargetForKeyboard(element) {
   return element?.closest?.(".table-wrap, .priority-wrap") || document.scrollingElement || document.documentElement;

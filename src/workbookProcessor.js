@@ -979,7 +979,7 @@ function alignTyumenKeys(office, warehouse) {
  * location columns for subsequent North calculations. See docs/tyumen.md.
  * Ambiguous identities stay separate for report review; mismatched periods fail.
  */
-export function mergeTyumenSources({ officeWorkbook, warehouseWorkbook, brand = "angiopharm", officeFileName = "", warehouseFileName = "" }) {
+export function mergeTyumenSources({ officeWorkbook, warehouseWorkbook, brand = "angiopharm", officeFileName = "", warehouseFileName = "", preserveFacts = false }) {
   validateNorthTyumenSourceWorkbook(officeWorkbook, officeFileName);
   validateNorthTyumenSourceWorkbook(warehouseWorkbook, warehouseFileName);
   const officeCopy = loadXlsx(saveXlsx(officeWorkbook));
@@ -1017,6 +1017,8 @@ export function mergeTyumenSources({ officeWorkbook, warehouseWorkbook, brand = 
     const stockWarehouse = value(warehouse, b, warehouse.detection.columns.stock);
     const transitOffice = value(office, a, office.detection.columns.inTransit);
     const transitWarehouse = value(warehouse, b, warehouse.detection.columns.inTransit);
+    const facts=preserveFacts ? [[office,a],[warehouse,b]].filter(([,item])=>item).map(([src,item])=>parseNumber(sheetCellValue(src.detection.sheet,item.row,src.detection.columns.orderedFact))).filter(v=>v!=null) : [];
+    const comments=preserveFacts ? [[office,a],[warehouse,b]].filter(([,item])=>item).map(([src,item])=>asText(sheetCellValue(src.detection.sheet,item.row,src.detection.columns.comment))).filter(Boolean) : [];
     setTextCell(sheet, row, columns.article, b?.articleRaw || a?.articleRaw || "");
     let mergedName = b?.name || a?.name || "";
     if (a && b && [a.name, b.name].some((name) => /^\s*чз/iu.test(name))) mergedName = `ЧЗ + ${mergedName.replace(/^\s*чз\s*\+?\s*/iu, "")}`;
@@ -1025,8 +1027,9 @@ export function mergeTyumenSources({ officeWorkbook, warehouseWorkbook, brand = 
     for (const field of ["revenue", "previousQuantity"]) setNumericCell(sheet, row, calculation[field], value(office, a, office.calculation[field]) + value(warehouse, b, warehouse.calculation[field]));
     setNumericCell(sheet, row, columns.stock, stockOffice + stockWarehouse);
     setNumericCell(sheet, row, columns.inTransit, transitOffice + transitWarehouse);
-    setNumericCell(sheet, row, columns.orderedFact, null);
-    setTextCell(sheet, row, columns.comment, a?.ambiguous || b?.ambiguous ? 'Проверить: неоднозначная позиция. Сохранена отдельно, данные складов по ней не объединены.' : "");
+    setNumericCell(sheet, row, columns.orderedFact, facts.length ? Number(facts.reduce((s,v)=>s+v,0).toFixed(2)) : null);
+    if(a?.ambiguous || b?.ambiguous)comments.push('Проверить: неоднозначная позиция. Сохранена отдельно, данные складов по ней не объединены.');
+    setTextCell(sheet, row, columns.comment, [...new Set(comments)].join('; '));
     for (const [field, amount] of Object.entries({ officeStock: stockOffice, warehouseStock: stockWarehouse, officeTransit: transitOffice, warehouseTransit: transitWarehouse })) setNumericCell(sheet, row, extras[field], amount);
   }
   recalculateSourceTable(detection, deliveryWeeks, brandRule(brand), calculation);
@@ -1051,6 +1054,16 @@ export function warehouseTransferQuantity(officeStock, warehouseStock) {
   const office = Math.max(0, officeStock);
   const warehouse = Math.max(0, warehouseStock);
   return Math.min(Math.floor(warehouse), Math.max(0, roundHalfUp((office + warehouse) * 0.25) - office));
+}
+
+/** Standalone recalculation shares the source pipeline, not supplier rounding. */
+export function recalculateOrderTable({workbook,warehouseWorkbook,brand,orderMonth,fileName='',warehouseFileName=''}) {
+  const output=warehouseWorkbook ? mergeTyumenSources({officeWorkbook:workbook,warehouseWorkbook,brand,officeFileName:fileName,warehouseFileName,preserveFacts:true}) : loadXlsx(saveXlsx(workbook));
+  detectCalculationColumns(detectColumns(output,'source'));
+  const result=readSource(output,orderMonth,brandRule(brand),fileName);
+  const counts=new Map();
+  for(const item of result.items){const key=item.article || normalizeName(item.name);counts.set(key,(counts.get(key)||0)+1);}
+  return {workbook:output,rows:result.items.map(item=>({...item,review:counts.get(item.article || normalizeName(item.name))>1 || item.sourceComment.includes('Проверить:')}))};
 }
 
 /** Prepare editable office-transfer rows. Supplier minima do not apply here. */
