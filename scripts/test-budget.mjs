@@ -29,6 +29,13 @@ assert.deepEqual(nova,{unit:1,step:10,minimum:100});
 p=planBudget([row('nova','A',{...nova,quantity:0,demand:100})],9800); assert.equal(p.total,10000); assert.ok(p.complete);
 p=planBudget([row('nova','A',{...nova,quantity:0,demand:100})],9000); assert.ok(!p.complete);
 const mask=budgetOrderRules('novacutan','EYE FILLER MASK NOVACUTAN'); assert.equal(mask.unit,5);
+for (const [brand,box,step] of [['christina',null,3],['klapp',null,3],['angiopharm',6,6],['levissime',4,4],['skin_synergy',null,1],['sothys',null,1]]) {
+  const rules=budgetOrderRules(brand,'Товар',box);
+  assert.equal(rules.step,step,brand);
+  const planned=planBudget([row(brand,'A',{...rules,quantity:0,demand:100})],step*100);
+  assert.equal(planned.rows[0].quantity,step,brand);
+  assert.ok(planned.complete,brand);
+}
 assert.equal(coverage(row('mask','A',{...mask,demand:10}),12),6);
 for(let i=1;i<80;i++) {
   const source=[row('a','A',{quantity:i,price:37}),row('b','B',{quantity:20,price:59})];
@@ -53,6 +60,18 @@ const result=fillWorkbook({sourceWorkbook:source,blankWorkbook:blank(),brand:'sk
 const data=budgetReportRows(result,'skin_synergy');
 assert.equal(data[0].demand,10); assert.equal(data[0].category,'C');
 assert.equal(data[0].prices[1].price,70);
+// Uneven sales distinguish the existing business formula from a plain mean.
+const unevenBook=read(saveXlsx(source),{type:'buffer'});
+const unevenSheet=unevenBook.Sheets[unevenBook.SheetNames[0]];
+const sales=[10,20,30,40,50,60,70,80,90,100,110,120];
+sales.forEach((v,i)=>{unevenSheet[utils.encode_cell({r:3,c:i+2})]={t:'n',v};});
+const unevenResult=fillWorkbook({sourceWorkbook:loadXlsx(write(unevenBook,{type:'buffer',bookType:'xlsx'})),blankWorkbook:blank(),brand:'skin_synergy',orderMonth:'2026-10',blankId:'main'});
+const unevenMetric=budgetReportRows(unevenResult,'skin_synergy')[0];
+const threshold=sales.reduce((a,b)=>a+b,0)/24;
+const relevant=sales.filter(v=>v>threshold);
+const businessDemand=relevant.reduce((a,b)=>a+b,0)/relevant.length;
+assert.equal(unevenMetric.demand,businessDemand);
+assert.notEqual(unevenMetric.demand,sales.reduce((a,b)=>a+b,0)/12);
 const north=buildNorthOrderFiles([{workbook:blank(),fileName:'Тюмень.xlsx'},{workbook:blank(),fileName:'Сургут.xlsx'}],{brand:'skin_synergy',tyumenSourceWorkbook:source});
 assert.equal(north.planRows[0].budget.demand,10);
 north.planRows[0].budgetComment='Добавилось 5 шт. Для закупа до суммы.';
