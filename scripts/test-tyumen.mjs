@@ -56,8 +56,14 @@ assert.equal(northTyumenFreeStock(100, 0, 0, 20, 10, 0), 10, "Office surplus mus
 assert.equal(northTyumenFreeStock(100, 0, 0, 110, 90, 0), 0, "Protect Tyumen target");
 assert.equal(northTyumenFreeStock(100, 0, 10, 110, 90, 0), 0);
 assert.equal(northTyumenFreeStock(300, 0, 0, 100), 200, "Legacy calculation stays supported");
-assert.throws(() => mergeTyumenSources({ ...options, warehouseWorkbook: source([{ article: "P1", name: "Крем 230 мл" }]) }), /разные названия/);
-assert.throws(() => mergeTyumenSources({ ...options, warehouseWorkbook: source([{ article: "P1", name: "Крем" }, { article: "P1", name: "Крем" }]) }), /повторяется/);
+for(const items of [[{article:'P1',name:'Крем 230 мл'}],[{article:'P1',name:'Крем'},{article:'P1',name:'Крем'}]]) {
+  const reviewed=mergeTyumenSources({...options,warehouseWorkbook:source(items)});
+  const sheet=read(saveXlsx(reviewed),{type:'buffer'}).Sheets.Тюмень;
+  const preserved=utils.sheet_to_json(sheet,{header:1}).filter(r=>r[0]==='P1');
+  assert.equal(preserved.length,items.length+1);
+  assert.ok(preserved.every(r=>String(r[26]).includes('Проверить:')));
+  assert.equal(preserved.reduce((s,r)=>s+r[22],0),10);
+}
 assert.throws(() => mergeTyumenSources({ ...options, warehouseWorkbook: merged }), /уже объединённая/);
 const deficit = mergeTyumenSources({ officeWorkbook: source([{ article: "P1", name: "Крем", sales: 10, stock: 0 }]), warehouseWorkbook: source([{ article: "P1", name: "Крем", sales: 10, stock: 0 }]), brand: "novacutan" });
 const deficitRow = utils.sheet_to_json(read(saveXlsx(deficit), { type: "buffer" }).Sheets.Тюмень, { header: 1 })[3];

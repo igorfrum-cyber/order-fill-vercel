@@ -699,6 +699,7 @@ function rebuildSourceWithChz(detection, deliveryWeeks, rule, calculationColumns
   const rows = readSourceRows(detection, maxRow, maxColumn, rule);
   const rowsByArticle = new Map();
   for (const row of rows) {
+    if (asText(sheetCellValue(sheet,row.row,columns.comment)).includes('Проверить: неоднозначная позиция.')) continue;
     if (!row.article) continue;
     if (!rowsByArticle.has(row.article)) rowsByArticle.set(row.article, []);
     rowsByArticle.get(row.article).push(row);
@@ -931,8 +932,12 @@ function tyumenRows(workbook, brand, options = {}) {
       throw new Error(`В отчёте склада нет месячных колонок, но у «${item.name}» указаны продажи или выручка. Нужен отчёт с разбивкой продаж по месяцам.`);
     }
     const key = tyumenProductKey(item, brand);
-    if (byKey.has(key)) throw new Error(`Неоднозначная позиция «${item.name}»: повторяется в одной таблице Тюмени. Проверьте строки ${byKey.get(key).row} и ${item.row}.`);
-    byKey.set(key, item);
+    // Preserve all unresolved duplicates for the existing report review UI.
+    if (byKey.has(key)) {
+      const previous=byKey.get(key);
+      previous.ambiguous=true; item.ambiguous=true;
+      byKey.set(`${key}:duplicate:${item.row}`,item);
+    } else byKey.set(key, item);
   }
   return { detection, calculation, byKey };
 }
@@ -943,11 +948,21 @@ function compatibleTyumenNames(left, right) {
 }
 
 function alignTyumenKeys(office, warehouse) {
+  // An ambiguous identity must not silently pick one warehouse counterpart.
+  const conflicts=new Set();
+  for(const side of [office,warehouse])for(const item of side.byKey.values())if(item.ambiguous)conflicts.add(item.article || normalizeName(item.name));
+  for(const [key,a] of office.byKey){const b=warehouse.byKey.get(key);if(b&&!compatibleTyumenNames(a.name,b.name))conflicts.add(a.article || normalizeName(a.name));}
+  for(const [label,side] of [['office',office],['warehouse',warehouse]]) {
+    for(const [key,item] of [...side.byKey])if(conflicts.has(item.article || normalizeName(item.name))) {
+      item.ambiguous=true;side.byKey.delete(key);side.byKey.set(`review:${label}:${item.row}`,item);
+    }
+  }
   // Exact name fallback is allowed only when an article is missing on one side.
   // Distinct known articles must never be merged just because names coincide.
   for (const [key, item] of [...office.byKey]) {
+    if(item.ambiguous)continue;
     if (warehouse.byKey.has(key)) continue;
-    const candidates = [...warehouse.byKey].filter(([, other]) => (!item.article || !other.article) && compatibleTyumenNames(item.name, other.name));
+    const candidates = [...warehouse.byKey].filter(([, other]) => !other.ambiguous && (!item.article || !other.article) && compatibleTyumenNames(item.name, other.name));
     if (candidates.length > 1) throw new Error(`Неоднозначное соответствие по названию «${item.name}» между офисом и складом.`);
     if (candidates.length === 1) {
       const [targetKey] = candidates[0];
@@ -962,7 +977,7 @@ function alignTyumenKeys(office, warehouse) {
  * Combine raw Tyumen office/warehouse history, then recompute ABC and demand.
  * Inputs are cloned; the returned workbook retains separate
  * location columns for subsequent North calculations. See docs/tyumen.md.
- * Ambiguous identities and mismatched periods fail instead of guessing.
+ * Ambiguous identities stay separate for report review; mismatched periods fail.
  */
 export function mergeTyumenSources({ officeWorkbook, warehouseWorkbook, brand = "angiopharm", officeFileName = "", warehouseFileName = "" }) {
   validateNorthTyumenSourceWorkbook(officeWorkbook, officeFileName);
@@ -1011,7 +1026,7 @@ export function mergeTyumenSources({ officeWorkbook, warehouseWorkbook, brand = 
     setNumericCell(sheet, row, columns.stock, stockOffice + stockWarehouse);
     setNumericCell(sheet, row, columns.inTransit, transitOffice + transitWarehouse);
     setNumericCell(sheet, row, columns.orderedFact, null);
-    setTextCell(sheet, row, columns.comment, "");
+    setTextCell(sheet, row, columns.comment, a?.ambiguous || b?.ambiguous ? 'Проверить: неоднозначная позиция. Сохранена отдельно, данные складов по ней не объединены.' : "");
     for (const [field, amount] of Object.entries({ officeStock: stockOffice, warehouseStock: stockWarehouse, officeTransit: transitOffice, warehouseTransit: transitWarehouse })) setNumericCell(sheet, row, extras[field], amount);
   }
   recalculateSourceTable(detection, deliveryWeeks, brandRule(brand), calculation);
