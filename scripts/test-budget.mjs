@@ -1,4 +1,12 @@
 import assert from 'node:assert/strict';
+import {christinaNorthSupplierQuantity,defaultNorthActualSupplierOrder} from '../src/workbookProcessor.js';
+for(const [brand,position,need,expected] of [
+ ['angiopharm',{blankBoxSize:6},4.75,6],['levissime',{blankBoxSize:4},4.75,8],
+ ['skin_synergy',{},0.22,1],['sothys',{},1.25,2],['christina',{},4.75,6],
+ ['klapp',{},10,9],['klapp',{},11,12],['novacutan',{novacutanMinimum:100},104,100],
+ ['novacutan',{novacutanMinimum:100},105,110],['novacutan',{novacutanMinimum:10,supplierUnitSize:5},12,12],
+]) assert.equal(defaultNorthActualSupplierOrder({brand},position,need),expected,brand);
+for(const [need,quantity] of [[0,null],[0.22,3],[1.25,3],[2,3],[3,3],[4.75,6],[6,6]])assert.equal(christinaNorthSupplierQuantity(need),quantity);
 import { planBudget, discountValue, coverage } from '../src/budgetPlanner.js';
 import { priceOrderRows } from '../src/orderPricing.js';
 import { budgetChangeComment } from '../src/budgetDialog.js';
@@ -84,6 +92,11 @@ const businessDemand=relevant.reduce((a,b)=>a+b,0)/relevant.length;
 assert.equal(unevenMetric.demand,businessDemand);
 assert.notEqual(unevenMetric.demand,sales.reduce((a,b)=>a+b,0)/12);
 const north=buildNorthOrderFiles([{workbook:blank(),fileName:'Тюмень.xlsx'},{workbook:blank(),fileName:'Сургут.xlsx'}],{brand:'skin_synergy',tyumenSourceWorkbook:source});
+const christina=buildNorthOrderFiles([{workbook:blank(),fileName:'Тюмень.xlsx',variant:'home'},{workbook:blank(),fileName:'Сургут.xlsx',variant:'home'}],{brand:'christina',tyumenSourceWorkbook:source});
+assert.equal(christina.planRows[0].actualSupplierOrder,21);
+const christinaExport=finalizeNorthOrderFiles(christina);
+assert.equal(read(saveXlsx(christinaExport.summaryWorkbook),{type:'buffer'}).Sheets['Бланк'].E3.v,21);
+assert.equal(christinaExport.transfers[0].items[0].quantity,10);
 assert.equal(north.planRows[0].budget.demand,10);
 north.planRows[0].budgetComment='Добавилось 5 шт. Для закупа до суммы.';
 const finalized=finalizeNorthOrderFiles(north,[{key:north.planRows[0].key,actualSupplierOrder:40}],{allowShortSupplierOrder:true});

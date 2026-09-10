@@ -3013,11 +3013,20 @@ function novacutanNameScore(left, right, unit = "") {
   return base;
 }
 
-function defaultNorthActualSupplierOrder(summary, position, supplierNeed) {
+export function christinaNorthSupplierQuantity(need) {
+  return need > 0 ? Math.ceil(Number(need) / 3 - 1e-10) * 3 : null;
+}
+
+export function defaultNorthActualSupplierOrder(summary, position, supplierNeed) {
   if (supplierNeed <= 0) return null;
-  if (summary.kind === "novacutan") return novacutanSupplierOrderQuantity(position, supplierNeed);
-  if (summary.kind === "klapp") return nearestMultipleValue(supplierNeed, 3);
-  return Number(supplierNeed.toFixed(2));
+  if (summary.brand === 'christina' || summary.variant === 'home' || summary.variant === 'proff') return christinaNorthSupplierQuantity(supplierNeed);
+  if (summary.brand === 'novacutan' || summary.kind === "novacutan") return novacutanSupplierOrderQuantity(position, supplierNeed);
+  if (summary.brand === 'klapp' || summary.kind === "klapp") return nearestMultipleValue(supplierNeed, 3);
+  const rule=BRAND_RULES[summary.brand];
+  const box=Number(position.blankBoxSize);
+  const step=rule?.adjustment==='box' && Number.isFinite(box) && box>0 ? Math.ceil(box) : 1;
+  // Fractional target stock is valid, but the supplier receives whole units/packs.
+  return Math.ceil(supplierNeed/step-1e-10)*step;
 }
 
 function northTotalCityParts(total) {
@@ -3240,7 +3249,7 @@ export function buildNorthOrderFiles(blanks, options = {}) {
     cityKeys.add(duplicateKey);
     const extracted = northPositions(blank.workbook, `north-${index}`, variant ? `${city.label} ${blank.variantLabel || variant}` : city.label, blank.fileName, northBrand);
     const positions = scopedNorthPositions(extracted.positions, variant, blank.variantLabel || "");
-    return { ...blank, city, ...extracted, positions, variant, variantLabel: blank.variantLabel || "" };
+    return { ...blank, city, ...extracted, positions, brand:northBrand, variant, variantLabel: blank.variantLabel || "" };
   });
 
   const totals = new Map();

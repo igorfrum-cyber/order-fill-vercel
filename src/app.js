@@ -21,6 +21,7 @@ import {
   applyBudgetWorkbookPricing,
   budgetNorthWorkbookPricing,
   workbookPriceOptions,
+  defaultNorthActualSupplierOrder,
 } from "./workbookProcessor.js";
 
 const budgetLocks = new Set();
@@ -1559,12 +1560,7 @@ function renderNorthPlan(result) {
 }
 
 function defaultNorthActual(row, supplierNeed) {
-  if (supplierNeed <= 0) return "";
-  if (currentNorthResult?.summary?.kind === "klapp") return nearestNorthMultiple(supplierNeed, 3);
-  if (currentNorthResult?.summary?.kind !== "novacutan") return Number(supplierNeed.toFixed(2));
-  const minimum = Number(row.novacutanMinimum || 100);
-  if (Number(row.supplierUnitSize || 1) > 1) return Math.max(minimum, Math.ceil(supplierNeed));
-  return Math.round(Math.max(supplierNeed, minimum) / 10) * 10;
+  return defaultNorthActualSupplierOrder(currentNorthResult?.summary || {},row,supplierNeed) ?? '';
 }
 
 function northCityQuantities(rowEl) {
