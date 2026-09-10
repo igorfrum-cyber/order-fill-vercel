@@ -1,5 +1,6 @@
 import "./styles.css";
 import { openBudgetDialog, additionComment } from './budgetDialog.js';
+import { createOrderPricing, priceOrderRows, money } from './orderPricing.js';
 import {
   applyFinalEdits,
   buildNorthOrderFiles,
@@ -18,12 +19,42 @@ import {
   budgetOrderRules,
   applyBudgetWorkbookPricing,
   budgetNorthWorkbookPricing,
+  workbookPriceOptions,
 } from "./workbookProcessor.js";
 
 const budgetLocks = new Set();
 const northBudgetLocks = new Set();
 const budgetUndo = document.createElement('button');
 const northBudgetUndo = document.createElement('button');
+let orderPricing, northPricing;
+const budgetPanels=new Map();
+
+function liveBudgetRows(north) {
+  if(!north)return currentResults.flatMap(r=>budgetReportRows(r,selectedBrand())).map(r=>({...r,quantity:Number(editState.get(r.key)?.value||0)}));
+  return (currentNorthResult?.planRows||[]).map(r=>{
+    const tr=[...northPlanBody.querySelectorAll('tr[data-key]')].find(el=>el.dataset.key===r.key);
+    return {...r.budget,key:r.key,name:r.name,group:r.variant||'main',quantity:Number(tr?.querySelector('.north-actual-input').value||0)};
+  });
+}
+
+function refreshBudgetTotals() {
+  for(const north of [false,true]) {
+    const panel=budgetPanels.get(north); if(!panel)continue;
+    const rows=liveBudgetRows(north);
+    const settings=north?currentNorthResult?.priceSettings:currentResults[0]?.priceSettings;
+    if(!settings)continue;
+    const priced=priceOrderRows(rows,settings);
+    const groups=[...new Set(priced.map(r=>r.group))];
+    const host=panel.querySelector('[data-budget-totals]');
+    for(const g of groups) {
+      let section=[...host.children].find(e=>e.dataset.group===g);
+      if(!section){section=document.createElement('div');section.dataset.group=g;section.innerHTML='<strong></strong><label>Желаемая сумма, ₽<input type="number" min="0" step="0.01" data-budget-target></label>';host.append(section);}
+      const selected=priced.filter(r=>r.group===g);
+      section.querySelector('strong').textContent=`${g==='main'?'Текущая сумма':g.toUpperCase()}: ${selected.some(r=>r.quantity>0&&!r.price)?'Не определена цена':money(selected.reduce((s,r)=>s+Math.round(r.quantity*r.price*100)/100,0))+' ₽'}`;
+    }
+    for(const child of [...host.children])if(!groups.includes(child.dataset.group))child.remove();
+  }
+}
 
 function budgetComment(previous, row) {
   const delta = row.quantity - row.before;
@@ -41,7 +72,10 @@ function installBudgetControls() {
     button.textContent = 'Заказ до суммы';
     undo.textContent = 'Отменить перерасчет суммы';
     undo.hidden = true;
-    anchor.before(button, undo);
+    const panel=document.createElement('section');panel.className='budget-panel';
+    panel.innerHTML='<h3>Заказ до суммы</h3><div data-budget-totals></div><div class="budget-actions"></div>';
+    (north?northResult:resultEl).querySelector('.result-head').after(panel);
+    panel.querySelector('.budget-actions').append(button,undo);budgetPanels.set(north,panel);
     button.onclick = () => {
       if (north && !currentNorthResult) return alert('Сначала соедините бланки.');
       if (!north && !currentResults.length) return alert('Сначала заполните бланк.');
@@ -64,7 +98,9 @@ function installBudgetControls() {
       const counts = new Map();
       for (const r of rows) counts.set(r.inventoryKey,(counts.get(r.inventoryKey)||0)+1);
       for (const r of rows) if (counts.get(r.inventoryKey)>1) r.unsafe=true;
-      openBudgetDialog({ rows, christina:brand==='christina', apply:(planned,newLocks)=>{
+      const settings=north?currentNorthResult.priceSettings:currentResults[0].priceSettings;
+      const targets=Object.fromEntries([...panel.querySelector('[data-budget-totals]').children].map(el=>[el.dataset.group,el.querySelector('input').value]));
+      openBudgetDialog({ rows:priceOrderRows(rows,settings), fixedPricing:true, initialTargets:targets, christina:brand==='christina', apply:(planned,newLocks)=>{
         // Validate export pricing before changing any manager edits.
         if (north) {
           for (const summary of currentNorthResult.summaries?.length ? currentNorthResult.summaries : [currentNorthResult.summary]) budgetNorthWorkbookPricing(summary, planned);
@@ -97,6 +133,7 @@ function installBudgetControls() {
         }
         if(north) clearNorthDownloadLinks(); else { clearDownloadLinks(); renderReportView(); }
         undo.hidden=false;
+        refreshBudgetTotals();
         undo.onclick=()=>{
           pricingOwners.forEach((owner,i)=>{owner.budgetPricing=oldPricing[i];});
           locks.clear(); for(const key of oldLocks) locks.add(key);
@@ -111,10 +148,17 @@ function installBudgetControls() {
             clearNorthDownloadLinks();
           } else { editState=oldEdits; renderReportView(); clearDownloadLinks(); }
           undo.hidden=true;
+          refreshBudgetTotals();
         };
       }});
     };
   }
+  const ordinaryFiles=()=>selectedBrand()==='christina'?[{group:'home',file:homeFile.files[0]},{group:'proff',file:proffFile.files[0]}].filter(e=>e.file):blankFile.files[0]?[{group:'main',file:blankFile.files[0]}]:[];
+  orderPricing=createOrderPricing(form,ordinaryFiles,f=>loadWorkbook(f,{allowLegacyXls:selectedBrand()==='novacutan'}),(w,n)=>workbookPriceOptions(w,n,selectedBrand()),resetFillState);
+  northPricing=createOrderPricing(northForm,()=>northFilesForMerge().map(e=>({...e,group:e.variant||'main'})),loadWorkbook,(w,n)=>workbookPriceOptions(w,n,selectedNorthBrand()),()=>{northResult.classList.add('hidden');currentNorthResult=null;clearNorthDownloadLinks();});
+  for(const input of [blankFile,homeFile,proffFile,brandSelect])input.addEventListener('change',()=>orderPricing.refresh());
+  for(const input of [northFileInput,northHomeInput,northProffInput,northBrandSelect])input.addEventListener('change',()=>northPricing.refresh());
+  for(const list of [northFileList,northHomeFileList,northProffFileList])list.addEventListener('click',()=>northPricing.refresh());
 }
 
 window.addEventListener('DOMContentLoaded', installBudgetControls, {once:true});
@@ -950,6 +994,8 @@ form.addEventListener("submit", async (event) => {
       ]
     : [{ id: "main", label: mainBlankLabelForBrand(brand), file: blankFile.files[0] }];
   if (!sourceFile.files[0] || blankInputs.some((item) => !item.file)) return;
+  let priceSettings;
+  try {priceSettings=orderPricing.read();}catch(e){alert(e.message);return;}
 
   statusEl.textContent = "Обработка...";
   setSubmitButtonState("processing");
@@ -988,6 +1034,7 @@ form.addEventListener("submit", async (event) => {
     }));
 
     currentResults = results;
+    for(const result of results){result.priceSettings=priceSettings;result.budgetPricing=priceOrderRows(budgetReportRows(result,brand),priceSettings);}
     currentSourceWorkbook = sourceWorkbook;
     currentBlankWorkbooks = new Map(results.map((result) => [result.blankId, result.blankWorkbook]));
     for (const [index, item] of blankInputs.entries()) {
@@ -1002,6 +1049,7 @@ form.addEventListener("submit", async (event) => {
     for (const row of rows) if (row.hasOrderedFact && Number(row.orderedFact) === 0) budgetLocks.add(row.key);
     renderMetrics(combinedSummary(results));
     renderReportView();
+    refreshBudgetTotals();
     resultEl.classList.remove("hidden");
     downloadButton.disabled = false;
     issueReportButton.disabled = !issueReportRows().length;
@@ -1731,6 +1779,7 @@ downloadButton.addEventListener("click", async () => {
       });
       result.blankWorkbook = edited.blankWorkbook;
       currentSourceWorkbook = edited.sourceWorkbook;
+      result.budgetPricing=priceOrderRows(liveBudgetRows(false).filter(r=>r.group===result.blankId),result.priceSettings);
       files.push({
         label: `Скачать ${result.blankLabel || "бланк"}`,
         name: currentBlankOutputNames.get(result.blankId) || "blank заполненный.xlsx",
@@ -1768,6 +1817,9 @@ northForm.addEventListener("submit", async (event) => {
     return;
   }
 
+  let priceSettings;
+  try {priceSettings=northPricing.read();}catch(e){alert(e.message);return;}
+
   northSubmitButton.disabled = true;
   northStatus.textContent = "Проверяю бланки...";
   clearNorthDownloadLinks();
@@ -1801,7 +1853,10 @@ northForm.addEventListener("submit", async (event) => {
       return;
     }
     currentNorthResult = result;
+    result.priceSettings=priceSettings;
     renderNorthPlan(result);
+    result.budgetPricing=priceOrderRows(liveBudgetRows(true),priceSettings);
+    refreshBudgetTotals();
     const supplierRows = result.planRows.filter((row) => Number(row.supplierNeed || 0) > 0).length;
     const tyumenCovered = result.planRows.filter((row) => Number(row.fromTyumen || 0) > 0).length;
     northSummary.textContent = `Города: ${result.uploadedCities.join(", ")}. Позиций к заказу у поставщика: ${supplierRows}. Позиций закрыто остатком Тюмени: ${tyumenCovered}. Перемещений: ${result.transfers.length}.${result.hasTyumenSource ? "" : " Таблица Тюмени не загружена, остаток Тюмени не учитывался."}`;
@@ -1852,6 +1907,7 @@ northDownloadButton.addEventListener("click", async () => {
       northStatus.textContent = "Готово";
       return;
     }
+    currentNorthResult.budgetPricing=priceOrderRows(liveBudgetRows(true),currentNorthResult.priceSettings);
     const finalized = finalizeNorthOrderFiles(currentNorthResult, edits, { allowShortSupplierOrder: true });
     const summaryFiles = finalized.summaryFiles?.length
       ? finalized.summaryFiles
@@ -1916,6 +1972,9 @@ function handleReportInput(event) {
 
 reportBody.addEventListener("input", handleReportInput);
 priorityBody.addEventListener("input", handleReportInput);
+reportBody.addEventListener('input',refreshBudgetTotals);
+priorityBody.addEventListener('input',refreshBudgetTotals);
+northPlanBody.addEventListener('input',refreshBudgetTotals);
 
 metricsEl.addEventListener("click", (event) => {
   const metric = event.target.closest(".metric");

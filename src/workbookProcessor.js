@@ -2633,6 +2633,11 @@ function northSplitVariantPositions(detection, blankId, blankLabel) {
   return rows;
 }
 
+export function workbookPriceOptions(workbook, fileName, brand) {
+  const {detection,positions}=northPositions(workbook,'pricing','',fileName,brand);
+  return [...new Map(positions.flatMap(p=>budgetPrices(detection,p.row,p.quantityCol)).map(p=>[p.id,p])).values()];
+}
+
 function northPositions(workbook, blankId, blankLabel, fileName = "", brand = "") {
   const detected = northBlankDetection(workbook, fileName, brand);
   const positions = detected.kind === "novacutan"

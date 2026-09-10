@@ -4,7 +4,7 @@ const escape = value => String(value ?? '').replace(/[&<>"']/g, c => ({'&':'&amp
 const money = value => Number(value).toLocaleString('ru-RU', { maximumFractionDigits: 2 });
 const groupLabel = value => value === 'main' ? 'Бланк' : value.toUpperCase();
 
-export function openBudgetDialog({ rows, christina, apply }) {
+export function openBudgetDialog({ rows, christina, apply, fixedPricing=false, initialTargets={} }) {
   // Work from a snapshot. Only the explicit Apply action updates the live order.
   if (!rows.length) { alert('Нет позиций для перерасчета.'); return; }
   const groups = [...new Set(rows.map(r => r.group))];
@@ -32,9 +32,10 @@ export function openBudgetDialog({ rows, christina, apply }) {
     return `<label>${escape(groupLabel(g))}: колонка цены <select data-price-group="${index}"><option value="">Выберите колонку</option>${[...prices.values()].map(p => `<option value="${escape(p.id)}">${escape(p.label)}</option>`).join('')}</select></label>`;
   }).join('');
   function targets() {
-    $('[data-targets]').innerHTML = ($('[data-separate]')?.checked ? groups : ['Общая сумма']).map((g,i) => `<label>${escape(g.toUpperCase())}, ₽ <input type="number" min="0" step="0.01" data-target="${i}" inputmode="decimal"></label>`).join('');
+    $('[data-targets]').innerHTML = ($('[data-separate]')?.checked ? groups : ['Общая сумма']).map((g,i) => `<label>${escape(g.toUpperCase())}, ₽ <input type="number" min="0" step="0.01" data-target="${i}" value="${escape(initialTargets[g] ?? initialTargets[groups[i]] ?? '')}" inputmode="decimal"></label>`).join('');
   }
   function pricedRows() {
+    if(fixedPricing)return rows.map(r=>({...r,locked:locks.has(r.key),excluded:locks.has(r.key)}));
     const discount = $('input[name="price-mode"]:checked').value === 'gross' ? discountValue($('[data-discount-value]').value) : 0;
     return rows.map(r => {
       const col = $(`[data-price-group="${groups.indexOf(r.group)}"]`).value;
@@ -63,7 +64,7 @@ export function openBudgetDialog({ rows, christina, apply }) {
   function run() {
     try {
       const data=pricedRows();
-      for(const select of dialog.querySelectorAll('[data-price-group]')) if(!select.value) throw Error('Выберите колонку цены для каждого бланка.');
+      if(!fixedPricing)for(const select of dialog.querySelectorAll('[data-price-group]')) if(!select.value) throw Error('Выберите колонку цены для каждого бланка.');
       const split=$('[data-separate]')?.checked;
       const plans=(split ? groups : ['all']).map((g,i)=>{
         const field=$(`[data-target="${i}"]`);
@@ -97,6 +98,11 @@ export function openBudgetDialog({ rows, christina, apply }) {
     catch (error) { $('[data-warning]').textContent=error.message; }
   };
   dialog.addEventListener('close',()=>dialog.remove(),{once:true});
+  if(christina){$('[data-separate]').checked=true;if(fixedPricing)$('[data-separate]').parentElement.hidden=true;}
+  if(fixedPricing){
+    $('[data-prices]').hidden=true;
+    for(const el of dialog.querySelectorAll('input[name="price-mode"]'))el.parentElement.hidden=true;
+  }
   targets(); reset(); dialog.showModal();
 }
 

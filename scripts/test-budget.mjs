@@ -1,11 +1,16 @@
 import assert from 'node:assert/strict';
 import { planBudget, discountValue, coverage } from '../src/budgetPlanner.js';
+import { priceOrderRows } from '../src/orderPricing.js';
 import { applyBudgetWorkbookPricing, budgetOrderRules, budgetReportRows, fillWorkbook, loadXlsx, buildNorthOrderFiles, finalizeNorthOrderFiles, saveXlsx } from '../src/workbookProcessor.js';
 import { utils, write, read } from 'xlsx';
 import { mkdirSync, writeFileSync } from 'node:fs';
 const row = (key,category='A',extra={}) => ({key,name:key,category,quantity:10,demand:10,stock:0,transit:0,delivery:0.25,price:100,unit:1,step:1,minimum:1,...extra});
 assert.equal(discountValue('30%'),30);
 assert.equal(discountValue('30'),30);
+const priceRows=[{group:'home',quantity:15,prices:[{id:'3',column:3,price:100,label:'Цена'}]},{group:'proff',quantity:10,prices:[{id:'4',column:4,price:80,label:'Цена со скидкой'}]}];
+const fixed=priceOrderRows(priceRows,{home:{column:'3',discount:30},proff:{column:'4',discount:0}});
+assert.equal(fixed[0].price,70);assert.equal(fixed[0].quantity,15);assert.equal(fixed[1].price,80);
+assert.equal(priceOrderRows([{...priceRows[0],quantity:20}],{home:{column:'3',discount:30}})[0].quantity*70,1400);
 assert.throws(()=>discountValue('100%'));
 let p=planBudget([row('a'),row('c','C')],2200);
 assert.equal(p.rows[0].quantity,10); assert.equal(p.rows[1].quantity,12);

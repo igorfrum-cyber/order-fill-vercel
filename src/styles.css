@@ -896,3 +896,13 @@ tr.invalid .comment-input {
 .budget-scroll th:last-child { width: 20%; min-width: 165px; }
 .budget-dialog [data-summary] { font-weight: 600; margin: 16px 0; }
 @media (max-width: 600px) { .budget-dialog { padding: 12px; } .budget-settings { gap: 10px; } .budget-dialog footer { justify-content: flex-start; } }
+.budget-panel, .order-pricing { padding:20px; border-top:1px solid #d5dce5; }
+.order-pricing { grid-column:1 / -1; }
+.budget-panel h3, .order-pricing h3 { margin:0 0 14px; font-size:18px; }
+.budget-panel [data-budget-totals], .order-pricing [data-group] { display:flex; align-items:end; gap:20px; flex-wrap:wrap; }
+.budget-panel [data-budget-totals] > div { display:flex; flex-direction:column; gap:12px; min-width:220px; }
+.budget-panel label, .order-pricing label { display:flex; flex-direction:column; gap:6px; max-width:100%; }
+.budget-panel input, .order-pricing input, .order-pricing select { min-height:42px; max-width:100%; padding:8px; border:1px solid #ccd6e2; border-radius:6px; font:inherit; }
+.budget-actions { display:flex; gap:12px; flex-wrap:wrap; margin-top:16px; }
+.order-pricing [data-group] + [data-group] { margin-top:18px; }
+.order-pricing [hidden], .budget-panel [hidden] { display:none !important; }
