@@ -1,0 +1,19 @@
+go 1.26.7
+
+toolchain go1.26.7
+
+use (
+	./pkg
+	./proto
+	./services/audit-service
+	./services/brand-service
+	./services/calculation-service
+	./services/document-service
+	./services/file-service
+	./services/gateway-service
+	./services/identity-service
+	./services/job-service
+	./services/matching-service
+	./services/passkey-service
+	./services/twofa-service
+)

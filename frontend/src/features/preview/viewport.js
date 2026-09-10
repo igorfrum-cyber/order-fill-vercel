@@ -2,7 +2,7 @@ export const PREVIEW_ROW_HEIGHT = 28;
 export const PREVIEW_COL_WIDTH = 92;
 export const PREVIEW_GUTTER_WIDTH = 52;
 export const PREVIEW_HEADER_HEIGHT = 28;
-export const PREVIEW_BUFFER_ROWS = 24;
+export const PREVIEW_BUFFER_ROWS = 12;
 export const PREVIEW_MAX_FETCH_ROWS = 120;
 
 export function parseCustomHeights(raw) {

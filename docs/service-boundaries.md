@@ -1,50 +1,60 @@
 # Service Boundaries
 
-This document defines the intended module boundaries for the service rewrite. The first service baseline is intentionally thin; these rules keep later implementation from re-creating the browser monolith inside one package.
+This document defines the active backend v2 boundaries. Historical implementation
+plans may mention the retired root `services/` tree; current runtime code lives
+under `backend/`.
 
 ## Top-Level Ownership
 
-- `frontend/` owns the browser app image and static asset packaging.
-- `services/api-service/` owns public HTTP API, request validation, job metadata, storage orchestration, and queue publishing.
-- `services/document-service/` owns Excel reading/writing, workbook domain logic, report generation, and worker execution.
-- `packages/contracts/` owns API contracts shared by services and frontend.
-- `deploy/` owns local and production-like composition.
+- `frontend/` owns browser UI, state, rendering, and API calls through `frontend/src/api/`.
+- `backend/services/gateway-service/` owns the public HTTP API, session gate, CSRF/CORS, request validation, and response mapping.
+- `backend/services/identity-service/` owns users, companies, sessions, invites, password changes, and account authorization data.
+- `backend/services/twofa-service/` owns TOTP secrets, verification, and TOTP rate limiting.
+- `backend/services/passkey-service/` owns WebAuthn credentials and ceremony state.
+- `backend/services/job-service/` owns job metadata, job authorization context, report state, and queue publishing.
+- `backend/services/file-service/` owns object metadata and object storage.
+- `backend/services/document-service/` owns Excel parsing/writing, preview artifacts, and document job execution. It maps workbook rows to matching items and applies returned identity decisions; it does not decide product identity itself.
+- `backend/services/matching-service/` owns product matching decisions. It accepts structured items and returns canonical `ReportCategory` plus `MatchReasons`; it does not parse Excel.
+- `backend/services/brand-service/` owns brand catalog and brand-specific rules.
+- `backend/services/calculation-service/` owns quantity calculations over normalized inputs.
+- `backend/proto/` owns internal gRPC contracts.
 
-## API Service
+## Public Boundary
 
-Allowed dependencies:
+Only `gateway-service` is a browser-facing backend service. Frontend requests use
+same-origin `/api/v1/...` paths; the frontend nginx container proxies `/api/` to
+`gateway-service:8080`.
 
-- `cmd/api` may import `internal/http`.
-- `internal/http` may import `internal/jobs` and `internal/storage` ports.
-- `internal/jobs` may define job models, repository ports, queue publisher ports, and service orchestration.
-- `internal/storage` may define object storage ports and implementations.
+Gateway handlers must not parse Excel workbooks, write object blobs directly, or
+reach into other services' storage. They validate HTTP inputs once, derive user
+identity from the session cookie, then call internal gRPC services.
 
-Forbidden dependencies:
+## Internal Boundary
 
-- `api-service` must not import `document-service/internal/...`.
-- `api-service` must not parse or mutate Excel workbook contents.
-- HTTP handlers must not depend on concrete database, queue, or object storage clients directly; use ports owned by `internal/jobs` and `internal/storage`.
+Internal services communicate through protobuf/gRPC. Shared transport behavior
+lives in `backend/pkg/grpcutil`: request IDs, deadlines, message limits, server
+shutdown, and optional TLS/mTLS.
 
-## Document Service
+Services must keep domain behavior independent of transport DTOs. gRPC handlers
+map protobuf messages and status codes only; authorization and business state
+belong in service packages or domain packages.
 
-Allowed dependencies:
+## Storage Boundary
 
-- `cmd/worker` may import worker/job orchestration packages.
-- `internal/jobs` may import `internal/orderfill`, `internal/north`, `internal/reports`, and storage/queue ports.
-- `internal/orderfill` and `internal/north` may import `internal/domain`, `internal/brands`, `internal/matching`, `internal/excel`, and `internal/reports`.
-- `internal/excel` must stay infrastructure-focused: workbook zip/XML parsing and writing only.
-- `internal/domain` must stay pure domain data and validation.
-- `internal/brands` owns brand-specific quantity and detection rules.
-- `internal/matching` owns article/name matching and duplicate detection.
-- `internal/reports` owns JSON report DTOs and output-file metadata.
+Stateful services must use durable dependencies outside local development:
 
-Forbidden dependencies:
+- identity, job, audit: PostgreSQL
+- file: PostgreSQL metadata plus S3-compatible object storage
+- twofa, passkey: PostgreSQL plus Redis-backed transient state
+- document-worker: Redis queue plus gRPC access to job, file, brand, matching, and calculation
 
-- `document-service` must not import `api-service/internal/...`.
-- `internal/domain` must not import `internal/excel`, queue clients, storage clients, or HTTP packages.
-- `internal/excel` must not import brand, matching, order-fill, or north packages.
-- Worker code must not write user-facing HTTP responses.
+In production, config validation fails at startup instead of falling back to
+in-memory stores.
 
-## Contracts
+## Forbidden Dependencies
 
-`packages/contracts/openapi.yaml` is the source of truth for public job API shape. Frontend and API implementation should conform to the contract rather than inventing local DTO variants.
+- Frontend must not contain workbook parsing or order calculation rules.
+- Gateway must not import `backend/services/*/internal/...` from other services.
+- Document-service must not import gateway, identity, or job storage internals.
+- Matching, brand, and calculation services must not read Excel files or object storage.
+- Historical root `services/` modules must not be reintroduced.

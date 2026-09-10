@@ -1,0 +1,12 @@
+{
+  "go.toolsEnvVars": {
+    "GOTOOLCHAIN": "auto",
+    "GOWORK": "${workspaceFolder}/backend/go.work"
+  },
+  "gopls": {
+    "env": {
+      "GOTOOLCHAIN": "auto"
+    },
+    "directoryFilters": ["-frontend", "-node_modules", "-.git", "-dist"]
+  }
+}

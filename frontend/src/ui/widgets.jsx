@@ -126,7 +126,7 @@ export function ProgressBar({ value, label, indeterminate = false }) {
           <div className="preview-indeterminate-bar h-full rounded-full bg-[var(--color-brand)]" />
         ) : (
           <div
-            className="h-full rounded-full bg-[var(--color-brand)] transition-all duration-300"
+            className="h-full rounded-full bg-[var(--color-brand)]"
             style={{ width: `${pct}%` }}
           />
         )}

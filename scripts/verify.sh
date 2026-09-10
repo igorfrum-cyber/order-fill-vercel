@@ -13,10 +13,13 @@ echo "==> frontend"
 npm run test:load
 npm run verify --prefix frontend
 
-echo "==> api-service"
-"$root/scripts/verify-go.sh" services/api-service
+echo "==> backend v2"
+while IFS= read -r module; do
+  echo "==> ${module}"
+  "$root/scripts/verify-go.sh" "$module"
+done < <(find backend -name go.mod -exec dirname {} \; | sort)
 
-echo "==> document-service"
-"$root/scripts/verify-go.sh" services/document-service
+echo "==> backend compose"
+docker compose -f backend/deploy/docker-compose.yml config >/dev/null
 
 echo "verify ok"

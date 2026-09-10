@@ -1,0 +1,42 @@
+syntax = "proto3";
+
+package orderfill.audit.v1;
+
+option go_package = "order-fill/backend/proto/gen/go/orderfill/audit/v1;auditv1";
+
+import "orderfill/common/v1/common.proto";
+
+service AuditService {
+  rpc Record(RecordRequest) returns (RecordResponse);
+  rpc ListEvents(ListEventsRequest) returns (ListEventsResponse);
+}
+
+message Event {
+  string id = 1;
+  string type = 2;
+  string actor_user_id = 3;
+  string company_id = 4;
+  string job_id = 5;
+  string created_at = 6;
+  string payload_json = 7;
+}
+
+message RecordRequest {
+  orderfill.common.v1.RequestMeta meta = 1;
+  string type = 2;
+  string job_id = 3;
+  string payload_json = 4;
+}
+
+message RecordResponse {
+  string id = 1;
+}
+
+message ListEventsRequest {
+  orderfill.common.v1.RequestMeta meta = 1;
+  string company_id = 2;
+}
+
+message ListEventsResponse {
+  repeated Event events = 1;
+}

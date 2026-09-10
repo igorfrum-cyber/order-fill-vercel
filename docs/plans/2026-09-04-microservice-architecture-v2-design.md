@@ -99,6 +99,7 @@ Owns:
 - companies;
 - users;
 - roles and permissions;
+- company matching mode (`standard` or `smart`; platform admin only for now);
 - password login;
 - sessions;
 - invites and access reset;
@@ -149,6 +150,7 @@ Owns:
 - job status and progress;
 - export history;
 - job ownership and access checks;
+- matching mode snapshot taken from the company at create time;
 - report metadata;
 - generated file metadata;
 - manual edit submission;
@@ -219,13 +221,17 @@ Owns:
 - confidence scoring;
 - candidate ranking;
 - suspicious match reasons;
+- matching mode execution (`standard` = current behavior, `smart` = article-first
+  plus volume/form/duplicate/ЧЗ gates);
+- shared report categories independent of mode;
 - future company dictionaries and synonym overrides;
 - future learning from approved manual corrections;
 - future ML or embedding-backed matching.
 
 It accepts structured source items and blank items, not Excel workbooks. It may
-receive brand and company context, but it must not import or depend on workbook
-code.
+receive brand, company, and matching-mode context, but it must not import or
+depend on workbook code. It does not own the company setting; it only executes
+the mode snapshotted on the job.
 
 ### brand-service
 
@@ -337,6 +343,7 @@ identity-service owns:
   permissions
   sessions metadata if durable
   invites
+  company matching_mode
 
 twofa-service owns:
   twofa_credentials
@@ -351,6 +358,7 @@ job-service owns:
   job_events
   job_reports
   job_file_refs
+  job matching_mode snapshot
 
 file-service owns:
   upload_sessions

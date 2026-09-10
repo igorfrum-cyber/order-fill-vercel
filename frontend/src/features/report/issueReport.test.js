@@ -39,3 +39,16 @@ test("issueReportCsv escapes cells and includes manager comment", () => {
   assert.match(csv, /"Cream ""X"""/);
   assert.match(csv, /"проверить"/);
 });
+
+test("issue report includes canonical cleanup reasons", () => {
+  const csv = issueReportCsv([
+    { category: "needs_decision", matchReasons: { duplicates: "needs_choice" }, blankArticle: "A1" },
+    { category: "check_name_or_volume", matchReasons: { volume: "conflict" }, blankArticle: "A2" },
+    { category: "not_in_source", blankArticle: "A3" },
+    { category: "not_in_blank", sourceArticle: "A4" },
+  ]);
+  assert.match(csv, /неоднозначный дубль/i);
+  assert.match(csv, /конфликт объёма/i);
+  assert.match(csv, /есть в бланке, но нет в 1С/i);
+  assert.match(csv, /есть в 1С с потребностью, но нет в бланке/i);
+});

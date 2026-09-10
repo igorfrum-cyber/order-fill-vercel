@@ -13,6 +13,12 @@ export function usersByHierarchy(users = []) {
   }));
 }
 
+export function hierarchyEmptyHint(bandKey) {
+  if (bandKey === "purchasers") return "Закупщик заполняет бланки. Пригласите его формой выше.";
+  if (bandKey === "admins") return "Администратор приглашает людей и правит профиль компании.";
+  return "Владельца назначает администратор сервиса.";
+}
+
 export function lastSeenLabel(value) {
   if (!value) return "Ещё не входил";
   const date = new Date(value);

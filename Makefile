@@ -6,13 +6,24 @@ verify:
 lint:
 	bash scripts/verify-toolchain.sh
 	npm run lint --prefix frontend
-	bash scripts/verify-go.sh services/api-service lint
-	bash scripts/verify-go.sh services/document-service lint
+	@find backend -name go.mod -exec dirname {} \; | sort | while IFS= read -r module; do \
+		echo "==> $$module"; \
+		bash scripts/verify-go.sh "$$module" lint; \
+	done
 
 test:
+	npm run test:load
 	npm run test --prefix frontend
-	cd services/api-service && go test ./...
-	cd services/document-service && go test ./...
+	@root=$$(pwd); \
+	find backend -name go.mod -exec dirname {} \; | sort | while IFS= read -r module; do \
+		echo "==> $$module"; \
+		(cd "$$module" && \
+			GOWORK=off \
+			GOTOOLCHAIN="$${GOTOOLCHAIN:-auto}" \
+			GOCACHE="$${GOCACHE:-$$root/.cache/go-build}" \
+			GOMODCACHE="$${GOMODCACHE:-$$root/.cache/go-mod}" \
+			go test ./...); \
+	done
 
 COMPOSE := docker compose $(if $(wildcard .env),--env-file .env) -f deploy/docker-compose.yml
 

@@ -1,6 +1,6 @@
 # Load Testing
 
-Use this to measure how the API, Redis queue, document worker, PostgreSQL and
+Use this to measure how the gateway, Redis queue, document worker, PostgreSQL and
 MinIO behave when many order-fill jobs arrive at the same time.
 
 ## Local Stand
@@ -9,25 +9,18 @@ MinIO behave when many order-fill jobs arrive at the same time.
 docker compose -f deploy/docker-compose.yml up --build
 ```
 
-The document worker reads `WORKER_CONCURRENCY`. The default is `1`, which means
-one job is processed at a time. For a 100-job burst, start with a small value and
-increase while watching CPU and memory:
+One `document-worker` process handles one Redis message at a time. To test
+parallel processing, scale the worker container; all replicas join the same
+Redis consumer group:
 
 ```bash
-WORKER_CONCURRENCY=2 docker compose -f deploy/docker-compose.yml up --build
-WORKER_CONCURRENCY=4 docker compose -f deploy/docker-compose.yml up --build
+docker compose -f deploy/docker-compose.yml up --build --scale document-worker=3
 ```
 
-To test several worker containers consuming the same queue, scale only
-`document-service`:
-
-```bash
-WORKER_CONCURRENCY=2 docker compose -f deploy/docker-compose.yml up --build --scale document-service=3
-```
-
-Do not set `WORKER_CONCURRENCY=100` for large workbooks. Each job can inflate
-and parse large Excel XML parts, serialize output files and build preview
-chunks. A high value can exhaust memory before it improves throughput.
+Increase the replica count gradually while watching CPU, memory, queue delay,
+PostgreSQL and object storage. Each worker can inflate and parse large Excel XML
+parts, serialize output files and build preview chunks; too many replicas can
+exhaust shared resources before they improve throughput.
 
 ## Runner
 
@@ -122,15 +115,15 @@ npm run load:order-fill -- \
 
 ## What To Watch
 
-- `enqueue latency`: API upload, S3 input writes, PostgreSQL job insert and
+- `enqueue latency`: gateway upload, S3 input writes, PostgreSQL job insert and
   Redis publish.
 - `completion latency`: full time from create request to terminal job status.
   If this grows linearly while enqueue stays low, the queue is doing its job and
   the worker is the bottleneck.
-- `failed`: any non-zero value needs logs from `api-service`, `document-service`,
+- `failed`: any non-zero value needs logs from `gateway-service`, `job-service`, `file-service`, `document-worker`,
   PostgreSQL, Redis and MinIO before tuning further.
-- Docker stats: document worker RSS is the main guardrail for increasing
-  `WORKER_CONCURRENCY`.
+- Docker stats: aggregate document-worker RSS is the main guardrail for
+  increasing the replica count.
 
 ## 100 Files At Once
 
@@ -140,9 +133,9 @@ if split-blank brands upload more than one blank per job.
 
 The intended behavior is:
 
-1. `api-service` accepts requests and stores input files.
+1. `gateway-service` accepts requests and stores input files through `file-service`.
 2. Each accepted job is appended to the Redis stream `order-fill:jobs`.
-3. `document-service` workers read from the `document-service` consumer group.
+3. `document-worker` containers read from the `document-service` consumer group.
 4. A worker ACKs a message only after the job handler returns.
 5. Extra jobs remain queued until a worker loop is free.
 

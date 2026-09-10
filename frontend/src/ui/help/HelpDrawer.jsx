@@ -1,8 +1,8 @@
 import { useEffect } from "react";
-import { helpSections } from "../../features/help/copy.js";
+import { helpSectionsForRole } from "../../features/help/copy.js";
 import { IconX } from "../icons.jsx";
 
-export function HelpDrawer({ onClose, onReplay }) {
+export function HelpDrawer({ onClose, onReplay, role }) {
   useEffect(() => {
     function onKey(event) {
       if (event.key === "Escape") onClose();
@@ -37,7 +37,7 @@ export function HelpDrawer({ onClose, onReplay }) {
           </button>
         </div>
         <div className="flex-1 overflow-auto px-5 py-4">
-          {helpSections.map((section) => (
+          {helpSectionsForRole(role).map((section) => (
             <section key={section.title} className="mb-5 last:mb-0">
               <h3 className="text-[15px] font-semibold">{section.title}</h3>
               <p className="mt-1 text-[14px] leading-relaxed text-[var(--color-ink-soft)]">{section.body}</p>

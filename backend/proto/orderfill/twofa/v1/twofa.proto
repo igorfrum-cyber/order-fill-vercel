@@ -1,0 +1,62 @@
+syntax = "proto3";
+
+package orderfill.twofa.v1;
+
+option go_package = "order-fill/backend/proto/gen/go/orderfill/twofa/v1;twofav1";
+
+service TwoFAService {
+  rpc Setup(SetupRequest) returns (SetupResponse);
+  rpc Enable(EnableRequest) returns (EnableResponse);
+  rpc Disable(DisableRequest) returns (DisableResponse);
+  rpc IsEnabled(IsEnabledRequest) returns (IsEnabledResponse);
+  rpc Verify(VerifyRequest) returns (VerifyResponse);
+}
+
+message SetupRequest {
+  string request_id = 1;
+  string actor_user_id = 2;
+  string account_name = 3;
+}
+
+message SetupResponse {
+  string otpauth_url = 1;
+  string secret = 2;
+  bytes qr_png = 3;
+}
+
+message EnableRequest {
+  string request_id = 1;
+  string actor_user_id = 2;
+  string code = 3;
+}
+
+message EnableResponse {
+  repeated string recovery_codes = 1;
+}
+
+message DisableRequest {
+  string request_id = 1;
+  string actor_user_id = 2;
+  string code = 3;
+}
+
+message DisableResponse {}
+
+message IsEnabledRequest {
+  string user_id = 1;
+}
+
+message IsEnabledResponse {
+  bool enabled = 1;
+}
+
+message VerifyRequest {
+  string request_id = 1;
+  string user_id = 2;
+  string code = 3;
+}
+
+message VerifyResponse {
+  bool ok = 1;
+  bool used_recovery_code = 2;
+}

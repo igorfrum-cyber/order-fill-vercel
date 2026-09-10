@@ -20,10 +20,11 @@ jobs:
           cache-dependency-path: frontend/package-lock.json
       - uses: actions/setup-go@v5
         with:
-          go-version-file: services/api-service/go.mod
+          go-version-file: backend/pkg/go.mod
           cache-dependency-path: |
-            services/api-service/go.sum
-            services/document-service/go.sum
+            backend/pkg/go.sum
+            backend/proto/go.sum
+            backend/services/*/go.sum
       - uses: golangci/golangci-lint-action@v9
         with:
           version: v2.12.2

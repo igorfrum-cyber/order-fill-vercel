@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   createOrderFillJob,
   downloadJobFile,
@@ -11,11 +11,12 @@ import {
 import { blankSlotsForSource, brandLabel } from "../../features/brands/brandPresentation.js";
 import { runOrderFillJob } from "../../features/jobs/orderJobWorkflow.js";
 import { formatOrderMonthLabel } from "../../features/order/monthPolicy.js";
-import { collectReviewEdits, hasManualDeviations, initialEditState, patchEdit, rowKey, validateReviewEdits } from "../../features/order/reviewEdits.js";
+import { collectReviewEdits, downloadBlockerKeys, hasManualDeviations, initialEditState, patchEdit, rowKey, validateReviewEdits } from "../../features/order/reviewEdits.js";
 import { needsEditResubmit } from "../../features/preview/previewEdits.js";
-import { issueReportCsv } from "../../features/report/issueReport.js";
+import { issueReportCsv, isCleanupIssueRow } from "../../features/report/issueReport.js";
 import { combinedSummary, jobProgress, jobStatusText } from "../../features/report/reportModel.js";
-import { issueReportRows, qualityWarningLines, qualityWarningSummary } from "../../features/report/qualityWarnings.js";
+import { matchingDecisionBanner } from "../../features/report/rowPresentation.js";
+import { qualityWarningLines, qualityWarningSummary } from "../../features/report/qualityWarnings.js";
 import { userFacingError } from "../../features/help/errors.js";
 import { StageRail, TopBar } from "../chrome.jsx";
 import { ErrorBoundary } from "../ErrorBoundary.jsx";
@@ -40,7 +41,7 @@ function triggerBlobDownload(blob, fileName) {
   window.setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
-export function OrderFillApp({ companyId, resumeJob, onHome, onHelp, onStage }) {
+export function OrderFillApp({ companyId, resumeJob, onHome, onHelp, onStage, embedded = false }) {
   const [stage, setStage] = useState(resumeJob ? (resumeJob.finalized ? "preview" : "fill") : "upload");
   const [brand, setBrand] = useState(resumeJob?.brand || "");
   const [month, setMonth] = useState(resumeJob?.month || "");
@@ -64,6 +65,20 @@ export function OrderFillApp({ companyId, resumeJob, onHome, onHelp, onStage }) 
   const [finalized, setFinalized] = useState(Boolean(resumeJob?.finalized));
   const [editsDirty, setEditsDirty] = useState(false);
   const [previewEpoch, setPreviewEpoch] = useState(0);
+  const acknowledgedKeysRef = useRef(new Set());
+
+  function rememberAcknowledgedKeys(keys = new Set()) {
+    acknowledgedKeysRef.current = keys;
+  }
+
+  function commentBlockers() {
+    return validateReviewEdits(rows, edits);
+  }
+
+  function matchingBlockers(acknowledgedKeys = acknowledgedKeysRef.current) {
+    const comments = new Set(commentBlockers());
+    return downloadBlockerKeys(rows, edits, acknowledgedKeys).filter((key) => !comments.has(key));
+  }
 
   useEffect(() => {
     onStage?.(stage);
@@ -112,8 +127,10 @@ export function OrderFillApp({ companyId, resumeJob, onHome, onHelp, onStage }) 
           companyId,
         },
         onStatus: (text, job) => {
-          setStatus(text);
-          if (job) setProgress(jobProgress(job));
+          setStatus((prev) => (prev === text ? prev : text));
+          if (!job) return;
+          const next = jobProgress(job);
+          setProgress((prev) => (prev === next ? prev : next));
         },
       });
       setJobId(result.jobId);
@@ -147,7 +164,7 @@ export function OrderFillApp({ companyId, resumeJob, onHome, onHelp, onStage }) 
   }
 
   function downloadIssueReport() {
-    const issueRows = issueReportRows(rows);
+    const issueRows = rows.filter(isCleanupIssueRow);
     if (!issueRows.length) {
       setBanner("Нет спорных строк для отчета.");
       return;
@@ -158,12 +175,13 @@ export function OrderFillApp({ companyId, resumeJob, onHome, onHelp, onStage }) 
     triggerBlobDownload(blob, "отчет для исправления в 1С.csv");
   }
 
-  async function openPreview() {
+  async function openPreview(acknowledgedKeys = acknowledgedKeysRef.current) {
     if (!jobId) {
       setBanner("Сначала заполните бланк.");
       return;
     }
-    const invalid = validateReviewEdits(rows, edits);
+    rememberAcknowledgedKeys(acknowledgedKeys);
+    const invalid = commentBlockers();
     if (invalid.length) {
       setInvalidKeys(new Set(invalid));
       setCommentGateKeys(invalid);
@@ -171,11 +189,17 @@ export function OrderFillApp({ companyId, resumeJob, onHome, onHelp, onStage }) 
       setBanner("");
       return;
     }
+    const matching = matchingBlockers(acknowledgedKeys);
+    if (matching.length) {
+      setInvalidKeys(new Set(matching));
+      setBanner(matchingDecisionBanner);
+      return;
+    }
     proceedToPreview();
   }
 
   function confirmCommentGate() {
-    const invalid = validateReviewEdits(rows, edits);
+    const invalid = commentBlockers();
     if (invalid.length) {
       setInvalidKeys(new Set(invalid));
       setCommentGateKeys(invalid);
@@ -183,6 +207,12 @@ export function OrderFillApp({ companyId, resumeJob, onHome, onHelp, onStage }) 
     }
     setCommentGateKeys(null);
     setInvalidKeys(new Set());
+    const matching = matchingBlockers();
+    if (matching.length) {
+      setInvalidKeys(new Set(matching));
+      setBanner(matchingDecisionBanner);
+      return;
+    }
     if (afterCommentGate === "download") {
       downloadFiles();
       return;
@@ -251,11 +281,17 @@ export function OrderFillApp({ companyId, resumeJob, onHome, onHelp, onStage }) 
 
   async function downloadFiles() {
     if (!jobId) return;
-    const invalid = validateReviewEdits(rows, edits);
+    const invalid = commentBlockers();
     if (invalid.length) {
       setInvalidKeys(new Set(invalid));
       setCommentGateKeys(invalid);
       setAfterCommentGate("download");
+      return;
+    }
+    const matching = matchingBlockers();
+    if (matching.length) {
+      setInvalidKeys(new Set(matching));
+      setBanner(matchingDecisionBanner);
       return;
     }
     setBusy(true);
@@ -282,14 +318,16 @@ export function OrderFillApp({ companyId, resumeJob, onHome, onHelp, onStage }) 
 
   return (
     <div className="flex h-full flex-col bg-[var(--color-ground)]">
-      <TopBar
-        brandLabel={brandLabel(brand)}
-        monthLabel={monthLabel}
-        stage={stage}
-        format="order"
-        onHome={onHome}
-        onHelp={onHelp}
-      />
+      {!embedded ? (
+        <TopBar
+          brandLabel={brandLabel(brand)}
+          monthLabel={monthLabel}
+          stage={stage}
+          format="order"
+          onHome={onHome}
+          onHelp={onHelp}
+        />
+      ) : null}
       <StageRail
         stage={stage}
         brandLabel={brandLabel(brand)}

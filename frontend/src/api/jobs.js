@@ -8,7 +8,7 @@ export function isPollDone(status, until = TERMINAL_STATUSES) {
   return until.includes(status);
 }
 
-export const DEFAULT_POLL_INTERVAL_MS = 200;
+export const DEFAULT_POLL_INTERVAL_MS = 500;
 export const DEFAULT_POLL_TIMEOUT_MS = 600000;
 
 const absoluteUrl = (path) => apiClient.absoluteUrl(path);
@@ -66,9 +66,14 @@ export function downloadJobFile(jobId, fileId) {
 
 export async function pollJob(jobId, { intervalMs = DEFAULT_POLL_INTERVAL_MS, timeoutMs = DEFAULT_POLL_TIMEOUT_MS, onUpdate = () => {}, until = TERMINAL_STATUSES } = {}) {
   const startedAt = Date.now();
+  let lastSig = "";
   while (Date.now() - startedAt < timeoutMs) {
     const job = await getJob(jobId);
-    onUpdate(job);
+    const sig = `${job.status}:${job.progress ?? ""}:${job.message ?? ""}`;
+    if (sig !== lastSig) {
+      lastSig = sig;
+      onUpdate(job);
+    }
     if (isPollDone(job.status, until)) return job;
     await delay(intervalMs);
   }

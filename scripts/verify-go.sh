@@ -24,9 +24,18 @@ fi
 export PATH="$(go env GOPATH)/bin:${PATH}"
 
 root=$(cd "$(dirname "$0")/.." && pwd)
+export GOTOOLCHAIN="${GOTOOLCHAIN:-auto}"
+export GOCACHE="${GOCACHE:-${root}/.cache/go-build}"
+export GOMODCACHE="${GOMODCACHE:-${root}/.cache/go-mod}"
+export GOWORK=off
 export GOLANGCI_LINT_CACHE="${root}/.cache/golangci-lint"
-mkdir -p "$GOLANGCI_LINT_CACHE"
+mkdir -p "$GOCACHE" "$GOMODCACHE" "$GOLANGCI_LINT_CACHE"
 cd "$root/$dir"
+
+if ! find . -name '*.go' -print -quit | grep -q .; then
+  echo "no Go files in $dir"
+  exit 0
+fi
 
 ensure_golangci_lint() {
   if command -v golangci-lint >/dev/null 2>&1; then
@@ -58,7 +67,9 @@ ensure_golangci_lint
 golangci-lint run --timeout=5m
 
 ensure_gosec
-gosec -quiet -exclude-generated ./...
+if find . -name '*.go' ! -path './gen/*' ! -name '*.pb.go' ! -name '*_grpc.pb.go' -print -quit | grep -q .; then
+  gosec -quiet -exclude-generated ./...
+fi
 
 mod_before=$(mktemp)
 sum_before=$(mktemp)

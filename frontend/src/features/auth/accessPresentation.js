@@ -27,9 +27,48 @@ export function canEditCompanyProfile(role) {
   return role === "company_owner" || role === "company_admin";
 }
 
-export function needsSecurityNudge(me) {
+export function canSetMatchingMode(role) {
+  return role === "platform_admin";
+}
+
+export function matchingModeOptions() {
+  return [
+    { value: "standard", label: "Стандартный", hint: "Артикул и текущие правила заполнения." },
+    { value: "smart", label: "Умное сопоставление", hint: "Дополнительно сверяет название, объём и дубли." },
+  ];
+}
+
+export function normalizeMatchingMode(raw) {
+  return raw === "smart" ? "smart" : "standard";
+}
+
+export function needsSecurityNudge(me, { completedJob = false } = {}) {
   if (!me || me.two_factor_enabled || me.has_passkey) return false;
+  if (me.role === "purchaser" && !completedJob) return false;
   return true;
+}
+
+export function navItemsForRole(role) {
+  if (role === "platform_admin") {
+    return [
+      { id: "overview", path: "/overview", label: "Обзор" },
+      { id: "history", path: "/jobs", label: "Выгрузки" },
+      { id: "companies", path: "/companies", label: "Компании" },
+      { id: "users", path: "/users", label: "Пользователи" },
+    ];
+  }
+  if (role === "purchaser") {
+    return [
+      { id: "order", path: "/jobs/new", label: "Работа" },
+      { id: "history", path: "/jobs", label: "Файлы" },
+    ];
+  }
+  return [
+    { id: "queue", path: "/queue", label: "Очередь" },
+    { id: "users", path: "/users", label: "Люди" },
+    { id: "company", path: "/company", label: "Компания" },
+    { id: "history", path: "/jobs", label: "Файлы" },
+  ];
 }
 
 export function canManageListedUser(actorRole, targetRole) {
@@ -48,7 +87,9 @@ export function needsUsersCompanyPicker(role) {
 }
 
 export function homeScreen(role) {
-  return role === "platform_admin" ? "overview" : "history";
+  if (role === "platform_admin") return "overview";
+  if (role === "purchaser") return "order";
+  return "queue";
 }
 
 export function resolveUsersCompanyId(role, selectedCompanyId, actorCompanyId) {

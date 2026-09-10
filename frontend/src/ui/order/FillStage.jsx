@@ -4,8 +4,10 @@ import { rowKey } from "../../features/order/reviewEdits.js";
 import {
   canProceedPastDuplicates,
   countByTab,
+  firstReviewTab,
   matchLayerHint,
   presentationStatus,
+  reviewQueueLine,
   visibleFillTabs,
   visibleReportRows,
 } from "../../features/report/rowPresentation.js";
@@ -28,18 +30,20 @@ export function FillStage({
   onDownloadFiles,
   onIssueReport,
 }) {
-  const [tab, setTab] = useState("empty");
+  const [tab, setTab] = useState("");
   const [query, setQuery] = useState("");
   const [expanded, setExpanded] = useState(null);
   const [acknowledgedDuplicates, setAcknowledgedDuplicates] = useState(() => new Set());
   const counts = useMemo(() => countByTab(rows), [rows]);
-  const duplicateCount = counts.duplicate ?? 0;
+  const duplicateCount = counts.needs_decision ?? 0;
   const duplicateKeys = useMemo(
-    () => rows.filter((row) => presentationStatus(row) === "duplicate").map(rowKey),
+    () => rows.filter((row) => presentationStatus(row) === "needs_decision").map(rowKey),
     [rows],
   );
   const tabs = useMemo(() => visibleFillTabs(counts), [counts]);
-  const activeTab = tabs.some((item) => item.key === tab) ? tab : (tabs[0]?.key ?? "all");
+  const preferred = firstReviewTab(counts);
+  const activeTab = tabs.some((item) => item.key === tab) ? tab : preferred;
+  const queueLine = reviewQueueLine(counts);
   const visible = useMemo(() => visibleReportRows(rows, { tab: activeTab, query }), [rows, activeTab, query]);
   const boxLabel = summary.adjustmentLabel || adjustmentLabelForBrand(brand);
   const canProceed = canProceedPastDuplicates({ duplicateKeys, acknowledgedKeys: acknowledgedDuplicates });
@@ -58,6 +62,7 @@ export function FillStage({
   return (
     <div className="relative flex h-full flex-col">
       <ReviewSummary counts={counts} summary={summary} activeTab={activeTab} onTab={setTab} />
+      {queueLine ? <p className="border-b border-[var(--color-line)] bg-[var(--color-surface)] px-6 py-2 text-[14px] text-[var(--color-ink-soft)]">{queueLine}</p> : null}
 
       <ReviewTabs
         tabs={tabs}
@@ -104,12 +109,12 @@ export function FillStage({
             ) : canProceed ? (
               <span className="text-[var(--color-ok)]">{duplicateCount ? "Дубли подтверждены" : "Критичных проблем нет"}</span>
             ) : (
-              <button type="button" className="text-[var(--color-danger)] hover:underline" onClick={() => setTab("duplicate")}>
+              <button type="button" className="text-[var(--color-danger)] hover:underline" onClick={() => setTab("needs_decision")}>
                 Сначала подтвердите дубли: {duplicateCount - acknowledgedCount}
               </button>
             )}
           </span>
-          <PrimaryButton dataTour="fill-next" onClick={onDownloadFiles} disabled={busy || !canProceed}>
+          <PrimaryButton dataTour="fill-next" onClick={() => onDownloadFiles(acknowledgedDuplicates)} disabled={busy || !canProceed}>
             <span className={`h-2 w-2 rounded-full ${canProceed ? "bg-[var(--color-ok)]" : "bg-white/40"}`} />
             {busy ? "Готовлю файлы..." : "Проверить файлы"}
             <IconDownload className="h-4 w-4" />
