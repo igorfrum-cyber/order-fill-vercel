@@ -7,7 +7,7 @@
 
 ## Runtime Model
 
-The app runs entirely in the browser. Users upload Excel workbooks through the UI, JavaScript parses and edits the workbook XML locally, and the browser downloads generated files. The current runtime does not upload files to a backend, persist jobs, or store source files.
+That version ran entirely in the browser. Users uploaded Excel workbooks through the UI, JavaScript parsed and edited the workbook XML locally, and the browser downloaded generated files. It did not upload files to a backend, persist jobs, or store source files.
 
 Main modules:
 

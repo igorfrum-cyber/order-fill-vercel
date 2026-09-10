@@ -215,5 +215,4 @@ go test ./...
 - `/api/v1/status` доступен только `platform_admin` и проверяет worker, PostgreSQL, Redis и file-service с общим deadline 2 секунды. Identity, TwoFA, Passkey, Job и Audit в эту диагностику не входят.
 - Вне local сервис отказывается запускаться с insecure cookie, пустым CORS allowlist, wildcard origin или origin без HTTPS.
 - `GRPC_TLS_MODE=insecure` — default для разработки. В production внутреннюю сеть нужно защищать TLS/mTLS и сетевыми политиками.
-- Текущий OpenAPI-файл содержит ошибку отступа в блоке `/healthz`: runtime-маршрут зарегистрирован, но генераторы могут не увидеть его как отдельный path. Источником истины для фактической маршрутизации остается `internal/transport/httpapi/router.go`, пока контракт не исправлен.
 - В репозитории нет файла `LICENSE`; условия распространения сервиса в README не зафиксированы.

@@ -118,6 +118,8 @@ JSON из поля `payload` соответствует `internal/app/port.JobMe
 
 Исходящих HTTP-запросов нет. Все межсервисные бизнес-вызовы выполняются по gRPC.
 
+Подтвержденные исходящие RPC: `FileService.GetObject`/`PutObject`, `JobService.UpdateProgress`/`CompleteJob`/`FailJob`, `BrandService.DetectBrand`/`GetBrandPolicy`, `CalculationService.CalculateOrderRecommendations`/`CalculateAdjustedQuantity`/`CalculateNorthPlan`, `MatchingService.MatchRows`/`MergeChestnyZnak`. Их protobuf-контракты находятся в `../../proto/orderfill/*/v1`.
+
 ## Конфигурация
 
 Пустая переменная трактуется как отсутствие значения и заменяется указанным default.
