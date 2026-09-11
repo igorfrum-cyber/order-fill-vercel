@@ -65,11 +65,16 @@ export function queueJobs(jobs = []) {
     );
 }
 
-export function jobsEmptyState(role) {
+export function jobsEmptyState(role, companyId = "") {
   if (role === "platform_admin") {
-    return "Пока нет выгрузок по выбранной компании.";
+    return companyId ? "Пока нет выгрузок по выбранной компании." : "Пока нет выгрузок. Выберите компанию.";
   }
   return "Пока нет выгрузок. Начните с бланка закупки или объединения Севера.";
+}
+
+export function jobsEmptyMessage(role, jobs = [], visible = [], companyId = "") {
+  if ((jobs || []).length && !(visible || []).length) return "Нет выгрузок с такими фильтрами.";
+  return jobsEmptyState(role, companyId);
 }
 
 export function historyDeskLine(jobs = []) {
@@ -77,9 +82,19 @@ export function historyDeskLine(jobs = []) {
   if (!list.length) return "";
   const waiting = list.filter((job) => job.status === "needs_review").length;
   if (waiting === 1) return "Одна выгрузка ждёт проверки.";
-  if (waiting > 1) return `${waiting} выгрузки ждут проверки.`;
+  if (waiting > 1) return `${waiting} ${jobCountWord(waiting)} ждут проверки.`;
   if (list.some((job) => job.status === "failed")) return "Есть выгрузки со сбоем.";
   return "Готовые файлы и текущие выгрузки.";
+}
+
+function jobCountWord(n) {
+  const abs = Math.abs(Number(n) || 0);
+  const ten = abs % 10;
+  const hundred = abs % 100;
+  if (hundred >= 11 && hundred <= 14) return "выгрузок";
+  if (ten === 1) return "выгрузка";
+  if (ten >= 2 && ten <= 4) return "выгрузки";
+  return "выгрузок";
 }
 
 export function jobNextAction(job) {

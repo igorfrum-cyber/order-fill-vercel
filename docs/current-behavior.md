@@ -112,9 +112,10 @@ all rows.
 
 ### `needs_decision`
 
-The matcher cannot choose one source row. Typical reasons: duplicate articles
-or an ambiguous Chestny Znak merge. Quantity is not written until the user
-chooses.
+The matcher cannot choose one source row, or the pair was found only by name.
+Typical reasons: duplicate articles, an ambiguous Chestny Znak merge, or
+`warning_name_only`. Preview stays locked until the reviewer ticks «оставляю»
+on each of these rows.
 
 ### `not_in_source`
 

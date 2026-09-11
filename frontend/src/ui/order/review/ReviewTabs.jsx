@@ -44,7 +44,7 @@ export function ReviewTabs({ tabs, counts, activeTab, query, onTab, onQuery, dup
 
       {activeTab === "needs_decision" && duplicateCount > 0 ? (
         <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[color-mix(in_srgb,var(--color-danger)_25%,white)] bg-[var(--color-danger-soft)] px-6 py-2.5 text-[14px] text-[var(--color-ink)]">
-          <span>В таблице заказа несколько строк на одну позицию бланка. На каждой строке отметьте «оставляю», когда разобрали конфликт.</span>
+          <span>{hint || "На каждой строке отметьте «оставляю», когда разобрали."}</span>
           <span className="font-mono text-[13px] tabular-nums text-[var(--color-ink-soft)]">
             {acknowledgedCount} из {duplicateCount} подтверждены
           </span>

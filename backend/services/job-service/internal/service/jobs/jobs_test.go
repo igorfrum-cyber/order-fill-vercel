@@ -14,7 +14,7 @@ import (
 
 type fakeFiles map[string]domain.FileRef
 
-func (f fakeFiles) Describe(_ context.Context, ids []string) ([]domain.FileRef, error) {
+func (f fakeFiles) Describe(_ context.Context, _ domain.Actor, ids []string) ([]domain.FileRef, error) {
 	out := make([]domain.FileRef, 0, len(ids))
 	for _, id := range ids {
 		file, ok := f[id]
@@ -24,6 +24,20 @@ func (f fakeFiles) Describe(_ context.Context, ids []string) ([]domain.FileRef, 
 		out = append(out, file)
 	}
 	return out, nil
+}
+
+type tenantFiles struct {
+	files   fakeFiles
+	company map[string]string
+}
+
+func (f tenantFiles) Describe(ctx context.Context, actor domain.Actor, ids []string) ([]domain.FileRef, error) {
+	for _, id := range ids {
+		if company, ok := f.company[id]; ok && company != actor.CompanyID {
+			return nil, domain.ErrNotFound
+		}
+	}
+	return f.files.Describe(ctx, actor, ids)
 }
 
 type fakeCompanies struct{ mode domain.MatchingMode }
@@ -102,10 +116,33 @@ func TestCreateSnapshotsCompanyMatchingModeIntoQueue(t *testing.T) {
 	}
 }
 
+func TestCreateRejectsForeignCompanyFile(t *testing.T) {
+	t.Parallel()
+	files := tenantFiles{
+		files:   orderFillFiles(),
+		company: map[string]string{"src": "other"},
+	}
+	svc := jobs.New(memory.NewStore(), files, fakeCompanies{}, queue.NewRedis(), nil)
+	actor := domain.Actor{UserID: "u1", CompanyID: "co", Role: domain.RolePurchaser}
+	_, err := svc.Create(t.Context(), actor, domain.TypeOrderFill, []string{"src", "blank"}, "")
+	if !errors.Is(err, domain.ErrNotFound) {
+		t.Fatalf("got %v", err)
+	}
+}
+
 func TestCreateRequiresOwner(t *testing.T) {
 	t.Parallel()
 	svc := jobs.New(memory.NewStore(), orderFillFiles(), fakeCompanies{}, queue.NewRedis(), nil)
 	_, err := svc.Create(t.Context(), domain.Actor{Role: domain.RolePurchaser}, domain.TypeOrderFill, []string{"src", "blank"}, "")
+	if !errors.Is(err, domain.ErrUnauthorized) {
+		t.Fatalf("got %v", err)
+	}
+}
+
+func TestCreateRejectsPlatformAdmin(t *testing.T) {
+	t.Parallel()
+	svc := jobs.New(memory.NewStore(), orderFillFiles(), fakeCompanies{}, queue.NewRedis(), nil)
+	_, err := svc.Create(t.Context(), domain.Actor{UserID: "p1", Role: domain.RolePlatformAdmin}, domain.TypeOrderFill, []string{"src", "blank"}, "")
 	if !errors.Is(err, domain.ErrUnauthorized) {
 		t.Fatalf("got %v", err)
 	}

@@ -7,10 +7,13 @@ import {
   commentGateTitle,
   matchingDecisionBanner,
   countByTab,
+  decisionHint,
   displayArticle,
   displayName,
+  isDuplicateDecision,
   matchLayerHint,
   matchReasonLabel,
+  needsAcknowledgement,
   presentationStatus,
   attentionReason,
   reviewTableHeaders,
@@ -146,6 +149,15 @@ test("canProceedPastDuplicates requires every duplicate key to be acknowledged",
   assert.equal(canProceedPastDuplicates({ duplicateKeys: ["a", "b"], acknowledgedKeys: new Set() }), false);
   assert.equal(canProceedPastDuplicates({ duplicateKeys: ["a", "b"], acknowledgedKeys: new Set(["a"]) }), false);
   assert.equal(canProceedPastDuplicates({ duplicateKeys: ["a", "b"], acknowledgedKeys: new Set(["a", "b"]) }), true);
+});
+
+test("name-only matches need acknowledgement even when they are not article duplicates", () => {
+  const nameOnly = { status: "warning_name_only", matchReasons: { source: "name" } };
+  assert.equal(needsAcknowledgement(nameOnly), true);
+  assert.equal(isDuplicateDecision(nameOnly), false);
+  assert.equal(isDuplicateDecision({ status: "source_duplicate" }), true);
+  assert.match(decisionHint([nameOnly]), /назван/i);
+  assert.match(decisionHint([{ status: "source_duplicate" }]), /несколько строк/i);
 });
 
 test("displayArticle and displayName keep blank identity when both sides exist", () => {

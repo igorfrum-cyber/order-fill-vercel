@@ -5,7 +5,7 @@
 ## Ответственность и возможности
 
 - создаёт задачи типов `order_fill` и `north_merge` после проверки входных файлов;
-- получает метаданные файлов из `file-service` и режим сопоставления компании из `identity-service`;
+- получает метаданные файлов из `file-service` от имени актора, без worker token, и режим сопоставления компании из `identity-service`;
 - фиксирует `matching_mode` в задаче и в сообщении очереди на момент создания;
 - публикует стадии `process` и `finalize` в Redis Stream `order-fill:jobs`;
 - хранит статусы, progress, ошибки, входные/выходные ссылки и отчёт, а ручные правки публикует worker-у;
@@ -69,6 +69,7 @@ gateway-service
 - `purchaser` создаёт задачи для непустой компании и видит только собственные задачи этой компании;
 - `company_admin` и `company_owner` создают задачи и видят все задачи своей компании;
 - `platform_admin` видит все задачи, но `CanCreateJob` сейчас не разрешает этой роли создание;
+- при создании задачи `GetObject` идёт от имени актора: чужой `file_id` другой компании `file-service` скрывает как not found;
 - `UpdateProgress`, `CompleteJob` и `FailJob` требуют metadata `x-worker-token`, совпадающий с `WORKER_TOKEN`. Вне local токен обязателен и не может быть local default.
 
 Поддерживаются статусы `queued`, `processing`, `needs_review`, `finalizing`, `completed`, `failed`. Для `order_fill` нужен ровно один файл с ролью `source` и от одного до двух `blank`; для `north_merge` нужен минимум один `blank`, а `source` необязателен. Все входы должны иметь расширение `.xlsx` или `.xlsm`. Роль берётся из первого сегмента object key, который вернул `file-service`.

@@ -73,6 +73,12 @@ test("tourForRole points at on-screen controls without jargon", () => {
     purchaser.map((step) => step.target),
     ["order", "north", "jobs", "help"],
   );
+  assert.match(
+    tourForRole("platform_admin")
+      .map((step) => step.body)
+      .join(" "),
+    /владел/i,
+  );
   for (const role of ["purchaser", "company_admin", "company_owner", "platform_admin"]) {
     const steps = tourForRole(role);
     assert.ok(steps.length >= 3);
@@ -207,7 +213,7 @@ test("helpSections stay plain and cover the required topics", () => {
   assert.deepEqual(titles, [
     "Как сделать выгрузку",
     "Какие файлы нужны",
-    'Что значит "Нужно проверить"',
+    "Что значит «Требует решения»",
     "Статусы выгрузок",
     "Пользователи и доступ",
     "Обзор сервиса",

@@ -219,19 +219,21 @@ export function useDismissOnEscape(onDismiss) {
 }
 
 export function Modal({ title, children, onCancel, onConfirm, cancelLabel = "Назад", confirmLabel = "Продолжить", confirmDisabled }) {
+  const titleId = useId();
   useDismissOnEscape(onCancel);
   return (
     <div
       className="help-modal-backdrop fixed inset-0 z-20 grid place-items-center bg-slate-900/45 p-5"
       role="dialog"
       aria-modal="true"
+      aria-labelledby={titleId}
       onClick={onCancel}
     >
       <div
         className="help-modal-card w-full max-w-lg rounded-modal border border-[var(--color-line)] bg-[var(--color-surface)] p-6 shadow-xl"
         onClick={(event) => event.stopPropagation()}
       >
-        <h2 className="text-[18px] font-semibold tracking-tight">{title}</h2>
+        <h2 id={titleId} className="text-[18px] font-semibold tracking-tight">{title}</h2>
         <div className="mt-3 max-h-64 overflow-auto text-[14px] leading-relaxed text-[var(--color-ink-soft)] whitespace-pre-line">
           {children}
         </div>

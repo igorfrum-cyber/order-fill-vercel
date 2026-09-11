@@ -14,6 +14,7 @@ export function parseAppPath(pathname) {
   if (path === "/users") return { screen: "users", jobId: "", unknown: false };
   if (path === "/account") return { screen: "account", jobId: "", unknown: false };
   if (path === "/companies") return { screen: "companies", jobId: "", unknown: false };
+  if (path === "/north") return { screen: "north", jobId: "", unknown: false };
   const job = path.match(/^\/jobs\/([^/]+)$/);
   if (job) return { screen: "order", jobId: decodeURIComponent(job[1]), unknown: false };
   return { screen: "", jobId: "", unknown: true };
@@ -29,13 +30,14 @@ export function pathForScreen(screen, jobId = "") {
   if (screen === "users") return "/users";
   if (screen === "account") return "/account";
   if (screen === "companies") return "/companies";
+  if (screen === "north") return "/north";
   return "/";
 }
 
 export function resolveOrderNavJobId(next, requestedJobId = "", { screen, openJobId } = {}) {
   if (next !== "order") return requestedJobId || "";
   if (requestedJobId) return requestedJobId;
-  if (screen === "order" && openJobId) return openJobId;
+  if (openJobId && (screen === "order" || screen === "account")) return openJobId;
   return "";
 }
 
@@ -43,7 +45,7 @@ export function screenAllowed(role, screen, { jobId = "" } = {}) {
   if (!screen) return true;
   if (screen === "account") return true;
   if (screen === "order" && jobId) return true;
-  if (screen === "order" && role === "platform_admin") return false;
+  if (screen === "order") return role !== "platform_admin";
   if (screen === "north") return role !== "platform_admin";
   return navItemsForRole(role).some((item) => item.id === screen);
 }
@@ -56,6 +58,18 @@ export function withCompanyQuery(path, companyId) {
   if (!companyId) return path;
   const sep = path.includes("?") ? "&" : "?";
   return `${path}${sep}company=${encodeURIComponent(companyId)}`;
+}
+
+export function scopedPath(screen, jobId = "", companyId = "") {
+  return withCompanyQuery(pathForScreen(screen, jobId), companyId);
+}
+
+export function navItemHref(item, { screen, openJobId, companyId } = {}) {
+  if (item?.id === "order") {
+    const jobId = resolveOrderNavJobId("order", "", { screen, openJobId });
+    return scopedPath("order", jobId, companyId);
+  }
+  return withCompanyQuery(item?.path || "/", companyId);
 }
 
 export function homePath(role, companyId = "") {

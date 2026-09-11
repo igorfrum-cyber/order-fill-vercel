@@ -3,7 +3,7 @@ import { quantityDivergesFromRecommendation, roundingComment } from "../../../fe
 import { rowKey } from "../../../features/order/reviewEdits.js";
 import { duplicateDescription } from "../../../features/report/issueReport.js";
 import { baselineForReportRow } from "../../../features/report/reportModel.js";
-import { boxStep, displayArticle, displayName, matchPercent, matchReasonLabel, presentationStatus, quantityDisplay, attentionReason } from "../../../features/report/rowPresentation.js";
+import { boxStep, displayArticle, displayName, isDuplicateDecision, matchPercent, matchReasonLabel, needsAcknowledgement, presentationStatus, quantityDisplay, attentionReason } from "../../../features/report/rowPresentation.js";
 import { IconChevron } from "../../icons.jsx";
 import { Stepper } from "../../widgets.jsx";
 
@@ -34,7 +34,8 @@ export function ReportRow({ row, edit, expanded, invalid, acknowledged, boxLabel
   const match = matchPercent(row);
   const reasonLabel = matchReasonLabel(row);
   const needsComment = rowNeedsComment(row, edit);
-  const isDuplicate = status === "needs_decision" && (row.duplicate || row.matchReasons?.duplicates === "needs_choice" || row.status === "source_duplicate");
+  const needsAck = needsAcknowledgement(row);
+  const isDuplicate = isDuplicateDecision(row);
   const reason = attentionReason(row);
 
   return (
@@ -51,9 +52,9 @@ export function ReportRow({ row, edit, expanded, invalid, acknowledged, boxLabel
         </td>
         <td className={cell}>
           <span className="block leading-snug font-medium">{displayName(row) || "—"}</span>
-          {isDuplicate && (
+          {needsAck && (
             <span className={`mt-1 inline-flex rounded-md px-1.5 py-0.5 text-[12px] font-medium ${acknowledged ? TONE_CHIP.ok : TONE_CHIP.danger}`}>
-              {acknowledged ? "дубль подтверждён" : "дубль"}
+              {acknowledged ? "подтверждено" : isDuplicate ? "дубль" : "нужно решение"}
             </span>
           )}
         </td>
@@ -120,14 +121,16 @@ export function ReportRow({ row, edit, expanded, invalid, acknowledged, boxLabel
           )}
         </td>
       </tr>
-      {isDuplicate && (
+      {needsAck && (
         <tr>
           <td colSpan={10} className={`border-b border-[var(--color-line-soft)] px-4 py-3 ${acknowledged ? "bg-[var(--color-ok-soft)]" : "bg-[var(--color-danger-soft)]"}`}>
             <div className="flex flex-wrap items-center justify-between gap-3 pl-8">
               <div className="min-w-0 text-[14px]">
-                <div className="font-medium text-[var(--color-ink)]">Конфликт в таблице заказа</div>
+                <div className="font-medium text-[var(--color-ink)]">{isDuplicate ? "Конфликт в таблице заказа" : "Сомнительная пара"}</div>
                 <div className="mt-0.5 text-[13px] text-[var(--color-ink-soft)]">
-                  {duplicateDescription(row.duplicateCandidates) || "несколько строк с одним артикулом"}
+                  {isDuplicate
+                    ? duplicateDescription(row.duplicateCandidates) || "несколько строк с одним артикулом"
+                    : reason || "найдено только по названию"}
                 </div>
               </div>
               <label className="flex cursor-pointer items-center gap-2 rounded-lg border border-[var(--color-line)] bg-[var(--color-surface)] px-3 py-2 text-[14px] font-medium text-[var(--color-ink)]">

@@ -132,19 +132,7 @@ export function UsersScreen({ companyId, actorRole, actorId, onCompany }) {
                           user={user}
                           isSelf={user.id === actorId}
                           canManage={canManageListedUser(actorRole, user.role)}
-                          onReset={async () => {
-                            if (user.last_seen_at) {
-                              setResetTarget(user);
-                              return;
-                            }
-                            setError("");
-                            try {
-                              const payload = await resetUser(user.id);
-                              await showInvite(payload.invite_url);
-                            } catch (err) {
-                              setError(userFacingError(err, "Не удалось скопировать ссылку."));
-                            }
-                          }}
+                          onReset={() => setResetTarget(user)}
                           onDisable={() => setDisableTarget(user)}
                         />
                       </li>
@@ -232,7 +220,7 @@ function UserCard({ user, canManage, isSelf, onReset, onDisable }) {
       </div>
       {canManage && !isSelf ? (
         <div className="mt-3 flex flex-wrap gap-2">
-          <GhostButton onClick={onReset}>{user.last_seen_at ? "Сброс доступа" : "Скопировать ссылку снова"}</GhostButton>
+          <GhostButton onClick={onReset}>Сброс доступа</GhostButton>
           {user.disabled_at ? null : <GhostButton onClick={onDisable}>Выключить</GhostButton>}
         </div>
       ) : null}

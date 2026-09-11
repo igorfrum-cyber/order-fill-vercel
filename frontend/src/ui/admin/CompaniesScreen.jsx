@@ -44,12 +44,13 @@ export function CompaniesScreen({ selectedId, onSelect }) {
         }}
       >
         <div className="flex flex-col gap-2 sm:flex-row">
-          <input className="input flex-1" value={name} onChange={(event) => setName(event.target.value)} placeholder="Название" />
+          <input className="input flex-1" value={name} onChange={(event) => setName(event.target.value)} placeholder="Название" aria-label="Название" />
           <input
             className="input flex-1 font-mono"
             value={loginSlug}
             onChange={(event) => setLoginSlug(event.target.value)}
             placeholder="Адрес входа, латиницей"
+            aria-label="Адрес входа, латиницей"
             autoComplete="off"
             spellCheck={false}
           />

@@ -7,6 +7,21 @@ import (
 	"testing"
 )
 
+func TestPresentUserIncludesDisabledAndLastSeen(t *testing.T) {
+	t.Parallel()
+	got := presentUser(User{
+		ID: "u1", Login: "buyer", Role: "purchaser", CompanyID: "co",
+		DisabledAt: "2026-09-01T12:00:00Z", LastSeenAt: "2026-09-11T08:00:00Z",
+	})
+	if got["disabled_at"] != "2026-09-01T12:00:00Z" || got["last_seen_at"] != "2026-09-11T08:00:00Z" {
+		t.Fatalf("got %#v", got)
+	}
+	active := presentUser(User{ID: "u2", Login: "keeper", Role: "company_admin"})
+	if _, ok := active["disabled_at"]; ok {
+		t.Fatal("active user must omit disabled_at")
+	}
+}
+
 func TestTotpDisableRequiresPasswordAndCode(t *testing.T) {
 	t.Parallel()
 	api := &API{}

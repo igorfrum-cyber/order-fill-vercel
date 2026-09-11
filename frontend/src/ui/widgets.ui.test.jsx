@@ -59,6 +59,11 @@ test("modal closes on Escape and backdrop click", async () => {
     </Modal>,
   );
 
+  const dialog = screen.getByRole("dialog");
+  const titleId = dialog.getAttribute("aria-labelledby");
+  expect(titleId).toBeTruthy();
+  expect(document.getElementById(titleId)).toHaveTextContent("Проверьте спорные строки");
+
   await user.keyboard("{Escape}");
   expect(onCancel).toHaveBeenCalledTimes(1);
 

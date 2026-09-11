@@ -12,7 +12,7 @@ func (s *Service) Create(ctx context.Context, actor domain.Actor, jobType domain
 	if !domain.CanCreateJob(actor) {
 		return domain.Job{}, domain.ErrUnauthorized
 	}
-	files, err := s.files.Describe(ctx, fileIDs)
+	files, err := s.files.Describe(ctx, actor, fileIDs)
 	if err != nil {
 		return domain.Job{}, err
 	}

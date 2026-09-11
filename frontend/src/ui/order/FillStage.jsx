@@ -4,9 +4,10 @@ import { rowKey } from "../../features/order/reviewEdits.js";
 import {
   canProceedPastDuplicates,
   countByTab,
+  decisionHint,
   firstReviewTab,
   matchLayerHint,
-  presentationStatus,
+  needsAcknowledgement,
   reviewQueueLine,
   visibleFillTabs,
   visibleReportRows,
@@ -38,7 +39,7 @@ export function FillStage({
   const counts = useMemo(() => countByTab(rows), [rows]);
   const duplicateCount = counts.needs_decision ?? 0;
   const duplicateKeys = useMemo(
-    () => rows.filter((row) => presentationStatus(row) === "needs_decision").map(rowKey),
+    () => rows.filter(needsAcknowledgement).map(rowKey),
     [rows],
   );
   const tabs = useMemo(() => visibleFillTabs(counts), [counts]);
@@ -49,7 +50,7 @@ export function FillStage({
   const boxLabel = summary.adjustmentLabel || adjustmentLabelForBrand(brand);
   const canProceed = canProceedPastDuplicates({ duplicateKeys, acknowledgedKeys: acknowledgedDuplicates });
   const acknowledgedCount = duplicateKeys.filter((key) => acknowledgedDuplicates.has(key)).length;
-  const hint = matchLayerHint(activeTab);
+  const hint = activeTab === "needs_decision" ? decisionHint(rows) : matchLayerHint(activeTab);
 
   function toggleDuplicateAck(key, next) {
     onAcknowledgedDuplicates((prev) => {
@@ -108,10 +109,10 @@ export function FillStage({
             {status ? (
               <span>{status}</span>
             ) : canProceed ? (
-              <span className="text-[var(--color-ok)]">{duplicateCount ? "Дубли подтверждены" : "Критичных проблем нет"}</span>
+              <span className="text-[var(--color-ok)]">{duplicateCount ? "Спорные подтверждены" : "Критичных проблем нет"}</span>
             ) : (
               <button type="button" className="text-[var(--color-danger)] hover:underline" onClick={() => setTab("needs_decision")}>
-                Сначала подтвердите дубли: {duplicateCount - acknowledgedCount}
+                Сначала подтвердите спорные: {duplicateCount - acknowledgedCount}
               </button>
             )}
           </span>

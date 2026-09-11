@@ -33,8 +33,30 @@ func TestPurchaserSeesOwnJobsOnly(t *testing.T) {
 	buyer := Actor{UserID: "u1", CompanyID: "co", Role: RolePurchaser}
 	other := Actor{UserID: "u2", CompanyID: "co", Role: RolePurchaser}
 	admin := Actor{UserID: "a1", CompanyID: "co", Role: RoleCompanyAdmin}
+	owner := Actor{UserID: "o1", CompanyID: "co", Role: RoleCompanyOwner}
+	foreign := Actor{UserID: "a2", CompanyID: "other", Role: RoleCompanyAdmin}
+	platform := Actor{UserID: "p1", Role: RolePlatformAdmin}
 	if !CanAccessJob(buyer, job) || CanAccessJob(other, job) || !CanAccessJob(admin, job) {
 		t.Fatal("authz mismatch")
+	}
+	if !CanAccessJob(owner, job) || CanAccessJob(foreign, job) || !CanAccessJob(platform, job) {
+		t.Fatal("owner/platform/cross-company mismatch")
+	}
+}
+
+func TestCanCreateJob(t *testing.T) {
+	t.Parallel()
+	if !CanCreateJob(Actor{Role: RolePurchaser, CompanyID: "co"}) {
+		t.Fatal("purchaser")
+	}
+	if !CanCreateJob(Actor{Role: RoleCompanyOwner, CompanyID: "co"}) || !CanCreateJob(Actor{Role: RoleCompanyAdmin, CompanyID: "co"}) {
+		t.Fatal("keepers")
+	}
+	if CanCreateJob(Actor{Role: RolePlatformAdmin}) || CanCreateJob(Actor{Role: RolePurchaser}) {
+		t.Fatal("platform admin and purchaser without company")
+	}
+	if CanCreateJob(Actor{Role: RolePurchaser, CompanyID: "co", Disabled: true}) {
+		t.Fatal("disabled")
 	}
 }
 

@@ -30,6 +30,12 @@ func presentUser(user User) map[string]any {
 		"company_id": user.CompanyID, "company_name": user.CompanyName, "login_slug": user.LoginSlug,
 		"has_logo": user.HasLogo, "two_factor_enabled": user.TwoFactor, "has_passkey": user.HasPasskey,
 	}
+	if user.LastSeenAt != "" {
+		out["last_seen_at"] = user.LastSeenAt
+	}
+	if user.DisabledAt != "" {
+		out["disabled_at"] = user.DisabledAt
+	}
 	return out
 }
 

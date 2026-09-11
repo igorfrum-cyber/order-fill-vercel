@@ -35,6 +35,8 @@ type User struct {
 	HasLogo     bool
 	TwoFactor   bool
 	HasPasskey  bool
+	LastSeenAt  string
+	DisabledAt  string
 }
 
 func userFromProto(u *identityv1.User) User {
@@ -45,6 +47,7 @@ func userFromProto(u *identityv1.User) User {
 		ID: u.GetId(), Login: u.GetLogin(), Role: u.GetRole(), CompanyID: u.GetCompanyId(),
 		CompanyName: u.GetCompanyName(), LoginSlug: u.GetLoginSlug(), HasLogo: u.GetHasLogo(),
 		TwoFactor: u.GetTwoFactorEnabled(), HasPasskey: u.GetHasPasskey(),
+		LastSeenAt: u.GetLastSeenAt(), DisabledAt: u.GetDisabledAt(),
 	}
 }
 

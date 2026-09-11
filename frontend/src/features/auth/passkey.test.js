@@ -18,7 +18,7 @@ test("defaultPasskeyName names the current device without asking", () => {
 });
 
 test("passkeyOriginIssue allows localhost and https domains", () => {
-  assert.equal(passkeyOriginIssue({ protocol: "http:", hostname: "127.0.0.1" }), "");
+  assert.equal(passkeyOriginIssue({ protocol: "http:", hostname: "127.0.0.1" }), "insecure");
   assert.equal(passkeyOriginIssue({ protocol: "http:", hostname: "localhost" }), "");
   assert.equal(passkeyOriginIssue({ protocol: "http:", hostname: "kristail.localhost" }), "");
   assert.equal(passkeyOriginIssue({ protocol: "https:", hostname: "kristail.example.com" }), "");
@@ -39,6 +39,7 @@ test("passkeyUsable is false on a LAN IP even if WebAuthn exists", () => {
   try {
     assert.equal(passkeySupported(), true);
     assert.equal(passkeyUsable({ protocol: "http:", hostname: "192.168.31.108" }), false);
+    assert.equal(passkeyUsable({ protocol: "http:", hostname: "127.0.0.1" }), false);
     assert.equal(passkeyUsable({ protocol: "https:", hostname: "kristail.example.com" }), true);
   } finally {
     globalThis.PublicKeyCredential = previous;

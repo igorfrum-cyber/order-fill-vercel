@@ -58,7 +58,7 @@ func Run(ctx context.Context, cfg config.Config, log *slog.Logger) error {
 	}
 	var catalog jobs.Files
 	if cfg.FileAddr != "" {
-		client, err := files.Dial(ctx, cfg.FileAddr, cfg.WorkerToken)
+		client, err := files.Dial(ctx, cfg.FileAddr)
 		if err != nil {
 			return err
 		}

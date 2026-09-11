@@ -18,7 +18,7 @@ const STATUS_ICONS = {
 
 const POLL_MS = 8000;
 
-export function OverviewScreen({ onOpen }) {
+export function OverviewScreen({ onOpen, companyId = "" }) {
   const [components, setComponents] = useState([]);
   const [jobs, setJobs] = useState([]);
   const [events, setEvents] = useState([]);
@@ -31,7 +31,7 @@ export function OverviewScreen({ onOpen }) {
     let cancelled = false;
     async function load() {
       try {
-        const [statusPayload, jobsPayload, auditPayload] = await Promise.all([listStatus(), listJobs(""), listAudit()]);
+        const [statusPayload, jobsPayload, auditPayload] = await Promise.all([listStatus(), listJobs(companyId), listAudit()]);
         if (cancelled) return;
         setComponents(statusPayload.components || []);
         setJobs(jobsPayload.jobs || []);
@@ -47,7 +47,7 @@ export function OverviewScreen({ onOpen }) {
       cancelled = true;
       window.clearInterval(timer);
     };
-  }, []);
+  }, [companyId]);
 
   return (
     <section className="animate-enter mx-auto max-w-6xl space-y-6 p-6">

@@ -5,28 +5,28 @@ import (
 	"strings"
 
 	"order-fill/backend/pkg/grpcutil"
+	commonv1 "order-fill/backend/proto/gen/go/orderfill/common/v1"
 	filesv1 "order-fill/backend/proto/gen/go/orderfill/files/v1"
 	"order-fill/backend/services/job-service/internal/domain"
 )
 
 type Client struct {
-	api   filesv1.FileServiceClient
-	token string
+	api filesv1.FileServiceClient
 }
 
-func Dial(ctx context.Context, addr, token string) (*Client, error) {
+func Dial(ctx context.Context, addr string) (*Client, error) {
 	conn, err := grpcutil.Dial(ctx, addr)
 	if err != nil {
 		return nil, err
 	}
-	return &Client{api: filesv1.NewFileServiceClient(conn), token: token}, nil
+	return &Client{api: filesv1.NewFileServiceClient(conn)}, nil
 }
 
-func (c *Client) Describe(ctx context.Context, ids []string) ([]domain.FileRef, error) {
-	ctx = grpcutil.WithWorkerToken(ctx, c.token)
+func (c *Client) Describe(ctx context.Context, actor domain.Actor, ids []string) ([]domain.FileRef, error) {
+	meta := &commonv1.RequestMeta{ActorUserId: actor.UserID, CompanyId: actor.CompanyID}
 	out := make([]domain.FileRef, 0, len(ids))
 	for _, id := range ids {
-		resp, err := c.api.GetObject(ctx, &filesv1.GetObjectRequest{Id: id})
+		resp, err := c.api.GetObject(ctx, &filesv1.GetObjectRequest{Id: id, Meta: meta})
 		if err != nil {
 			return nil, err
 		}

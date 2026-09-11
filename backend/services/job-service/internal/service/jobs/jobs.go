@@ -21,7 +21,7 @@ type Store interface {
 }
 
 type Files interface {
-	Describe(ctx context.Context, ids []string) ([]domain.FileRef, error)
+	Describe(ctx context.Context, actor domain.Actor, ids []string) ([]domain.FileRef, error)
 }
 
 type Companies interface {

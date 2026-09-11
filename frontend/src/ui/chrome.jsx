@@ -95,7 +95,7 @@ export function TopBar({ brandLabel, monthLabel, stage, format = "order", onHome
   return (
     <header className="flex items-center justify-between gap-2 border-b border-[var(--color-line)] bg-[var(--color-surface)] px-4 py-3.5 sm:px-6">
       <div className="flex min-w-0 items-center gap-2.5">
-        <button type="button" className="grid h-9 w-9 place-items-center rounded-md bg-[var(--color-brand)] text-white" onClick={onHome}>
+        <button type="button" aria-label="К списку выгрузок" className="grid h-9 w-9 place-items-center rounded-md bg-[var(--color-brand)] text-white" onClick={onHome}>
           <IconList className="h-4 w-4" />
         </button>
         <div className="leading-tight">
