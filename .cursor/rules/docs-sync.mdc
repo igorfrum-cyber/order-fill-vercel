@@ -9,7 +9,11 @@ alwaysApply: false
 Перед правкой документации или контрактов прочитай skill
 `.cursor/skills/order-fill-docs/SKILL.md`.
 
-После изменения env, RPC или HTTP-маршрутов в том же изменении:
+Хук `scripts/docs-regression.mjs` после правки `config.go` / proto / router
+сам вызывает `sync-docs --write`. Если в таблице осталась заглушка назначения —
+заполни её в том же изменении (skill `order-fill-docs`).
+
+После изменения env, RPC или HTTP-маршрутов всё равно можно прогнать вручную:
 
 ```bash
 node scripts/sync-docs.mjs --write

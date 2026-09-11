@@ -91,12 +91,17 @@ actual RPCs, environment variables, dependencies, and known limitations.
 
 ## Before editing
 
-1. Inspect `git status` and preserve unrelated changes.
-2. Read the service README, domain code, transport, config, tests, and contract
-   involved in the change.
-3. Confirm which component owns the behavior; do not patch around an ownership
-   boundary in gateway or frontend.
-4. Prefer a focused test that demonstrates the requested behavior before or
+1. Load `.cursor/skills/order-fill-work/SKILL.md`. If HEAD is `artemch`, `dev`,
+   `main`, or `igorfrum`, create `feat/<slug>` from `artemch` first. Do not
+   commit those four branches. Merge into `artemch` only when asked.
+2. Inspect `git status` and preserve unrelated changes.
+3. Read the service README, domain code, transport, config, tests, and contract
+   involved in the change. Load `order-fill-docs` and the Go/UI skills the
+   files require. Friend's `main` is product intent, not a merge source.
+4. Confirm which component owns the behavior; do not patch around an ownership
+   boundary in gateway or frontend. A new microservice or routed screen needs
+   an explicit yes before you create it.
+5. Prefer a focused test that demonstrates the requested behavior before or
    with the implementation.
 
 Do not edit generated protobuf files directly. Do not rewrite applied migration

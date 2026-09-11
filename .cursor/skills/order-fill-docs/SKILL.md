@@ -23,11 +23,14 @@ READMEs describe that service only. Do not invent ownership across boundaries.
 ## Generated lists
 
 Env tables, RPC tables, and gateway HTTP routes live between `<!-- docs-sync:* -->`
-markers. After changing `config.go`, `.proto`, or `router.go`:
+markers. After changing `config.go`, `.proto`, or `router.go` the Cursor hook and
+pre-commit run:
 
 ```bash
 node scripts/sync-docs.mjs --write
 ```
+
+If the hook left a stub purpose, replace it in the same change.
 
 Keep the purpose column; the sync preserves it. Do not hand-edit other columns
 inside the markers. New keys/RPCs get a stub purpose — fill it in the same change.

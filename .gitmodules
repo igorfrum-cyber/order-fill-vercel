@@ -1,0 +1,9 @@
+[submodule ".cursor/skills/cc-skills-golang"]
+	path = .cursor/skills/cc-skills-golang
+	url = https://github.com/samber/cc-skills-golang.git
+[submodule ".cursor/skills/modern-go-guidelines"]
+	path = .cursor/skills/modern-go-guidelines
+	url = https://github.com/JetBrains/go-modern-guidelines.git
+[submodule ".cursor/skills/ponytail"]
+	path = .cursor/skills/ponytail
+	url = https://github.com/dietrichgebert/ponytail.git

@@ -29,7 +29,7 @@ go install golang.org/x/vuln/cmd/govulncheck@v1.8.0
 1; `govulncheck` устанавливается той же Go-командой.
 
 ```bash
-git clone https://github.com/igorfrum-cyber/order-fill-vercel.git
+git clone --recurse-submodules https://github.com/igorfrum-cyber/order-fill-vercel.git
 cd order-fill-vercel
 npm ci --prefix frontend
 cp .env.example .env
@@ -45,6 +45,21 @@ make up
 Web UI будет доступен на <http://127.0.0.1:3200>, gateway health endpoint — на
 <http://127.0.0.1:8080/healthz>. Для просмотра логов используйте `make logs`,
 для остановки — `make down`.
+
+## Ветки
+
+Канон разработчика — `artemch`. Задачи делаются в `feat/<slug>` от неё, затем
+сливаются в `artemch` по явной просьбе. `dev` — стенд. `main` — песочница
+прототипа (другое дерево, Excel в браузере); её не мержат в `artemch`, с неё
+снимают поведение и пишут его в текущие сервисы и экраны.
+
+Новый микросервис или новый экран — только после явного согласия: сначала
+почему не хватает текущего owner / текущего сценария.
+
+Агент обязан читать skill `.cursor/skills/order-fill-work/SKILL.md`, README
+затронутого сервиса и skill документации. Таблицы env/RPC/HTTP в README
+регенерируются из кода (`make docs-sync`); хук и pre-commit делают тот же
+sync, назначение в таблицах всё равно заполняют руками.
 
 ## Где вносить изменения
 
@@ -105,9 +120,11 @@ npm run test:e2e:install --prefix frontend
 make hooks
 ```
 
-На ветке `artemch` commit сам запускает `make verify` и отменяется, если gate
-красный. Перед любым `git push` тот же полный gate запускается ещё раз. Перед
-pull request всё равно запускайте полный gate явно:
+На любой ветке commit прогоняет `node scripts/sync-docs.mjs --write` и
+добавляет обновлённые README сервисов. На ветке `artemch` commit ещё и
+запускает `make verify` и отменяется, если gate красный. Перед любым
+`git push` тот же полный gate запускается ещё раз. Перед pull request всё
+равно запускайте полный gate явно:
 
 ```bash
 make verify
@@ -161,8 +178,9 @@ make docs-sync
 ## Checklist перед pull request
 
 - Изменение находится в сервисе, который владеет этой ответственностью.
+- Работа в `feat/<slug>`, не в `artemch`/`dev`/`main`; слив в `artemch` по явной просьбе.
 - Новое поведение покрыто тестами или причина отсутствия теста объяснена.
-- `make hooks` включён в клоне; на `artemch` commit не обходил `make verify`, а любой push гоняет полный gate.
+- `make hooks` включён в клоне; commit на любой ветке синхронизирует README-таблицы, на `artemch` ещё и не обходит `make verify`, а любой push гоняет полный gate.
 - `make verify` проходит локально.
 - Для security-sensitive изменений проходит `make security`.
 - Изменения `go.mod`, `go.sum` и lock-файлов ожидаемы.
