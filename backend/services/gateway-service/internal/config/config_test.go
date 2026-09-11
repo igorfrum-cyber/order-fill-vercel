@@ -28,6 +28,7 @@ func TestCookieSecureDefaultsOnOutsideLocal(t *testing.T) {
 	t.Setenv("GATEWAY_ENV", "production")
 	t.Setenv("API_ALLOWED_ORIGINS", "https://orderfill.example.com")
 	t.Setenv("SESSION_COOKIE_SECURE", "")
+	t.Setenv("GRPC_TLS_MODE", "tls")
 	cfg := Load()
 	if !cfg.CookieSecure {
 		t.Fatalf("%+v", cfg)

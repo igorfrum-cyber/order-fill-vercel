@@ -40,8 +40,9 @@ func TestValidateWorkerRejectsProductionMissingDependencies(t *testing.T) {
 }
 
 func TestValidateProductionModesAcceptCompleteConfig(t *testing.T) {
+	t.Setenv("GRPC_TLS_MODE", "tls")
 	cfg := Config{
-		Environment: "production", QueueURL: "redis://redis:6379/0", JobAddr: "job:9094",
+		Environment: "production", QueueURL: "redis://:secret@redis:6379/0", JobAddr: "job:9094",
 		FileAddr: "file:9095", CalculationAddr: "calculation:9099", MatchingAddr: "matching:9097", BrandAddr: "brand:9098",
 	}
 	if err := cfg.ValidateAPI(); err != nil {

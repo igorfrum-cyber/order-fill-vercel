@@ -60,8 +60,10 @@ func TestSetupEnableDisable(t *testing.T) {
 	if err != nil || !enabled {
 		t.Fatalf("enabled=%v err=%v", enabled, err)
 	}
-
-	if err := svc.Disable(ctx, "u1", ""); err != nil {
+	if err := svc.Disable(ctx, "u1", ""); !errors.Is(err, domain.ErrUnauthorized) {
+		t.Fatalf("empty code: %v", err)
+	}
+	if err := svc.Disable(ctx, "u1", codes[0]); err != nil {
 		t.Fatal(err)
 	}
 	enabled, err = svc.IsEnabled(ctx, "u1")

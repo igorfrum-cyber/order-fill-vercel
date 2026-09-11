@@ -1,125 +1,264 @@
 # CLAUDE.md
 
-This file provides guidance to Claude Code and Cursor when working in this repository.
+Instructions for Claude Code, Cursor, and other coding agents working in this
+repository.
 
-## Overview
+## Read this first
 
-Order-fill processes supplier Excel workbooks. The browser never parses Excel; that stays in `document-service`.
+Order Fill is an active React + Go microservice application. The browser does
+not parse or rewrite Excel files; document processing belongs to the backend.
+
+Use sources in this order when they disagree:
+
+1. Runtime code, `backend/deploy/docker-compose.yml`, canonical OpenAPI, and
+   protobuf source files.
+2. The README inside the affected service.
+3. `README.md`, `docs/ARCHITECTURE.md`, and `docs/service-boundaries.md`.
+4. Files under `docs/plans/`, which are design and implementation history.
+
+Active Go services live only under `backend/services/`. Do not restore or
+reference the retired root-level `services/` implementation.
+
+## Current runtime
 
 ```text
-frontend  -->  gateway-service  -->  identity / job / file / audit / 2fa / passkey
-                         |          redis (job queue)
-                         |          minio (workbooks)
-                         v
-                  document-worker
+browser
+  |
+  v
+frontend/nginx --HTTP /api--> gateway-service
+                                  |
+                                  +--gRPC--> identity / twofa / passkey
+                                  +--gRPC--> jobs / files / audit
+                                                   |       |
+                                                   v       v
+                                             Redis Stream  S3/MinIO
+                                                   |
+                                                   v
+                                            document-worker
+                                              |   |   |
+                                              v   v   v
+                                          matching brand calculation
+
+stateful services ---------------------------> PostgreSQL
 ```
 
-- `frontend/` — Vite browser app: upload UI, report, manual edits, polling, download links. Talks to the API only through `frontend/src/api/`.
-- `backend/services/gateway-service/` — public HTTP API, session gate, request validation, service orchestration.
-- `backend/services/job-service/` — job metadata, queue publishing, report state.
-- `backend/services/file-service/` — object-storage boundary and file metadata.
-- `backend/services/document-service/` — Excel read/write, job processing, reports; runs as `document-api` and `document-worker`.
-- `backend/proto/` — internal protobuf/gRPC contracts.
-- `backend/services/gateway-service/api/openapi.yaml` — public HTTP contract between frontend and gateway.
-- `deploy/docker-compose.yml` — local runtime; includes `backend/deploy/docker-compose.yml`.
+- `gateway-service` is the only browser-facing backend.
+- Internal business APIs use protobuf/gRPC.
+- `job-service` publishes `order-fill:jobs`; `document-worker` consumes it.
+- `file-service` is the object-storage boundary.
+- `document-api` exists as an internal synchronous API, but gateway does not
+  currently call it.
+- Local Compose provides PostgreSQL, Redis, and MinIO.
 
-Do not put workbook rules in HTTP handlers or in the browser. Match existing brand-specific behavior before generalizing. Do not execute macros from uploaded `.xlsm` files.
+## Ownership
 
-## Setup
+| Area | Owner |
+| --- | --- |
+| Browser UI, routing, state, rendering | `frontend/` |
+| Public HTTP, cookies, CORS/CSRF, request mapping | `gateway-service` |
+| Users, companies, roles, invites, sessions | `identity-service` |
+| TOTP credentials and rate state | `twofa-service` |
+| WebAuthn credentials and ceremonies | `passkey-service` |
+| Jobs, status, report state, queue publishing | `job-service` |
+| Binary objects and file metadata | `file-service` |
+| Excel/OOXML parsing, writing, preview, worker pipeline | `document-service` |
+| Product matching decisions and match reasons | `matching-service` |
+| Brand catalog, detection, and policies | `brand-service` |
+| Quantity calculations and North planning | `calculation-service` |
+| Audit event persistence | `audit-service` |
+| Internal gRPC contracts | `backend/proto/` |
+| Shared transport/infrastructure helpers | `backend/pkg/` |
+
+Read the relevant service README before changing it. Each README documents its
+actual RPCs, environment variables, dependencies, and known limitations.
+
+## Architectural invariants
+
+- Keep workbook parsing, formulas, styles, and file generation out of the
+  browser and gateway handlers.
+- Keep gateway thin: validate HTTP once, derive the actor from the session, call
+  service owners, and map the response.
+- Do not import another service's `internal/` packages. Cross-service behavior
+  goes through protobuf/gRPC or the Redis job contract.
+- Do not let matching, brand, or calculation services read Excel or access
+  object storage.
+- Do not bypass `file-service` for persistent object operations.
+- Keep calculations deterministic and explainable unless an explicit task asks
+  for an experiment.
+- Preserve current brand-specific behavior unless the change explicitly alters
+  the product specification.
+- Never execute macros from uploaded `.xlsm` files.
+
+## Before editing
+
+1. Inspect `git status` and preserve unrelated changes.
+2. Read the service README, domain code, transport, config, tests, and contract
+   involved in the change.
+3. Confirm which component owns the behavior; do not patch around an ownership
+   boundary in gateway or frontend.
+4. Prefer a focused test that demonstrates the requested behavior before or
+   with the implementation.
+
+Do not edit generated protobuf files directly. Do not rewrite applied migration
+files; add a new migration.
+
+## Change checklists
+
+### Public HTTP API
+
+Update together:
+
+- `backend/services/gateway-service/internal/transport/httpapi/`;
+- `backend/services/gateway-service/api/openapi.yaml`;
+- gateway tests;
+- `frontend/src/api/` and its tests when the browser contract changes;
+- gateway README when routes, limits, configuration, or behavior change.
+
+`packages/contracts/openapi.yaml` is only a compatibility pointer. Do not place
+the full contract there. `node scripts/verify-contracts.mjs` requires runtime
+routes and OpenAPI operations to match exactly.
+
+### Internal gRPC API
+
+1. Change the source under `backend/proto/orderfill/`.
+2. Run `make -C backend proto-gen`.
+3. Commit generated changes under `backend/proto/gen/go/`.
+4. Update every producer and consumer in the same change.
+5. Run Buf lint and all affected module tests.
+
+Avoid breaking field renumbering or reuse. Breaking changes require an explicit
+migration plan; do not silence the CI check casually.
+
+### Configuration
+
+When adding or changing an environment variable, update:
+
+- the service's `internal/config` package and tests;
+- `backend/deploy/docker-compose.yml` when Compose uses it;
+- `.env.example` when operators set it;
+- the service README and root README when it affects deployment.
+
+Keep production fail-fast behavior. Local in-memory fallbacks are development
+tools, not production defaults.
+
+### Database and queue state
+
+- Add migrations; do not mutate an existing migration that may have run.
+- Keep tenant and actor authorization explicit at service boundaries.
+- Treat job state plus Redis publication as non-atomic unless an outbox is
+  implemented.
+- Remember that the current worker acknowledges a Redis message after handler
+  errors; do not describe this path as automatic retry.
+- Readiness endpoints are intentionally shallow in several services. Do not
+  assume `/readyz` proves every downstream dependency is available.
+
+### Documentation
+
+Update documentation in the same change as behavior. At minimum, keep the root
+README, affected service README, contracts, `.env.example`, and architecture
+documents consistent. `node scripts/verify-docs.mjs` checks local links and the
+required service README sections.
+
+## Setup and commands
 
 ```bash
 cp .env.example .env
 npm ci --prefix frontend
+make up
 ```
 
-Go modules vendor themselves on first `go test` / `go build` in each service.
+- Web UI: `http://127.0.0.1:3200`
+- Gateway health: `http://127.0.0.1:8080/healthz`
 
-## Common commands
+Common commands:
 
 ```bash
-make up                          # docker compose stack
-make down
-make logs
-
-npm run dev --prefix frontend    # UI only, http://127.0.0.1:3200, API still from the stack
+make up                 # build and start the Compose stack
+make logs               # follow container logs
+make down               # stop containers; keep named volumes
+make docs               # validate documentation and local links
+make contracts          # compare HTTP/OpenAPI and run Buf lint
+make test               # frontend and all Go module tests
+make lint               # frontend + Go lint/security/tidy checks
+make verify             # deterministic local pre-commit gate
+make security           # govulncheck for every active Go module
 ```
 
-Service health:
+Go dependencies are downloaded through Go modules. This repository does not
+use a `vendor/` directory. `scripts/verify-go.sh` sets `GOWORK=off` per module
+and defaults `GOTOOLCHAIN=auto`, so the pinned Go toolchain may be downloaded
+when the locally installed Go version is older.
 
-- frontend: http://127.0.0.1:3200
-- gateway-service: http://127.0.0.1:8080/healthz
-- document-api: http://127.0.0.1:8087/healthz inside compose network
-- document-worker: http://127.0.0.1:8092/healthz inside compose network
-
-From a service directory:
+Run a focused module test from its directory:
 
 ```bash
-cd backend/services/gateway-service && go test ./...
-cd backend/services/document-service && go test ./internal/domain/orderfill -run TestFill
+cd backend/services/gateway-service
+GOWORK=off go test ./...
 ```
 
-## Pre-commit gate — mandatory before every commit
+## Required verification
 
-Run the full local suite from the repository root and commit only if it passes. It is the same script CI runs in `.github/workflows/verify.yml`. Do not push and wait for GitHub to find a failure that `scripts/verify.sh` would have caught.
+Before every commit, run:
 
 ```bash
 make verify
 ```
 
-That is `bash scripts/verify.sh`, which runs:
+It checks toolchain pins, documentation, HTTP/OpenAPI drift, protobuf lint,
+frontend lint/tests/build, every Go module, security linting, module tidiness,
+and both Compose entrypoints.
 
-```bash
-bash scripts/verify-toolchain.sh          # Node/Go pins: engines, go.mod, Docker, CI
-npm run verify --prefix frontend          # ESLint + syntax, node:test, vite build
-bash scripts/verify-go.sh backend/pkg
-bash scripts/verify-go.sh backend/proto
-bash scripts/verify-go.sh backend/services/*
-docker compose -f backend/deploy/docker-compose.yml config
-```
+CI adds two expensive checks to the same scripts and module list:
 
-Each Go module is checked with:
+- Go tests with `-race -shuffle=on`;
+- `govulncheck ./...` for every active Go module.
 
-```bash
-gofmt -l .              # must print nothing; fix with gofmt -w .
-go vet ./...
-golangci-lint run       # unused, errcheck, staticcheck, misspell, …
-gosec ./...             # security
-go mod tidy             # go.mod / go.sum must stay unchanged
-go build ./...
-go test ./...
-```
+Run `make security` locally before dependency, authentication, authorization,
+networking, file-processing, or release-related changes. It queries the Go
+vulnerability database and therefore requires network access.
 
-Local Node must be ≥ `engines.node` (24). Local Go must be ≥ the `go` line in `backend/**/go.mod`, and those lines must match. `golangci-lint` v2 and `gosec` are installed on first run if missing.
+Do not bypass a failed gate with `--no-verify`. Fix the problem or document a
+genuine external blocker.
 
-For vulnerability reachability checks, install and run the official Go scanner:
+## CI structure
 
-```bash
-go install golang.org/x/vuln/cmd/govulncheck@latest
-cd backend/services/gateway-service && govulncheck ./...
-cd backend/services/document-service && govulncheck ./...
-```
+`.github/workflows/verify.yml` has independent layers:
 
-Use the installed scanner in this repo; verification pins `GOTOOLCHAIN=local` so the gate does not silently download a different Go toolchain.
+- `Documentation and contracts` — toolchain pins, docs, OpenAPI drift, Buf;
+- `Frontend` — install, load-runner tests, lint, unit tests, build;
+- `Go quality` — vet, lint, SAST, and module tidiness for all modules;
+- `Go test · <module>` — independent race/shuffled tests per module;
+- `Go vulnerability scan` — reachable vulnerability checks for all modules;
+- `Docker Compose` — backend and root configuration validation;
+- `Required checks` — one aggregate result for branch protection.
 
-`npm run precommit` is an alias for the same gate.
+The workflow uses least-privilege read permissions, cancels obsolete runs for
+the same ref, and keeps matrix failures independent.
 
-`make lint` is the same checks without tests and Vite build.
+## Security and data handling
 
-If `frontend/package.json` or `frontend/package-lock.json` changed:
+- Never commit `.env`, passwords, session tokens, TOTP master keys, WebAuthn
+  ceremony data, TLS private keys, or object-storage credentials.
+- Never commit real commercial workbooks. Private fixtures belong under
+  `testdata/private/`, which is ignored.
+- Treat internal gRPC as a trusted boundary only when the deployment provides
+  network isolation and TLS/mTLS. Several RPCs trust actor IDs supplied by the
+  caller.
+- Production CORS origins must be explicit HTTPS origins; wildcard is local
+  only.
+- Production cookies must be secure, passkeys require the correct RP ID, and
+  `TWOFA_MASTER_KEY` must be stable, non-default, and at least 32 bytes.
+- Do not log file contents, credentials, raw recovery codes, or private keys.
 
-```bash
-npm ci --prefix frontend
-make verify
-```
+## Generated and ignored content
 
-Commit the lockfile together with `frontend/package.json`.
+Do not commit or review as source:
 
-If `gofmt -l`, ESLint, golangci-lint, or gosec report issues, fix them and create a **new** commit after a failed hook — do not `--no-verify`.
+- `node_modules/`, `frontend/node_modules/`;
+- `dist/`, `frontend/dist/`, `.vercel/`;
+- `.cache/`, `.gocache/`, `test-output/`;
+- `testdata/private/`;
+- `.worktrees/`.
 
-## Working rules
-
-- Keep workbook calculations deterministic and explainable unless the user explicitly asks for an ML experiment.
-- Keep the frontend thin: UI, state, API orchestration, and rendering stay in focused modules under `frontend/src/`.
-- Keep business rules out of `httpapi` handlers and out of the browser.
-- Add or update Go tests when changing matching, rounding, period validation, ЧЗ merge, or order-quantity rules.
-- Keep generated output out of git: `dist/`, `test-output/`, `.vercel/`, `node_modules/`, `testdata/private/`.
+Generated protobuf code under `backend/proto/gen/go/` is committed, but must be
+regenerated from `.proto` sources rather than hand-edited.

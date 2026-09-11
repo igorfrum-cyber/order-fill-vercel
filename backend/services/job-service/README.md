@@ -106,7 +106,7 @@ HTTP-интерфейс:
 | `GRPC_TLS_CA_FILE` | пусто | CA bundle: обязателен в `mtls`; в `tls` может задавать доверенные root CA для downstream. |
 | `GRPC_TLS_SERVER_NAME` | host из target | Явное имя для проверки сертификатов всех downstream gRPC-соединений. |
 
-Вне local сервис требует PostgreSQL, Redis, file-service и identity-service. Production-валидация не проверяет TLS в `DATABASE_URL`/`QUEUE_URL` и не запрещает `GRPC_TLS_MODE=insecure`.
+Вне local сервис требует PostgreSQL, Redis, file-service и identity-service. Production-валидация запрещает `GRPC_TLS_MODE=insecure`, пароль Postgres `order_fill`, `sslmode=disable` и Redis URL без пароля.
 
 ## Локальный запуск
 

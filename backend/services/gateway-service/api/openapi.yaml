@@ -299,16 +299,18 @@ paths:
     post:
       operationId: disableTwoFactor
       tags: [auth]
-      summary: Disable two-factor authentication
+      summary: Disable two-factor authentication with password and TOTP or recovery code
       requestBody:
         required: true
         content:
           application/json:
             schema:
               type: object
-              required: [password]
+              required: [password, code]
               properties:
                 password:
+                  type: string
+                code:
                   type: string
       responses:
         "204":

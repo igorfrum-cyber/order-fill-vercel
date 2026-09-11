@@ -6,6 +6,7 @@ dist/
 .cache/
 test-output/
 testdata/private/
+docs/security-reports/
 .worktrees/
 .vercel/
 .DS_Store

@@ -20,6 +20,21 @@ func TestGRPCTLSModeRejectsUnknown(t *testing.T) {
 	}
 }
 
+func TestGRPCTLSModeRejectsInsecureOutsideLocal(t *testing.T) {
+	t.Setenv("APP_ENV", "production")
+	t.Setenv(envGRPCTLSMode, "insecure")
+	if _, err := grpcTLSMode(); err == nil {
+		t.Fatal("expected production insecure error")
+	}
+}
+
+func TestCheckTLSModeAllowsInsecureLocal(t *testing.T) {
+	t.Setenv(envGRPCTLSMode, "")
+	if err := CheckTLSMode("local"); err != nil {
+		t.Fatal(err)
+	}
+}
+
 func TestClientTransportRequiresMTLSMaterial(t *testing.T) {
 	t.Setenv(envGRPCTLSMode, "mtls")
 	t.Setenv(envGRPCTLSCertFile, "")

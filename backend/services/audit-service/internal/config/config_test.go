@@ -30,7 +30,8 @@ func TestValidateRejectsProductionMemoryStore(t *testing.T) {
 }
 
 func TestValidateAcceptsProductionConfig(t *testing.T) {
-	cfg := Config{Environment: "production", DatabaseURL: "postgres://db"}
+	t.Setenv("GRPC_TLS_MODE", "tls")
+	cfg := Config{Environment: "production", DatabaseURL: "postgres://user:secret@db/order_fill?sslmode=require"}
 	if err := cfg.Validate(); err != nil {
 		t.Fatal(err)
 	}

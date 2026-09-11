@@ -196,6 +196,30 @@ func TestRunStopsOnCancelledContext(t *testing.T) {
 	}
 }
 
+func TestDispatchLeavesHandlerErrorUnacked(t *testing.T) {
+	t.Parallel()
+	consumer := &Consumer{logger: discardLogger()}
+	err := consumer.dispatch(t.Context(), `{"job_id":"job-1","type":"order_fill"}`, func(context.Context, port.JobMessage) error {
+		return errHandlerFailed
+	})
+	if err == nil {
+		t.Fatal("expected handler error")
+	}
+}
+
+func TestDispatchAcksInvalidPayload(t *testing.T) {
+	t.Parallel()
+	consumer := &Consumer{logger: discardLogger()}
+	if err := consumer.dispatch(t.Context(), `{`, func(context.Context, port.JobMessage) error {
+		t.Fatal("handler must not run")
+		return nil
+	}); err != nil {
+		t.Fatalf("invalid payload must be acknowledged: %v", err)
+	}
+}
+
+var errHandlerFailed = redisError("handler failed")
+
 func TestIsBusyGroupError(t *testing.T) {
 	tests := []struct {
 		name string

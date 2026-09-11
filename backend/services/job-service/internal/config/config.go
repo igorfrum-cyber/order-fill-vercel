@@ -4,6 +4,9 @@ import (
 	"fmt"
 	"os"
 	"strings"
+
+	"order-fill/backend/pkg/grpcutil"
+	"order-fill/backend/pkg/securecfg"
 )
 
 type Config struct {
@@ -45,7 +48,13 @@ func (c Config) Validate() error {
 	if strings.TrimSpace(c.IdentityAddr) == "" {
 		return fmt.Errorf("IDENTITY_GRPC_ADDR is required outside local environment")
 	}
-	return nil
+	if err := securecfg.Postgres(c.Environment, c.DatabaseURL); err != nil {
+		return err
+	}
+	if err := securecfg.Redis(c.Environment, c.QueueURL); err != nil {
+		return err
+	}
+	return grpcutil.CheckTLSMode(c.Environment)
 }
 
 func localEnv(env string) bool {

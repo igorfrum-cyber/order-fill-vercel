@@ -212,6 +212,10 @@ func (a *API) resetUser(w http.ResponseWriter, r *http.Request) {
 
 func (a *API) listAudit(w http.ResponseWriter, r *http.Request) {
 	user, _ := userFrom(r)
+	if user.Role != "platform_admin" {
+		writeError(w, http.StatusNotFound, "not_found", "not found")
+		return
+	}
 	resp, err := a.Clients.Audit.ListEvents(r.Context(), &auditv1.ListEventsRequest{Meta: a.meta(user), CompanyId: user.CompanyID})
 	if err != nil {
 		writeGRPCError(w, "list_audit_failed", err)

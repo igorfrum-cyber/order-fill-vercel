@@ -32,7 +32,7 @@ curl http://127.0.0.1:8080/readyz
 - Скачивание отдельных файлов и ZIP-архива, а также выдача метаданных и окон табличного preview без распаковки всей книги в gateway.
 - Публичные метаданные и логотип страницы входа компании по `login_slug`.
 - Аудит отдельных административных действий и агрегированный статус инфраструктуры для `platform_admin`.
-- CORS, CSRF-проверка POST-запросов, security headers и HTTP-only cookie `order_fill_session`.
+- CORS, CSRF-проверка POST-запросов (включая public login/invite/passkey), security headers с `Cache-Control: private, no-store` и HTTP-only cookie `order_fill_session`.
 
 Gateway не владеет постоянным хранилищем. `POSTGRES_ADDR` и `REDIS_ADDR` используются только диагностическим `/api/v1/status`.
 
@@ -212,7 +212,7 @@ go test ./...
 ## Эксплуатационные заметки и ограничения
 
 - `/healthz` — liveness, `/readyz` сейчас всегда отвечает `200` и не отражает доступность gRPC-зависимостей.
-- `/api/v1/status` доступен только `platform_admin` и проверяет worker, PostgreSQL, Redis и file-service с общим deadline 2 секунды. Identity, TwoFA, Passkey, Job и Audit в эту диагностику не входят.
-- Вне local сервис отказывается запускаться с insecure cookie, пустым CORS allowlist, wildcard origin или origin без HTTPS.
-- `GRPC_TLS_MODE=insecure` — default для разработки. В production внутреннюю сеть нужно защищать TLS/mTLS и сетевыми политиками.
+- `/api/v1/status` и `GET /api/v1/audit` доступны только `platform_admin`. Status проверяет worker, PostgreSQL, Redis и file-service с общим deadline 2 секунды. Identity, TwoFA, Passkey, Job и Audit в эту диагностику не входят.
+- Вне local сервис отказывается запускаться с insecure cookie, пустым CORS allowlist, wildcard origin, origin без HTTPS или `GRPC_TLS_MODE=insecure`.
+- Смена пароля и включение 2FA отзывают cookie-сессии. Отключение 2FA требует пароль и TOTP/recovery code.
 - В репозитории нет файла `LICENSE`; условия распространения сервиса в README не зафиксированы.

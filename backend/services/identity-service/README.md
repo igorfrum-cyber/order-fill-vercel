@@ -64,7 +64,7 @@ Source of truth — [`../../proto/orderfill/identity/v1/identity.proto`](../../p
 - `CompleteTwoFactorLogin` — проверяет challenge и TOTP/recovery code через `twofa-service`, затем выпускает сессию.
 - `Logout`, `LogoutEverywhere`, `ListSessions`, `RevokeSession`.
 - `ValidateSession`, `GetMe`.
-- `AcceptInvite`, `ChangePassword`.
+- `AcceptInvite`, `ChangePassword` — смена пароля удаляет все сессии пользователя.
 - `FinishPasskeyLogin` — делегирует WebAuthn assertion и выпускает сессию найденному активному пользователю.
 
 ### Компании и пользователи
@@ -108,7 +108,7 @@ gRPC-клиенты имеют default deadline 60 секунд. Максима�
 | `GRPC_TLS_CA_FILE` | пусто | CA bundle; обязателен в `mtls`, необязателен для исходящих `tls` соединений. |
 | `GRPC_TLS_SERVER_NAME` | hostname из target | Явное имя для проверки сертификатов `twofa-service` и `passkey-service`. |
 
-Вне local процесс не стартует без `DATABASE_URL`, `TWOFA_GRPC_ADDR` и `PASSKEY_GRPC_ADDR`. Проверка доступности PostgreSQL выполняется сразу; создание gRPC-клиентов само по себе не гарантирует доступность удаленных сервисов.
+Вне local процесс не стартует без `DATABASE_URL`, `TWOFA_GRPC_ADDR` и `PASSKEY_GRPC_ADDR`. `DATABASE_URL` не может использовать пароль `order_fill` и должен задавать `sslmode=require` (или `verify-ca`/`verify-full`). `GRPC_TLS_MODE` должен быть `tls` или `mtls`.
 
 ## Запуск с PostgreSQL
 

@@ -1,6 +1,8 @@
 package httpapi
 
 import (
+	"net/http"
+	"net/http/httptest"
 	"testing"
 
 	commonv1 "order-fill/backend/proto/gen/go/orderfill/common/v1"
@@ -53,5 +55,17 @@ func TestPresentCompanyForHidesMatchingMode(t *testing.T) {
 	purchaser := api.presentCompanyFor(t.Context(), User{Role: "purchaser"}, company)
 	if _, ok := purchaser["matching_mode"]; ok {
 		t.Fatalf("purchaser saw matching_mode: %#v", purchaser)
+	}
+}
+
+func TestListAuditRequiresPlatformAdmin(t *testing.T) {
+	t.Parallel()
+	api := &API{}
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/audit", nil)
+	req = req.WithContext(withUser(req.Context(), User{Role: "purchaser", CompanyID: "co-1"}))
+	rec := httptest.NewRecorder()
+	api.listAudit(rec, req)
+	if rec.Code != http.StatusNotFound {
+		t.Fatalf("status=%d", rec.Code)
 	}
 }

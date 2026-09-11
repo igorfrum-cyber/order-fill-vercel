@@ -226,3 +226,21 @@ func TestTOTPEnabledUserGetsChallengeUntilVerified(t *testing.T) {
 		t.Fatalf("sessions=%d", store.SessionCount())
 	}
 }
+
+func TestChangePasswordDeletesSessions(t *testing.T) {
+	t.Parallel()
+	store, svc, _, user, _, _ := setup(t)
+	ctx := t.Context()
+	if _, err := svc.Login(ctx, user.Login, testPassword); err != nil {
+		t.Fatal(err)
+	}
+	if store.SessionCount() != 1 {
+		t.Fatalf("sessions=%d", store.SessionCount())
+	}
+	if err := svc.ChangePassword(ctx, user, testPassword, "newpassword10"); err != nil {
+		t.Fatal(err)
+	}
+	if store.SessionCount() != 0 {
+		t.Fatalf("sessions after password change=%d", store.SessionCount())
+	}
+}

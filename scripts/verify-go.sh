@@ -89,4 +89,15 @@ if [[ $mode == lint ]]; then
 fi
 
 go build ./...
-go test ./...
+test_args=()
+if [[ ${GO_TEST_RACE:-false} == true ]]; then
+  test_args+=(-race)
+fi
+if [[ ${GO_TEST_SHUFFLE:-false} == true ]]; then
+  test_args+=(-shuffle=on)
+fi
+if [[ ${GO_TEST_RACE:-false} == true || ${GO_TEST_SHUFFLE:-false} == true ]]; then
+  go test "${test_args[@]}" ./...
+else
+  go test ./...
+fi

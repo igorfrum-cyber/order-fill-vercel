@@ -10,6 +10,7 @@ import (
 )
 
 const parallelRowThreshold = 24
+const excelMaxRow = 1_048_576
 
 type worksheetSplit struct {
 	prologue []byte
@@ -246,7 +247,11 @@ func parsePositiveInt(value string) (int, error) {
 		if char < '0' || char > '9' {
 			return 0, fmt.Errorf("not a number")
 		}
-		n = n*10 + int(char-'0')
+		digit := int(char - '0')
+		if n > (excelMaxRow-digit)/10 {
+			return 0, fmt.Errorf("overflow")
+		}
+		n = n*10 + digit
 	}
 	return n, nil
 }

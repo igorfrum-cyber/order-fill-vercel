@@ -160,6 +160,7 @@ func (a *API) changePassword(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	a.recordAudit(r.Context(), user, "password_changed", user.CompanyID, user.CompanyName)
+	clearSessionCookie(w, a.CookieSecure, a.CookieDomain)
 	w.WriteHeader(http.StatusNoContent)
 }
 
@@ -196,6 +197,10 @@ func (a *API) totpEnable(w http.ResponseWriter, r *http.Request) {
 		writeGRPCError(w, "totp_enable_failed", err)
 		return
 	}
+	_, _ = a.Clients.Identity.LogoutEverywhere(r.Context(), &identityv1.LogoutEverywhereRequest{
+		ActorUserId: user.ID, SessionToken: sessionToken(r),
+	})
+	clearSessionCookie(w, a.CookieSecure, a.CookieDomain)
 	writeJSON(w, http.StatusOK, map[string]any{"recovery_codes": resp.GetRecoveryCodes()})
 }
 
@@ -203,6 +208,10 @@ func (a *API) totpDisable(w http.ResponseWriter, r *http.Request) {
 	user, _ := userFrom(r)
 	var payload authJSON
 	if !decodeJSON(w, r, &payload, authJSONLimit) {
+		return
+	}
+	if strings.TrimSpace(payload.Password) == "" || strings.TrimSpace(payload.Code) == "" {
+		writeError(w, http.StatusBadRequest, "bad_request", "password and code are required")
 		return
 	}
 	resp, err := a.Clients.Identity.Login(r.Context(), &identityv1.LoginRequest{Login: user.Login, Password: payload.Password})
@@ -213,7 +222,7 @@ func (a *API) totpDisable(w http.ResponseWriter, r *http.Request) {
 	if session := resp.GetSession(); session.GetToken() != "" {
 		_, _ = a.Clients.Identity.Logout(r.Context(), &identityv1.LogoutRequest{SessionToken: session.GetToken()})
 	}
-	_, err = a.Clients.TwoFA.Disable(r.Context(), &twofav1.DisableRequest{ActorUserId: user.ID})
+	_, err = a.Clients.TwoFA.Disable(r.Context(), &twofav1.DisableRequest{ActorUserId: user.ID, Code: payload.Code})
 	if err != nil {
 		writeGRPCError(w, "totp_disable_failed", err)
 		return

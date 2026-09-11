@@ -55,12 +55,15 @@ make down
 make test
 make lint
 make verify
+make security
 make -C backend proto-gen
 ```
 
-`make verify` is the pre-commit and CI gate. It checks pinned toolchains,
-frontend lint/tests/build, every Go module, security linting, module tidiness,
-and the Docker Compose configuration.
+`make verify` is the deterministic local pre-commit gate. It checks pinned
+toolchains, documentation links, HTTP/OpenAPI drift, protobuf lint, frontend,
+every Go module, security linting, module tidiness, and Docker Compose. CI runs
+the same layers in parallel and adds race/shuffled tests, govulncheck, and
+protobuf breaking-change detection.
 
 ## Security and data handling
 

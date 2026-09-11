@@ -75,8 +75,33 @@ func serverTransportOptions() ([]grpc.ServerOption, error) {
 	return []grpc.ServerOption{grpc.Creds(credentials.NewTLS(cfg))}, nil
 }
 
+func CheckTLSMode(environment string) error {
+	if localEnvironment(environment) {
+		return nil
+	}
+	mode, err := parseGRPCTLSMode(os.Getenv(envGRPCTLSMode))
+	if err != nil {
+		return err
+	}
+	if mode == "insecure" {
+		return fmt.Errorf("%s must be tls or mtls outside local environment", envGRPCTLSMode)
+	}
+	return nil
+}
+
 func grpcTLSMode() (string, error) {
-	switch mode := strings.ToLower(strings.TrimSpace(os.Getenv(envGRPCTLSMode))); mode {
+	mode, err := parseGRPCTLSMode(os.Getenv(envGRPCTLSMode))
+	if err != nil {
+		return "", err
+	}
+	if err := CheckTLSMode(os.Getenv("APP_ENV")); err != nil {
+		return "", err
+	}
+	return mode, nil
+}
+
+func parseGRPCTLSMode(raw string) (string, error) {
+	switch mode := strings.ToLower(strings.TrimSpace(raw)); mode {
 	case "", "insecure", "disabled", "off":
 		return "insecure", nil
 	case "tls", "mtls":
@@ -84,6 +109,10 @@ func grpcTLSMode() (string, error) {
 	default:
 		return "", fmt.Errorf("%s must be one of insecure, tls, mtls", envGRPCTLSMode)
 	}
+}
+
+func localEnvironment(env string) bool {
+	return strings.EqualFold(strings.TrimSpace(env), "local") || strings.TrimSpace(env) == ""
 }
 
 func grpcTLSServerName(target string) string {

@@ -4,6 +4,9 @@ import (
 	"fmt"
 	"os"
 	"strings"
+
+	"order-fill/backend/pkg/grpcutil"
+	"order-fill/backend/pkg/securecfg"
 )
 
 type Config struct {
@@ -43,7 +46,7 @@ func (c Config) ValidateAPI() error {
 	if strings.TrimSpace(c.BrandAddr) == "" {
 		return fmt.Errorf("BRAND_GRPC_ADDR is required outside local environment")
 	}
-	return nil
+	return grpcutil.CheckTLSMode(c.Environment)
 }
 
 func (c Config) ValidateWorker() error {
@@ -63,7 +66,10 @@ func (c Config) ValidateWorker() error {
 			return fmt.Errorf("%s is required outside local environment", name)
 		}
 	}
-	return nil
+	if err := securecfg.Redis(c.Environment, c.QueueURL); err != nil {
+		return err
+	}
+	return grpcutil.CheckTLSMode(c.Environment)
 }
 
 func localEnv(env string) bool {

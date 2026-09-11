@@ -5,6 +5,8 @@ import (
 	"net/url"
 	"os"
 	"strings"
+
+	"order-fill/backend/pkg/grpcutil"
 )
 
 type Config struct {
@@ -68,7 +70,7 @@ func (c Config) Validate() error {
 			return fmt.Errorf("API_ALLOWED_ORIGINS must use https outside local environment: %q", origin)
 		}
 	}
-	return nil
+	return grpcutil.CheckTLSMode(c.Environment)
 }
 
 func cookieSecure(env string) bool {

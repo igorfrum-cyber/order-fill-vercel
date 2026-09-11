@@ -5,30 +5,183 @@ on:
   pull_request:
   workflow_dispatch:
 
+concurrency:
+  group: verify-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 permissions:
   contents: read
 
 jobs:
-  verify:
+  docs-contracts:
+    name: Documentation and contracts
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v5
-      - uses: actions/setup-node@v5
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v7
         with:
           node-version: "24"
           cache: npm
           cache-dependency-path: frontend/package-lock.json
-      - uses: actions/setup-go@v5
+      - uses: actions/setup-go@v7
         with:
           go-version-file: backend/pkg/go.mod
           cache-dependency-path: |
             backend/pkg/go.sum
             backend/proto/go.sum
             backend/services/*/go.sum
-      - uses: golangci/golangci-lint-action@v9
+      - name: Verify toolchain pins
+        run: bash scripts/verify-toolchain.sh
+      - name: Verify documentation
+        run: node scripts/verify-docs.mjs
+      - name: Verify HTTP contract drift
+        run: node scripts/verify-contracts.mjs
+      - name: Verify protobuf contracts
+        uses: bufbuild/buf-action@v1
+        with:
+          version: "1.72.0"
+          input: backend/proto
+          lint: true
+          format: false
+          breaking: ${{ github.event_name == 'pull_request' }}
+          push: false
+          archive: false
+          pr_comment: false
+
+  frontend:
+    name: Frontend
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version: "24"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - name: Install dependencies
+        run: npm ci --prefix frontend
+      - name: Test load runner
+        run: npm run test:load
+      - name: Lint, test, and build frontend
+        run: npm run verify --prefix frontend
+
+  go-quality:
+    name: Go quality
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: backend/pkg/go.mod
+          cache-dependency-path: |
+            backend/pkg/go.sum
+            backend/proto/go.sum
+            backend/services/*/go.sum
+      - name: Install golangci-lint
+        uses: golangci/golangci-lint-action@v9
         with:
           version: v2.12.2
           install-only: true
-      - run: go install github.com/securego/gosec/v2/cmd/gosec@v2.22.10
-      - run: npm ci --prefix frontend
-      - run: bash scripts/verify.sh
+      - name: Install gosec
+        run: go install github.com/securego/gosec/v2/cmd/gosec@v2.22.10
+      - name: Vet, lint, SAST, and module tidiness
+        run: |
+          while IFS= read -r module; do
+            bash scripts/verify-go.sh "$module" lint
+          done < <(find backend -name go.mod -exec dirname {} \; | sort)
+
+  go-test:
+    name: Go test · ${{ matrix.module }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        module:
+          - backend/pkg
+          - backend/proto
+          - backend/services/audit-service
+          - backend/services/brand-service
+          - backend/services/calculation-service
+          - backend/services/document-service
+          - backend/services/file-service
+          - backend/services/gateway-service
+          - backend/services/identity-service
+          - backend/services/job-service
+          - backend/services/matching-service
+          - backend/services/passkey-service
+          - backend/services/twofa-service
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: backend/pkg/go.mod
+          cache-dependency-path: ${{ matrix.module }}/go.sum
+      - name: Test with race detection and shuffled order
+        working-directory: ${{ matrix.module }}
+        env:
+          GOWORK: "off"
+        run: go test -race -shuffle=on ./...
+
+  go-vulnerability:
+    name: Go vulnerability scan
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: backend/pkg/go.mod
+          cache-dependency-path: |
+            backend/pkg/go.sum
+            backend/proto/go.sum
+            backend/services/*/go.sum
+      - name: Install govulncheck
+        run: go install golang.org/x/vuln/cmd/govulncheck@v1.8.0
+      - name: Scan reachable vulnerabilities
+        run: bash scripts/verify-vulns.sh
+
+  compose:
+    name: Docker Compose
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v6
+      - name: Validate backend stack
+        run: docker compose -f backend/deploy/docker-compose.yml config --quiet
+      - name: Validate root entrypoint
+        run: docker compose -f deploy/docker-compose.yml config --quiet
+
+  required:
+    name: Required checks
+    if: ${{ always() }}
+    needs:
+      - docs-contracts
+      - frontend
+      - go-quality
+      - go-test
+      - go-vulnerability
+      - compose
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - name: Require every CI layer
+        env:
+          DOCS_CONTRACTS_RESULT: ${{ needs.docs-contracts.result }}
+          FRONTEND_RESULT: ${{ needs.frontend.result }}
+          GO_QUALITY_RESULT: ${{ needs.go-quality.result }}
+          GO_TEST_RESULT: ${{ needs.go-test.result }}
+          GO_VULNERABILITY_RESULT: ${{ needs.go-vulnerability.result }}
+          COMPOSE_RESULT: ${{ needs.compose.result }}
+        run: |
+          for result in "$DOCS_CONTRACTS_RESULT" "$FRONTEND_RESULT" "$GO_QUALITY_RESULT" "$GO_TEST_RESULT" "$GO_VULNERABILITY_RESULT" "$COMPOSE_RESULT"; do
+            if [ "$result" != "success" ]; then
+              echo "A required CI layer did not succeed: $result" >&2
+              exit 1
+            fi
+          done

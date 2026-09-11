@@ -37,8 +37,9 @@ func TestValidateRejectsProductionMemoryDependencies(t *testing.T) {
 }
 
 func TestValidateAcceptsProductionConfig(t *testing.T) {
+	t.Setenv("GRPC_TLS_MODE", "tls")
 	cfg := Config{
-		Environment: "production", DatabaseURL: "postgres://db", RedisURL: "redis://redis:6379/0", RPID: "orderfill.example.com",
+		Environment: "production", DatabaseURL: "postgres://user:secret@db/order_fill?sslmode=require", RedisURL: "redis://:secret@redis:6379/0", RPID: "orderfill.example.com",
 	}
 	if err := cfg.Validate(); err != nil {
 		t.Fatal(err)

@@ -90,8 +90,7 @@ func (s *Service) Enable(ctx context.Context, userID, code string) ([]string, er
 
 func (s *Service) Disable(ctx context.Context, userID, code string) error {
 	if strings.TrimSpace(code) == "" {
-		// ponytail: gateway already checked the account password; twofa has no actor auth.
-		return s.store.Delete(ctx, userID)
+		return domain.ErrUnauthorized
 	}
 	if _, err := s.Verify(ctx, userID, code); err != nil {
 		return err
@@ -116,7 +115,6 @@ func (s *Service) Verify(ctx context.Context, userID, code string) (usedRecovery
 	}
 	cred, err := s.load(ctx, userID)
 	if err != nil || !cred.IsEnabled() {
-		s.limit.Fail(ctx, userID)
 		return false, domain.ErrUnauthorized
 	}
 	if err := totp.VerifyTOTP(cred.Secret, code, s.now()); err == nil {
@@ -125,7 +123,6 @@ func (s *Service) Verify(ctx context.Context, userID, code string) (usedRecovery
 	}
 	remaining, recErr := totp.ConsumeRecoveryCode(slices.Clone(cred.RecoveryCodeHashes), code)
 	if recErr != nil {
-		s.limit.Fail(ctx, userID)
 		return false, domain.ErrUnauthorized
 	}
 	cred.RecoveryCodeHashes = remaining

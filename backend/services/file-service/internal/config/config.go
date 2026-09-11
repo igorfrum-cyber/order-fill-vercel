@@ -4,6 +4,9 @@ import (
 	"fmt"
 	"os"
 	"strings"
+
+	"order-fill/backend/pkg/grpcutil"
+	"order-fill/backend/pkg/securecfg"
 )
 
 type Config struct {
@@ -52,7 +55,10 @@ func (c Config) Validate() error {
 	if c.S3AccessKey == "minioadmin" || c.S3SecretKey == "minioadmin" {
 		return fmt.Errorf("default MinIO credentials are not allowed outside local environment")
 	}
-	return nil
+	if err := securecfg.Postgres(c.Environment, c.DatabaseURL); err != nil {
+		return err
+	}
+	return grpcutil.CheckTLSMode(c.Environment)
 }
 
 func s3UseSSL(env string) bool {

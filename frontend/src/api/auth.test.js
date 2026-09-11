@@ -213,9 +213,10 @@ test("two-factor setup enable and disable post the expected bodies", async () =>
     assert.deepEqual(enabled.recovery_codes, ["AAAA-BBBB"]);
     assert.equal(calls[1].url, "/api/v1/auth/2fa/enable");
     assert.match(calls[1].options.body, /123456/);
-    await disableTwoFactor("correct-horse");
+    await disableTwoFactor("correct-horse", "123456");
     assert.equal(calls[2].url, "/api/v1/auth/2fa/disable");
     assert.match(calls[2].options.body, /correct-horse/);
+    assert.match(calls[2].options.body, /123456/);
   } finally {
     apiClient.fetcher = originalFetcher;
     apiClient.baseUrl = originalBase;

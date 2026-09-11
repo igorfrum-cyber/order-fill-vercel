@@ -42,7 +42,10 @@ func (a *Auth) ChangePassword(ctx context.Context, actor domain.User, current, n
 	if err != nil {
 		return err
 	}
-	return a.store.SetPasswordHash(ctx, user.ID, hash)
+	if err := a.store.SetPasswordHash(ctx, user.ID, hash); err != nil {
+		return err
+	}
+	return a.store.DeleteSessionsForUser(ctx, user.ID)
 }
 
 func (a *Auth) FinishPasskeyLogin(ctx context.Context, challengeID, origin string, credential []byte) (Session, error) {

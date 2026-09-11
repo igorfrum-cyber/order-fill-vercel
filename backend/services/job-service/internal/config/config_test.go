@@ -37,8 +37,9 @@ func TestValidateRejectsProductionMissingQueue(t *testing.T) {
 }
 
 func TestValidateAcceptsProductionConfig(t *testing.T) {
+	t.Setenv("GRPC_TLS_MODE", "tls")
 	cfg := Config{
-		Environment: "production", DatabaseURL: "postgres://db", QueueURL: "redis://redis:6379/0",
+		Environment: "production", DatabaseURL: "postgres://user:secret@db/order_fill?sslmode=require", QueueURL: "redis://:secret@redis:6379/0",
 		FileAddr: "file:9095", IdentityAddr: "identity:9091",
 	}
 	if err := cfg.Validate(); err != nil {

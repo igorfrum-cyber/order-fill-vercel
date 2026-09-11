@@ -11,11 +11,22 @@ React frontend.
 - Docker с `docker compose`;
 - Node.js 24+ и npm;
 - Go 1.26.7;
+- Buf 1.x;
 - Bash и Make.
 
 Полный lint дополнительно использует `golangci-lint` 2.12.2 и `gosec` 2.22.10.
 Если утилит нет в `PATH`, `scripts/verify-go.sh` устанавливает закреплённые
 версии. Для этого нужен доступ к сети и настроенный Go toolchain.
+
+Buf и сканер уязвимостей можно установить так:
+
+```bash
+brew install bufbuild/buf/buf
+go install golang.org/x/vuln/cmd/govulncheck@v1.8.0
+```
+
+Для Linux используйте официальный способ установки Buf, сохранив major version
+1; `govulncheck` устанавливается той же Go-командой.
 
 ```bash
 git clone https://github.com/igorfrum-cyber/order-fill-vercel.git
@@ -79,7 +90,18 @@ npm run test --prefix frontend
 make verify
 ```
 
-`make verify` соответствует текущему workflow `.github/workflows/verify.yml`.
+`make verify` запускает детерминированный локальный pre-commit gate. GitHub
+Actions использует те же component scripts, а также добавляет race detection,
+перемешивание порядка Go-тестов, `govulncheck` и protobuf breaking check.
+
+Перед изменениями зависимостей, аутентификации, авторизации, сетевого слоя или
+обработки файлов дополнительно запустите:
+
+```bash
+make security
+```
+
+Команда требует установленного `govulncheck` и доступа к Go vulnerability DB.
 
 Не запускайте `go mod tidy` сразу из корня: Go workspace находится в `backend/`,
 а сервисы являются отдельными модулями. Используйте `make -C backend tidy` или
@@ -108,6 +130,7 @@ make verify
 - Изменение находится в сервисе, который владеет этой ответственностью.
 - Новое поведение покрыто тестами или причина отсутствия теста объяснена.
 - `make verify` проходит локально.
+- Для security-sensitive изменений проходит `make security`.
 - Изменения `go.mod`, `go.sum` и lock-файлов ожидаемы.
 - Изменённые API и env vars отражены в документации.
 - В diff нет `.env`, секретов и приватных workbook-файлов.

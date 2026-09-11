@@ -47,10 +47,19 @@ curl http://127.0.0.1:8080/healthz
 - Node.js 24+ — для отдельной разработки frontend и нагрузочного runner;
 - Go 1.26.7 — для локальной сборки и тестирования backend;
 - `golangci-lint` 2.12.2 и `gosec` 2.22.10 — для полного локального lint;
+- Buf 1.x — для проверки protobuf-контрактов и генерации gRPC-кода;
+- `govulncheck` — для локальной проверки достижимых Go-уязвимостей;
 - `make` и Bash — для команд проекта.
 
 Для первого знакомства достаточно Docker: базы данных и внутренние сервисы
 поднимаются вместе с приложением.
+
+Для полного локального gate установите Buf и `govulncheck`:
+
+```bash
+brew install bufbuild/buf/buf
+go install golang.org/x/vuln/cmd/govulncheck@v1.8.0
+```
 
 ### Запуск полного стенда
 
@@ -215,7 +224,7 @@ make -C backend proto-gen
 | `SESSION_COOKIE_DOMAIN` | пусто | Явный cookie domain, если он нужен схеме размещения |
 | `WEBAUTHN_RP_ID` | пусто | WebAuthn relying-party ID; в production обязателен |
 | `WEBAUTHN_RP_DISPLAY_NAME` | `Order Fill` | Отображаемое имя relying party |
-| `GRPC_TLS_MODE` | `insecure` | `insecure`, `tls` или `mtls` для внутреннего gRPC |
+| `GRPC_TLS_MODE` | `insecure` | `insecure`, `tls` или `mtls` для внутреннего gRPC; вне local допустимы только `tls`/`mtls` |
 | `GRPC_TLS_CERT_FILE` | пусто | Сертификат клиента/сервера для TLS/mTLS |
 | `GRPC_TLS_KEY_FILE` | пусто | Закрытый ключ сертификата |
 | `GRPC_TLS_CA_FILE` | пусто | CA bundle для проверки peer |
@@ -239,6 +248,8 @@ FILE_S3_USE_SSL=true
 S3_ACCESS_KEY=<production-access-key>
 S3_SECRET_KEY=<production-secret-key>
 TWOFA_MASTER_KEY=<отдельный-секрет-длиной-не-менее-32-байт>
+DATABASE_URL=postgres://order_fill:<production-password>@postgres:5432/order_fill?sslmode=require
+QUEUE_URL=redis://:<production-password>@redis:6379/0
 GRPC_TLS_MODE=mtls
 GRPC_TLS_CERT_FILE=/run/secrets/order-fill-grpc.crt
 GRPC_TLS_KEY_FILE=/run/secrets/order-fill-grpc.key
@@ -286,7 +297,10 @@ make -C backend check
 | `make down` | Останавливает стенд, не удаляя named volumes |
 | `make test` | Запускает frontend, load-runner и Go-тесты |
 | `make lint` | Проверяет toolchain, frontend lint и Go lint/security/tidy |
-| `make verify` | Выполняет тот же полный gate, что GitHub Actions |
+| `make docs` | Проверяет обязательные README и локальные Markdown-ссылки |
+| `make contracts` | Сверяет HTTP routes с OpenAPI и запускает Buf lint |
+| `make verify` | Выполняет детерминированный локальный pre-commit gate |
+| `make security` | Запускает `govulncheck` для всех активных Go-модулей |
 | `make lan-https` | Поднимает локальный HTTPS для тестирования passkey на телефоне |
 | `make https` | Поднимает публичный HTTPS overlay через Caddy |
 | `make load-order-fill ARGS='…'` | Запускает нагрузочный сценарий через публичный API |
@@ -303,10 +317,16 @@ make verify
 `make verify` выполняет:
 
 1. сверку версий Node.js и Go между manifests, Dockerfiles и CI;
-2. frontend lint, unit tests и production build;
-3. для каждого Go-модуля — `gofmt`, `go vet`, `golangci-lint`, `gosec`,
+2. проверку документации, ссылок, соответствия OpenAPI runtime-маршрутам и
+   protobuf lint;
+3. frontend lint, unit tests и production build;
+4. для каждого Go-модуля — `gofmt`, `go vet`, `golangci-lint`, `gosec`,
    проверку `go mod tidy`, сборку и тесты;
-4. валидацию итоговой Docker Compose-конфигурации.
+5. валидацию backend и корневой Docker Compose-конфигурации.
+
+GitHub Actions выполняет те же слои параллельно и дополнительно запускает Go
+тесты с `-race -shuffle=on`, `govulncheck` и проверку breaking changes protobuf
+относительно базовой ветки pull request.
 
 Первый запуск может скачать Go toolchain, линтеры и зависимости. Тестовые
 workbook-файлы и правила работы с приватными данными описаны в
