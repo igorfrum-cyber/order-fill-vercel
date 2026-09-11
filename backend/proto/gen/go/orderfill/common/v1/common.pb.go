@@ -21,6 +21,8 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
+// MatchingMode selects the product matching algorithm for one company/job.
+// The job-service snapshots the company value when it creates a job.
 type MatchingMode int32
 
 const (
@@ -70,6 +72,8 @@ func (MatchingMode) EnumDescriptor() ([]byte, []int) {
 	return file_orderfill_common_v1_common_proto_rawDescGZIP(), []int{0}
 }
 
+// ReportCategory is the canonical buyer-facing classification of a report row.
+// It is independent of the matching algorithm that produced the row.
 type ReportCategory int32
 
 const (

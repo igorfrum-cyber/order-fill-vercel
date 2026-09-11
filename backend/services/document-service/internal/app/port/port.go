@@ -30,6 +30,7 @@ type JobMessage struct {
 	Brand        string        `json:"brand"`
 	OrderMonth   string        `json:"order_month"`
 	MatchingMode string        `json:"matching_mode,omitempty"`
+	CompanyID    string        `json:"company_id,omitempty"`
 	Inputs       []MessageFile `json:"inputs"`
 	Edits        []MessageEdit `json:"edits,omitempty"`
 }

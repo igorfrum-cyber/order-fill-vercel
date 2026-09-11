@@ -32,6 +32,13 @@ export function pathForScreen(screen, jobId = "") {
   return "/";
 }
 
+export function resolveOrderNavJobId(next, requestedJobId = "", { screen, openJobId } = {}) {
+  if (next !== "order") return requestedJobId || "";
+  if (requestedJobId) return requestedJobId;
+  if (screen === "order" && openJobId) return openJobId;
+  return "";
+}
+
 export function screenAllowed(role, screen, { jobId = "" } = {}) {
   if (!screen) return true;
   if (screen === "account") return true;

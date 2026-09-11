@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { createCompany, disableCompany, listCompanies, updateCompany } from "../../api/auth.js";
 import { companyLoginURL, loginSlugIssue, matchingModeOptions, normalizeLoginSlug, normalizeMatchingMode } from "../../features/auth/accessPresentation.js";
-import { GhostButton, PrimaryButton } from "../widgets.jsx";
+import { GhostButton, Modal, PrimaryButton } from "../widgets.jsx";
 import { IconCheck } from "../icons.jsx";
 import { userFacingError } from "../../features/help/errors.js";
 
@@ -11,6 +11,7 @@ export function CompaniesScreen({ selectedId, onSelect }) {
   const [loginSlug, setLoginSlug] = useState("");
   const [matchingMode, setMatchingMode] = useState("standard");
   const [error, setError] = useState("");
+  const [disableTarget, setDisableTarget] = useState(null);
 
   function reload() {
     listCompanies()
@@ -82,18 +83,9 @@ export function CompaniesScreen({ selectedId, onSelect }) {
                 {company.name}
                 {company.disabled_at ? <span className="ml-2 text-[13px] font-normal text-[var(--color-ink-faint)]">выключена</span> : null}
               </button>
-              <GhostButton
-                onClick={async () => {
-                  try {
-                    await disableCompany(company.id);
-                    reload();
-                  } catch (err) {
-                    setError(userFacingError(err, "Не удалось выключить компанию."));
-                  }
-                }}
-              >
-                Выключить
-              </GhostButton>
+              {company.disabled_at ? null : (
+                <GhostButton onClick={() => setDisableTarget(company)}>Выключить</GhostButton>
+              )}
             </div>
             {company.login_slug ? (
               <a className="block font-mono text-[13px] text-[var(--color-brand)]" href={companyLoginURL(company.login_slug)}>
@@ -117,6 +109,26 @@ export function CompaniesScreen({ selectedId, onSelect }) {
           </li>
         ))}
       </ul>
+      {disableTarget ? (
+        <Modal
+          title={`Выключить ${disableTarget.name}?`}
+          cancelLabel="Отмена"
+          confirmLabel="Выключить"
+          onCancel={() => setDisableTarget(null)}
+          onConfirm={async () => {
+            try {
+              await disableCompany(disableTarget.id);
+              setDisableTarget(null);
+              reload();
+            } catch (err) {
+              setError(userFacingError(err, "Не удалось выключить компанию."));
+              setDisableTarget(null);
+            }
+          }}
+        >
+          Сотрудники этой компании больше не смогут войти.
+        </Modal>
+      ) : null}
     </section>
   );
 }

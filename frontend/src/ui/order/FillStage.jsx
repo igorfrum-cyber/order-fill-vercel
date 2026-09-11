@@ -29,11 +29,12 @@ export function FillStage({
   banner,
   onDownloadFiles,
   onIssueReport,
+  acknowledgedDuplicates,
+  onAcknowledgedDuplicates,
 }) {
   const [tab, setTab] = useState("");
   const [query, setQuery] = useState("");
   const [expanded, setExpanded] = useState(null);
-  const [acknowledgedDuplicates, setAcknowledgedDuplicates] = useState(() => new Set());
   const counts = useMemo(() => countByTab(rows), [rows]);
   const duplicateCount = counts.needs_decision ?? 0;
   const duplicateKeys = useMemo(
@@ -51,7 +52,7 @@ export function FillStage({
   const hint = matchLayerHint(activeTab);
 
   function toggleDuplicateAck(key, next) {
-    setAcknowledgedDuplicates((prev) => {
+    onAcknowledgedDuplicates((prev) => {
       const copy = new Set(prev);
       if (next) copy.add(key);
       else copy.delete(key);

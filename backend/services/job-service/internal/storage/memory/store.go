@@ -3,6 +3,7 @@ package memory
 import (
 	"context"
 	"sync"
+	"time"
 
 	"order-fill/backend/services/job-service/internal/domain"
 )
@@ -54,6 +55,22 @@ func (s *Store) Update(_ context.Context, job domain.Job) error {
 		return domain.ErrNotFound
 	}
 	s.jobs[job.ID] = job
+	return nil
+}
+
+func (s *Store) CompareAndSwapStatus(_ context.Context, id string, from, to domain.Status, updatedAt time.Time) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	job, ok := s.jobs[id]
+	if !ok {
+		return domain.ErrNotFound
+	}
+	if job.Status != from {
+		return domain.ErrConflict
+	}
+	job.Status = to
+	job.UpdatedAt = updatedAt
+	s.jobs[id] = job
 	return nil
 }
 

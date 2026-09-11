@@ -20,5 +20,8 @@ func HealthHandler() http.Handler {
 }
 
 func Run(ctx context.Context, cfg config.Config, log *slog.Logger) error {
+	if err := cfg.Validate(); err != nil {
+		return err
+	}
 	return grpcutil.Serve(ctx, cfg.GRPCAddr, cfg.HealthAddr, grpcapi.New(grpcapi.NewServer(brands.New())), HealthHandler())
 }

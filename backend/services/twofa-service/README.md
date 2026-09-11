@@ -54,6 +54,16 @@ TOTP использует issuer `Order Fill`, SHA-1, 6 цифр, период 3
 
 ## Внутренний gRPC API
 
+<!-- docs-sync:rpc -->
+| RPC | Полный gRPC method | Назначение |
+| --- | --- | --- |
+| `Setup` | `/orderfill.twofa.v1.TwoFAService/Setup` | RPC из protobuf-контракта. |
+| `Enable` | `/orderfill.twofa.v1.TwoFAService/Enable` | RPC из protobuf-контракта. |
+| `Disable` | `/orderfill.twofa.v1.TwoFAService/Disable` | RPC из protobuf-контракта. |
+| `IsEnabled` | `/orderfill.twofa.v1.TwoFAService/IsEnabled` | RPC из protobuf-контракта. |
+| `Verify` | `/orderfill.twofa.v1.TwoFAService/Verify` | RPC из protobuf-контракта. |
+<!-- /docs-sync:rpc -->
+
 Контракт: [`../../proto/orderfill/twofa/v1/twofa.proto`](../../proto/orderfill/twofa/v1/twofa.proto), package `orderfill.twofa.v1`, service `TwoFAService`.
 
 - `Setup(actor_user_id, account_name)` → `secret`, `otpauth_url`, `qr_png`. Если account name пуст, используется actor user ID.
@@ -77,6 +87,8 @@ TOTP использует issuer `Order Fill`, SHA-1, 6 цифр, период 3
 
 ## Конфигурация
 
+
+<!-- docs-sync:env -->
 | Переменная | Default | Обязательность и назначение |
 | --- | --- | --- |
 | `TWOFA_ENV` | значение `APP_ENV`, затем `local` | Среда сервиса; имеет приоритет над `APP_ENV`. |
@@ -87,6 +99,12 @@ TOTP использует issuer `Order Fill`, SHA-1, 6 цифр, период 3
 | `DATABASE_URL` | пусто | PostgreSQL DSN; обязателен вне local. Обычно содержит пароль — хранить как secret. |
 | `QUEUE_URL` | значение `REDIS_URL`, затем пусто | Redis URL для rate limit; имеет приоритет над `REDIS_URL`. Вне local один из URL обязателен. Может содержать пароль. |
 | `REDIS_URL` | пусто | Fallback Redis URL, если `QUEUE_URL` не задан. |
+| `GRPC_TLS_MODE` | `insecure` | Читается из окружения; назначение см. config.go. |
+| `GRPC_TLS_CERT_FILE` | пусто | Читается из окружения; назначение см. config.go. |
+| `GRPC_TLS_KEY_FILE` | пусто | Читается из окружения; назначение см. config.go. |
+| `GRPC_TLS_CA_FILE` | пусто | Читается из окружения; назначение см. config.go. |
+| `GRPC_TLS_SERVER_NAME` | пусто | Необязательное имя для проверки TLS-сертификата исходящих gRPC-клиентов. |
+<!-- /docs-sync:env -->
 
 Конфигурация входящего gRPC TLS:
 

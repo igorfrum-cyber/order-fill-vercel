@@ -1,5 +1,6 @@
 .env
 deploy/certs/
+deploy/secrets/
 deploy/Caddyfile.lan
 node_modules/
 dist/
@@ -16,7 +17,19 @@ __pycache__/
 .idea/
 .vscode/*
 !.vscode/settings.json
-.cursor/
+.cursor/*
+!.cursor/mcp.json
+!.cursor/hooks.json
+!.cursor/rules/
+.cursor/rules/*
+!.cursor/rules/frontend-ui-tests.mdc
+!.cursor/rules/docs-sync.mdc
+!.cursor/skills/
+!.cursor/skills/order-fill-docs/
+!.cursor/skills/order-fill-docs/**
+playwright-report/
+test-results/
+blob-report/
 .cursorrules
 .cursorignore
 .agents/

@@ -154,10 +154,22 @@ tools, not production defaults.
 
 ### Documentation
 
+Before writing or updating documentation, load the `order-fill-docs` skill
+(`.cursor/skills/order-fill-docs/SKILL.md`). For Go godoc, also follow
+`samber/cc-skills-golang@golang-documentation`.
+
 Update documentation in the same change as behavior. At minimum, keep the root
 README, affected service README, contracts, `.env.example`, and architecture
-documents consistent. `node scripts/verify-docs.mjs` checks local links and the
-required service README sections.
+documents consistent. `node scripts/sync-docs.mjs --write` regenerates env/RPC/HTTP
+lists in service READMEs from `config.go`, protobuf and the gateway router.
+`node scripts/verify-docs.mjs` checks local links and the required README sections.
+`make verify` runs the sync and fails if the generated lists were not committed.
+
+After a frontend UI or user-behavior change, run `npm run test:ui --prefix frontend`
+in the same agent session before claiming the work is done. Locally Playwright
+opens Chromium on screen; run the command outside the sandbox so the window is
+visible. Read the output. If tests fail, fix the root cause and re-run until
+green. Do not replace that suite with exploratory Playwright MCP clicks.
 
 ## Setup and commands
 
@@ -179,6 +191,9 @@ make down               # stop containers; keep named volumes
 make docs               # validate documentation and local links
 make contracts          # compare HTTP/OpenAPI and run Buf lint
 make test               # frontend and all Go module tests
+npm run test:ui --prefix frontend         # unit + component + Playwright after a UI change
+npm run test:component --prefix frontend  # Vitest + Testing Library
+npm run test:e2e --prefix frontend        # Playwright UI tests
 make lint               # frontend + Go lint/security/tidy checks
 make verify             # deterministic local pre-commit gate
 make security           # govulncheck for every active Go module
@@ -225,15 +240,19 @@ genuine external blocker.
 `.github/workflows/verify.yml` has independent layers:
 
 - `Documentation and contracts` — toolchain pins, docs, OpenAPI drift, Buf;
-- `Frontend` — install, load-runner tests, lint, unit tests, build;
+- `Frontend` — install, load-runner tests, lint, unit tests, component tests, build;
 - `Go quality` — vet, lint, SAST, and module tidiness for all modules;
 - `Go test · <module>` — independent race/shuffled tests per module;
 - `Go vulnerability scan` — reachable vulnerability checks for all modules;
 - `Docker Compose` — backend and root configuration validation;
 - `Required checks` — one aggregate result for branch protection.
+- `Deploy self-hosted` — only on push to `dev` after required checks; pulls
+  and rebuilds Compose on the laptop runner. Never runs on pull requests.
 
 The workflow uses least-privilege read permissions, cancels obsolete runs for
-the same ref, and keeps matrix failures independent.
+the same ref, and keeps matrix failures independent. The self-hosted runner
+must not pick up fork pull requests. Local git hooks run `make verify` on
+`artemch` commits and on every push.
 
 ## Security and data handling
 

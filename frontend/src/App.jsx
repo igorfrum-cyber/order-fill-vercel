@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { getCompanyLogin, getMe, listCompanies, listJobs, logout } from "./api/auth.js";
 import { onAuthRequired } from "./api/client.js";
 import { getJob, getJobReport, listJobFiles } from "./api/jobs.js";
-import { companyIdFromSearch, parseAppPath, pathForScreen, screenAllowed, withCompanyQuery } from "./features/app/routes.js";
+import { companyIdFromSearch, parseAppPath, pathForScreen, resolveOrderNavJobId, screenAllowed, withCompanyQuery } from "./features/app/routes.js";
 import { companyLoginURL, companySlugFromHost, companySlugFromPath, homeScreen, navItemsForRole, needsSecurityNudge, resolveUsersCompanyId } from "./features/auth/accessPresentation.js";
 import { shouldAutoStartTour, tourSceneForView } from "./features/help/firstRun.js";
 import { headerContext, roleLabel, securitySetupLabel, twoFactorRequiredHint } from "./features/help/copy.js";
@@ -32,6 +32,7 @@ export default function App() {
   const [seenTourScenes, setSeenTourScenes] = useState(() => new Set());
   const [orderStage, setOrderStage] = useState("upload");
   const [completedJob, setCompletedJob] = useState(false);
+  const [liveJobId, setLiveJobId] = useState("");
 
   useEffect(() => {
     getMe()
@@ -66,10 +67,6 @@ export default function App() {
       .then(setCompanyLogin)
       .catch(() => setCompanyLogin(null));
   }, [companySlug]);
-
-  useEffect(() => {
-    if (orderStage === "preview") setCompletedJob(true);
-  }, [orderStage]);
 
   useEffect(() => {
     if (me?.role !== "purchaser") {
@@ -173,16 +170,27 @@ export default function App() {
   }
 
   const platformCompany = me.role === "platform_admin" ? companyId : "";
+  const openJobId = resume?.jobId || liveJobId;
+
+  function markJobCompletedIfNeeded() {
+    if (screen === "order" && orderStage === "preview") setCompletedJob(true);
+  }
 
   function go(next, jobId = "") {
+    const nextJobId = resolveOrderNavJobId(next, jobId, { screen, openJobId });
     if (next !== "north") {
-      window.history.pushState(null, "", withCompanyQuery(pathForScreen(next, jobId), platformCompany));
+      window.history.pushState(null, "", withCompanyQuery(pathForScreen(next, nextJobId), platformCompany));
     }
-    if (next === "order" && !jobId) {
+    if (next === "order" && !nextJobId) {
       setResume(null);
+      setLiveJobId("");
       setOrderStage("upload");
     } else if (next !== "order") {
+      markJobCompletedIfNeeded();
       setResume(null);
+      setLiveJobId("");
+    } else {
+      setLiveJobId(nextJobId);
     }
     setScreen(next);
   }
@@ -194,7 +202,9 @@ export default function App() {
   }
 
   function leaveJob() {
+    markJobCompletedIfNeeded();
     setResume(null);
+    setLiveJobId("");
     setOrderStage("upload");
     go(homeScreen(me.role) === "order" ? "history" : homeScreen(me.role));
   }
@@ -294,10 +304,12 @@ export default function App() {
               <OrderFillApp
                 key={resume?.jobId || "new"}
                 companyId={companyId}
+                canSelectCompany={me.role === "platform_admin"}
                 resumeJob={resume}
                 onHome={leaveJob}
                 onHelp={() => setHelpOpen(true)}
                 onStage={setOrderStage}
+                onJobReady={(id) => go("order", id)}
                 embedded
               />
             ) : null}
@@ -312,6 +324,7 @@ export default function App() {
                 onNew={(kind) => {
                   if (me.role === "platform_admin") return;
                   setResume(null);
+                  setLiveJobId("");
                   setOrderStage("upload");
                   if (kind === "north") {
                     setScreen("north");

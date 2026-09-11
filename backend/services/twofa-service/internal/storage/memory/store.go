@@ -2,6 +2,7 @@ package memory
 
 import (
 	"context"
+	"slices"
 	"sync"
 
 	"order-fill/backend/services/twofa-service/internal/domain"
@@ -37,5 +38,20 @@ func (s *Store) Delete(_ context.Context, userID string) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	delete(s.items, userID)
+	return nil
+}
+
+func (s *Store) CompareAndSwapRecovery(_ context.Context, userID string, oldHashes, newHashes []string) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	cred, ok := s.items[userID]
+	if !ok {
+		return domain.ErrNotFound
+	}
+	if !slices.Equal(cred.RecoveryCodeHashes, oldHashes) {
+		return domain.ErrConflict
+	}
+	cred.RecoveryCodeHashes = slices.Clone(newHashes)
+	s.items[userID] = cred
 	return nil
 }

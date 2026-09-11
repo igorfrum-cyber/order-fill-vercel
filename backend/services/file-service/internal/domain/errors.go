@@ -7,9 +7,10 @@ import (
 )
 
 var (
-	ErrNotFound = errors.New("not found")
-	ErrInvalid  = errors.New("invalid")
-	ErrConflict = errors.New("conflict")
+	ErrNotFound     = errors.New("not found")
+	ErrInvalid      = errors.New("invalid")
+	ErrConflict     = errors.New("conflict")
+	ErrUnauthorized = errors.New("unauthorized")
 )
 
 func SafeFileName(value string) string {

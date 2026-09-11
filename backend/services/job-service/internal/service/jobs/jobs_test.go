@@ -53,8 +53,28 @@ func TestCreatePublishesOneVersionedMessage(t *testing.T) {
 		t.Fatalf("mode=%s", job.MatchingMode)
 	}
 	msgs := pub.Messages()
-	if len(msgs) != 1 || msgs[0].Version != queue.Version || msgs[0].JobID != job.ID || msgs[0].Brand != "angiopharm" {
+	if len(msgs) != 1 || msgs[0].Version != queue.Version || msgs[0].JobID != job.ID || msgs[0].Brand != "angiopharm" || msgs[0].CompanyID != "co" {
 		t.Fatalf("messages=%v", msgs)
+	}
+}
+
+type errPublisher struct{}
+
+func (errPublisher) Publish(context.Context, queue.Message) error {
+	return errors.New("xadd failed")
+}
+
+func TestCreateMarksFailedWhenEnqueueFails(t *testing.T) {
+	t.Parallel()
+	store := memory.NewStore()
+	svc := jobs.New(store, orderFillFiles(), fakeCompanies{}, errPublisher{}, nil)
+	actor := domain.Actor{UserID: "u1", CompanyID: "co", Role: domain.RolePurchaser}
+	if _, err := svc.Create(t.Context(), actor, domain.TypeOrderFill, []string{"src", "blank"}, ""); err == nil {
+		t.Fatal("expected enqueue error")
+	}
+	items, err := store.List(t.Context())
+	if err != nil || len(items) != 1 || items[0].Status != domain.StatusFailed {
+		t.Fatalf("items=%v err=%v", items, err)
 	}
 }
 
@@ -150,6 +170,47 @@ func TestCompletedJobAcceptsEdits(t *testing.T) {
 	}
 	if _, err := svc.SubmitEdits(t.Context(), actor, job.ID, nil); err != nil {
 		t.Fatal(err)
+	}
+	if len(pub.Messages()) != 2 {
+		t.Fatalf("messages=%d", len(pub.Messages()))
+	}
+}
+
+func TestSubmitEditsRejectsConcurrentFinalize(t *testing.T) {
+	t.Parallel()
+	store := memory.NewStore()
+	pub := queue.NewRedis()
+	svc := jobs.New(store, orderFillFiles(), fakeCompanies{}, pub, nil)
+	actor := domain.Actor{UserID: "u1", CompanyID: "co", Role: domain.RolePurchaser}
+	job, err := svc.Create(t.Context(), actor, domain.TypeOrderFill, []string{"src", "blank"}, "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := svc.Complete(t.Context(), job.ID, domain.Report{}, nil); err != nil {
+		t.Fatal(err)
+	}
+	errs := make(chan error, 2)
+	for range 2 {
+		go func() {
+			_, err := svc.SubmitEdits(t.Context(), actor, job.ID, nil)
+			errs <- err
+		}()
+	}
+	var conflict, ok int
+	for range 2 {
+		err := <-errs
+		if err == nil {
+			ok++
+			continue
+		}
+		if errors.Is(err, domain.ErrConflict) {
+			conflict++
+			continue
+		}
+		t.Fatalf("unexpected: %v", err)
+	}
+	if ok != 1 || conflict != 1 {
+		t.Fatalf("ok=%d conflict=%d messages=%d", ok, conflict, len(pub.Messages()))
 	}
 	if len(pub.Messages()) != 2 {
 		t.Fatalf("messages=%d", len(pub.Messages()))

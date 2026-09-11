@@ -58,21 +58,23 @@ func Run(ctx context.Context, cfg config.Config, log *slog.Logger) error {
 	}
 	var catalog jobs.Files
 	if cfg.FileAddr != "" {
-		client, err := files.Dial(ctx, cfg.FileAddr)
+		client, err := files.Dial(ctx, cfg.FileAddr, cfg.WorkerToken)
 		if err != nil {
 			return err
 		}
 		catalog = client
 	}
 	var companies jobs.Companies
+	var actors grpcapi.ActorLookup
 	if cfg.IdentityAddr != "" {
 		client, err := identity.Dial(ctx, cfg.IdentityAddr)
 		if err != nil {
 			return err
 		}
 		companies = client
+		actors = client
 	}
 	svc := jobs.New(store, catalog, companies, publisher, nil)
 	log.Info("job-service listening", "grpc", cfg.GRPCAddr)
-	return grpcutil.Serve(ctx, cfg.GRPCAddr, cfg.HealthAddr, grpcapi.New(grpcapi.NewServer(svc)), healthHandler(readyCheck))
+	return grpcutil.Serve(ctx, cfg.GRPCAddr, cfg.HealthAddr, grpcapi.New(grpcapi.NewServer(svc, actors, cfg.WorkerToken)), healthHandler(readyCheck))
 }

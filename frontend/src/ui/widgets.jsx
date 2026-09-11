@@ -1,22 +1,26 @@
-import { useState } from "react";
+import { useEffect, useId, useState } from "react";
 import { generatePassword } from "../features/auth/password.js";
+import { parseQuantityInput } from "../features/order/editRules.js";
 import { IconChevron, IconEye, IconEyeOff, IconPlus, IconX } from "./icons.jsx";
 
-export function Field({ label, children }) {
+export function Field({ label, children, as: Tag = "label", htmlFor }) {
+  const labelClass = "mb-2 block text-[14px] font-medium text-[var(--color-ink-soft)]";
   return (
-    <label className="block">
-      <span className="mb-2 block text-[14px] font-medium text-[var(--color-ink-soft)]">{label}</span>
+    <Tag className="block" htmlFor={Tag === "label" ? htmlFor : undefined}>
+      {Tag === "label" ? <span className={labelClass}>{label}</span> : <label htmlFor={htmlFor} className={labelClass}>{label}</label>}
       {children}
-    </label>
+    </Tag>
   );
 }
 
 export function PasswordField({ label, value, onChange, autoComplete, generate = false, onGenerated }) {
+  const id = useId();
   const [visible, setVisible] = useState(false);
   return (
-    <Field label={label}>
+    <Field label={label} as="div" htmlFor={id}>
       <div className="relative">
         <input
+          id={id}
           type={visible ? "text" : "password"}
           value={value}
           onChange={(event) => onChange(event.target.value)}
@@ -169,7 +173,7 @@ export function Stepper({ value, disabled, onChange, step }) {
   if (disabled) {
     return <span className="px-2 font-mono text-[14px] tabular-nums text-[var(--color-ink-faint)]">—</span>;
   }
-  const numeric = value === "" || value == null ? 0 : Number(value);
+  const numeric = Number(String(value ?? "").replace(",", ".")) || 0;
   const btn =
     "grid h-9 w-8 place-items-center text-[var(--color-ink-soft)] transition hover:bg-[var(--color-line-soft)] hover:text-[var(--color-ink)] disabled:opacity-30";
   return (
@@ -178,31 +182,55 @@ export function Stepper({ value, disabled, onChange, step }) {
         numeric > 0 ? "border-[var(--color-ok)]" : "border-[var(--color-line)]"
       }`}
     >
-      <button type="button" className={btn} disabled={numeric <= 0} onClick={() => onChange(Math.max(0, numeric - step))} tabIndex={-1}>
+      <button type="button" className={btn} disabled={numeric <= 0} onClick={() => onChange(Math.max(0, numeric - step))} tabIndex={-1} aria-label="Меньше">
         <IconX className="h-2.5 w-2.5 rotate-45" />
       </button>
       <input
         type="text"
-        inputMode="numeric"
+        inputMode="decimal"
+        aria-label="Количество"
         value={value ?? ""}
         placeholder="0"
         onChange={(event) => {
-          const raw = event.target.value.replace(/\D/g, "");
-          onChange(raw === "" ? "" : Number(raw));
+          try {
+            onChange(parseQuantityInput(event.target.value));
+          } catch {
+            return;
+          }
         }}
         className="w-16 bg-transparent text-center font-mono text-[16px] tabular-nums outline-none placeholder:text-[var(--color-ink-faint)]"
       />
-      <button type="button" className={btn} onClick={() => onChange(numeric + step)} tabIndex={-1}>
+      <button type="button" className={btn} onClick={() => onChange(numeric + step)} tabIndex={-1} aria-label="Больше">
         <IconPlus className="h-3 w-3" />
       </button>
     </div>
   );
 }
 
+export function useDismissOnEscape(onDismiss) {
+  useEffect(() => {
+    if (!onDismiss) return undefined;
+    function onKey(event) {
+      if (event.key === "Escape") onDismiss();
+    }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [onDismiss]);
+}
+
 export function Modal({ title, children, onCancel, onConfirm, cancelLabel = "Назад", confirmLabel = "Продолжить", confirmDisabled }) {
+  useDismissOnEscape(onCancel);
   return (
-    <div className="help-modal-backdrop fixed inset-0 z-20 grid place-items-center bg-slate-900/45 p-5" role="dialog" aria-modal="true">
-      <div className="help-modal-card w-full max-w-lg rounded-modal border border-[var(--color-line)] bg-[var(--color-surface)] p-6 shadow-xl">
+    <div
+      className="help-modal-backdrop fixed inset-0 z-20 grid place-items-center bg-slate-900/45 p-5"
+      role="dialog"
+      aria-modal="true"
+      onClick={onCancel}
+    >
+      <div
+        className="help-modal-card w-full max-w-lg rounded-modal border border-[var(--color-line)] bg-[var(--color-surface)] p-6 shadow-xl"
+        onClick={(event) => event.stopPropagation()}
+      >
         <h2 className="text-[18px] font-semibold tracking-tight">{title}</h2>
         <div className="mt-3 max-h-64 overflow-auto text-[14px] leading-relaxed text-[var(--color-ink-soft)] whitespace-pre-line">
           {children}

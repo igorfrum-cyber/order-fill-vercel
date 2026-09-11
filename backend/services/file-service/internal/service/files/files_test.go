@@ -17,7 +17,7 @@ import (
 func TestPutGetPreservesContentType(t *testing.T) {
 	t.Parallel()
 	svc := files.New(objectstore.NewS3(), memory.NewMeta())
-	obj, err := svc.Put(t.Context(), "", `C:\uploads\blank.xlsx`, "application/vnd.ms-excel", []byte("xlsx"))
+	obj, err := svc.Put(t.Context(), "", `C:\uploads\blank.xlsx`, "application/vnd.ms-excel", []byte("xlsx"), "co-1")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -43,7 +43,7 @@ func (m errMeta) SaveObject(context.Context, domain.Object) error { return m.sav
 func TestPutSurfacesMetaError(t *testing.T) {
 	t.Parallel()
 	svc := files.New(objectstore.NewS3(), errMeta{MetaStore: memory.NewMeta(), saveErr: errors.New("meta down")})
-	_, err := svc.Put(t.Context(), "", "a.xlsx", "text/plain", []byte("x"))
+	_, err := svc.Put(t.Context(), "", "a.xlsx", "text/plain", []byte("x"), "")
 	if err == nil || !strings.Contains(err.Error(), "meta down") {
 		t.Fatalf("got %v", err)
 	}
@@ -60,15 +60,15 @@ func TestMissingObject(t *testing.T) {
 func TestArchiveAndIdempotentFinalize(t *testing.T) {
 	t.Parallel()
 	svc := files.New(objectstore.NewS3(), memory.NewMeta())
-	a, err := svc.Put(t.Context(), "", "a.xlsx", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", []byte("A"))
+	a, err := svc.Put(t.Context(), "", "a.xlsx", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", []byte("A"), "co")
 	if err != nil {
 		t.Fatal(err)
 	}
-	b, err := svc.Put(t.Context(), "", "b.xlsx", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", []byte("B"))
+	b, err := svc.Put(t.Context(), "", "b.xlsx", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", []byte("B"), "co")
 	if err != nil {
 		t.Fatal(err)
 	}
-	zipObj, err := svc.Archive(t.Context(), []string{a.ID, b.ID}, "pack.zip")
+	zipObj, err := svc.Archive(t.Context(), []string{a.ID, b.ID}, "pack.zip", "co")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -88,11 +88,11 @@ func TestArchiveAndIdempotentFinalize(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	first, err := svc.FinalizeUpload(t.Context(), up.ID, []byte("one"))
+	first, err := svc.FinalizeUpload(t.Context(), up.ID, []byte("one"), "co")
 	if err != nil {
 		t.Fatal(err)
 	}
-	second, err := svc.FinalizeUpload(t.Context(), up.ID, []byte("two"))
+	second, err := svc.FinalizeUpload(t.Context(), up.ID, []byte("two"), "co")
 	if err != nil {
 		t.Fatal(err)
 	}

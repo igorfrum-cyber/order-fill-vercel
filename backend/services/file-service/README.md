@@ -36,6 +36,8 @@ Blob store и metadata store выбираются независимо. `FILE_S3
 
 Контракт: [`files.proto`](../../proto/orderfill/files/v1/files.proto), package `orderfill.files.v1`.
 
+
+<!-- docs-sync:rpc -->
 | RPC | Полный gRPC method | Назначение |
 | --- | --- | --- |
 | `PutObject` | `/orderfill.files.v1.FileService/PutObject` | Сохраняет `body`, имя и content type. Пустой content type становится `application/octet-stream`. |
@@ -43,8 +45,9 @@ Blob store и metadata store выбираются независимо. `FILE_S3
 | `CreateUpload` | `/orderfill.files.v1.FileService/CreateUpload` | Создаёт запись загрузки и возвращает `upload_id`; бинарные данные ещё не принимаются. |
 | `FinalizeUpload` | `/orderfill.files.v1.FileService/FinalizeUpload` | Сохраняет переданное тело для `upload_id`; повторный вызов возвращает метаданные первого объекта. |
 | `CreateArchive` | `/orderfill.files.v1.FileService/CreateArchive` | Читает объекты по ID (при отсутствии — пробует значение как key), формирует ZIP в памяти и сохраняет его. |
+<!-- /docs-sync:rpc -->
 
-`RequestMeta` присутствует в protobuf-запросах, но текущие обработчики его не используют. Внутри сервиса нет проверки пользователя или компании.
+`RequestMeta` используется для tenant ACL: объекты хранят `company_id`, `Get`/`Put` сверяют его с актором из `identity-service` либо с `WORKER_TOKEN`. Публичные логотипы `companies/<id>/logo` читаются без актора.
 
 HTTP-интерфейс:
 
@@ -66,24 +69,30 @@ HTTP-интерфейс:
 
 ## Конфигурация
 
+
+<!-- docs-sync:env -->
 | Переменная | По умолчанию | Обязательность и назначение |
 | --- | --- | --- |
-| `FILE_GRPC_ADDR` | `:9095` | Адрес внутреннего gRPC listener. |
-| `FILE_HEALTH_ADDR` | `:8086` | Адрес HTTP listener для health-проверок. |
 | `FILE_ENV` | значение `APP_ENV`, затем `local` | Окружение сервиса. Пустое значение также считается local. |
 | `APP_ENV` | `local` | Общий fallback. Любое значение кроме `local`/пустого включает строгую проверку внешних хранилищ. |
-| `DATABASE_URL` | пусто | DSN PostgreSQL для метаданных. Вне local обязателен и должен передаваться как secret. |
-| `FILE_S3_ENDPOINT` | пусто | Endpoint MinIO/S3. Вне local обязателен. При схеме `http://`/`https://` схема определяет transport; без схемы используется `FILE_S3_USE_SSL`. |
+| `FILE_GRPC_ADDR` | `:9095` | Адрес внутреннего gRPC listener. |
+| `FILE_HEALTH_ADDR` | `:8086` | Адрес HTTP listener для health-проверок. |
+| `FILE_S3_ENDPOINT` | пусто | Endpoint MinIO/S3. Вне local обязателен. Схема `http://` вне local запрещена; `https://` или host без схемы с `FILE_S3_USE_SSL=true`. |
 | `FILE_S3_ACCESS_KEY` | `minioadmin` | Access key object storage. Вне local непустой и не может быть `minioadmin`; secret. |
 | `FILE_S3_SECRET_KEY` | `minioadmin` | Secret key object storage. Вне local непустой и не может быть `minioadmin`; secret. |
 | `FILE_S3_BUCKET` | `order-fill` | Bucket. При настройке endpoint пустой bucket приводит к ошибке старта. |
+| `DATABASE_URL` | пусто | DSN PostgreSQL для метаданных. Вне local обязателен и должен передаваться как secret. |
+| `IDENTITY_GRPC_ADDR` | пусто | Адрес `identity-service` для tenant ACL. Вне local обязателен. |
+| `WORKER_TOKEN` | пусто | Секрет worker Get/Put. Вне local обязателен, не default, ≥16 байт. |
 | `FILE_S3_USE_SSL` | `false` в local, `true` вне local | Только строка `true` включает TLS; вне local значение `false` запрещено. |
 | `GRPC_TLS_MODE` | `insecure` | `insecure`/`disabled`/`off`, `tls` или `mtls`. |
 | `GRPC_TLS_CERT_FILE` | пусто | PEM-сертификат сервера; обязателен для `tls`/`mtls`. |
 | `GRPC_TLS_KEY_FILE` | пусто | Приватный PEM-ключ; обязателен для `tls`/`mtls`, должен быть secret. |
-| `GRPC_TLS_CA_FILE` | пусто | CA bundle; обязателен для проверки клиентов в `mtls`. |
+| `GRPC_TLS_CA_FILE` | пусто | CA bundle; обязателен для проверки клиентов в `mtls`. При `FILE_S3_USE_SSL=true` тот же CA добавляется к trust store MinIO/S3. |
+| `GRPC_TLS_SERVER_NAME` | пусто | Необязательное имя для проверки TLS-сертификата исходящих gRPC-клиентов. |
+<!-- /docs-sync:env -->
 
-Вне local сервис отказывается запускаться без PostgreSQL, S3 endpoint, значения `FILE_S3_USE_SSL=true` и нестандартных credentials. При этом endpoint с явной схемой `http://` переопределяет флаг уже после валидации, поэтому оператор должен отдельно исключить такой endpoint. Валидация также не проверяет TLS-параметры внутри `DATABASE_URL`.
+Вне local сервис отказывается запускаться без PostgreSQL, S3 endpoint, значения `FILE_S3_USE_SSL=true`, нестандартных credentials, без схемы `http://` в `FILE_S3_ENDPOINT`, без `IDENTITY_GRPC_ADDR`, без `WORKER_TOKEN`, без `GRPC_TLS_MODE=mtls` и без путей сертификата/ключа/CA. `DATABASE_URL` не может использовать пароль `order_fill` и должен задавать `sslmode=require` (или `verify-ca`/`verify-full`).
 
 ## Локальный запуск
 
@@ -147,12 +156,12 @@ go build ./cmd/file
 - При отсутствии `FILE_S3_ENDPOINT` blob-данные хранятся в памяти; при отсутствии `DATABASE_URL` там же хранятся метаданные. Перезапуск теряет соответствующую часть состояния.
 - Не настраивайте только одно постоянное хранилище: PostgreSQL без устойчивых blob-данных оставляет метаданные на потерянные объекты, а MinIO без PostgreSQL теряет индекс ID/key после рестарта.
 - `/readyz` проверяет только PostgreSQL и может отвечать `200`, когда MinIO недоступен.
-- Production-проверка `FILE_S3_USE_SSL=true` сама по себе не гарантирует TLS: явная схема `http://` в `FILE_S3_ENDPOINT` заставляет MinIO-клиент использовать незашифрованное соединение.
+- Вне local `FILE_S3_ENDPOINT` со схемой `http://` отклоняется при старте. Host без схемы по-прежнему берёт TLS из `FILE_S3_USE_SSL`.
 - `PutObject`, `FinalizeUpload` и `GetObject` передают файл целиком в памяти. `CreateArchive` также читает все входы и строит весь ZIP в RAM; streaming и multipart upload не реализованы.
 - При ошибке сохранения метаданных после успешной записи blob возможен объект без metadata. Между blob store и PostgreSQL нет общей транзакции.
 - Повторный `PutObject` с тем же key перезаписывает blob и upsert-ит metadata с новым ID; старый ID перестаёт находиться в PostgreSQL.
 - `FinalizeUpload` идемпотентен после сохранения `object_id`, но конкурентные первые вызовы не сериализованы на уровне use case.
-- API не выполняет tenant-проверку и не имеет delete/list операций. Доступ должен быть ограничен доверенной внутренней сетью и, в production, mTLS.
+- API не имеет delete/list операций. Tenant ACL: объект принадлежит `company_id` с Put; Get разрешён той же компании, `platform_admin`, worker token или публичному logo-ключу. Старые объекты с пустым `company_id` для пользовательского Get скрыты. Production overlay выдаёт отдельный mTLS-сертификат каждому сервису; allowlist RPC по client SAN вместо общего `WORKER_TOKEN` — следующий потолок.
 - Миграция запускается при каждом старте без отдельного журнала версий.
 
 Общая архитектура: [`docs/ARCHITECTURE.md`](../../../docs/ARCHITECTURE.md); границы ответственности: [`docs/service-boundaries.md`](../../../docs/service-boundaries.md).

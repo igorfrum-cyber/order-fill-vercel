@@ -1037,6 +1037,7 @@ func (x *ValidateSessionResponse) GetSession() *Session {
 type GetMeRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	SessionToken  string                 `protobuf:"bytes,1,opt,name=session_token,json=sessionToken,proto3" json:"session_token,omitempty"`
+	Meta          *v1.RequestMeta        `protobuf:"bytes,2,opt,name=meta,proto3" json:"meta,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1076,6 +1077,13 @@ func (x *GetMeRequest) GetSessionToken() string {
 		return x.SessionToken
 	}
 	return ""
+}
+
+func (x *GetMeRequest) GetMeta() *v1.RequestMeta {
+	if x != nil {
+		return x.Meta
+	}
+	return nil
 }
 
 type GetMeResponse struct {
@@ -2440,9 +2448,10 @@ const file_orderfill_identity_v1_identity_proto_rawDesc = "" +
 	"\rsession_token\x18\x01 \x01(\tR\fsessionToken\"\x84\x01\n" +
 	"\x17ValidateSessionResponse\x12/\n" +
 	"\x04user\x18\x01 \x01(\v2\x1b.orderfill.identity.v1.UserR\x04user\x128\n" +
-	"\asession\x18\x02 \x01(\v2\x1e.orderfill.identity.v1.SessionR\asession\"3\n" +
+	"\asession\x18\x02 \x01(\v2\x1e.orderfill.identity.v1.SessionR\asession\"i\n" +
 	"\fGetMeRequest\x12#\n" +
-	"\rsession_token\x18\x01 \x01(\tR\fsessionToken\"@\n" +
+	"\rsession_token\x18\x01 \x01(\tR\fsessionToken\x124\n" +
+	"\x04meta\x18\x02 \x01(\v2 .orderfill.common.v1.RequestMetaR\x04meta\"@\n" +
 	"\rGetMeResponse\x12/\n" +
 	"\x04user\x18\x01 \x01(\v2\x1b.orderfill.identity.v1.UserR\x04user\"f\n" +
 	"\x13AcceptInviteRequest\x12\x1d\n" +
@@ -2617,72 +2626,73 @@ var file_orderfill_identity_v1_identity_proto_depIdxs = []int32{
 	2,  // 5: orderfill.identity.v1.ListSessionsResponse.sessions:type_name -> orderfill.identity.v1.Session
 	0,  // 6: orderfill.identity.v1.ValidateSessionResponse.user:type_name -> orderfill.identity.v1.User
 	2,  // 7: orderfill.identity.v1.ValidateSessionResponse.session:type_name -> orderfill.identity.v1.Session
-	0,  // 8: orderfill.identity.v1.GetMeResponse.user:type_name -> orderfill.identity.v1.User
-	0,  // 9: orderfill.identity.v1.AcceptInviteResponse.user:type_name -> orderfill.identity.v1.User
-	2,  // 10: orderfill.identity.v1.AcceptInviteResponse.session:type_name -> orderfill.identity.v1.Session
-	0,  // 11: orderfill.identity.v1.FinishPasskeyLoginResponse.user:type_name -> orderfill.identity.v1.User
-	2,  // 12: orderfill.identity.v1.FinishPasskeyLoginResponse.session:type_name -> orderfill.identity.v1.Session
-	1,  // 13: orderfill.identity.v1.PublicCompanyResponse.company:type_name -> orderfill.identity.v1.Company
-	44, // 14: orderfill.identity.v1.CreateCompanyRequest.meta:type_name -> orderfill.common.v1.RequestMeta
-	43, // 15: orderfill.identity.v1.CreateCompanyRequest.matching_mode:type_name -> orderfill.common.v1.MatchingMode
-	1,  // 16: orderfill.identity.v1.CreateCompanyResponse.company:type_name -> orderfill.identity.v1.Company
-	44, // 17: orderfill.identity.v1.ListCompaniesRequest.meta:type_name -> orderfill.common.v1.RequestMeta
-	1,  // 18: orderfill.identity.v1.ListCompaniesResponse.companies:type_name -> orderfill.identity.v1.Company
-	44, // 19: orderfill.identity.v1.UpdateCompanyRequest.meta:type_name -> orderfill.common.v1.RequestMeta
-	43, // 20: orderfill.identity.v1.UpdateCompanyRequest.matching_mode:type_name -> orderfill.common.v1.MatchingMode
-	1,  // 21: orderfill.identity.v1.UpdateCompanyResponse.company:type_name -> orderfill.identity.v1.Company
-	44, // 22: orderfill.identity.v1.DisableCompanyRequest.meta:type_name -> orderfill.common.v1.RequestMeta
-	44, // 23: orderfill.identity.v1.CreateUserRequest.meta:type_name -> orderfill.common.v1.RequestMeta
-	0,  // 24: orderfill.identity.v1.CreateUserResponse.user:type_name -> orderfill.identity.v1.User
-	44, // 25: orderfill.identity.v1.ListUsersRequest.meta:type_name -> orderfill.common.v1.RequestMeta
-	0,  // 26: orderfill.identity.v1.ListUsersResponse.users:type_name -> orderfill.identity.v1.User
-	44, // 27: orderfill.identity.v1.DisableUserRequest.meta:type_name -> orderfill.common.v1.RequestMeta
-	44, // 28: orderfill.identity.v1.ResetUserAccessRequest.meta:type_name -> orderfill.common.v1.RequestMeta
-	3,  // 29: orderfill.identity.v1.IdentityService.Login:input_type -> orderfill.identity.v1.LoginRequest
-	5,  // 30: orderfill.identity.v1.IdentityService.CompleteTwoFactorLogin:input_type -> orderfill.identity.v1.CompleteTwoFactorLoginRequest
-	7,  // 31: orderfill.identity.v1.IdentityService.Logout:input_type -> orderfill.identity.v1.LogoutRequest
-	9,  // 32: orderfill.identity.v1.IdentityService.LogoutEverywhere:input_type -> orderfill.identity.v1.LogoutEverywhereRequest
-	11, // 33: orderfill.identity.v1.IdentityService.ListSessions:input_type -> orderfill.identity.v1.ListSessionsRequest
-	13, // 34: orderfill.identity.v1.IdentityService.RevokeSession:input_type -> orderfill.identity.v1.RevokeSessionRequest
-	15, // 35: orderfill.identity.v1.IdentityService.ValidateSession:input_type -> orderfill.identity.v1.ValidateSessionRequest
-	17, // 36: orderfill.identity.v1.IdentityService.GetMe:input_type -> orderfill.identity.v1.GetMeRequest
-	19, // 37: orderfill.identity.v1.IdentityService.AcceptInvite:input_type -> orderfill.identity.v1.AcceptInviteRequest
-	21, // 38: orderfill.identity.v1.IdentityService.FinishPasskeyLogin:input_type -> orderfill.identity.v1.FinishPasskeyLoginRequest
-	23, // 39: orderfill.identity.v1.IdentityService.ChangePassword:input_type -> orderfill.identity.v1.ChangePasswordRequest
-	25, // 40: orderfill.identity.v1.IdentityService.PublicCompany:input_type -> orderfill.identity.v1.PublicCompanyRequest
-	27, // 41: orderfill.identity.v1.IdentityService.CreateCompany:input_type -> orderfill.identity.v1.CreateCompanyRequest
-	29, // 42: orderfill.identity.v1.IdentityService.ListCompanies:input_type -> orderfill.identity.v1.ListCompaniesRequest
-	31, // 43: orderfill.identity.v1.IdentityService.UpdateCompany:input_type -> orderfill.identity.v1.UpdateCompanyRequest
-	33, // 44: orderfill.identity.v1.IdentityService.DisableCompany:input_type -> orderfill.identity.v1.DisableCompanyRequest
-	35, // 45: orderfill.identity.v1.IdentityService.CreateUser:input_type -> orderfill.identity.v1.CreateUserRequest
-	37, // 46: orderfill.identity.v1.IdentityService.ListUsers:input_type -> orderfill.identity.v1.ListUsersRequest
-	39, // 47: orderfill.identity.v1.IdentityService.DisableUser:input_type -> orderfill.identity.v1.DisableUserRequest
-	41, // 48: orderfill.identity.v1.IdentityService.ResetUserAccess:input_type -> orderfill.identity.v1.ResetUserAccessRequest
-	4,  // 49: orderfill.identity.v1.IdentityService.Login:output_type -> orderfill.identity.v1.LoginResponse
-	6,  // 50: orderfill.identity.v1.IdentityService.CompleteTwoFactorLogin:output_type -> orderfill.identity.v1.CompleteTwoFactorLoginResponse
-	8,  // 51: orderfill.identity.v1.IdentityService.Logout:output_type -> orderfill.identity.v1.LogoutResponse
-	10, // 52: orderfill.identity.v1.IdentityService.LogoutEverywhere:output_type -> orderfill.identity.v1.LogoutEverywhereResponse
-	12, // 53: orderfill.identity.v1.IdentityService.ListSessions:output_type -> orderfill.identity.v1.ListSessionsResponse
-	14, // 54: orderfill.identity.v1.IdentityService.RevokeSession:output_type -> orderfill.identity.v1.RevokeSessionResponse
-	16, // 55: orderfill.identity.v1.IdentityService.ValidateSession:output_type -> orderfill.identity.v1.ValidateSessionResponse
-	18, // 56: orderfill.identity.v1.IdentityService.GetMe:output_type -> orderfill.identity.v1.GetMeResponse
-	20, // 57: orderfill.identity.v1.IdentityService.AcceptInvite:output_type -> orderfill.identity.v1.AcceptInviteResponse
-	22, // 58: orderfill.identity.v1.IdentityService.FinishPasskeyLogin:output_type -> orderfill.identity.v1.FinishPasskeyLoginResponse
-	24, // 59: orderfill.identity.v1.IdentityService.ChangePassword:output_type -> orderfill.identity.v1.ChangePasswordResponse
-	26, // 60: orderfill.identity.v1.IdentityService.PublicCompany:output_type -> orderfill.identity.v1.PublicCompanyResponse
-	28, // 61: orderfill.identity.v1.IdentityService.CreateCompany:output_type -> orderfill.identity.v1.CreateCompanyResponse
-	30, // 62: orderfill.identity.v1.IdentityService.ListCompanies:output_type -> orderfill.identity.v1.ListCompaniesResponse
-	32, // 63: orderfill.identity.v1.IdentityService.UpdateCompany:output_type -> orderfill.identity.v1.UpdateCompanyResponse
-	34, // 64: orderfill.identity.v1.IdentityService.DisableCompany:output_type -> orderfill.identity.v1.DisableCompanyResponse
-	36, // 65: orderfill.identity.v1.IdentityService.CreateUser:output_type -> orderfill.identity.v1.CreateUserResponse
-	38, // 66: orderfill.identity.v1.IdentityService.ListUsers:output_type -> orderfill.identity.v1.ListUsersResponse
-	40, // 67: orderfill.identity.v1.IdentityService.DisableUser:output_type -> orderfill.identity.v1.DisableUserResponse
-	42, // 68: orderfill.identity.v1.IdentityService.ResetUserAccess:output_type -> orderfill.identity.v1.ResetUserAccessResponse
-	49, // [49:69] is the sub-list for method output_type
-	29, // [29:49] is the sub-list for method input_type
-	29, // [29:29] is the sub-list for extension type_name
-	29, // [29:29] is the sub-list for extension extendee
-	0,  // [0:29] is the sub-list for field type_name
+	44, // 8: orderfill.identity.v1.GetMeRequest.meta:type_name -> orderfill.common.v1.RequestMeta
+	0,  // 9: orderfill.identity.v1.GetMeResponse.user:type_name -> orderfill.identity.v1.User
+	0,  // 10: orderfill.identity.v1.AcceptInviteResponse.user:type_name -> orderfill.identity.v1.User
+	2,  // 11: orderfill.identity.v1.AcceptInviteResponse.session:type_name -> orderfill.identity.v1.Session
+	0,  // 12: orderfill.identity.v1.FinishPasskeyLoginResponse.user:type_name -> orderfill.identity.v1.User
+	2,  // 13: orderfill.identity.v1.FinishPasskeyLoginResponse.session:type_name -> orderfill.identity.v1.Session
+	1,  // 14: orderfill.identity.v1.PublicCompanyResponse.company:type_name -> orderfill.identity.v1.Company
+	44, // 15: orderfill.identity.v1.CreateCompanyRequest.meta:type_name -> orderfill.common.v1.RequestMeta
+	43, // 16: orderfill.identity.v1.CreateCompanyRequest.matching_mode:type_name -> orderfill.common.v1.MatchingMode
+	1,  // 17: orderfill.identity.v1.CreateCompanyResponse.company:type_name -> orderfill.identity.v1.Company
+	44, // 18: orderfill.identity.v1.ListCompaniesRequest.meta:type_name -> orderfill.common.v1.RequestMeta
+	1,  // 19: orderfill.identity.v1.ListCompaniesResponse.companies:type_name -> orderfill.identity.v1.Company
+	44, // 20: orderfill.identity.v1.UpdateCompanyRequest.meta:type_name -> orderfill.common.v1.RequestMeta
+	43, // 21: orderfill.identity.v1.UpdateCompanyRequest.matching_mode:type_name -> orderfill.common.v1.MatchingMode
+	1,  // 22: orderfill.identity.v1.UpdateCompanyResponse.company:type_name -> orderfill.identity.v1.Company
+	44, // 23: orderfill.identity.v1.DisableCompanyRequest.meta:type_name -> orderfill.common.v1.RequestMeta
+	44, // 24: orderfill.identity.v1.CreateUserRequest.meta:type_name -> orderfill.common.v1.RequestMeta
+	0,  // 25: orderfill.identity.v1.CreateUserResponse.user:type_name -> orderfill.identity.v1.User
+	44, // 26: orderfill.identity.v1.ListUsersRequest.meta:type_name -> orderfill.common.v1.RequestMeta
+	0,  // 27: orderfill.identity.v1.ListUsersResponse.users:type_name -> orderfill.identity.v1.User
+	44, // 28: orderfill.identity.v1.DisableUserRequest.meta:type_name -> orderfill.common.v1.RequestMeta
+	44, // 29: orderfill.identity.v1.ResetUserAccessRequest.meta:type_name -> orderfill.common.v1.RequestMeta
+	3,  // 30: orderfill.identity.v1.IdentityService.Login:input_type -> orderfill.identity.v1.LoginRequest
+	5,  // 31: orderfill.identity.v1.IdentityService.CompleteTwoFactorLogin:input_type -> orderfill.identity.v1.CompleteTwoFactorLoginRequest
+	7,  // 32: orderfill.identity.v1.IdentityService.Logout:input_type -> orderfill.identity.v1.LogoutRequest
+	9,  // 33: orderfill.identity.v1.IdentityService.LogoutEverywhere:input_type -> orderfill.identity.v1.LogoutEverywhereRequest
+	11, // 34: orderfill.identity.v1.IdentityService.ListSessions:input_type -> orderfill.identity.v1.ListSessionsRequest
+	13, // 35: orderfill.identity.v1.IdentityService.RevokeSession:input_type -> orderfill.identity.v1.RevokeSessionRequest
+	15, // 36: orderfill.identity.v1.IdentityService.ValidateSession:input_type -> orderfill.identity.v1.ValidateSessionRequest
+	17, // 37: orderfill.identity.v1.IdentityService.GetMe:input_type -> orderfill.identity.v1.GetMeRequest
+	19, // 38: orderfill.identity.v1.IdentityService.AcceptInvite:input_type -> orderfill.identity.v1.AcceptInviteRequest
+	21, // 39: orderfill.identity.v1.IdentityService.FinishPasskeyLogin:input_type -> orderfill.identity.v1.FinishPasskeyLoginRequest
+	23, // 40: orderfill.identity.v1.IdentityService.ChangePassword:input_type -> orderfill.identity.v1.ChangePasswordRequest
+	25, // 41: orderfill.identity.v1.IdentityService.PublicCompany:input_type -> orderfill.identity.v1.PublicCompanyRequest
+	27, // 42: orderfill.identity.v1.IdentityService.CreateCompany:input_type -> orderfill.identity.v1.CreateCompanyRequest
+	29, // 43: orderfill.identity.v1.IdentityService.ListCompanies:input_type -> orderfill.identity.v1.ListCompaniesRequest
+	31, // 44: orderfill.identity.v1.IdentityService.UpdateCompany:input_type -> orderfill.identity.v1.UpdateCompanyRequest
+	33, // 45: orderfill.identity.v1.IdentityService.DisableCompany:input_type -> orderfill.identity.v1.DisableCompanyRequest
+	35, // 46: orderfill.identity.v1.IdentityService.CreateUser:input_type -> orderfill.identity.v1.CreateUserRequest
+	37, // 47: orderfill.identity.v1.IdentityService.ListUsers:input_type -> orderfill.identity.v1.ListUsersRequest
+	39, // 48: orderfill.identity.v1.IdentityService.DisableUser:input_type -> orderfill.identity.v1.DisableUserRequest
+	41, // 49: orderfill.identity.v1.IdentityService.ResetUserAccess:input_type -> orderfill.identity.v1.ResetUserAccessRequest
+	4,  // 50: orderfill.identity.v1.IdentityService.Login:output_type -> orderfill.identity.v1.LoginResponse
+	6,  // 51: orderfill.identity.v1.IdentityService.CompleteTwoFactorLogin:output_type -> orderfill.identity.v1.CompleteTwoFactorLoginResponse
+	8,  // 52: orderfill.identity.v1.IdentityService.Logout:output_type -> orderfill.identity.v1.LogoutResponse
+	10, // 53: orderfill.identity.v1.IdentityService.LogoutEverywhere:output_type -> orderfill.identity.v1.LogoutEverywhereResponse
+	12, // 54: orderfill.identity.v1.IdentityService.ListSessions:output_type -> orderfill.identity.v1.ListSessionsResponse
+	14, // 55: orderfill.identity.v1.IdentityService.RevokeSession:output_type -> orderfill.identity.v1.RevokeSessionResponse
+	16, // 56: orderfill.identity.v1.IdentityService.ValidateSession:output_type -> orderfill.identity.v1.ValidateSessionResponse
+	18, // 57: orderfill.identity.v1.IdentityService.GetMe:output_type -> orderfill.identity.v1.GetMeResponse
+	20, // 58: orderfill.identity.v1.IdentityService.AcceptInvite:output_type -> orderfill.identity.v1.AcceptInviteResponse
+	22, // 59: orderfill.identity.v1.IdentityService.FinishPasskeyLogin:output_type -> orderfill.identity.v1.FinishPasskeyLoginResponse
+	24, // 60: orderfill.identity.v1.IdentityService.ChangePassword:output_type -> orderfill.identity.v1.ChangePasswordResponse
+	26, // 61: orderfill.identity.v1.IdentityService.PublicCompany:output_type -> orderfill.identity.v1.PublicCompanyResponse
+	28, // 62: orderfill.identity.v1.IdentityService.CreateCompany:output_type -> orderfill.identity.v1.CreateCompanyResponse
+	30, // 63: orderfill.identity.v1.IdentityService.ListCompanies:output_type -> orderfill.identity.v1.ListCompaniesResponse
+	32, // 64: orderfill.identity.v1.IdentityService.UpdateCompany:output_type -> orderfill.identity.v1.UpdateCompanyResponse
+	34, // 65: orderfill.identity.v1.IdentityService.DisableCompany:output_type -> orderfill.identity.v1.DisableCompanyResponse
+	36, // 66: orderfill.identity.v1.IdentityService.CreateUser:output_type -> orderfill.identity.v1.CreateUserResponse
+	38, // 67: orderfill.identity.v1.IdentityService.ListUsers:output_type -> orderfill.identity.v1.ListUsersResponse
+	40, // 68: orderfill.identity.v1.IdentityService.DisableUser:output_type -> orderfill.identity.v1.DisableUserResponse
+	42, // 69: orderfill.identity.v1.IdentityService.ResetUserAccess:output_type -> orderfill.identity.v1.ResetUserAccessResponse
+	50, // [50:70] is the sub-list for method output_type
+	30, // [30:50] is the sub-list for method input_type
+	30, // [30:30] is the sub-list for extension type_name
+	30, // [30:30] is the sub-list for extension extendee
+	0,  // [0:30] is the sub-list for field type_name
 }
 
 func init() { file_orderfill_identity_v1_identity_proto_init() }

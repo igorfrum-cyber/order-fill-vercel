@@ -53,6 +53,9 @@ make up
 make logs
 make down
 make test
+npm run test:ui --prefix frontend
+npm run test:component --prefix frontend
+npm run test:e2e --prefix frontend
 make lint
 make verify
 make security
@@ -74,8 +77,12 @@ protobuf breaking-change detection.
 - Production session cookies must be secure.
 - Production passkeys require a matching `WEBAUTHN_RP_ID` and HTTPS origin.
 - Production 2FA requires a non-default `TWOFA_MASTER_KEY` of at least 32 bytes.
+- Production worker RPC requires a non-default `WORKER_TOKEN` of at least 16 bytes.
 - Internal gRPC supports `insecure`, `tls`, and `mtls`; local Compose defaults to
-  `insecure`, while the documented production baseline uses `mtls`.
+  `insecure`. Production fail-fast requires `mtls` plus cert/key/CA files.
+  `make https` generates a per-service internal cert (`scripts/gen-internal-tls.sh`)
+  and applies `deploy/docker-compose.prod.yml`. Private keys are not shared
+  between containers.
 
 ## License
 

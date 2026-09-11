@@ -35,6 +35,33 @@ func TestCheckTLSModeAllowsInsecureLocal(t *testing.T) {
 	}
 }
 
+func TestCheckTLSModeRejectsTLSOutsideLocal(t *testing.T) {
+	t.Setenv(envGRPCTLSMode, "tls")
+	if err := CheckTLSMode("production"); err == nil {
+		t.Fatal("expected tls-only to fail outside local")
+	}
+}
+
+func TestCheckTLSModeAllowsMTLSOutsideLocal(t *testing.T) {
+	t.Setenv(envGRPCTLSMode, "mtls")
+	t.Setenv(envGRPCTLSCertFile, "cert.pem")
+	t.Setenv(envGRPCTLSKeyFile, "key.pem")
+	t.Setenv(envGRPCTLSCAFile, "ca.pem")
+	if err := CheckTLSMode("production"); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestCheckTLSModeRejectsMTLSWithoutMaterial(t *testing.T) {
+	t.Setenv(envGRPCTLSMode, "mtls")
+	t.Setenv(envGRPCTLSCertFile, "")
+	t.Setenv(envGRPCTLSKeyFile, "")
+	t.Setenv(envGRPCTLSCAFile, "")
+	if err := CheckTLSMode("production"); err == nil {
+		t.Fatal("expected missing TLS material error")
+	}
+}
+
 func TestClientTransportRequiresMTLSMaterial(t *testing.T) {
 	t.Setenv(envGRPCTLSMode, "mtls")
 	t.Setenv(envGRPCTLSCertFile, "")

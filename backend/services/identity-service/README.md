@@ -56,6 +56,31 @@ curl http://127.0.0.1:8082/readyz
 
 ## Внутренний gRPC API
 
+<!-- docs-sync:rpc -->
+| RPC | Полный gRPC method | Назначение |
+| --- | --- | --- |
+| `Login` | `/orderfill.identity.v1.IdentityService/Login` | RPC из protobuf-контракта. |
+| `CompleteTwoFactorLogin` | `/orderfill.identity.v1.IdentityService/CompleteTwoFactorLogin` | RPC из protobuf-контракта. |
+| `Logout` | `/orderfill.identity.v1.IdentityService/Logout` | RPC из protobuf-контракта. |
+| `LogoutEverywhere` | `/orderfill.identity.v1.IdentityService/LogoutEverywhere` | RPC из protobuf-контракта. |
+| `ListSessions` | `/orderfill.identity.v1.IdentityService/ListSessions` | RPC из protobuf-контракта. |
+| `RevokeSession` | `/orderfill.identity.v1.IdentityService/RevokeSession` | RPC из protobuf-контракта. |
+| `ValidateSession` | `/orderfill.identity.v1.IdentityService/ValidateSession` | RPC из protobuf-контракта. |
+| `GetMe` | `/orderfill.identity.v1.IdentityService/GetMe` | RPC из protobuf-контракта. |
+| `AcceptInvite` | `/orderfill.identity.v1.IdentityService/AcceptInvite` | RPC из protobuf-контракта. |
+| `FinishPasskeyLogin` | `/orderfill.identity.v1.IdentityService/FinishPasskeyLogin` | RPC из protobuf-контракта. |
+| `ChangePassword` | `/orderfill.identity.v1.IdentityService/ChangePassword` | RPC из protobuf-контракта. |
+| `PublicCompany` | `/orderfill.identity.v1.IdentityService/PublicCompany` | RPC из protobuf-контракта. |
+| `CreateCompany` | `/orderfill.identity.v1.IdentityService/CreateCompany` | RPC из protobuf-контракта. |
+| `ListCompanies` | `/orderfill.identity.v1.IdentityService/ListCompanies` | RPC из protobuf-контракта. |
+| `UpdateCompany` | `/orderfill.identity.v1.IdentityService/UpdateCompany` | RPC из protobuf-контракта. |
+| `DisableCompany` | `/orderfill.identity.v1.IdentityService/DisableCompany` | RPC из protobuf-контракта. |
+| `CreateUser` | `/orderfill.identity.v1.IdentityService/CreateUser` | RPC из protobuf-контракта. |
+| `ListUsers` | `/orderfill.identity.v1.IdentityService/ListUsers` | RPC из protobuf-контракта. |
+| `DisableUser` | `/orderfill.identity.v1.IdentityService/DisableUser` | RPC из protobuf-контракта. |
+| `ResetUserAccess` | `/orderfill.identity.v1.IdentityService/ResetUserAccess` | RPC из protobuf-контракта. |
+<!-- /docs-sync:rpc -->
+
 Source of truth — [`../../proto/orderfill/identity/v1/identity.proto`](../../proto/orderfill/identity/v1/identity.proto), package `orderfill.identity.v1`, service `IdentityService`.
 
 ### Аутентификация и сессии
@@ -87,6 +112,8 @@ gRPC-клиенты имеют default deadline 60 секунд. Максима�
 
 ## Конфигурация
 
+
+<!-- docs-sync:env -->
 | Переменная | Default | Обязательность и назначение |
 | --- | --- | --- |
 | `IDENTITY_ENV` | значение `APP_ENV`, затем `local` | Среда сервиса; имеет приоритет над `APP_ENV`. |
@@ -94,9 +121,15 @@ gRPC-клиенты имеют default deadline 60 секунд. Максима�
 | `IDENTITY_GRPC_ADDR` | `:9091` | gRPC listener. |
 | `IDENTITY_HEALTH_ADDR` | `:8082` | Отдельный HTTP listener liveness/readiness. |
 | `BOOTSTRAP_ADMIN_LOGIN` | `admin` | Логин первоначального `platform_admin`, создаваемого только если пользователей нет. |
-| `DATABASE_URL` | пусто | PostgreSQL DSN. Обязателен вне local; обычно содержит пароль и должен храниться как secret. |
 | `TWOFA_GRPC_ADDR` | пусто | Адрес `twofa-service`; обязателен вне local. |
 | `PASSKEY_GRPC_ADDR` | пусто | Адрес `passkey-service`; обязателен вне local. |
+| `DATABASE_URL` | пусто | PostgreSQL DSN. Обязателен вне local; обычно содержит пароль и должен храниться как secret. |
+| `GRPC_TLS_MODE` | `insecure` | Читается из окружения; назначение см. config.go. |
+| `GRPC_TLS_CERT_FILE` | пусто | Читается из окружения; назначение см. config.go. |
+| `GRPC_TLS_KEY_FILE` | пусто | Читается из окружения; назначение см. config.go. |
+| `GRPC_TLS_CA_FILE` | пусто | Читается из окружения; назначение см. config.go. |
+| `GRPC_TLS_SERVER_NAME` | пусто | Необязательное имя для проверки TLS-сертификата исходящих gRPC-клиентов. |
+<!-- /docs-sync:env -->
 
 Общая конфигурация gRPC server и исходящих клиентов:
 

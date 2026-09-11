@@ -60,3 +60,30 @@ func (s *Store) Delete(ctx context.Context, userID string) error {
 	_, err := s.pool.Exec(ctx, `DELETE FROM user_totp WHERE user_id = $1`, userID)
 	return err
 }
+
+func (s *Store) CompareAndSwapRecovery(ctx context.Context, userID string, oldHashes, newHashes []string) error {
+	oldJSON, err := json.Marshal(oldHashes)
+	if err != nil {
+		return err
+	}
+	newJSON, err := json.Marshal(newHashes)
+	if err != nil {
+		return err
+	}
+	if oldHashes == nil {
+		oldJSON = []byte("[]")
+	}
+	if newHashes == nil {
+		newJSON = []byte("[]")
+	}
+	tag, err := s.pool.Exec(ctx,
+		`UPDATE user_totp SET recovery_code_hashes = $2 WHERE user_id = $1 AND recovery_code_hashes = $3::jsonb`,
+		userID, newJSON, oldJSON)
+	if err != nil {
+		return err
+	}
+	if tag.RowsAffected() == 0 {
+		return domain.ErrConflict
+	}
+	return nil
+}

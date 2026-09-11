@@ -4,6 +4,7 @@ import (
 	"context"
 	"log/slog"
 	"net/http"
+	"strings"
 
 	"order-fill/backend/pkg/grpcutil"
 	"order-fill/backend/pkg/healthz"
@@ -79,7 +80,11 @@ func Run(ctx context.Context, cfg config.Config, log *slog.Logger) error {
 		return err
 	}
 	if created {
-		log.Info("bootstrap admin invite", "login", cfg.BootstrapAdminLogin, "invite_url", "/invite/"+invite)
+		if strings.EqualFold(strings.TrimSpace(cfg.Environment), "local") || strings.TrimSpace(cfg.Environment) == "" {
+			log.Info("bootstrap admin invite", "login", cfg.BootstrapAdminLogin, "invite_url", "/invite/"+invite)
+		} else {
+			log.Info("bootstrap admin invite created", "login", cfg.BootstrapAdminLogin)
+		}
 	}
 	return grpcutil.Serve(ctx, cfg.GRPCAddr, cfg.HealthAddr, grpcapi.New(grpcapi.NewServer(authSvc, userSvc, companySvc)), healthHandler(readyCheck))
 }

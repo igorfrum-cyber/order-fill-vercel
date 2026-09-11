@@ -19,6 +19,7 @@ type Config struct {
 	CalculationAddr string
 	MatchingAddr    string
 	BrandAddr       string
+	WorkerToken     string
 }
 
 func Load() Config {
@@ -33,6 +34,7 @@ func Load() Config {
 		CalculationAddr: getenv("CALCULATION_GRPC_ADDR", ""),
 		MatchingAddr:    getenv("MATCHING_GRPC_ADDR", ""),
 		BrandAddr:       getenv("BRAND_GRPC_ADDR", ""),
+		WorkerToken:     getenv("WORKER_TOKEN", ""),
 	}
 }
 
@@ -45,6 +47,9 @@ func (c Config) ValidateAPI() error {
 	}
 	if strings.TrimSpace(c.BrandAddr) == "" {
 		return fmt.Errorf("BRAND_GRPC_ADDR is required outside local environment")
+	}
+	if err := grpcutil.CheckWorkerToken(c.Environment, c.WorkerToken); err != nil {
+		return err
 	}
 	return grpcutil.CheckTLSMode(c.Environment)
 }
@@ -67,6 +72,9 @@ func (c Config) ValidateWorker() error {
 		}
 	}
 	if err := securecfg.Redis(c.Environment, c.QueueURL); err != nil {
+		return err
+	}
+	if err := grpcutil.CheckWorkerToken(c.Environment, c.WorkerToken); err != nil {
 		return err
 	}
 	return grpcutil.CheckTLSMode(c.Environment)

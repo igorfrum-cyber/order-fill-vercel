@@ -8,6 +8,9 @@ x-grpc-tls-env: &grpc-tls-env
   GRPC_TLS_CA_FILE: ${GRPC_TLS_CA_FILE:-}
   GRPC_TLS_SERVER_NAME: ${GRPC_TLS_SERVER_NAME:-}
 
+x-worker-token-env: &worker-token-env
+  WORKER_TOKEN: ${WORKER_TOKEN:-local-dev-worker-token}
+
 services:
   frontend:
     build:
@@ -17,7 +20,7 @@ services:
         VITE_API_BASE_URL: ""
     restart: unless-stopped
     ports:
-      - "3200:80"
+      - "127.0.0.1:3200:80"
     depends_on:
       gateway-service:
         condition: service_healthy
@@ -163,7 +166,7 @@ services:
       dockerfile: services/job-service/Dockerfile
     restart: unless-stopped
     environment:
-      <<: [*app-env, *grpc-tls-env]
+      <<: [*app-env, *grpc-tls-env, *worker-token-env]
       JOB_GRPC_ADDR: ":9094"
       JOB_HEALTH_ADDR: ":8085"
       QUEUE_URL: ${QUEUE_URL:-redis://redis:6379/0}
@@ -194,7 +197,7 @@ services:
       dockerfile: services/file-service/Dockerfile
     restart: unless-stopped
     environment:
-      <<: [*app-env, *grpc-tls-env]
+      <<: [*app-env, *grpc-tls-env, *worker-token-env]
       FILE_GRPC_ADDR: ":9095"
       FILE_HEALTH_ADDR: ":8086"
       FILE_S3_ENDPOINT: ${FILE_S3_ENDPOINT:-minio:9000}
@@ -203,6 +206,7 @@ services:
       FILE_S3_BUCKET: ${S3_BUCKET:-order-fill}
       FILE_S3_USE_SSL: ${FILE_S3_USE_SSL:-false}
       DATABASE_URL: ${DATABASE_URL:-postgres://order_fill:order_fill@postgres:5432/order_fill?sslmode=disable}
+      IDENTITY_GRPC_ADDR: identity-service:9091
     expose:
       - "9095"
       - "8086"
@@ -210,6 +214,8 @@ services:
       postgres:
         condition: service_healthy
       minio:
+        condition: service_healthy
+      identity-service:
         condition: service_healthy
     healthcheck:
       test: ["CMD", "wget", "-qO-", "http://localhost:8086/healthz"]
@@ -225,7 +231,7 @@ services:
         BIN: document-api
     restart: unless-stopped
     environment:
-      <<: [*app-env, *grpc-tls-env]
+      <<: [*app-env, *grpc-tls-env, *worker-token-env]
       DOCUMENT_GRPC_ADDR: ":9096"
       DOCUMENT_HEALTH_ADDR: ":8087"
       FILE_GRPC_ADDR: file-service:9095
@@ -252,7 +258,7 @@ services:
         BIN: document-worker
     restart: unless-stopped
     environment:
-      <<: [*app-env, *grpc-tls-env]
+      <<: [*app-env, *grpc-tls-env, *worker-token-env]
       DOCUMENT_GRPC_ADDR: ":9096"
       DOCUMENT_HEALTH_ADDR: ":8092"
       QUEUE_URL: ${QUEUE_URL:-redis://redis:6379/0}
@@ -345,11 +351,14 @@ services:
       AUDIT_GRPC_ADDR: ":9100"
       AUDIT_HEALTH_ADDR: ":8091"
       DATABASE_URL: ${DATABASE_URL:-postgres://order_fill:order_fill@postgres:5432/order_fill?sslmode=disable}
+      IDENTITY_GRPC_ADDR: identity-service:9091
     expose:
       - "9100"
       - "8091"
     depends_on:
       postgres:
+        condition: service_healthy
+      identity-service:
         condition: service_healthy
     healthcheck:
       test: ["CMD", "wget", "-qO-", "http://localhost:8091/healthz"]
@@ -363,7 +372,7 @@ services:
     environment:
       POSTGRES_DB: order_fill
       POSTGRES_USER: order_fill
-      POSTGRES_PASSWORD: order_fill
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-order_fill}
     ports:
       - "127.0.0.1:5432:5432"
     volumes:
@@ -377,12 +386,22 @@ services:
   redis:
     image: mirror.gcr.io/library/redis:8-alpine
     restart: unless-stopped
+    environment:
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-}
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        if [ -n "$$REDIS_PASSWORD" ]; then
+          exec redis-server --requirepass "$$REDIS_PASSWORD"
+        else
+          exec redis-server
+        fi
     ports:
       - "127.0.0.1:6379:6379"
     volumes:
       - redis-data:/data
     healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
+      test: ["CMD-SHELL", "if [ -n \"$$REDIS_PASSWORD\" ]; then redis-cli --no-auth-warning -a \"$$REDIS_PASSWORD\" ping | grep PONG; else redis-cli ping | grep PONG; fi"]
       interval: 10s
       timeout: 3s
       retries: 10

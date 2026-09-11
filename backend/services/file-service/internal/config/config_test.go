@@ -3,6 +3,7 @@ package config
 import (
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 
 	"order-fill/backend/pkg/healthz"
@@ -56,6 +57,34 @@ func TestValidateRejectsProductionDefaultS3Credentials(t *testing.T) {
 	}
 	if err := cfg.Validate(); err == nil {
 		t.Fatal("expected default credentials error")
+	}
+}
+
+func TestValidateRejectsHTTPEndpointOutsideLocal(t *testing.T) {
+	t.Setenv("GRPC_TLS_MODE", "mtls")
+	cfg := Config{
+		Environment: "production",
+		DatabaseURL: "postgres://user:secret@db/order_fill?sslmode=require",
+		S3Endpoint:  "http://s3.example.com",
+		S3UseSSL:    true, S3AccessKey: "access", S3SecretKey: "secret",
+	}
+	err := cfg.Validate()
+	if err == nil || !strings.Contains(err.Error(), "http") {
+		t.Fatalf("expected http endpoint error, got %v", err)
+	}
+}
+
+func TestValidateRejectsProductionMissingIdentity(t *testing.T) {
+	t.Setenv("GRPC_TLS_MODE", "mtls")
+	cfg := Config{
+		Environment: "production",
+		DatabaseURL: "postgres://user:secret@db/order_fill?sslmode=require",
+		S3Endpoint:  "s3.example.com",
+		S3UseSSL:    true, S3AccessKey: "access", S3SecretKey: "secret",
+		WorkerToken: "production-worker-token",
+	}
+	if err := cfg.Validate(); err == nil {
+		t.Fatal("expected missing identity error")
 	}
 }
 

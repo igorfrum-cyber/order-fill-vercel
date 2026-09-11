@@ -21,6 +21,12 @@ func TestHealthAndCSRF(t *testing.T) {
 	if rec.Header().Get("Cache-Control") != "private, no-store" {
 		t.Fatalf("cache-control=%q", rec.Header().Get("Cache-Control"))
 	}
+	if rec.Header().Get("Cross-Origin-Opener-Policy") != "same-origin" {
+		t.Fatalf("coop=%q", rec.Header().Get("Cross-Origin-Opener-Policy"))
+	}
+	if rec.Header().Get("Cross-Origin-Resource-Policy") != "same-origin" {
+		t.Fatalf("corp=%q", rec.Header().Get("Cross-Origin-Resource-Policy"))
+	}
 	post := httptest.NewRequest(http.MethodPost, "/api/v1/jobs/order-fill", nil)
 	rec = httptest.NewRecorder()
 	h.ServeHTTP(rec, post)

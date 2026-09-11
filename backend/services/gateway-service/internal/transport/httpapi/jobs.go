@@ -105,9 +105,10 @@ func (a *API) putUpload(r *http.Request, header *multipart.FileHeader, role stri
 	if err != nil {
 		return "", err
 	}
+	user, _ := userFrom(r)
 	key := role + "/" + grpcutil.NewID() + "/" + header.Filename
 	resp, err := a.Clients.Files.PutObject(r.Context(), &filesv1.PutObjectRequest{
-		Key: key, Name: header.Filename, ContentType: header.Header.Get("Content-Type"), Body: body,
+		Meta: a.meta(user), Key: key, Name: header.Filename, ContentType: jobUploadContentType(header.Filename, header.Header.Get("Content-Type")), Body: body,
 	})
 	if err != nil {
 		return "", err
@@ -250,7 +251,7 @@ func (a *API) downloadFile(w http.ResponseWriter, r *http.Request) {
 		if file.GetId() != fileID {
 			continue
 		}
-		obj, err := a.Clients.Files.GetObject(r.Context(), &filesv1.GetObjectRequest{Key: file.GetObjectKey()})
+		obj, err := a.Clients.Files.GetObject(r.Context(), &filesv1.GetObjectRequest{Meta: a.meta(user), Key: file.GetObjectKey()})
 		if err != nil {
 			writeGRPCError(w, "download_failed", err)
 			return
@@ -301,7 +302,7 @@ func (a *API) downloadArchive(w http.ResponseWriter, r *http.Request) {
 		writeGRPCError(w, "download_archive_failed", err)
 		return
 	}
-	obj, err := a.Clients.Files.GetObject(r.Context(), &filesv1.GetObjectRequest{Id: archive.GetObject().GetId()})
+	obj, err := a.Clients.Files.GetObject(r.Context(), &filesv1.GetObjectRequest{Meta: a.meta(user), Id: archive.GetObject().GetId()})
 	if err != nil {
 		writeGRPCError(w, "download_archive_failed", err)
 		return
@@ -427,7 +428,7 @@ func (a *API) presentJob(ctx context.Context, user User, job *jobsv1.Job) map[st
 		updated = created
 	}
 	identity := map[string]string{}
-	if raw, err := a.getObjectByKeyCtx(ctx, "jobs/"+job.GetId()+"/identity.json"); err == nil {
+	if raw, err := a.getObjectByKeyCtx(ctx, user, "jobs/"+job.GetId()+"/identity.json"); err == nil {
 		_ = json.Unmarshal(raw, &identity)
 	}
 	files, _ := a.Clients.Jobs.ListFiles(grpcutil.WithActorRole(ctx, user.Role), &jobsv1.ListFilesRequest{
@@ -498,11 +499,12 @@ func (a *API) ownerLogins(ctx context.Context, user User, jobs []*jobsv1.Job) ma
 }
 
 func (a *API) getObjectByKey(r *http.Request, key string) ([]byte, error) {
-	return a.getObjectByKeyCtx(r.Context(), key)
+	user, _ := userFrom(r)
+	return a.getObjectByKeyCtx(r.Context(), user, key)
 }
 
-func (a *API) getObjectByKeyCtx(ctx context.Context, key string) ([]byte, error) {
-	resp, err := a.Clients.Files.GetObject(ctx, &filesv1.GetObjectRequest{Key: key})
+func (a *API) getObjectByKeyCtx(ctx context.Context, user User, key string) ([]byte, error) {
+	resp, err := a.Clients.Files.GetObject(ctx, &filesv1.GetObjectRequest{Meta: a.meta(user), Key: key})
 	if err != nil {
 		return nil, err
 	}

@@ -7,6 +7,8 @@ import (
 	"path"
 	"time"
 
+	"order-fill/backend/pkg/grpcutil"
+	commonv1 "order-fill/backend/proto/gen/go/orderfill/common/v1"
 	filesv1 "order-fill/backend/proto/gen/go/orderfill/files/v1"
 	jobsv1 "order-fill/backend/proto/gen/go/orderfill/jobs/v1"
 	"order-fill/backend/services/document-service/internal/app/port"
@@ -14,11 +16,20 @@ import (
 )
 
 type Files struct {
-	API filesv1.FileServiceClient
+	API   filesv1.FileServiceClient
+	Token string
+}
+
+func (s Files) ctx(ctx context.Context) context.Context {
+	return grpcutil.WithWorkerToken(ctx, s.Token)
+}
+
+func (s Files) meta(ctx context.Context) *commonv1.RequestMeta {
+	return &commonv1.RequestMeta{CompanyId: grpcutil.Company(ctx)}
 }
 
 func (s Files) Get(ctx context.Context, key string) ([]byte, error) {
-	resp, err := s.API.GetObject(ctx, &filesv1.GetObjectRequest{Key: key})
+	resp, err := s.API.GetObject(s.ctx(ctx), &filesv1.GetObjectRequest{Meta: s.meta(ctx), Key: key})
 	if err != nil {
 		return nil, err
 	}
@@ -26,8 +37,8 @@ func (s Files) Get(ctx context.Context, key string) ([]byte, error) {
 }
 
 func (s Files) Put(ctx context.Context, key string, contentType string, content []byte) error {
-	_, err := s.API.PutObject(ctx, &filesv1.PutObjectRequest{
-		Key: key, Name: path.Base(key), ContentType: contentType, Body: content,
+	_, err := s.API.PutObject(s.ctx(ctx), &filesv1.PutObjectRequest{
+		Meta: s.meta(ctx), Key: key, Name: path.Base(key), ContentType: contentType, Body: content,
 	})
 	return err
 }
@@ -37,13 +48,17 @@ type Jobs struct {
 	Files Files
 }
 
+func (j Jobs) ctx(ctx context.Context) context.Context {
+	return grpcutil.WithWorkerToken(ctx, j.Files.Token)
+}
+
 func (j Jobs) MarkProcessing(ctx context.Context, jobID string, _ time.Time) error {
-	_, err := j.API.UpdateProgress(ctx, &jobsv1.UpdateProgressRequest{JobId: jobID, Status: "processing", Message: "processing"})
+	_, err := j.API.UpdateProgress(j.ctx(ctx), &jobsv1.UpdateProgressRequest{JobId: jobID, Status: "processing", Message: "processing"})
 	return err
 }
 
 func (j Jobs) MarkFailed(ctx context.Context, jobID string, _ string, message string, _ time.Time) error {
-	_, err := j.API.FailJob(ctx, &jobsv1.FailJobRequest{JobId: jobID, ErrorMessage: message})
+	_, err := j.API.FailJob(j.ctx(ctx), &jobsv1.FailJobRequest{JobId: jobID, ErrorMessage: message})
 	return err
 }
 
@@ -63,13 +78,13 @@ func (j Jobs) SaveResult(ctx context.Context, jobID string, status string, outpu
 		})
 	}
 	if status == "completed" {
-		_, _ = j.API.UpdateProgress(ctx, &jobsv1.UpdateProgressRequest{JobId: jobID, Status: "finalizing"})
+		_, _ = j.API.UpdateProgress(j.ctx(ctx), &jobsv1.UpdateProgressRequest{JobId: jobID, Status: "finalizing"})
 	}
 	req := &jobsv1.CompleteJobRequest{JobId: jobID, Files: files}
 	if raw, err := j.Files.Get(ctx, "jobs/"+jobID+"/report.json"); err == nil {
 		req.Summary, req.Rows = completeReport(raw)
 	}
-	_, err = j.API.CompleteJob(ctx, req)
+	_, err = j.API.CompleteJob(j.ctx(ctx), req)
 	return err
 }
 
@@ -94,7 +109,7 @@ func (j Jobs) SetIdentity(ctx context.Context, jobID string, brand string, order
 }
 
 func (j Jobs) SetProgress(ctx context.Context, jobID string, fraction float64, message string, _ time.Time) error {
-	_, err := j.API.UpdateProgress(ctx, &jobsv1.UpdateProgressRequest{
+	_, err := j.API.UpdateProgress(j.ctx(ctx), &jobsv1.UpdateProgressRequest{
 		JobId: jobID, Status: "processing", Message: message, Progress: fraction,
 	})
 	return err

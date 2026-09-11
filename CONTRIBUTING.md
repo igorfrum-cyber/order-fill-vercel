@@ -81,10 +81,33 @@ make -C backend proto-gen
 
 ```bash
 npm run test --prefix frontend
+npm run test:ui --prefix frontend
+npm run test:component --prefix frontend
+npm run test:e2e --prefix frontend
 (cd backend/services/<service> && GOWORK=off go test ./...)
 ```
 
-Перед pull request запустите полный gate:
+После фичи в UI агент в том же чате запускает `npm run test:ui --prefix frontend`
+и смотрит вывод: это unit + Testing Library + Playwright. Локально Playwright
+открывает Chromium на экране. Если тесты красные, агент чинит причину и гоняет
+suite снова, пока не станет зелёным. Unit-тесты frontend остаются на `node:test`.
+Поведение компонентов (`*.ui.test.jsx`) гоняет Vitest + Testing Library, UI в
+браузере — Playwright.
+Перед первым `test:e2e` один раз установите Chromium:
+
+```bash
+npm run test:e2e:install --prefix frontend
+```
+
+Включите git hooks один раз в клоне:
+
+```bash
+make hooks
+```
+
+На ветке `artemch` commit сам запускает `make verify` и отменяется, если gate
+красный. Перед любым `git push` тот же полный gate запускается ещё раз. Перед
+pull request всё равно запускайте полный gate явно:
 
 ```bash
 make verify
@@ -113,6 +136,16 @@ make security
 
 ## Документация
 
+Таблицы env, RPC и список HTTP-маршрутов gateway обновляются из кода:
+
+```bash
+make docs-sync
+```
+
+`make verify` делает то же самое и падает, если сгенерированные списки не
+попали в коммит. Назначение RPC и смысл переменных в таблицах правьте руками —
+повторный sync их сохраняет.
+
 При изменении поведения обновите документацию в том же pull request:
 
 - README затронутого микросервиса;
@@ -129,6 +162,7 @@ make security
 
 - Изменение находится в сервисе, который владеет этой ответственностью.
 - Новое поведение покрыто тестами или причина отсутствия теста объяснена.
+- `make hooks` включён в клоне; на `artemch` commit не обходил `make verify`, а любой push гоняет полный gate.
 - `make verify` проходит локально.
 - Для security-sensitive изменений проходит `make security`.
 - Изменения `go.mod`, `go.sum` и lock-файлов ожидаемы.

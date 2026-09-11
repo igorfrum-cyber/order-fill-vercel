@@ -13,6 +13,7 @@ import (
 
 	"github.com/redis/go-redis/v9"
 
+	"order-fill/backend/pkg/grpcutil"
 	"order-fill/backend/services/document-service/internal/app/port"
 )
 
@@ -23,7 +24,7 @@ const (
 	DefaultGroupName    = "document-service"
 	messagePayloadField = "payload"
 	serviceName         = "document-service"
-	defaultClaimMinIdle = 5 * time.Minute
+	defaultClaimMinIdle = 30 * time.Minute
 )
 
 // pollTimeout keeps XREADGROUP short so the loop notices a cancelled context
@@ -244,7 +245,7 @@ func (c *Consumer) dispatch(ctx context.Context, payload string, handle Handler)
 		)
 		return nil
 	}
-	if err := handle(ctx, message); err != nil {
+	if err := handle(grpcutil.WithCompany(ctx, message.CompanyID), message); err != nil {
 		c.logger.ErrorContext(ctx, "queue message handling failed",
 			"service", serviceName,
 			"job_id", message.JobID,

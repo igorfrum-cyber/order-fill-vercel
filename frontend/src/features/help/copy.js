@@ -4,6 +4,11 @@ export const loginFailedMessage =
 export const loginAccessHint =
   "Нет доступа? Попросите владельца или администратора компании прислать приглашение.";
 
+export function missingCompanyMessage(canSelectCompany) {
+  if (canSelectCompany) return "Сначала выберите компанию в ленте выгрузок.";
+  return "Не удалось определить компанию. Выйдите и войдите снова.";
+}
+
 const ROLE_LABELS = {
   purchaser: "Закупщик",
   company_admin: "Администратор компании",

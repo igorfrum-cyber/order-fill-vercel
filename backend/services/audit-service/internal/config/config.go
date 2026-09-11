@@ -10,19 +10,21 @@ import (
 )
 
 type Config struct {
-	GRPCAddr    string
-	HealthAddr  string
-	Environment string
-	DatabaseURL string
+	GRPCAddr     string
+	HealthAddr   string
+	Environment  string
+	DatabaseURL  string
+	IdentityAddr string
 }
 
 func Load() Config {
 	env := getenv("AUDIT_ENV", getenv("APP_ENV", "local"))
 	return Config{
-		GRPCAddr:    getenv("AUDIT_GRPC_ADDR", ":9100"),
-		HealthAddr:  getenv("AUDIT_HEALTH_ADDR", ":8091"),
-		Environment: env,
-		DatabaseURL: getenv("DATABASE_URL", ""),
+		GRPCAddr:     getenv("AUDIT_GRPC_ADDR", ":9100"),
+		HealthAddr:   getenv("AUDIT_HEALTH_ADDR", ":8091"),
+		Environment:  env,
+		DatabaseURL:  getenv("DATABASE_URL", ""),
+		IdentityAddr: getenv("IDENTITY_GRPC_ADDR", ""),
 	}
 }
 
@@ -35,6 +37,9 @@ func (c Config) Validate() error {
 	}
 	if err := securecfg.Postgres(c.Environment, c.DatabaseURL); err != nil {
 		return err
+	}
+	if strings.TrimSpace(c.IdentityAddr) == "" {
+		return fmt.Errorf("IDENTITY_GRPC_ADDR is required outside local environment")
 	}
 	return grpcutil.CheckTLSMode(c.Environment)
 }

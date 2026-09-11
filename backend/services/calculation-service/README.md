@@ -44,6 +44,8 @@ internal/domain                    структуры строк заказа и
 
 Сервис реализует `orderfill.calculation.v1.CalculationService`. Поля запросов и ответов описаны в [`../../proto/orderfill/calculation/v1/calculation.proto`](../../proto/orderfill/calculation/v1/calculation.proto).
 
+
+<!-- docs-sync:rpc -->
 | RPC | Полный путь | Назначение |
 | --- | --- | --- |
 | `CalculateOrderRecommendations` | `/orderfill.calculation.v1.CalculationService/CalculateOrderRecommendations` | Рассчитывает ABC-метрики, целевой запас и `recommended_qty`; сохраняет порядок входных строк. |
@@ -51,6 +53,7 @@ internal/domain                    структуры строк заказа и
 | `CalculateNorthPlan` | `/orderfill.calculation.v1.CalculationService/CalculateNorthPlan` | Объединяет потребности городов по артикулам с остатками Тюмени и строит план перемещения/заказа. |
 | `RecalculateNorthRow` | `/orderfill.calculation.v1.CalculationService/RecalculateNorthRow` | Пересчитывает одну строку, трактуя `edited_qty` как потребность Сургута. |
 | `ValidateManualEdits` | `/orderfill.calculation.v1.CalculationService/ValidateManualEdits` | Возвращает `ok` и список блокирующих `row_id`. |
+<!-- /docs-sync:rpc -->
 
 REST/HTTP бизнес-API отсутствует. `RequestMeta`, где он есть в protobuf, сейчас не участвует в расчетах.
 
@@ -60,16 +63,20 @@ REST/HTTP бизнес-API отсутствует. `RequestMeta`, где он е
 
 ## Конфигурация
 
+
+<!-- docs-sync:env -->
 | Переменная | По умолчанию | Обязательность и смысл |
 | --- | --- | --- |
 | `CALCULATION_GRPC_ADDR` | `:9099` | Адрес gRPC listener. |
 | `CALCULATION_HEALTH_ADDR` | `:8090` | Адрес HTTP listener для `/healthz` и `/readyz`. |
-| `CALCULATION_ENV` | `local` | Загружается, но сейчас не меняет алгоритмы или startup validation. |
-| `GRPC_TLS_MODE` | пусто, то есть `insecure` | `insecure`/`disabled`/`off`, `tls` или `mtls`. |
+| `CALCULATION_ENV` | `APP_ENV`, затем `local` | Вне local `Validate` требует `GRPC_TLS_MODE=mtls`. |
+| `APP_ENV` | `local` | Общий fallback окружения; пустое значение и `local` включают local-режим. |
+| `GRPC_TLS_MODE` | `insecure` | `insecure`/`disabled`/`off`, `tls` или `mtls`. |
 | `GRPC_TLS_CERT_FILE` | пусто | Сертификат сервера; обязателен вместе с ключом для `tls` и `mtls`. |
 | `GRPC_TLS_KEY_FILE` | пусто | Закрытый ключ; хранить как секрет вне репозитория. |
 | `GRPC_TLS_CA_FILE` | пусто | CA bundle; обязателен для `mtls`. |
 | `GRPC_TLS_SERVER_NAME` | пусто | Настройка исходящих клиентов; сейчас сервис сам gRPC-вызовы не выполняет. |
+<!-- /docs-sync:env -->
 
 Health HTTP остается отдельным незашифрованным listener независимо от gRPC TLS.
 

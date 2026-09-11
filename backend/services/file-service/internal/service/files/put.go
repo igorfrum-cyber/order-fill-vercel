@@ -8,7 +8,7 @@ import (
 	"order-fill/backend/services/file-service/internal/domain"
 )
 
-func (s *Service) Put(ctx context.Context, key, name, contentType string, body []byte) (domain.Object, error) {
+func (s *Service) Put(ctx context.Context, key, name, contentType string, body []byte, companyID string) (domain.Object, error) {
 	name = domain.SafeFileName(name)
 	if name == "file" && key == "" {
 		return domain.Object{}, fmt.Errorf("%w: name is required", domain.ErrInvalid)
@@ -30,7 +30,7 @@ func (s *Service) Put(ctx context.Context, key, name, contentType string, body [
 	if err != nil {
 		return domain.Object{}, err
 	}
-	obj := domain.Object{ID: id, Key: key, Name: name, ContentType: contentType, Size: int64(len(body))}
+	obj := domain.Object{ID: id, Key: key, Name: name, ContentType: contentType, Size: int64(len(body)), CompanyID: companyID}
 	if err := s.meta.SaveObject(ctx, obj); err != nil {
 		return domain.Object{}, fmt.Errorf("save object meta: %w", err)
 	}
@@ -49,7 +49,7 @@ func (s *Service) CreateUpload(ctx context.Context, name, contentType string) (d
 	return up, nil
 }
 
-func (s *Service) FinalizeUpload(ctx context.Context, uploadID string, body []byte) (domain.Object, error) {
+func (s *Service) FinalizeUpload(ctx context.Context, uploadID string, body []byte, companyID string) (domain.Object, error) {
 	up, err := s.meta.GetUpload(ctx, uploadID)
 	if err != nil {
 		return domain.Object{}, err
@@ -57,7 +57,7 @@ func (s *Service) FinalizeUpload(ctx context.Context, uploadID string, body []by
 	if up.ObjectID != "" {
 		return s.meta.GetByID(ctx, up.ObjectID)
 	}
-	obj, err := s.Put(ctx, "", up.Name, up.ContentType, body)
+	obj, err := s.Put(ctx, "", up.Name, up.ContentType, body, companyID)
 	if err != nil {
 		return domain.Object{}, err
 	}

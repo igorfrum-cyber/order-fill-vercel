@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { companyIdFromSearch, parseAppPath, pathForScreen, screenAllowed, withCompanyQuery } from "./routes.js";
+import { companyIdFromSearch, parseAppPath, pathForScreen, resolveOrderNavJobId, screenAllowed, withCompanyQuery } from "./routes.js";
 
 test("parseAppPath reads signed-in screens and job ids", () => {
   assert.deepEqual(parseAppPath("/"), { screen: "", jobId: "", unknown: false });
@@ -29,6 +29,12 @@ test("pathForScreen writes the URL for a screen", () => {
   assert.equal(pathForScreen("order"), "/jobs/new");
   assert.equal(pathForScreen("order", "abc"), "/jobs/abc");
   assert.equal(pathForScreen("company"), "/company");
+});
+
+test("resolveOrderNavJobId keeps the open job when Work is clicked again", () => {
+  assert.equal(resolveOrderNavJobId("order", "", { screen: "order", openJobId: "abc" }), "abc");
+  assert.equal(resolveOrderNavJobId("order", "", { screen: "history", openJobId: "abc" }), "");
+  assert.equal(resolveOrderNavJobId("order", "xyz", { screen: "order", openJobId: "abc" }), "xyz");
 });
 
 test("screenAllowed rejects foreign screens", () => {

@@ -8,15 +8,21 @@ import {
   displayName,
   quantityDisplay,
 } from "../../../features/report/rowPresentation.js";
-import { GhostButton, PrimaryButton } from "../../widgets.jsx";
+import { GhostButton, PrimaryButton, useDismissOnEscape } from "../../widgets.jsx";
 
 export function CommentGate({ rows, edits, onEdit, onCancel, onConfirm }) {
   const blocked = commentGateRows(rows, edits);
   const canConfirm = blocked.length === 0;
+  useDismissOnEscape(onCancel);
 
   return (
-    <div className="help-modal-backdrop fixed inset-0 z-20 grid place-items-center bg-slate-900/45 p-5" role="dialog" aria-modal="true">
-      <div className="help-modal-card w-full max-w-2xl rounded-modal border border-[var(--color-line)] bg-[var(--color-surface)] p-6 shadow-xl">
+    <div
+      className="help-modal-backdrop fixed inset-0 z-20 grid place-items-center bg-slate-900/45 p-5"
+      role="dialog"
+      aria-modal="true"
+      onClick={onCancel}
+    >
+      <div className="help-modal-card w-full max-w-2xl rounded-modal border border-[var(--color-line)] bg-[var(--color-surface)] p-6 shadow-xl" onClick={(event) => event.stopPropagation()}>
         <h2 className="text-[18px] font-semibold tracking-tight">{commentGateTitle}</h2>
         <p className="mt-2 text-[14px] leading-relaxed text-[var(--color-ink-soft)]">{commentGateHint}</p>
         <div className="mt-3 flex flex-wrap gap-2">

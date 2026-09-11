@@ -76,10 +76,13 @@ internal/domain/spreadsheet        абстракция книги/листа/с
 
 `document-api` реализует `orderfill.documents.v1.DocumentService`. Контракт: [`../../proto/orderfill/documents/v1/documents.proto`](../../proto/orderfill/documents/v1/documents.proto).
 
+
+<!-- docs-sync:rpc -->
 | RPC | Полный путь | Назначение и результат |
 | --- | --- | --- |
 | `AnalyzeInputs` | `/orderfill.documents.v1.DocumentService/AnalyzeInputs` | Принимает `job_id` и `input_file_ids`; возвращает `brand` и `blank_label`. Ошибка `InvalidArgument` означает отсутствие распознанной исходной книги, неизвестный бренд или неверное число бланков. |
 | `BuildPreview` | `/orderfill.documents.v1.DocumentService/BuildPreview` | Принимает `job_id` и `file_id`, сохраняет preview-объекты и возвращает `snapshot_id`, равный `file_id`. Ошибка разбора книги возвращается как `InvalidArgument`. |
+<!-- /docs-sync:rpc -->
 
 Если API запущен без `FILE_GRPC_ADDR`, он поднимает gRPC-сервер, но оба RPC отвечают `Unavailable: document api is not configured`. При заданном `FILE_GRPC_ADDR` обязательно также задать `BRAND_GRPC_ADDR`: bootstrap иначе завершается ошибкой. Публичного REST API у процесса нет.
 
@@ -95,6 +98,7 @@ JSON из поля `payload` соответствует `internal/app/port.JobMe
   "brand": "",
   "order_month": "",
   "matching_mode": "smart",
+  "company_id": "co-1",
   "inputs": [
     {"role": "source", "name": "sales.xlsx", "storage_key": "uploads/source"},
     {"role": "blank", "name": "blank.xlsx", "storage_key": "uploads/blank"}
@@ -124,25 +128,29 @@ JSON из поля `payload` соответствует `internal/app/port.JobMe
 
 Пустая переменная трактуется как отсутствие значения и заменяется указанным default.
 
+
+<!-- docs-sync:env -->
 | Переменная | По умолчанию | API | Worker | Смысл |
 | --- | --- | --- | --- | --- |
-| `DOCUMENT_GRPC_ADDR` | `:9096` | listener | не используется | Адрес gRPC API. |
-| `DOCUMENT_HEALTH_ADDR` | `:8087` | listener | listener | HTTP `/healthz` и `/readyz`; для одновременного локального запуска процессов задайте разные порты. |
 | `DOCUMENT_ENV` | `APP_ENV`, затем `local` | validation | validation | Окружение сервиса; имеет приоритет над `APP_ENV`. |
 | `APP_ENV` | `local` | fallback | fallback | Общее окружение, если `DOCUMENT_ENV` пуст. |
+| `DOCUMENT_GRPC_ADDR` | `:9096` | listener | не используется | Адрес gRPC API. |
+| `DOCUMENT_HEALTH_ADDR` | `:8087` | listener | listener | HTTP `/healthz` и `/readyz`; для одновременного локального запуска процессов задайте разные порты. |
 | `QUEUE_URL` | пусто | не используется | практически обязательно | Redis URL, например `redis://redis:6379/0`; может содержать пароль, поэтому считается секретом. |
 | `JOB_GRPC_ADDR` | пусто | не используется | обязательно для работы | Адрес `job-service`. |
 | `FILE_GRPC_ADDR` | пусто | обязательно для рабочих RPC | обязательно | Адрес `file-service`. |
 | `CALCULATION_GRPC_ADDR` | пусто | не используется | обязательно | Адрес `calculation-service`. |
 | `MATCHING_GRPC_ADDR` | пусто | не используется | обязательно | Адрес `matching-service`. |
 | `BRAND_GRPC_ADDR` | пусто | обязателен вместе с File | обязательно | Адрес `brand-service`. |
-| `GRPC_TLS_MODE` | пусто (`insecure`) | да | да | Общий режим клиента/сервера: `insecure`/`disabled`/`off`, `tls`, `mtls`. |
+| `WORKER_TOKEN` | пусто | исходящие file RPC | исходящие job/file RPC | Секрет `x-worker-token`. Вне local обязателен, не default, ≥16 байт. |
+| `GRPC_TLS_MODE` | `insecure` | да | да | Общий режим клиента/сервера: `insecure`/`disabled`/`off`, `tls`, `mtls`. |
 | `GRPC_TLS_CERT_FILE` | пусто | при TLS | при mTLS-клиенте | PEM certificate/key pair; обязателен серверу в `tls`/`mtls`, клиенту в `mtls`. |
 | `GRPC_TLS_KEY_FILE` | пусто | при TLS | при mTLS-клиенте | Закрытый PEM-ключ; хранить как секрет вне репозитория. |
 | `GRPC_TLS_CA_FILE` | пусто | опционально в TLS, обязательно в mTLS | опционально в TLS, обязательно в mTLS | Доверенный CA bundle. |
 | `GRPC_TLS_SERVER_NAME` | target host | для клиентов | для клиентов | Явное TLS server name для всех исходящих gRPC-соединений процесса. |
+<!-- /docs-sync:env -->
 
-В окружении, отличном от `local` (без учета регистра), `ValidateAPI` требует `FILE_GRPC_ADDR`, `BRAND_GRPC_ADDR` и `GRPC_TLS_MODE=tls|mtls`. `ValidateWorker` дополнительно требует все внешние адреса и Redis URL с паролем.
+В окружении, отличном от `local` (без учета регистра), `ValidateAPI` требует `FILE_GRPC_ADDR`, `BRAND_GRPC_ADDR`, `WORKER_TOKEN` и `GRPC_TLS_MODE=mtls`. `ValidateWorker` дополнительно требует все внешние адреса и Redis URL с паролем.
 
 ## Docker и Compose
 
@@ -181,8 +189,9 @@ make test
 ## Эксплуатация и текущие ограничения
 
 - `/healthz` и `/readyz` возвращают `200` без проверки Redis или gRPC-зависимостей. У worker health server запускается до входа в consumer loop; положительный ответ не гарантирует доступность очереди.
-- Consumer обрабатывает по одному сообщению, блокирует чтение максимум на 3 секунды и пытается забрать pending-сообщения, простаивающие 5 минут. Имя consumer строится из hostname и PID.
+- Consumer обрабатывает по одному сообщению, блокирует чтение максимум на 3 секунды и пытается забрать pending-сообщения, простаивающие 30 минут. Имя consumer строится из hostname и PID.
 - Некорректный payload подтверждается (`XACK`) после логирования. Ошибка handler оставляет сообщение в PEL для повторной доставки через `XAutoClaim`; автоматического ack после handler error нет. Use case по возможности записывает failure в `job-service`.
+- OOXML-парсер отклоняет части с более чем 250000 открывающих XML-тегов и номера строк выше Excel-лимита 1048576.
 - API пропускает файлы, которые не удалось разобрать, во время `AnalyzeInputs`; если среди оставшихся не найдена выгрузка 1С, возвращается `InvalidArgument`.
 - Preview хранится как `application/gzip`: `meta.json.gz` и чанки по 256 строк. Запись preview выполняется параллельно и может создать часть объектов до возврата ошибки.
 - Сохранение нескольких output-файлов также не является транзакционным; при частичном сетевом сбое возможны уже записанные объекты до отметки job как failed.

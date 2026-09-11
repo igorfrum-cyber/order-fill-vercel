@@ -17,6 +17,7 @@ type Config struct {
 	FileAddr     string
 	IdentityAddr string
 	DatabaseURL  string
+	WorkerToken  string
 }
 
 func Load() Config {
@@ -29,6 +30,7 @@ func Load() Config {
 		FileAddr:     getenv("FILE_GRPC_ADDR", ""),
 		IdentityAddr: getenv("IDENTITY_GRPC_ADDR", ""),
 		DatabaseURL:  getenv("DATABASE_URL", ""),
+		WorkerToken:  getenv("WORKER_TOKEN", ""),
 	}
 }
 
@@ -52,6 +54,9 @@ func (c Config) Validate() error {
 		return err
 	}
 	if err := securecfg.Redis(c.Environment, c.QueueURL); err != nil {
+		return err
+	}
+	if err := grpcutil.CheckWorkerToken(c.Environment, c.WorkerToken); err != nil {
 		return err
 	}
 	return grpcutil.CheckTLSMode(c.Environment)

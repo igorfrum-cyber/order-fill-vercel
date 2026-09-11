@@ -5,6 +5,8 @@ set -euo pipefail
 
 root=$(cd "$(dirname "$0")/.." && pwd)
 cd "$root"
+# shellcheck source=prod-env.sh
+source "$root/scripts/prod-env.sh"
 
 env_file="$root/.env"
 if [[ ! -f "$env_file" ]]; then
@@ -12,18 +14,10 @@ if [[ ! -f "$env_file" ]]; then
   exit 1
 fi
 
-read_env() {
-  local key=$1
-  local line
-  line=$(grep -E "^${key}=" "$env_file" | head -n 1 || true)
-  printf '%s' "${line#*=}" | tr -d '"' | tr -d "'"
-}
-
-host=$(read_env PUBLIC_HOST)
-app_env=$(read_env APP_ENV)
-origins=$(read_env API_ALLOWED_ORIGINS)
-secure=$(read_env SESSION_COOKIE_SECURE)
-rpid=$(read_env WEBAUTHN_RP_ID)
+host=$(read_dotenv "$env_file" PUBLIC_HOST)
+origins=$(read_dotenv "$env_file" API_ALLOWED_ORIGINS)
+secure=$(read_dotenv "$env_file" SESSION_COOKIE_SECURE)
+rpid=$(read_dotenv "$env_file" WEBAUTHN_RP_ID)
 
 if [[ -z "$host" ]]; then
   echo "Задайте PUBLIC_HOST в .env, например orderfill.duckdns.org" >&2
@@ -31,10 +25,6 @@ if [[ -z "$host" ]]; then
 fi
 if [[ "$host" == *://* || "$host" == */* ]]; then
   echo "PUBLIC_HOST — только имя, без https:// и пути: $host" >&2
-  exit 1
-fi
-if [[ "${app_env}" != "production" ]]; then
-  echo "Для HTTPS на сервере поставьте APP_ENV=production" >&2
   exit 1
 fi
 if [[ "${secure}" != "true" && "${secure}" != "1" && "${secure}" != "yes" ]]; then
@@ -50,11 +40,15 @@ if [[ ",${origins}," != *",https://${host},"* && "$origins" != "https://${host}"
   exit 1
 fi
 
-echo "==> поднимаю https для ${host}"
+check_production_env "$env_file"
+bash "$root/scripts/gen-internal-tls.sh"
+
+echo "==> поднимаю production stack + https для ${host}"
 docker compose --env-file "$env_file" \
   -f "$root/deploy/docker-compose.yml" \
+  -f "$root/deploy/docker-compose.prod.yml" \
   -f "$root/deploy/docker-compose.https.yml" \
-  up -d --build frontend gateway-service caddy
+  up -d --build
 
 cat <<EOF
 
@@ -64,4 +58,5 @@ Passkey работает в Safari/Chrome на этом адресе.
 
 На DuckDNS A-запись должна смотреть на белый IP сервера.
 В файрволе откройте 80 и 443. Порт 3200 снаружи больше не нужен.
+Postgres/Redis/MinIO с host не публикуются. Внутренний gRPC — mTLS.
 EOF

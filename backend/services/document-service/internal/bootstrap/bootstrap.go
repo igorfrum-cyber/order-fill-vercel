@@ -48,9 +48,9 @@ func Run(ctx context.Context, cfg config.Config, log *slog.Logger) error {
 		if err != nil {
 			return err
 		}
-		handler = grpcapi.NewServer(filesv1.NewFileServiceClient(fileConn), xlsx.NewCodec(), brands)
+		handler = grpcapi.NewServer(filesv1.NewFileServiceClient(fileConn), xlsx.NewCodec(), brands, cfg.WorkerToken)
 	} else {
-		handler = grpcapi.NewServer(nil, nil, nil)
+		handler = grpcapi.NewServer(nil, nil, nil, "")
 	}
 	return grpcutil.Serve(ctx, cfg.GRPCAddr, cfg.HealthAddr, grpcapi.New(handler), HealthHandler())
 }
@@ -68,7 +68,7 @@ func RunWorker(ctx context.Context, cfg config.Config, log *slog.Logger) error {
 		return err
 	}
 	filesAPI := filesv1.NewFileServiceClient(fileConn)
-	store := grpcjobs.Files{API: filesAPI}
+	store := grpcjobs.Files{API: filesAPI, Token: cfg.WorkerToken}
 	jobsAPI := grpcjobs.Jobs{API: jobsv1.NewJobServiceClient(jobConn), Files: store}
 	reports := grpcjobs.Reports{Files: store}
 	if cfg.CalculationAddr == "" {

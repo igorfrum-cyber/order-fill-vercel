@@ -10,6 +10,7 @@ import {
   loginFailedMessage,
   logoutEverywhereConfirm,
   logoutEverywhereLabel,
+  missingCompanyMessage,
   headerContext,
   profileCompanyLabel,
   profileFields,
@@ -216,6 +217,11 @@ test("helpSections stay plain and cover the required topics", () => {
   const text = helpSections.map((section) => `${section.title} ${section.body}`).join("\n");
   assert.equal(/api|token|cookie|backend|frontend|endpoint/i.test(text), false);
   assert.ok(helpSections.every((section) => section.body.split(/(?<=[.!?])\s+/).length <= 2));
+});
+
+test("missingCompanyMessage tells purchasers to sign in again", () => {
+  assert.equal(missingCompanyMessage(true), "Сначала выберите компанию в ленте выгрузок.");
+  assert.equal(missingCompanyMessage(false), "Не удалось определить компанию. Выйдите и войдите снова.");
 });
 
 test("helpSectionsForRole hides ops and people topics the role cannot use", () => {

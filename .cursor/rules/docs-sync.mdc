@@ -1,0 +1,18 @@
+---
+description: Подхватывать skill order-fill-docs и sync README из кода при правке документации, proto, OpenAPI и config env.
+globs: "**/{README.md,CONTRIBUTING.md,CLAUDE.md,llms.txt,.env.example},docs/**/*.md,backend/services/**/README.md,backend/proto/**/*.proto,backend/services/**/internal/config/*.go,backend/services/gateway-service/api/openapi.yaml,backend/services/gateway-service/internal/transport/httpapi/router.go"
+alwaysApply: false
+---
+
+# Документация Order Fill
+
+Перед правкой документации или контрактов прочитай skill
+`.cursor/skills/order-fill-docs/SKILL.md`.
+
+После изменения env, RPC или HTTP-маршрутов в том же изменении:
+
+```bash
+node scripts/sync-docs.mjs --write
+```
+
+В блоках `<!-- docs-sync:* -->` руками трогай только колонку назначения.

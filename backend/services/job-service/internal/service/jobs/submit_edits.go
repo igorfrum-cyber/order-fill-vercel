@@ -15,11 +15,13 @@ func (s *Service) SubmitEdits(ctx context.Context, actor domain.Actor, jobID str
 	if !job.CanAcceptEdits() {
 		return domain.Job{}, domain.ErrConflict
 	}
-	job.Status = domain.StatusFinalizing
-	job.UpdatedAt = s.now().UTC()
-	if err := s.store.Update(ctx, job); err != nil {
+	from := job.Status
+	now := s.now().UTC()
+	if err := s.store.CompareAndSwapStatus(ctx, job.ID, from, domain.StatusFinalizing, now); err != nil {
 		return domain.Job{}, err
 	}
+	job.Status = domain.StatusFinalizing
+	job.UpdatedAt = now
 	queueEdits := make([]queue.Edit, 0, len(edits))
 	for _, edit := range edits {
 		queueEdits = append(queueEdits, queue.Edit{Key: edit.RowKey, Value: edit.Value, Comment: edit.Comment})
@@ -30,9 +32,11 @@ func (s *Service) SubmitEdits(ctx context.Context, actor domain.Actor, jobID str
 		Type:         string(job.Type),
 		Stage:        "finalize",
 		MatchingMode: string(job.MatchingMode),
+		CompanyID:    job.CompanyID,
 		Inputs:       queueInputs(append(append([]domain.FileRef{}, job.InputFiles...), job.OutputFiles...)),
 		Edits:        queueEdits,
 	}); err != nil {
+		_ = s.store.CompareAndSwapStatus(ctx, job.ID, domain.StatusFinalizing, from, s.now().UTC())
 		return domain.Job{}, err
 	}
 	return job, nil

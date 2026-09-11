@@ -1,6 +1,10 @@
 package config
 
-import "os"
+import (
+	"os"
+
+	"order-fill/backend/pkg/grpcutil"
+)
 
 type Config struct {
 	GRPCAddr    string
@@ -12,8 +16,12 @@ func Load() Config {
 	return Config{
 		GRPCAddr:    getenv("BRAND_GRPC_ADDR", ":9098"),
 		HealthAddr:  getenv("BRAND_HEALTH_ADDR", ":8089"),
-		Environment: getenv("BRAND_ENV", "local"),
+		Environment: getenv("BRAND_ENV", getenv("APP_ENV", "local")),
 	}
+}
+
+func (c Config) Validate() error {
+	return grpcutil.CheckTLSMode(c.Environment)
 }
 
 func getenv(key, fallback string) string {

@@ -1,4 +1,8 @@
-.PHONY: verify lint test docs contracts security up down logs load-order-fill lan-https lan-https-down https https-down
+.PHONY: verify lint test docs docs-sync contracts security up down logs load-order-fill lan-https lan-https-down https https-down hooks
+
+hooks:
+	git config core.hooksPath .githooks
+	chmod +x .githooks/pre-commit .githooks/pre-push
 
 verify:
 	bash scripts/verify.sh
@@ -25,7 +29,11 @@ test:
 			go test ./...); \
 	done
 
+docs-sync:
+	node scripts/sync-docs.mjs --write
+
 docs:
+	node scripts/sync-docs.mjs --write
 	node scripts/verify-docs.mjs
 
 contracts:

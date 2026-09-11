@@ -78,7 +78,7 @@ make up
 
 | Компонент | Адрес | Назначение |
 | --- | --- | --- |
-| Web UI | <http://127.0.0.1:3200> | Пользовательский интерфейс |
+| Web UI | <http://127.0.0.1:3200> | Пользовательский интерфейс (Compose публикует только loopback) |
 | Gateway liveness | <http://127.0.0.1:8080/healthz> | Проверка процесса gateway |
 | Gateway readiness | <http://127.0.0.1:8080/readyz> | Проверка готовности HTTP API |
 | MinIO API | <http://127.0.0.1:9000> | Локальное S3-compatible API |
@@ -86,8 +86,9 @@ make up
 | PostgreSQL | `127.0.0.1:5432` | Локальная БД |
 | Redis | `127.0.0.1:6379` | Очередь и временное состояние |
 
-Для первого входа найдите в логах `identity-service` запись
-`bootstrap admin invite` и откройте выданный путь `/invite/...` в Web UI:
+Для первого входа в `local` найдите в логах `identity-service` запись
+`bootstrap admin invite` и откройте выданный путь `/invite/...` в Web UI.
+Вне local токен в лог не пишется:
 
 ```bash
 docker compose --env-file .env -f deploy/docker-compose.yml logs identity-service
@@ -224,11 +225,12 @@ make -C backend proto-gen
 | `SESSION_COOKIE_DOMAIN` | пусто | Явный cookie domain, если он нужен схеме размещения |
 | `WEBAUTHN_RP_ID` | пусто | WebAuthn relying-party ID; в production обязателен |
 | `WEBAUTHN_RP_DISPLAY_NAME` | `Order Fill` | Отображаемое имя relying party |
-| `GRPC_TLS_MODE` | `insecure` | `insecure`, `tls` или `mtls` для внутреннего gRPC; вне local допустимы только `tls`/`mtls` |
+| `GRPC_TLS_MODE` | `insecure` | `insecure`, `tls` или `mtls` для внутреннего gRPC; вне local обязателен `mtls` |
 | `GRPC_TLS_CERT_FILE` | пусто | Сертификат клиента/сервера для TLS/mTLS |
 | `GRPC_TLS_KEY_FILE` | пусто | Закрытый ключ сертификата |
 | `GRPC_TLS_CA_FILE` | пусто | CA bundle для проверки peer |
 | `GRPC_TLS_SERVER_NAME` | пусто | Необязательное переопределение имени при проверке TLS-сертификата |
+| `WORKER_TOKEN` | `local-dev-worker-token` | Общий секрет worker RPC (`job-service`/`file-service`/`document-*`); вне local обязателен не-default ≥16 байт |
 
 Адреса, service-specific env aliases и точные правила валидации перечислены в
 README соответствующих микросервисов. Значения секретов нельзя коммитить:
@@ -243,21 +245,27 @@ APP_ENV=production
 API_ALLOWED_ORIGINS=https://orderfill.example.com
 SESSION_COOKIE_SECURE=true
 WEBAUTHN_RP_ID=orderfill.example.com
-FILE_S3_ENDPOINT=s3.example.com
+FILE_S3_ENDPOINT=minio:9000
 FILE_S3_USE_SSL=true
 S3_ACCESS_KEY=<production-access-key>
 S3_SECRET_KEY=<production-secret-key>
 TWOFA_MASTER_KEY=<отдельный-секрет-длиной-не-менее-32-байт>
 DATABASE_URL=postgres://order_fill:<production-password>@postgres:5432/order_fill?sslmode=require
+POSTGRES_PASSWORD=<production-password>
 QUEUE_URL=redis://:<production-password>@redis:6379/0
+REDIS_PASSWORD=<production-password>
 GRPC_TLS_MODE=mtls
-GRPC_TLS_CERT_FILE=/run/secrets/order-fill-grpc.crt
-GRPC_TLS_KEY_FILE=/run/secrets/order-fill-grpc.key
-GRPC_TLS_CA_FILE=/run/secrets/order-fill-grpc-ca.crt
+WORKER_TOKEN=<production-worker-token>
 ```
 
 Также должны быть доступны production PostgreSQL, Redis и S3-compatible
-storage. Значения в примере — форма настройки, а не готовые credentials.
+storage. Для Compose на одной машине `make https` генерирует внутренний CA и
+**отдельный сертификат на каждый сервис** (`scripts/gen-internal-tls.sh`) и
+подключает [`deploy/docker-compose.prod.yml`](./deploy/docker-compose.prod.yml):
+mTLS на gRPC, SSL у Postgres/MinIO, без публикации 5432/6379/9000 на host.
+В контейнер попадает только его ключ; `ca.key` остаётся на хосте. Пути
+`GRPC_TLS_*_FILE` overlay задаёт сам. Значения в примере — форма настройки, а
+не готовые credentials.
 
 ## Разработка
 
@@ -296,13 +304,18 @@ make -C backend check
 | `make logs` | Показывает логи всех контейнеров |
 | `make down` | Останавливает стенд, не удаляя named volumes |
 | `make test` | Запускает frontend, load-runner и Go-тесты |
+| `npm run test:ui --prefix frontend` | Unit + component + Playwright; локально Chromium на экране |
+| `npm run test:component --prefix frontend` | Vitest + Testing Library: поведение компонентов |
+| `npm run test:e2e --prefix frontend` | Playwright: UI и действия пользователя в браузере |
 | `make lint` | Проверяет toolchain, frontend lint и Go lint/security/tidy |
 | `make docs` | Проверяет обязательные README и локальные Markdown-ссылки |
+| `make docs-sync` | Обновляет таблицы env/RPC/HTTP в README сервисов из config.go, proto и router |
 | `make contracts` | Сверяет HTTP routes с OpenAPI и запускает Buf lint |
 | `make verify` | Выполняет детерминированный локальный pre-commit gate |
+| `make hooks` | Включает git hooks: commit на `artemch` и любой push требуют `make verify` |
 | `make security` | Запускает `govulncheck` для всех активных Go-модулей |
 | `make lan-https` | Поднимает локальный HTTPS для тестирования passkey на телефоне |
-| `make https` | Поднимает публичный HTTPS overlay через Caddy |
+| `make https` | Поднимает публичный HTTPS overlay через Caddy с HSTS |
 | `make load-order-fill ARGS='…'` | Запускает нагрузочный сценарий через публичный API |
 
 ## Тестирование и quality gate
@@ -310,16 +323,21 @@ make -C backend check
 Перед коммитом:
 
 ```bash
+make hooks
 npm ci --prefix frontend
 make verify
 ```
+
+`make hooks` включает репозиторные git hooks. На ветке `artemch` commit
+блокируется, пока `make verify` не проходит. Перед **любым** push тот же полный
+gate запускается ещё раз. `--no-verify` не используйте: это тот же обход, что и в CI.
 
 `make verify` выполняет:
 
 1. сверку версий Node.js и Go между manifests, Dockerfiles и CI;
 2. проверку документации, ссылок, соответствия OpenAPI runtime-маршрутам и
    protobuf lint;
-3. frontend lint, unit tests и production build;
+3. frontend lint, unit tests, component tests и production build;
 4. для каждого Go-модуля — `gofmt`, `go vet`, `golangci-lint`, `gosec`,
    проверку `go mod tidy`, сборку и тесты;
 5. валидацию backend и корневой Docker Compose-конфигурации.
@@ -346,6 +364,36 @@ make lan-https
 
 Скрипт может установить `mkcert` через Homebrew, если утилита отсутствует.
 
+### SSH к ноутбуку из интернета
+
+Порт 22 наружу не открывайте. На Mac и на Ubuntu-сервере поставьте
+[Tailscale](https://tailscale.com/download):
+
+```bash
+curl -fsSL https://tailscale.com/install.sh | sh
+sudo tailscale up
+tailscale ip -4
+```
+
+Дальше с любого места: `ssh artemch2003@<tailscale-ip>`. Админка роутера для
+этого не нужна.
+
+### Автодеплой `dev`
+
+GitHub Actions уже гоняет полный verify на каждый push и pull request. После
+успешного **push в `dev`** job `Deploy self-hosted` на ноуте делает
+`git pull --ff-only` и `docker compose up -d --build`, не трогая `.env` и
+volumes.
+
+Один раз на ноуте:
+
+1. [Settings → Actions → Runners](https://github.com/igorfrum-cyber/order-fill-vercel/settings/actions/runners) → New self-hosted runner, label `order-fill`.
+2. `RUNNER_TOKEN=... bash scripts/install-github-runner.sh`
+3. `cd ~/actions-runner && sudo ./svc.sh install && sudo ./svc.sh start`
+
+Рабочий поток: коммиты в `artemch` → PR/merge в `dev` → CI зелёный → стек
+на ноуте пересобирается сам. На сервер заходить не нужно.
+
 ### Публичный HTTPS
 
 Заполните production-блок `.env`, направьте DNS на сервер, откройте порты 80 и
@@ -355,8 +403,11 @@ make lan-https
 make https
 ```
 
-Скрипт проверяет `PUBLIC_HOST`, `APP_ENV`, HTTPS origin, secure cookie и
-совпадение `WEBAUTHN_RP_ID` с public host до запуска Caddy.
+Скрипт проверяет `PUBLIC_HOST`, `APP_ENV=production`, HTTPS origin, secure
+cookie, `WEBAUTHN_RP_ID`, `WORKER_TOKEN`, `TWOFA_MASTER_KEY`, `GRPC_TLS_MODE=mtls`,
+пароли Postgres/Redis и S3, генерирует внутренние сертификаты при отсутствии и
+пересобирает **весь** стек с [`deploy/docker-compose.prod.yml`](./deploy/docker-compose.prod.yml)
+и Caddy.
 
 ### Vercel
 

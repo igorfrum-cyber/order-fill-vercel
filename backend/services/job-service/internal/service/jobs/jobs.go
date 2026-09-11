@@ -15,6 +15,7 @@ type Store interface {
 	Get(ctx context.Context, id string) (domain.Job, error)
 	List(ctx context.Context) ([]domain.Job, error)
 	Update(ctx context.Context, job domain.Job) error
+	CompareAndSwapStatus(ctx context.Context, id string, from, to domain.Status, updatedAt time.Time) error
 	SaveReport(ctx context.Context, jobID string, report domain.Report) error
 	GetReport(ctx context.Context, jobID string) (domain.Report, error)
 }

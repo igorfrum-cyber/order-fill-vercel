@@ -77,7 +77,7 @@ export function CompanyScreen({ me, onSaved }) {
         }}
       >
         <div data-tour="company-logo">
-        <Field label="Логотип">
+        <Field label="Логотип" as="div">
           <div className="flex items-center gap-3">
             {logoPreview || savedLogoSrc ? (
               <img src={logoPreview || savedLogoSrc} alt="" className="h-16 w-16 rounded-xl object-contain bg-[var(--color-ground)]" />

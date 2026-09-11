@@ -1,0 +1,15 @@
+#!/usr/bin/env bash
+# Block commits on artemch unless the local verify gate passes.
+set -euo pipefail
+
+branch=$(git symbolic-ref --short HEAD 2>/dev/null || true)
+if [[ "$branch" != "artemch" ]]; then
+  exit 0
+fi
+
+echo "==> pre-commit: sync docs from code"
+node scripts/sync-docs.mjs --write
+git add backend/services/*/README.md
+
+echo "==> pre-commit: make verify (branch artemch)"
+make verify

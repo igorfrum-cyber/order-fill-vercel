@@ -51,6 +51,7 @@ type Auth struct {
 	twoFA   twofa.Client
 	passkey passkey.Client
 	now     func() time.Time
+	guard   loginGuard
 }
 
 func New(store Store, totp twofa.Client, keys passkey.Client, now func() time.Time) *Auth {

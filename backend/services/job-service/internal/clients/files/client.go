@@ -10,18 +10,20 @@ import (
 )
 
 type Client struct {
-	api filesv1.FileServiceClient
+	api   filesv1.FileServiceClient
+	token string
 }
 
-func Dial(ctx context.Context, addr string) (*Client, error) {
+func Dial(ctx context.Context, addr, token string) (*Client, error) {
 	conn, err := grpcutil.Dial(ctx, addr)
 	if err != nil {
 		return nil, err
 	}
-	return &Client{api: filesv1.NewFileServiceClient(conn)}, nil
+	return &Client{api: filesv1.NewFileServiceClient(conn), token: token}, nil
 }
 
 func (c *Client) Describe(ctx context.Context, ids []string) ([]domain.FileRef, error) {
+	ctx = grpcutil.WithWorkerToken(ctx, c.token)
 	out := make([]domain.FileRef, 0, len(ids))
 	for _, id := range ids {
 		resp, err := c.api.GetObject(ctx, &filesv1.GetObjectRequest{Id: id})

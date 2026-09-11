@@ -37,7 +37,10 @@ func TestValidateRejectsProductionMissingAuthDependencies(t *testing.T) {
 }
 
 func TestValidateAcceptsProductionConfig(t *testing.T) {
-	t.Setenv("GRPC_TLS_MODE", "tls")
+	t.Setenv("GRPC_TLS_MODE", "mtls")
+	t.Setenv("GRPC_TLS_CERT_FILE", "cert.pem")
+	t.Setenv("GRPC_TLS_KEY_FILE", "key.pem")
+	t.Setenv("GRPC_TLS_CA_FILE", "ca.pem")
 	cfg := Config{
 		Environment: "production", DatabaseURL: "postgres://user:secret@db/order_fill?sslmode=require", TwoFAAddr: "twofa:9092", PasskeyAddr: "passkey:9093",
 	}

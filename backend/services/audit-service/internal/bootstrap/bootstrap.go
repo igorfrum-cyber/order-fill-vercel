@@ -7,6 +7,7 @@ import (
 
 	"order-fill/backend/pkg/grpcutil"
 	"order-fill/backend/pkg/healthz"
+	"order-fill/backend/services/audit-service/internal/clients/identity"
 	"order-fill/backend/services/audit-service/internal/config"
 	"order-fill/backend/services/audit-service/internal/migrate"
 	"order-fill/backend/services/audit-service/internal/service/audit"
@@ -46,5 +47,13 @@ func Run(ctx context.Context, cfg config.Config, log *slog.Logger) error {
 		log.Info("audit-service using postgres")
 	}
 	svc := audit.New(store, nil)
-	return grpcutil.Serve(ctx, cfg.GRPCAddr, cfg.HealthAddr, grpcapi.New(grpcapi.NewServer(svc)), healthHandler(readyCheck))
+	var actors grpcapi.ActorLookup
+	if cfg.IdentityAddr != "" {
+		client, err := identity.Dial(ctx, cfg.IdentityAddr)
+		if err != nil {
+			return err
+		}
+		actors = client
+	}
+	return grpcutil.Serve(ctx, cfg.GRPCAddr, cfg.HealthAddr, grpcapi.New(grpcapi.NewServer(svc, actors)), healthHandler(readyCheck))
 }

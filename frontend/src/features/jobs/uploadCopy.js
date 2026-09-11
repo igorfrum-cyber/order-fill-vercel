@@ -1,5 +1,15 @@
 export const excelAcceptHint = "Подходят Excel-файлы.";
 
+export function fileMatchesAccept(file, accept) {
+  if (!accept) return true;
+  const name = String(file?.name || "").toLowerCase();
+  return String(accept)
+    .split(",")
+    .map((part) => part.trim().toLowerCase())
+    .filter(Boolean)
+    .some((ext) => name.endsWith(ext));
+}
+
 export const northDuplicateFileMessage = "Все выбранные бланки уже добавлены.";
 
 export const northMissingCityBlankMessage = "Добавьте хотя бы один бланк города.";

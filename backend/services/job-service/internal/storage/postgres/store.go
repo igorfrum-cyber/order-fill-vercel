@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"time"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
@@ -84,6 +85,20 @@ func (s *Store) Update(ctx context.Context, job domain.Job) error {
 	}
 	if tag.RowsAffected() == 0 {
 		return domain.ErrNotFound
+	}
+	return nil
+}
+
+func (s *Store) CompareAndSwapStatus(ctx context.Context, id string, from, to domain.Status, updatedAt time.Time) error {
+	tag, err := s.pool.Exec(ctx, `UPDATE jobs SET status=$3, updated_at=$4 WHERE id=$1 AND status=$2`, id, string(from), string(to), updatedAt.UTC())
+	if err != nil {
+		return err
+	}
+	if tag.RowsAffected() == 0 {
+		if _, err := s.Get(ctx, id); errors.Is(err, domain.ErrNotFound) {
+			return domain.ErrNotFound
+		}
+		return domain.ErrConflict
 	}
 	return nil
 }

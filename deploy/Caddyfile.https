@@ -1,4 +1,5 @@
 {$PUBLIC_HOST} {
+	header Strict-Transport-Security "max-age=31536000; includeSubDomains"
 	reverse_proxy frontend:80 {
 		header_up Host {host}
 		header_up X-Forwarded-Proto https

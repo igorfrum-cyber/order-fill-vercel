@@ -3,6 +3,7 @@ import test from "node:test";
 
 import {
   excelAcceptHint,
+  fileMatchesAccept,
   northDuplicateFileMessage,
   northMissingCityBlankMessage,
   northSelectedCount,
@@ -28,6 +29,13 @@ test("northUploadSteps list city blanks before the optional Tyumen table", () =>
 
 test("excelAcceptHint names the accepted format in plain language", () => {
   assert.equal(excelAcceptHint, "Подходят Excel-файлы.");
+});
+
+test("fileMatchesAccept uses the same extensions as the file input", () => {
+  const accept = ".xlsx,.xlsm,.xls";
+  assert.equal(fileMatchesAccept({ name: "order.xlsx" }, accept), true);
+  assert.equal(fileMatchesAccept({ name: "order.XLSX" }, accept), true);
+  assert.equal(fileMatchesAccept({ name: "notes.pdf" }, accept), false);
 });
 
 test("selectedFileCountLabel reports how many files are attached", () => {

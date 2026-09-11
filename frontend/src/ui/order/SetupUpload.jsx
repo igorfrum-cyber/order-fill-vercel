@@ -1,6 +1,6 @@
 import { useRef, useState } from "react";
 import { blankSlotsForSource, looksLikeChristinaSource } from "../../features/brands/brandPresentation.js";
-import { excelAcceptHint, orderSelectedCount, orderUploadSteps, selectedFileCountLabel } from "../../features/jobs/uploadCopy.js";
+import { excelAcceptHint, fileMatchesAccept, orderSelectedCount, orderUploadSteps, selectedFileCountLabel } from "../../features/jobs/uploadCopy.js";
 import { IconCheck, IconChevron, IconFile, IconUpload } from "../icons.jsx";
 import { PrimaryButton, ProgressBar, StageHeading } from "../widgets.jsx";
 
@@ -99,7 +99,7 @@ function Dropzone({ title, hint, file, accept, onPick, tour }) {
         event.preventDefault();
         setDrag(false);
         const next = event.dataTransfer.files[0];
-        if (next) onPick(next);
+        if (next && fileMatchesAccept(next, accept)) onPick(next);
       }}
       className={`relative rounded-xl border-2 border-dashed p-6 transition ${
         file

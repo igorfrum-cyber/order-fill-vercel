@@ -28,6 +28,9 @@ const (
 // MatchingServiceClient is the client API for MatchingService service.
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
+//
+// MatchingService decides product identity from structured items.
+// Callers must parse workbooks locally; this service never receives Excel rows.
 type MatchingServiceClient interface {
 	MatchRows(ctx context.Context, in *MatchRowsRequest, opts ...grpc.CallOption) (*MatchRowsResponse, error)
 	MergeChestnyZnak(ctx context.Context, in *MergeChestnyZnakRequest, opts ...grpc.CallOption) (*MergeChestnyZnakResponse, error)
@@ -86,6 +89,9 @@ func (c *matchingServiceClient) NormalizeName(ctx context.Context, in *Normalize
 // MatchingServiceServer is the server API for MatchingService service.
 // All implementations must embed UnimplementedMatchingServiceServer
 // for forward compatibility.
+//
+// MatchingService decides product identity from structured items.
+// Callers must parse workbooks locally; this service never receives Excel rows.
 type MatchingServiceServer interface {
 	MatchRows(context.Context, *MatchRowsRequest) (*MatchRowsResponse, error)
 	MergeChestnyZnak(context.Context, *MergeChestnyZnakRequest) (*MergeChestnyZnakResponse, error)

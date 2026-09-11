@@ -10,7 +10,7 @@ import (
 	"order-fill/backend/services/file-service/internal/domain"
 )
 
-func (s *Service) Archive(ctx context.Context, objectIDs []string, name string) (domain.Object, error) {
+func (s *Service) Archive(ctx context.Context, objectIDs []string, name, companyID string) (domain.Object, error) {
 	if len(objectIDs) == 0 {
 		return domain.Object{}, fmt.Errorf("%w: archive needs files", domain.ErrInvalid)
 	}
@@ -42,5 +42,5 @@ func (s *Service) Archive(ctx context.Context, objectIDs []string, name string) 
 	if name == "file" {
 		name = "archive.zip"
 	}
-	return s.Put(ctx, "", name, "application/zip", buf.Bytes())
+	return s.Put(ctx, "", name, "application/zip", buf.Bytes(), companyID)
 }

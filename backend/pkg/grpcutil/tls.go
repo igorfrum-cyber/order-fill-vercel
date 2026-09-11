@@ -83,8 +83,14 @@ func CheckTLSMode(environment string) error {
 	if err != nil {
 		return err
 	}
-	if mode == "insecure" {
-		return fmt.Errorf("%s must be tls or mtls outside local environment", envGRPCTLSMode)
+	if mode != "mtls" {
+		return fmt.Errorf("%s must be mtls outside local environment", envGRPCTLSMode)
+	}
+	if strings.TrimSpace(os.Getenv(envGRPCTLSCertFile)) == "" || strings.TrimSpace(os.Getenv(envGRPCTLSKeyFile)) == "" {
+		return fmt.Errorf("%s and %s are required when %s is mtls", envGRPCTLSCertFile, envGRPCTLSKeyFile, envGRPCTLSMode)
+	}
+	if strings.TrimSpace(os.Getenv(envGRPCTLSCAFile)) == "" {
+		return fmt.Errorf("%s is required when %s is mtls", envGRPCTLSCAFile, envGRPCTLSMode)
 	}
 	return nil
 }

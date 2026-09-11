@@ -5,7 +5,6 @@ import {
   inviteRoleHint,
   inviteRoleOptions,
   needsUsersCompanyPicker,
-  pickDefaultCompanyId,
   roleLabel,
   usersCompanyPrompt,
 } from "../../features/auth/accessPresentation.js";
@@ -24,6 +23,7 @@ export function UsersScreen({ companyId, actorRole, actorId, onCompany }) {
   const [copied, setCopied] = useState(false);
   const [error, setError] = useState("");
   const [resetTarget, setResetTarget] = useState(null);
+  const [disableTarget, setDisableTarget] = useState(null);
   const picker = needsUsersCompanyPicker(actorRole);
   const activeCompanies = companies.filter((company) => !company.disabled_at);
   const prompt = usersCompanyPrompt(companyId, companies);
@@ -42,12 +42,6 @@ export function UsersScreen({ companyId, actorRole, actorId, onCompany }) {
       .catch(() => setCompanies([]));
     return undefined;
   }, [picker]);
-
-  useEffect(() => {
-    if (!picker || companyId || !companies.length) return;
-    const next = pickDefaultCompanyId("", companies);
-    if (next) onCompany?.(next);
-  }, [picker, companyId, companies, onCompany]);
 
   async function showInvite(urlPath) {
     const url = `${window.location.origin}${urlPath}`;
@@ -151,15 +145,7 @@ export function UsersScreen({ companyId, actorRole, actorId, onCompany }) {
                               setError(userFacingError(err, "Не удалось скопировать ссылку."));
                             }
                           }}
-                          onDisable={async () => {
-                            setError("");
-                            try {
-                              await disableUser(user.id);
-                              reload();
-                            } catch (err) {
-                              setError(userFacingError(err, "Не удалось выключить пользователя."));
-                            }
-                          }}
+                          onDisable={() => setDisableTarget(user)}
                         />
                       </li>
                     ))}
@@ -194,6 +180,27 @@ export function UsersScreen({ companyId, actorRole, actorId, onCompany }) {
               Текущий пароль перестанет работать. Нужна новая ссылка-приглашение — скопируйте её и передайте человеку.
             </Modal>
           ) : null}
+          {disableTarget ? (
+            <Modal
+              title={`Выключить ${disableTarget.login}?`}
+              cancelLabel="Отмена"
+              confirmLabel="Выключить"
+              onCancel={() => setDisableTarget(null)}
+              onConfirm={async () => {
+                setError("");
+                try {
+                  await disableUser(disableTarget.id);
+                  setDisableTarget(null);
+                  reload();
+                } catch (err) {
+                  setError(userFacingError(err, "Не удалось выключить пользователя."));
+                  setDisableTarget(null);
+                }
+              }}
+            >
+              Человек больше не сможет войти. Включить обратно через этот экран нельзя.
+            </Modal>
+          ) : null}
         </>
       )}
     </section>
@@ -226,7 +233,7 @@ function UserCard({ user, canManage, isSelf, onReset, onDisable }) {
       {canManage && !isSelf ? (
         <div className="mt-3 flex flex-wrap gap-2">
           <GhostButton onClick={onReset}>{user.last_seen_at ? "Сброс доступа" : "Скопировать ссылку снова"}</GhostButton>
-          <GhostButton onClick={onDisable}>Выключить</GhostButton>
+          {user.disabled_at ? null : <GhostButton onClick={onDisable}>Выключить</GhostButton>}
         </div>
       ) : null}
     </article>

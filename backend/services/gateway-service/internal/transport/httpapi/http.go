@@ -301,6 +301,8 @@ func setSecurityHeaders(w http.ResponseWriter) {
 	header.Set("Referrer-Policy", "no-referrer")
 	header.Set("Permissions-Policy", "camera=(), microphone=(), geolocation=()")
 	header.Set("Cache-Control", "private, no-store")
+	header.Set("Cross-Origin-Opener-Policy", "same-origin")
+	header.Set("Cross-Origin-Resource-Policy", "same-origin")
 }
 
 func publicErrorMessage(code, message string) string {

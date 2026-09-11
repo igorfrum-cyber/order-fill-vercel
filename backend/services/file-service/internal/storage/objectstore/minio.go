@@ -2,10 +2,13 @@ package objectstore
 
 import (
 	"context"
+	"crypto/tls"
+	"crypto/x509"
 	"fmt"
 	"io"
 	"net/http"
 	"net/url"
+	"os"
 	"strings"
 
 	"github.com/minio/minio-go/v7"
@@ -27,10 +30,20 @@ func NewMinIO(endpoint, accessKey, secretKey, bucket string, useSSL bool) (*MinI
 	if strings.TrimSpace(bucket) == "" {
 		return nil, fmt.Errorf("object store bucket is required")
 	}
-	client, err := minio.New(host, &minio.Options{
+	opts := &minio.Options{
 		Creds:  credentials.NewStaticV4(accessKey, secretKey, ""),
 		Secure: secure,
-	})
+	}
+	if secure {
+		transport, err := s3Transport()
+		if err != nil {
+			return nil, err
+		}
+		if transport != nil {
+			opts.Transport = transport
+		}
+	}
+	client, err := minio.New(host, opts)
 	if err != nil {
 		return nil, fmt.Errorf("create object store client: %w", err)
 	}
@@ -81,6 +94,32 @@ func wrapGetError(key string, err error) error {
 		return fmt.Errorf("%w: object %s", domain.ErrNotFound, key)
 	}
 	return fmt.Errorf("get object %s: %w", key, err)
+}
+
+func s3Transport() (*http.Transport, error) {
+	caFile := strings.TrimSpace(os.Getenv("GRPC_TLS_CA_FILE"))
+	if caFile == "" {
+		return nil, nil
+	}
+	// #nosec G304 -- TLS material paths are operator-owned startup configuration, not request input.
+	raw, err := os.ReadFile(caFile)
+	if err != nil {
+		return nil, fmt.Errorf("read object store CA: %w", err)
+	}
+	pool, err := x509.SystemCertPool()
+	if err != nil || pool == nil {
+		pool = x509.NewCertPool()
+	}
+	if !pool.AppendCertsFromPEM(raw) {
+		return nil, fmt.Errorf("object store CA does not contain PEM certificates")
+	}
+	base, ok := http.DefaultTransport.(*http.Transport)
+	if !ok {
+		return nil, fmt.Errorf("http default transport is not *http.Transport")
+	}
+	transport := base.Clone()
+	transport.TLSClientConfig = &tls.Config{MinVersion: tls.VersionTLS12, RootCAs: pool}
+	return transport, nil
 }
 
 func parseEndpoint(endpoint string, useSSL bool) (string, bool, error) {
