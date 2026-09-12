@@ -32,6 +32,7 @@ test("order upload, budget recalculation and both workbook previews stay editabl
     if (path === "/api/v1/jobs/order-fill") {
       const body = (await request.postDataBuffer()).toString("utf8");
       expect(body).toContain('name="source_file"; filename="Продажи.xlsx"');
+      expect(body).toContain('name="warehouse_file"; filename="Склад.xlsx"');
       expect(body).toContain('name="blank_files"; filename="Бланк.xlsx"');
       await route.fulfill({ status: 202, json: { id: "job-1" } });
       return;
@@ -103,6 +104,10 @@ test("order upload, budget recalculation and both workbook previews stay editabl
   await page.goto("/");
   await expect(page.getByRole("heading", { name: "Загрузите файлы" })).toBeVisible();
   await page.locator('[data-tour="source"] input[type="file"]').setInputFiles({ name: "Продажи.xlsx", mimeType: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", buffer: Buffer.from("source") });
+  await page.getByRole("checkbox", { name: "Учитывать второй склад Тюмени" }).check();
+  await page.getByLabel("Таблица склада доставки").setInputFiles({ name: "Продажи.xlsx", mimeType: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", buffer: Buffer.from("duplicate") });
+  await expect(page.getByRole("alert")).toContainText("Один файл нельзя использовать");
+  await page.getByLabel("Таблица склада доставки").setInputFiles({ name: "Склад.xlsx", mimeType: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", buffer: Buffer.from("warehouse") });
   await page.locator('[data-tour="blank"] input[type="file"]').setInputFiles({ name: "Бланк.xlsx", mimeType: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", buffer: Buffer.from("blank") });
   await page.getByRole("button", { name: "Обработать" }).click();
 
@@ -110,15 +115,26 @@ test("order upload, budget recalculation and both workbook previews stay editabl
   await expect(page.getByText("Заказ:")).toContainText("300,00 ₽");
   await page.getByRole("button", { name: "Заказ до суммы" }).click();
   const dialog = page.getByRole("dialog", { name: "Заказ до суммы" });
-  await dialog.getByLabel("Целевая сумма, ₽").fill("600");
+  await dialog.getByRole("radio", { name: "Вычесть скидку" }).check();
+  await dialog.getByLabel("Скидка, %").fill("100");
+  await expect(dialog.getByLabel("Скидка, %")).toHaveValue("30");
+  await expect(dialog.getByRole("alert")).toContainText("от 0 до 99,99");
+  await dialog.getByLabel("Скидка, %").fill("10");
+  await dialog.getByLabel("Целевая сумма, ₽").fill("-1");
+  await expect(dialog.getByLabel("Целевая сумма, ₽")).toHaveValue("300");
+  await dialog.getByLabel("Целевая сумма, ₽").fill("540");
+  await page.setViewportSize({ width: 375, height: 720 });
+  await expect(dialog).toBeVisible();
+  expect(await dialog.evaluate((element) => element.scrollWidth <= element.clientWidth)).toBe(true);
   await dialog.getByRole("button", { name: "Рассчитать" }).click();
-  await expect(dialog.getByLabel("Предпросмотр бюджета")).toContainText("300,00 ₽ → 600,00 ₽");
+  await expect(dialog.getByLabel("Предпросмотр бюджета")).toContainText("270,00 ₽ → 540,00 ₽");
   await expect(dialog.getByText("Крем · B")).toBeVisible();
   await dialog.getByRole("button", { name: "Применить" }).click();
   await expect(page.getByRole("textbox", { name: "Количество", exact: true })).toHaveValue("6");
   await expect(page.getByPlaceholder("Почему изменили количество")).toHaveValue(/Добавилось 3 шт/);
   await expect(page.getByRole("button", { name: "Отменить перерасчёт" })).toBeVisible();
 
+  await page.setViewportSize({ width: 1280, height: 900 });
   await page.getByRole("button", { name: "Проверить файлы" }).click();
   await page.getByRole("dialog", { name: "Проверьте спорные строки" }).getByRole("button", { name: "Продолжить проверку" }).click();
   await expect(page.getByRole("button", { name: "Таблица 1С" })).toBeVisible();

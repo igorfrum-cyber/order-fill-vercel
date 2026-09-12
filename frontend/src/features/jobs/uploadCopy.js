@@ -1,4 +1,4 @@
-export const excelAcceptHint = "Подходят Excel-файлы.";
+export const excelAcceptHint = "Подходят .xlsx и .xlsm.";
 
 export function fileMatchesAccept(file, accept) {
   if (!accept) return true;
@@ -36,8 +36,13 @@ export function selectedFileCountLabel(count) {
   return `Выбрано файлов: ${n}.`;
 }
 
-export function orderSelectedCount(sourceFile, blankFiles = {}) {
-  return Number(Boolean(sourceFile)) + Object.values(blankFiles).filter(Boolean).length;
+export function orderSelectedCount(sourceFile, blankFiles = {}, warehouseFile = null) {
+  return Number(Boolean(sourceFile)) + Object.values(blankFiles).filter(Boolean).length + Number(Boolean(warehouseFile));
+}
+
+export function sameSelectedFile(left, right) {
+  const leftName = String(left?.name || "").trim().toLowerCase();
+  return Boolean(leftName && leftName === String(right?.name || "").trim().toLowerCase());
 }
 
 export function northSelectedCount({ files = [], homeFiles = [], proffFiles = [], tyumenFile, warehouseFile } = {}) {

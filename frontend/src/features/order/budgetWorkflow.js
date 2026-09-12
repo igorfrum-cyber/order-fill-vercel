@@ -8,7 +8,8 @@ function number(value) {
   return Number.isFinite(parsed) ? parsed : 0;
 }
 
-export function budgetRowsFromReport(rows, edits, { brand, deliveryWeeks } = {}) {
+export function budgetRowsFromReport(rows, edits, { brand, deliveryWeeks, discount = 0 } = {}) {
+  const factor = 1 - number(discount) / 100;
   return rows.filter((row) => row.editable !== false && row.hasBudgetData).map((row) => {
     const key = rowKey(row);
     const edit = edits.get(key) || {};
@@ -20,7 +21,7 @@ export function budgetRowsFromReport(rows, edits, { brand, deliveryWeeks } = {})
       name: row.blankName || row.sourceName || row.blankArticle || row.sourceArticle,
       category: row.budgetCategory,
       quantity,
-      price: number(row.budgetPrice),
+      price: Math.round(number(row.budgetPrice) * factor * 100) / 100,
       demand: number(row.budgetDemand),
       delivery: number(deliveryWeeks) * 0.25,
       stock: number(row.stock),

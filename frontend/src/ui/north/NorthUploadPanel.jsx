@@ -24,7 +24,7 @@ function MultiDropzone({ title, hint, files, onAdd, onRemove, tour }) {
   const inputRef = useRef(null);
   return (
     <div data-tour={tour} className="rounded-xl border-2 border-dashed border-[var(--color-line)] bg-[var(--color-surface)] p-5">
-      <input ref={inputRef} type="file" accept=".xlsx,.xlsm,.xls" multiple className="hidden" onChange={(event) => {
+      <input ref={inputRef} type="file" accept=".xlsx,.xlsm" multiple className="hidden" onChange={(event) => {
         onAdd(Array.from(event.target.files || []));
         event.target.value = "";
       }} />
@@ -58,7 +58,7 @@ function SingleDropzone({ title, hint, file, onPick, tour }) {
   const inputRef = useRef(null);
   return (
     <div data-tour={tour} className={`rounded-xl border-2 border-dashed p-5 ${file ? "border-[var(--color-ok)] bg-[var(--color-ok-soft)]" : "border-[var(--color-line)] bg-[var(--color-surface)]"}`}>
-      <input ref={inputRef} type="file" accept=".xlsx,.xlsm,.xls" className="hidden" onChange={(event) => onPick(event.target.files?.[0] || null)} />
+      <input ref={inputRef} type="file" accept=".xlsx,.xlsm" className="hidden" onChange={(event) => onPick(event.target.files?.[0] || null)} />
       <div className="mb-2 flex items-center justify-between">
         <span className="text-[13px] font-semibold">{title}</span>
         {file && (

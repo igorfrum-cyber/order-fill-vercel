@@ -19,6 +19,17 @@ test("budgetRowsFromReport uses the current edit and locks a manual deviation", 
   });
 });
 
+test("budgetRowsFromReport applies the entered discount to kopecks", () => {
+  const rows = [{
+    key: "row-1", editable: true, hasBudgetData: true, inserted: 2,
+    blankName: "Крем", budgetCategory: "B", budgetDemand: 10, budgetPrice: 199.99,
+  }];
+
+  const [row] = budgetRowsFromReport(rows, new Map(), { discount: 12.5 });
+
+  assert.equal(row.price, 174.99);
+});
+
 test("budgetPatches preserves the previous comment and returns an undo snapshot", () => {
   const edits = new Map([["row-1", { value: 3, comment: "проверено" }]]);
   const patches = budgetPatches({ rows: [{ key: "row-1", name: "Крем", unit: 1, before: 3, quantity: 6 }] }, edits);

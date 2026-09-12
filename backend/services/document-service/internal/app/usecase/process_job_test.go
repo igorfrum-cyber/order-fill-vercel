@@ -288,6 +288,25 @@ func processMessage() port.JobMessage {
 	}
 }
 
+func TestSplitInputsKeepsOptionalWarehouse(t *testing.T) {
+	inputs := []port.MessageFile{
+		{Role: port.RoleSource, Name: "Офис.xlsx", StorageKey: "source"},
+		{Role: port.RoleWarehouse, Name: "Склад.xlsx", StorageKey: "warehouse"},
+		{Role: port.RoleBlank, Name: "Бланк.xlsx", StorageKey: "blank"},
+	}
+
+	source, warehouse, blanks, err := splitInputs(inputs)
+	if err != nil {
+		t.Fatalf("split inputs: %v", err)
+	}
+	if source.StorageKey != "source" || warehouse.StorageKey != "warehouse" {
+		t.Fatalf("unexpected source roles: source=%q warehouse=%q", source.StorageKey, warehouse.StorageKey)
+	}
+	if len(blanks) != 1 || blanks[0].StorageKey != "blank" {
+		t.Fatalf("unexpected blanks: %#v", blanks)
+	}
+}
+
 func newStorageWithInputs() *fakeStorage {
 	return &fakeStorage{objects: map[string][]byte{
 		"jobs/job-1/inputs/0-source.xlsx": []byte("source"),

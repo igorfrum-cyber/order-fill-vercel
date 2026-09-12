@@ -2,10 +2,17 @@ const NORMS = { C: 2, B: 2.5, A: 3, "A+": 3.5 };
 const categories = Object.keys(NORMS);
 
 export function discountValue(value) {
-  if (!String(value).trim()) throw new Error("Введите скидку числом.");
-  const n = Number(String(value).trim().replace(/%$/, "").replace(",", "."));
+  const text = String(value).trim().replace(/%$/, "").trim();
+  if (!/^\d{1,2}(?:[.,]\d{1,2})?$/.test(text)) throw new Error("Введите скидку от 0 до 99,99%.");
+  const n = Number(text.replace(",", "."));
   if (!Number.isFinite(n) || n < 0 || n >= 100) throw new Error("Скидка должна быть от 0 до 99,99%.");
   return n;
+}
+
+export function budgetTargetValue(value) {
+  const text = String(value).trim().replace(/\s/g, "");
+  if (!/^\d{1,12}(?:[.,]\d{1,2})?$/.test(text)) throw new Error("Введите сумму от 0 до 999 999 999 999,99 ₽.");
+  return Number(text.replace(",", "."));
 }
 
 export function coverage(row, quantity) {

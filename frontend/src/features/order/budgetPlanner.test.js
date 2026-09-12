@@ -1,16 +1,27 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { appendBudgetComment, budgetChangeComment, budgetOrderRules, coverage, discountValue, planBudget } from "./budgetPlanner.js";
+import { appendBudgetComment, budgetChangeComment, budgetOrderRules, budgetTargetValue, coverage, discountValue, planBudget } from "./budgetPlanner.js";
 
 const row = (key, category = "A", extra = {}) => ({
   key, name: key, category, quantity: 10, demand: 10, stock: 0, transit: 0, delivery: 0.25, price: 100, unit: 1, step: 1, minimum: 1, ...extra,
 });
 
-test("discountValue accepts percent and rejects 100", () => {
+test("discountValue accepts a Russian percent and rejects invalid precision", () => {
   assert.equal(discountValue("30%"), 30);
-  assert.equal(discountValue("30"), 30);
+  assert.equal(discountValue("9,75"), 9.75);
   assert.throws(() => discountValue("100%"));
+  assert.throws(() => discountValue("10.123"));
+  assert.throws(() => discountValue("1e1"));
+});
+
+test("budgetTargetValue accepts rubles and rejects malformed amounts", () => {
+  assert.equal(budgetTargetValue("120 000,50"), 120000.5);
+  assert.equal(budgetTargetValue("0"), 0);
+  assert.throws(() => budgetTargetValue(""));
+  assert.throws(() => budgetTargetValue("-1"));
+  assert.throws(() => budgetTargetValue("10.999"));
+  assert.throws(() => budgetTargetValue("1e6"));
 });
 
 test("budgetChangeComment matches origin/main copy", () => {

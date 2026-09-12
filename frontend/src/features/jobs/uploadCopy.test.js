@@ -10,6 +10,7 @@ import {
   northUploadSteps,
   orderSelectedCount,
   orderUploadSteps,
+  sameSelectedFile,
   selectedFileCountLabel,
 } from "./uploadCopy.js";
 
@@ -32,13 +33,14 @@ test("northUploadSteps list city blanks before the optional Tyumen locations", (
 });
 
 test("excelAcceptHint names the accepted format in plain language", () => {
-  assert.equal(excelAcceptHint, "Подходят Excel-файлы.");
+  assert.equal(excelAcceptHint, "Подходят .xlsx и .xlsm.");
 });
 
 test("fileMatchesAccept uses the same extensions as the file input", () => {
-  const accept = ".xlsx,.xlsm,.xls";
+  const accept = ".xlsx,.xlsm";
   assert.equal(fileMatchesAccept({ name: "order.xlsx" }, accept), true);
   assert.equal(fileMatchesAccept({ name: "order.XLSX" }, accept), true);
+  assert.equal(fileMatchesAccept({ name: "legacy.xls" }, accept), false);
   assert.equal(fileMatchesAccept({ name: "notes.pdf" }, accept), false);
 });
 
@@ -52,6 +54,14 @@ test("orderSelectedCount counts the sales table and each attached blank", () => 
   assert.equal(orderSelectedCount(null, {}), 0);
   assert.equal(orderSelectedCount({ name: "sales.xlsx" }, { main: { name: "blank.xlsx" } }), 2);
   assert.equal(orderSelectedCount({ name: "sales.xlsx" }, { home: { name: "home.xlsx" }, proff: null }), 2);
+  assert.equal(orderSelectedCount({ name: "sales.xlsx" }, { main: { name: "blank.xlsx" } }, { name: "warehouse.xlsx" }), 3);
+});
+
+test("sameSelectedFile catches the same workbook chosen for both Tyumen locations", () => {
+  const office = { name: "Тюмень.xlsx", size: 42, lastModified: 10 };
+  assert.equal(sameSelectedFile(office, { ...office }), true);
+  assert.equal(sameSelectedFile(office, { ...office, size: 99 }), true);
+  assert.equal(sameSelectedFile(office, { ...office, name: "Склад.xlsx" }), false);
 });
 
 test("northSelectedCount counts city blanks and both Tyumen locations", () => {

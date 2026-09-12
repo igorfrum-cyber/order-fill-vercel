@@ -218,7 +218,7 @@ export function useDismissOnEscape(onDismiss) {
   }, [onDismiss]);
 }
 
-export function Modal({ title, children, onCancel, onConfirm, cancelLabel = "Назад", confirmLabel = "Продолжить", confirmDisabled }) {
+export function Modal({ title, children, onCancel, onConfirm, cancelLabel = "Назад", confirmLabel = "Продолжить", confirmDisabled, wide = false }) {
   const titleId = useId();
   useDismissOnEscape(onCancel);
   return (
@@ -230,11 +230,11 @@ export function Modal({ title, children, onCancel, onConfirm, cancelLabel = "Н�
       onClick={onCancel}
     >
       <div
-        className="help-modal-card w-full max-w-lg rounded-modal border border-[var(--color-line)] bg-[var(--color-surface)] p-6 shadow-xl"
+        className={`help-modal-card w-full ${wide ? "max-w-3xl" : "max-w-lg"} rounded-modal border border-[var(--color-line)] bg-[var(--color-surface)] p-6 shadow-xl`}
         onClick={(event) => event.stopPropagation()}
       >
         <h2 id={titleId} className="text-[18px] font-semibold tracking-tight">{title}</h2>
-        <div className="mt-3 max-h-64 overflow-auto text-[14px] leading-relaxed text-[var(--color-ink-soft)] whitespace-pre-line">
+        <div className={`${wide ? "max-h-[70vh]" : "max-h-64"} mt-3 overflow-auto text-[14px] leading-relaxed text-[var(--color-ink-soft)] whitespace-pre-line`}>
           {children}
         </div>
         <div className="mt-5 flex justify-end gap-2">

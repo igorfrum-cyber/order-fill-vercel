@@ -10,6 +10,7 @@ import {
 } from "../../api/jobs.js";
 import { blankSlotsForSource, brandLabel } from "../../features/brands/brandPresentation.js";
 import { runOrderFillJob } from "../../features/jobs/orderJobWorkflow.js";
+import { sameSelectedFile } from "../../features/jobs/uploadCopy.js";
 import { formatOrderMonthLabel } from "../../features/order/monthPolicy.js";
 import { collectReviewEdits, downloadBlockerKeys, hasManualDeviations, initialEditState, patchEdit, rowKey, validateReviewEdits } from "../../features/order/reviewEdits.js";
 import { needsEditResubmit } from "../../features/preview/previewEdits.js";
@@ -47,6 +48,7 @@ export function OrderFillApp({ companyId, canSelectCompany = false, resumeJob, o
   const [brand, setBrand] = useState(resumeJob?.brand || "");
   const [month, setMonth] = useState(resumeJob?.month || "");
   const [sourceFile, setSourceFile] = useState(null);
+  const [warehouseFile, setWarehouseFile] = useState(null);
   const [blankFiles, setBlankFiles] = useState({});
   const [processing, setProcessing] = useState(false);
   const [progress, setProgress] = useState(0);
@@ -115,6 +117,10 @@ export function OrderFillApp({ companyId, canSelectCompany = false, resumeJob, o
   async function processFiles() {
     const blanks = uploadSlots.map((slot) => blankFiles[slot.id]).filter(Boolean);
     if (!sourceFile || blanks.length < 1) return;
+    if (sameSelectedFile(sourceFile, warehouseFile)) {
+      setError("Один файл нельзя использовать и для офиса, и для склада доставки.");
+      return;
+    }
     if (!companyId) {
       setError(missingCompanyMessage(canSelectCompany));
       return;
@@ -129,6 +135,7 @@ export function OrderFillApp({ companyId, canSelectCompany = false, resumeJob, o
         api: { createOrderFillJob, pollJob, getJobReport },
         command: {
           sourceFile,
+          warehouseFile,
           blankFiles: blanks,
           companyId,
         },
@@ -352,6 +359,7 @@ export function OrderFillApp({ companyId, canSelectCompany = false, resumeJob, o
         {(stage === "upload" || stage === "processing") && (
           <UploadStage
             sourceFile={sourceFile}
+            warehouseFile={warehouseFile}
             blankFiles={blankFiles}
             onSource={(file) => {
               const previousSlots = blankSlotsForSource(sourceFile?.name)
@@ -361,7 +369,20 @@ export function OrderFillApp({ companyId, canSelectCompany = false, resumeJob, o
                 .map((slot) => slot.id)
                 .join();
               setSourceFile(file);
+              resetResult();
+              if (sameSelectedFile(file, warehouseFile)) {
+                setWarehouseFile(null);
+                setError("Один файл нельзя использовать и для офиса, и для склада доставки.");
+              }
               if (previousSlots !== nextSlots) setBlankFiles({});
+            }}
+            onWarehouse={(file) => {
+              if (sameSelectedFile(sourceFile, file)) {
+                setWarehouseFile(null);
+                setError("Один файл нельзя использовать и для офиса, и для склада доставки.");
+                return;
+              }
+              setWarehouseFile(file);
               resetResult();
             }}
             onBlank={(id, file) => {
