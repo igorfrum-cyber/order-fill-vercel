@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { jobFileDownloadPath, isPollDone } from "./jobs.js";
+import { jobFileDownloadPath, isPollDone, mapJobReportPayload } from "./jobs.js";
 
 test("jobFileDownloadPath points to a single generated file, not an archive", () => {
   assert.equal(jobFileDownloadPath("job 1", "output/2"), "/api/v1/jobs/job%201/files/output%2F2");
@@ -22,4 +22,9 @@ test("isPollDone waits past needs_review when finalizing reviewer edits", () => 
   assert.equal(isPollDone("processing", until), false);
   assert.equal(isPollDone("completed", until), true);
   assert.equal(isPollDone("failed", until), true);
+});
+
+test("mapJobReportPayload preserves the North plan contract", () => {
+  const payload = { has_tyumen_source: true, plan_rows: [{ key: "A1" }] };
+  assert.equal(mapJobReportPayload(payload), payload);
 });

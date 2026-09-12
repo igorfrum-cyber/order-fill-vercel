@@ -7,7 +7,9 @@ import {
   twoFactorEnableLabel,
   twoFactorManualKeyLabel,
   twoFactorOpenAppLabel,
+  twoFactorRecoveryCodeLabel,
   twoFactorRecoveryHint,
+  twoFactorRecoveryLabel,
   twoFactorSetupHint,
   twoFactorSetupSteps,
 } from "../../features/help/copy.js";
@@ -19,6 +21,7 @@ export function TwoFactorSetup({ enabled, hasPasskey = false, onChanged }) {
   const [code, setCode] = useState("");
   const [recoveryCodes, setRecoveryCodes] = useState([]);
   const [password, setPassword] = useState("");
+  const [useRecovery, setUseRecovery] = useState(false);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
 
@@ -57,15 +60,16 @@ export function TwoFactorSetup({ enabled, hasPasskey = false, onChanged }) {
     setBusy(true);
     setError("");
     try {
-      await disableTwoFactor(password);
+      await disableTwoFactor(password, code);
       setPassword("");
       setSetup(null);
       setCode("");
+      setUseRecovery(false);
       setRecoveryCodes([]);
       setPhase("idle");
       onChanged?.(false);
     } catch {
-      setError("Не удалось отключить защиту. Проверьте пароль.");
+      setError("Не удалось отключить защиту. Проверьте пароль и код.");
     } finally {
       setBusy(false);
     }
@@ -82,8 +86,28 @@ export function TwoFactorSetup({ enabled, hasPasskey = false, onChanged }) {
         </p>
         <form className="space-y-3" onSubmit={disable}>
           <PasswordField label="Текущий пароль" value={password} onChange={setPassword} autoComplete="current-password" />
+          <Field label={useRecovery ? twoFactorRecoveryCodeLabel : twoFactorCodeLabel}>
+            <input
+              value={code}
+              onChange={(event) => setCode(event.target.value)}
+              className="input"
+              autoComplete="one-time-code"
+              inputMode={useRecovery ? "text" : "numeric"}
+            />
+          </Field>
+          <button
+            type="button"
+            className="text-[14px] text-[var(--color-brand)]"
+            onClick={() => {
+              setUseRecovery((current) => !current);
+              setCode("");
+              setError("");
+            }}
+          >
+            {useRecovery ? twoFactorCodeLabel : twoFactorRecoveryLabel}
+          </button>
           {error ? <p className="text-[14px] text-[var(--color-danger)]">{error}</p> : null}
-          <GhostButton type="submit" disabled={busy || !password}>
+          <GhostButton type="submit" disabled={busy || !password || !code.trim()}>
             {twoFactorDisableLabel}
           </GhostButton>
         </form>
@@ -103,7 +127,14 @@ export function TwoFactorSetup({ enabled, hasPasskey = false, onChanged }) {
             </li>
           ))}
         </ul>
-        <PrimaryButton type="button" onClick={() => setPhase("enabled")}>
+        <PrimaryButton
+          type="button"
+          onClick={() => {
+            setCode("");
+            setUseRecovery(false);
+            setPhase("enabled");
+          }}
+        >
           Готово
         </PrimaryButton>
       </div>

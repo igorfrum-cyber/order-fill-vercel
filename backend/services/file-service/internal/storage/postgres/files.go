@@ -21,9 +21,9 @@ func NewMeta(pool *pgxpool.Pool) *Meta {
 
 func (m *Meta) SaveObject(ctx context.Context, obj domain.Object) error {
 	_, err := m.pool.Exec(ctx,
-		`INSERT INTO objects (id, key, name, content_type, size) VALUES ($1,$2,$3,$4,$5)
-		 ON CONFLICT (key) DO UPDATE SET id = EXCLUDED.id, name = EXCLUDED.name, content_type = EXCLUDED.content_type, size = EXCLUDED.size`,
-		obj.ID, obj.Key, obj.Name, obj.ContentType, obj.Size)
+		`INSERT INTO objects (id, key, name, content_type, size, company_id) VALUES ($1,$2,$3,$4,$5,$6)
+		 ON CONFLICT (key) DO UPDATE SET id = EXCLUDED.id, name = EXCLUDED.name, content_type = EXCLUDED.content_type, size = EXCLUDED.size, company_id = EXCLUDED.company_id`,
+		obj.ID, obj.Key, obj.Name, obj.ContentType, obj.Size, obj.CompanyID)
 	if err != nil {
 		return fmt.Errorf("save object: %w", err)
 	}
@@ -32,12 +32,12 @@ func (m *Meta) SaveObject(ctx context.Context, obj domain.Object) error {
 
 func (m *Meta) GetByID(ctx context.Context, id string) (domain.Object, error) {
 	return m.scan(m.pool.QueryRow(ctx,
-		`SELECT id, key, name, content_type, size FROM objects WHERE id = $1`, id))
+		`SELECT id, key, name, content_type, size, company_id FROM objects WHERE id = $1`, id))
 }
 
 func (m *Meta) GetByKey(ctx context.Context, key string) (domain.Object, error) {
 	return m.scan(m.pool.QueryRow(ctx,
-		`SELECT id, key, name, content_type, size FROM objects WHERE key = $1`, key))
+		`SELECT id, key, name, content_type, size, company_id FROM objects WHERE key = $1`, key))
 }
 
 func (m *Meta) SaveUpload(ctx context.Context, up domain.Upload) error {
@@ -70,7 +70,7 @@ func (m *Meta) GetUpload(ctx context.Context, id string) (domain.Upload, error) 
 
 func (m *Meta) scan(row pgx.Row) (domain.Object, error) {
 	var obj domain.Object
-	err := row.Scan(&obj.ID, &obj.Key, &obj.Name, &obj.ContentType, &obj.Size)
+	err := row.Scan(&obj.ID, &obj.Key, &obj.Name, &obj.ContentType, &obj.Size, &obj.CompanyID)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return domain.Object{}, domain.ErrNotFound
 	}

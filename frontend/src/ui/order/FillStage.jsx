@@ -4,9 +4,10 @@ import { rowKey } from "../../features/order/reviewEdits.js";
 import {
   canProceedPastDuplicates,
   countByTab,
+  decisionHint,
   firstReviewTab,
   matchLayerHint,
-  presentationStatus,
+  needsAcknowledgement,
   reviewQueueLine,
   visibleFillTabs,
   visibleReportRows,
@@ -16,6 +17,7 @@ import { GhostButton, PrimaryButton, ProgressBar } from "../widgets.jsx";
 import { ReviewSummary } from "./review/ReviewSummary.jsx";
 import { ReviewTable } from "./review/ReviewTable.jsx";
 import { ReviewTabs } from "./review/ReviewTabs.jsx";
+import { BudgetPanel } from "./BudgetPanel.jsx";
 
 export function FillStage({
   brand,
@@ -29,15 +31,16 @@ export function FillStage({
   banner,
   onDownloadFiles,
   onIssueReport,
+  acknowledgedDuplicates,
+  onAcknowledgedDuplicates,
 }) {
   const [tab, setTab] = useState("");
   const [query, setQuery] = useState("");
   const [expanded, setExpanded] = useState(null);
-  const [acknowledgedDuplicates, setAcknowledgedDuplicates] = useState(() => new Set());
   const counts = useMemo(() => countByTab(rows), [rows]);
   const duplicateCount = counts.needs_decision ?? 0;
   const duplicateKeys = useMemo(
-    () => rows.filter((row) => presentationStatus(row) === "needs_decision").map(rowKey),
+    () => rows.filter(needsAcknowledgement).map(rowKey),
     [rows],
   );
   const tabs = useMemo(() => visibleFillTabs(counts), [counts]);
@@ -48,10 +51,10 @@ export function FillStage({
   const boxLabel = summary.adjustmentLabel || adjustmentLabelForBrand(brand);
   const canProceed = canProceedPastDuplicates({ duplicateKeys, acknowledgedKeys: acknowledgedDuplicates });
   const acknowledgedCount = duplicateKeys.filter((key) => acknowledgedDuplicates.has(key)).length;
-  const hint = matchLayerHint(activeTab);
+  const hint = activeTab === "needs_decision" ? decisionHint(rows) : matchLayerHint(activeTab);
 
   function toggleDuplicateAck(key, next) {
-    setAcknowledgedDuplicates((prev) => {
+    onAcknowledgedDuplicates((prev) => {
       const copy = new Set(prev);
       if (next) copy.add(key);
       else copy.delete(key);
@@ -102,15 +105,16 @@ export function FillStage({
           <IconDownload className="h-4 w-4" />
           Отчёт для 1С
         </GhostButton>
+        <BudgetPanel brand={brand} deliveryWeeks={summary.deliveryWeeks} rows={rows} edits={edits} onEdit={onEdit} />
         <div className="ml-auto flex flex-wrap items-center gap-3">
           <span className="font-mono text-[13px] text-[var(--color-ink-soft)]">
             {status ? (
               <span>{status}</span>
             ) : canProceed ? (
-              <span className="text-[var(--color-ok)]">{duplicateCount ? "Дубли подтверждены" : "Критичных проблем нет"}</span>
+              <span className="text-[var(--color-ok)]">{duplicateCount ? "Спорные подтверждены" : "Критичных проблем нет"}</span>
             ) : (
               <button type="button" className="text-[var(--color-danger)] hover:underline" onClick={() => setTab("needs_decision")}>
-                Сначала подтвердите дубли: {duplicateCount - acknowledgedCount}
+                Сначала подтвердите спорные: {duplicateCount - acknowledgedCount}
               </button>
             )}
           </span>

@@ -1,6 +1,7 @@
 package xlsx
 
 import (
+	"bytes"
 	"errors"
 	"strconv"
 	"strings"
@@ -10,12 +11,21 @@ import (
 	"order-fill/backend/services/document-service/internal/domain/spreadsheet"
 )
 
+const maxXMLElements = 250_000
+
 type cellKey struct {
 	row    int
 	column int
 }
 
+func xmlOpenTagsOK(data []byte, max int) bool {
+	return bytes.Count(data, []byte{'<'}) <= max
+}
+
 func parseDocument(data []byte) (*etree.Document, error) {
+	if !xmlOpenTagsOK(data, maxXMLElements) {
+		return nil, errors.New("too many xml elements")
+	}
 	document := etree.NewDocument()
 	document.ReadSettings.PreserveCData = true
 	if err := document.ReadFromBytes(data); err != nil {
@@ -110,7 +120,7 @@ func parseCellRef(reference string) (cellKey, bool) {
 		return cellKey{}, false
 	}
 	column := spreadsheet.ParseColumnName(reference[:letters])
-	row, err := strconv.Atoi(reference[letters:])
+	row, err := parsePositiveInt(reference[letters:])
 	if column == 0 || err != nil || row <= 0 {
 		return cellKey{}, false
 	}

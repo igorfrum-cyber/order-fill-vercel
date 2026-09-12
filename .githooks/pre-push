@@ -1,0 +1,6 @@
+#!/usr/bin/env bash
+# Full local gate before any push. Same scripts as `make verify`.
+set -euo pipefail
+
+echo "==> pre-push: make verify"
+make verify

@@ -74,6 +74,8 @@ grep -Eq "node-version:[[:space:]]*\"${frontend_node}\"" .github/workflows/verif
 grep -Fq "go-version-file: backend/pkg/go.mod" .github/workflows/verify.yml ||
   fail "CI must pin Go from backend/pkg/go.mod"
 
+node scripts/verify-ci.mjs
+
 local_node_major=$(node -p "process.versions.node.split('.')[0]")
 ((local_node_major >= frontend_node)) ||
   fail "local Node ${local_node_major} is older than engines.node ${frontend_node}"

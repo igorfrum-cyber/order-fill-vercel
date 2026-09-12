@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { getCompanyLogin, getMe, listCompanies, listJobs, logout } from "./api/auth.js";
 import { onAuthRequired } from "./api/client.js";
 import { getJob, getJobReport, listJobFiles } from "./api/jobs.js";
-import { companyIdFromSearch, parseAppPath, pathForScreen, screenAllowed, withCompanyQuery } from "./features/app/routes.js";
+import { companyIdFromSearch, navItemHref, parseAppPath, pathForScreen, resolveOrderNavJobId, scopedPath, screenAllowed, withCompanyQuery } from "./features/app/routes.js";
 import { companyLoginURL, companySlugFromHost, companySlugFromPath, homeScreen, navItemsForRole, needsSecurityNudge, resolveUsersCompanyId } from "./features/auth/accessPresentation.js";
 import { shouldAutoStartTour, tourSceneForView } from "./features/help/firstRun.js";
 import { headerContext, roleLabel, securitySetupLabel, twoFactorRequiredHint } from "./features/help/copy.js";
@@ -32,6 +32,7 @@ export default function App() {
   const [seenTourScenes, setSeenTourScenes] = useState(() => new Set());
   const [orderStage, setOrderStage] = useState("upload");
   const [completedJob, setCompletedJob] = useState(false);
+  const [liveJobId, setLiveJobId] = useState("");
 
   useEffect(() => {
     getMe()
@@ -66,10 +67,6 @@ export default function App() {
       .then(setCompanyLogin)
       .catch(() => setCompanyLogin(null));
   }, [companySlug]);
-
-  useEffect(() => {
-    if (orderStage === "preview") setCompletedJob(true);
-  }, [orderStage]);
 
   useEffect(() => {
     if (me?.role !== "purchaser") {
@@ -173,16 +170,27 @@ export default function App() {
   }
 
   const platformCompany = me.role === "platform_admin" ? companyId : "";
+  const openJobId = resume?.jobId || liveJobId;
+
+  function markJobCompletedIfNeeded() {
+    if (screen === "order" && orderStage === "preview") setCompletedJob(true);
+  }
 
   function go(next, jobId = "") {
-    if (next !== "north") {
-      window.history.pushState(null, "", withCompanyQuery(pathForScreen(next, jobId), platformCompany));
-    }
-    if (next === "order" && !jobId) {
+    const nextJobId = resolveOrderNavJobId(next, jobId, { screen, openJobId });
+    window.history.pushState(null, "", scopedPath(next, nextJobId, platformCompany));
+    if (next === "order" && !nextJobId) {
       setResume(null);
+      setLiveJobId("");
       setOrderStage("upload");
+    } else if (next === "account") {
+      markJobCompletedIfNeeded();
     } else if (next !== "order") {
+      markJobCompletedIfNeeded();
       setResume(null);
+      setLiveJobId("");
+    } else {
+      setLiveJobId(nextJobId);
     }
     setScreen(next);
   }
@@ -194,7 +202,9 @@ export default function App() {
   }
 
   function leaveJob() {
+    markJobCompletedIfNeeded();
     setResume(null);
+    setLiveJobId("");
     setOrderStage("upload");
     go(homeScreen(me.role) === "order" ? "history" : homeScreen(me.role));
   }
@@ -204,9 +214,15 @@ export default function App() {
     setQuickStartOpen(false);
   }
 
+  function selectCompany(next) {
+    setCompanyId(next);
+    window.history.replaceState(null, "", scopedPath(screen, openJobId, next));
+  }
+
   async function openJob(job) {
     if (job.type === "north_merge") {
-      setScreen("north");
+      if (me.role === "platform_admin") return;
+      go("north");
       return;
     }
     const loaded = await loadOrderResume(job.id);
@@ -229,7 +245,7 @@ export default function App() {
               {nav.map((item) => (
                 <NavButton
                   key={item.id}
-                  href={withCompanyQuery(item.path, platformCompany)}
+                  href={navItemHref(item, { screen, openJobId, companyId: platformCompany })}
                   dataTour={item.id}
                   active={screen === item.id}
                   onClick={() => go(item.id)}
@@ -246,9 +262,7 @@ export default function App() {
                   value={companyId}
                   aria-label="Компания"
                   onChange={(event) => {
-                    const next = event.target.value;
-                    setCompanyId(next);
-                    window.history.replaceState(null, "", withCompanyQuery(pathForScreen(screen), next));
+                    selectCompany(event.target.value);
                   }}
                 >
                   <option value="">Все компании</option>
@@ -294,14 +308,16 @@ export default function App() {
               <OrderFillApp
                 key={resume?.jobId || "new"}
                 companyId={companyId}
+                canSelectCompany={me.role === "platform_admin"}
                 resumeJob={resume}
                 onHome={leaveJob}
                 onHelp={() => setHelpOpen(true)}
                 onStage={setOrderStage}
+                onJobReady={(id) => go("order", id)}
                 embedded
               />
             ) : null}
-            {screen === "overview" ? <OverviewScreen onOpen={openJob} /> : null}
+            {screen === "overview" ? <OverviewScreen companyId={companyId} onOpen={openJob} /> : null}
             {screen === "queue" ? (
               <QueueScreen me={me} onOpen={openJob} onPeople={() => go("users")} onCompany={() => go("company")} />
             ) : null}
@@ -312,9 +328,10 @@ export default function App() {
                 onNew={(kind) => {
                   if (me.role === "platform_admin") return;
                   setResume(null);
+                  setLiveJobId("");
                   setOrderStage("upload");
                   if (kind === "north") {
-                    setScreen("north");
+                    go("north");
                     return;
                   }
                   go("order");
@@ -322,7 +339,7 @@ export default function App() {
                 onOpen={openJob}
               />
             ) : null}
-            {screen === "companies" ? <CompaniesScreen selectedId={companyId} onSelect={setCompanyId} /> : null}
+            {screen === "companies" ? <CompaniesScreen selectedId={companyId} onSelect={selectCompany} /> : null}
             {screen === "company" ? (
               <CompanyScreen
                 me={me}
@@ -337,10 +354,15 @@ export default function App() {
               />
             ) : null}
             {screen === "users" ? (
-              <UsersScreen actorId={me.id} actorRole={me.role} companyId={resolveUsersCompanyId(me.role, companyId, me.company_id)} onCompany={setCompanyId} />
+              <UsersScreen actorId={me.id} actorRole={me.role} companyId={resolveUsersCompanyId(me.role, companyId, me.company_id)} onCompany={selectCompany} />
             ) : null}
             {screen === "account" ? (
-              <AccountScreen me={me} onBack={goHome} onSignedOut={() => setMe(null)} onMe={setMe} />
+              <AccountScreen
+                me={me}
+                onBack={() => (openJobId ? go("order", openJobId) : goHome())}
+                onSignedOut={() => setMe(null)}
+                onMe={setMe}
+              />
             ) : null}
           </main>
         </div>

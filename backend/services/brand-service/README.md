@@ -57,11 +57,14 @@ internal/domain                   модель политики бренда
 
 Сервис реализует `orderfill.brand.v1.BrandService`. Полный контракт находится в [`../../proto/orderfill/brand/v1/brand.proto`](../../proto/orderfill/brand/v1/brand.proto).
 
+
+<!-- docs-sync:rpc -->
 | RPC | Полный путь | Назначение |
 | --- | --- | --- |
 | `GetBrandPolicy` | `/orderfill.brand.v1.BrandService/GetBrandPolicy` | Возвращает `BrandPolicy` по полям `brand` и `variant`. Переданный вариант копируется в ответ. |
 | `ListBrands` | `/orderfill.brand.v1.BrandService/ListBrands` | Возвращает упорядоченный список поддерживаемых ключей. |
 | `DetectBrand` | `/orderfill.brand.v1.BrandService/DetectBrand` | Определяет ключ по `nomenclature_group`; для Christina анализирует `file_name`. При неизвестном бренде возвращает пустые `brand` и `variant` без gRPC-ошибки. |
+<!-- /docs-sync:rpc -->
 
 REST/HTTP бизнес-API у сервиса нет. HTTP используется только для health endpoints.
 
@@ -73,16 +76,20 @@ REST/HTTP бизнес-API у сервиса нет. HTTP используетс
 
 ## Конфигурация
 
+
+<!-- docs-sync:env -->
 | Переменная | По умолчанию | Обязательность и смысл |
 | --- | --- | --- |
 | `BRAND_GRPC_ADDR` | `:9098` | Адрес gRPC listener. |
 | `BRAND_HEALTH_ADDR` | `:8089` | Адрес HTTP listener для `/healthz` и `/readyz`. |
-| `BRAND_ENV` | `local` | Загружается в конфигурацию, но сейчас не изменяет поведение сервиса. |
-| `GRPC_TLS_MODE` | пусто, то есть `insecure` | Общий режим gRPC: `insecure`/`disabled`/`off`, `tls` или `mtls`. |
+| `BRAND_ENV` | `APP_ENV`, затем `local` | Вне local `Validate` требует `GRPC_TLS_MODE=mtls`. |
+| `APP_ENV` | `local` | Общий fallback окружения; пустое значение и `local` включают local-режим. |
+| `GRPC_TLS_MODE` | `insecure` | Общий режим gRPC: `insecure`/`disabled`/`off`, `tls` или `mtls`. |
 | `GRPC_TLS_CERT_FILE` | пусто | PEM-сертификат сервера; вместе с ключом обязателен для `tls` и `mtls`. |
 | `GRPC_TLS_KEY_FILE` | пусто | PEM-ключ сервера; хранить как секрет и не добавлять в репозиторий. |
 | `GRPC_TLS_CA_FILE` | пусто | CA bundle; обязателен для `mtls`. |
 | `GRPC_TLS_SERVER_NAME` | пусто | Используется только исходящими gRPC-клиентами; у этого сервиса их сейчас нет. |
+<!-- /docs-sync:env -->
 
 При неизвестном значении `GRPC_TLS_MODE` или неполном TLS-наборе общий gRPC bootstrap завершает процесс при создании сервера. Health HTTP не защищен gRPC TLS.
 

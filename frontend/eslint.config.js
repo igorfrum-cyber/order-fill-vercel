@@ -14,7 +14,7 @@ const sharedRules = {
 };
 
 export default [
-  { ignores: ["dist/**", "node_modules/**"] },
+  { ignores: ["dist/**", "node_modules/**", "playwright-report/**", "test-results/**"] },
   js.configs.recommended,
   {
     files: ["src/**/*.{js,jsx}"],
@@ -32,7 +32,7 @@ export default [
     rules: sharedRules,
   },
   {
-    files: ["scripts/**/*.{js,mjs}", "vite.config.js", "eslint.config.js"],
+    files: ["e2e/**/*.js", "playwright.config.js", "scripts/**/*.{js,mjs}", "vitest.setup.js", "vite.config.js", "eslint.config.js"],
     languageOptions: {
       ecmaVersion: 2024,
       sourceType: "module",

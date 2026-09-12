@@ -1,0 +1,30 @@
+{
+  "version": 1,
+  "hooks": {
+    "sessionStart": [
+      {
+        "command": "node scripts/session-branch.mjs"
+      }
+    ],
+    "afterFileEdit": [
+      {
+        "command": "node frontend/scripts/ui-regression.mjs touched"
+      },
+      {
+        "command": "node scripts/docs-regression.mjs touched"
+      }
+    ],
+    "stop": [
+      {
+        "command": "node frontend/scripts/ui-regression.mjs stop",
+        "loop_limit": 5,
+        "timeout": 30
+      },
+      {
+        "command": "node scripts/docs-regression.mjs stop",
+        "loop_limit": 5,
+        "timeout": 30
+      }
+    ]
+  }
+}

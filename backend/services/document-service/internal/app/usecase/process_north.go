@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"slices"
 
 	"order-fill/backend/services/document-service/internal/app/port"
 	"order-fill/backend/services/document-service/internal/clients/calculation"
@@ -22,11 +23,14 @@ func (u *ProcessJob) processNorth(ctx context.Context, message port.JobMessage, 
 	}
 	progress.Set(ctx, 0.1, "Читаю бланки городов")
 	var source port.MessageFile
+	var warehouse port.MessageFile
 	blanks := make([]port.MessageFile, 0)
 	for _, input := range message.Inputs {
 		switch input.Role {
 		case port.RoleSource:
 			source = input
+		case port.RoleWarehouse:
+			warehouse = input
 		case port.RoleBlank:
 			blanks = append(blanks, input)
 		}
@@ -82,12 +86,20 @@ func (u *ProcessJob) processNorth(ctx context.Context, message port.JobMessage, 
 		if err != nil {
 			return err
 		}
-		for _, item := range stock {
-			calcStock = append(calcStock, calculation.TyumenStock{
-				Article: item.Article, Name: item.Name, Stock: item.Stock, InTransit: item.InTransit, Target: item.Target,
-			})
+	}
+	var warehouseStock []north.Stock
+	if warehouse.StorageKey != "" {
+		progress.Set(ctx, 0.55, "Читаю таблицу склада доставки")
+		workbook, err := u.loadWorkbook(ctx, warehouse.StorageKey, nil)
+		if err != nil {
+			return err
+		}
+		warehouseStock, err = north.StockFromSource(workbook)
+		if err != nil {
+			return err
 		}
 	}
+	stock, calcStock = combineTyumenLocations(stock, warehouseStock)
 
 	progress.Set(ctx, 0.7, "Считаю план")
 	if err := u.jobs.SetIdentity(ctx, message.JobID, brandKey, "", u.now()); err != nil {
@@ -102,6 +114,7 @@ func (u *ProcessJob) processNorth(ctx context.Context, message port.JobMessage, 
 		planned = append(planned, north.Planned{
 			Article: row.Article, Name: row.Name, Comment: row.Comment,
 			TyumenQty: row.TyumenQty, TransferQty: row.TransferQty, SupplierQty: row.SupplierQty,
+			WarehouseStock: row.WarehouseStock, WarehouseTransit: row.WarehouseTransit, HasWarehouseStock: row.HasWarehouseStock,
 		})
 	}
 
@@ -133,6 +146,43 @@ func (u *ProcessJob) processNorth(ctx context.Context, message port.JobMessage, 
 		return fmt.Errorf("save job result: %w", err)
 	}
 	return nil
+}
+
+func combineTyumenLocations(office, warehouse []north.Stock) ([]north.Stock, []calculation.TyumenStock) {
+	byArticle := make(map[string]north.Stock, len(office)+len(warehouse))
+	for _, item := range office {
+		byArticle[item.Article] = item
+	}
+	warehouseByArticle := make(map[string]north.Stock, len(warehouse))
+	for _, item := range warehouse {
+		warehouseByArticle[item.Article] = item
+		combined := byArticle[item.Article]
+		combined.Article = item.Article
+		if combined.Name == "" {
+			combined.Name = item.Name
+		}
+		combined.Stock += item.Stock
+		combined.InTransit += item.InTransit
+		combined.Target += item.Target
+		byArticle[item.Article] = combined
+	}
+	articles := make([]string, 0, len(byArticle))
+	for article := range byArticle {
+		articles = append(articles, article)
+	}
+	slices.Sort(articles)
+	combined := make([]north.Stock, 0, len(articles))
+	calculationRows := make([]calculation.TyumenStock, 0, len(articles))
+	for _, article := range articles {
+		item := byArticle[article]
+		warehouseItem, hasWarehouse := warehouseByArticle[article]
+		combined = append(combined, item)
+		calculationRows = append(calculationRows, calculation.TyumenStock{
+			Article: item.Article, Name: item.Name, Stock: item.Stock, InTransit: item.InTransit, Target: item.Target,
+			WarehouseStock: warehouseItem.Stock, WarehouseTransit: warehouseItem.InTransit, HasWarehouseStock: hasWarehouse,
+		})
+	}
+	return combined, calculationRows
 }
 
 func (u *ProcessJob) finalizeNorth(ctx context.Context, message port.JobMessage) error {

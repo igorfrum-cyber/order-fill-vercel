@@ -2,6 +2,7 @@ package twofa_test
 
 import (
 	"errors"
+	"strings"
 	"testing"
 	"time"
 
@@ -60,8 +61,10 @@ func TestSetupEnableDisable(t *testing.T) {
 	if err != nil || !enabled {
 		t.Fatalf("enabled=%v err=%v", enabled, err)
 	}
-
-	if err := svc.Disable(ctx, "u1", ""); err != nil {
+	if err := svc.Disable(ctx, "u1", ""); !errors.Is(err, domain.ErrUnauthorized) {
+		t.Fatalf("empty code: %v", err)
+	}
+	if err := svc.Disable(ctx, "u1", codes[0]); err != nil {
 		t.Fatal(err)
 	}
 	enabled, err = svc.IsEnabled(ctx, "u1")
@@ -92,6 +95,32 @@ func TestRecoveryCodeConsumedOnce(t *testing.T) {
 	}
 	if _, err := svc.Verify(ctx, "u1", recovery[0]); !errors.Is(err, domain.ErrUnauthorized) {
 		t.Fatalf("second recovery: %v", err)
+	}
+}
+
+func TestRecoveryHashesAreKeyed(t *testing.T) {
+	t.Parallel()
+	svc, store, clock := testService(t)
+	ctx := t.Context()
+	setup, err := svc.Setup(ctx, "u1", "buyer")
+	if err != nil {
+		t.Fatal(err)
+	}
+	code, err := totp.CurrentTOTPCode(setup.Secret, clock())
+	if err != nil {
+		t.Fatal(err)
+	}
+	raw, err := svc.Enable(ctx, "u1", code)
+	if err != nil {
+		t.Fatal(err)
+	}
+	stored, err := store.Get(ctx, "u1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	norm := strings.ToUpper(strings.ReplaceAll(raw[0], "-", ""))
+	if stored.RecoveryCodeHashes[0] == secret.HashSecret(norm) {
+		t.Fatal("recovery hash must not be bare SHA-256")
 	}
 }
 

@@ -13,6 +13,13 @@ func TestResolveRPIDUsesConfiguredParentDomain(t *testing.T) {
 	}
 }
 
+func TestResolveRPIDRejectsLoopbackIP(t *testing.T) {
+	t.Parallel()
+	if _, err := resolveRPID("http://127.0.0.1:3200", ""); err == nil {
+		t.Fatal("loopback IP must not be a passkey relying party")
+	}
+}
+
 func TestResolveRPIDRejectsLANIP(t *testing.T) {
 	t.Parallel()
 	if _, err := resolveRPID("http://192.168.31.108:3200", ""); err == nil {

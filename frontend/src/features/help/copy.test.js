@@ -10,6 +10,7 @@ import {
   loginFailedMessage,
   logoutEverywhereConfirm,
   logoutEverywhereLabel,
+  missingCompanyMessage,
   headerContext,
   profileCompanyLabel,
   profileFields,
@@ -71,6 +72,12 @@ test("tourForRole points at on-screen controls without jargon", () => {
   assert.deepEqual(
     purchaser.map((step) => step.target),
     ["order", "north", "jobs", "help"],
+  );
+  assert.match(
+    tourForRole("platform_admin")
+      .map((step) => step.body)
+      .join(" "),
+    /владел/i,
   );
   for (const role of ["purchaser", "company_admin", "company_owner", "platform_admin"]) {
     const steps = tourForRole(role);
@@ -206,7 +213,7 @@ test("helpSections stay plain and cover the required topics", () => {
   assert.deepEqual(titles, [
     "Как сделать выгрузку",
     "Какие файлы нужны",
-    'Что значит "Нужно проверить"',
+    "Что значит «Требует решения»",
     "Статусы выгрузок",
     "Пользователи и доступ",
     "Обзор сервиса",
@@ -216,6 +223,11 @@ test("helpSections stay plain and cover the required topics", () => {
   const text = helpSections.map((section) => `${section.title} ${section.body}`).join("\n");
   assert.equal(/api|token|cookie|backend|frontend|endpoint/i.test(text), false);
   assert.ok(helpSections.every((section) => section.body.split(/(?<=[.!?])\s+/).length <= 2));
+});
+
+test("missingCompanyMessage tells purchasers to sign in again", () => {
+  assert.equal(missingCompanyMessage(true), "Сначала выберите компанию в ленте выгрузок.");
+  assert.equal(missingCompanyMessage(false), "Не удалось определить компанию. Выйдите и войдите снова.");
 });
 
 test("helpSectionsForRole hides ops and people topics the role cannot use", () => {

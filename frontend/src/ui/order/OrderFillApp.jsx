@@ -10,6 +10,7 @@ import {
 } from "../../api/jobs.js";
 import { blankSlotsForSource, brandLabel } from "../../features/brands/brandPresentation.js";
 import { runOrderFillJob } from "../../features/jobs/orderJobWorkflow.js";
+import { sameSelectedFile } from "../../features/jobs/uploadCopy.js";
 import { formatOrderMonthLabel } from "../../features/order/monthPolicy.js";
 import { collectReviewEdits, downloadBlockerKeys, hasManualDeviations, initialEditState, patchEdit, rowKey, validateReviewEdits } from "../../features/order/reviewEdits.js";
 import { needsEditResubmit } from "../../features/preview/previewEdits.js";
@@ -17,6 +18,7 @@ import { issueReportCsv, isCleanupIssueRow } from "../../features/report/issueRe
 import { combinedSummary, jobProgress, jobStatusText } from "../../features/report/reportModel.js";
 import { matchingDecisionBanner } from "../../features/report/rowPresentation.js";
 import { qualityWarningLines, qualityWarningSummary } from "../../features/report/qualityWarnings.js";
+import { missingCompanyMessage } from "../../features/help/copy.js";
 import { userFacingError } from "../../features/help/errors.js";
 import { StageRail, TopBar } from "../chrome.jsx";
 import { ErrorBoundary } from "../ErrorBoundary.jsx";
@@ -41,11 +43,12 @@ function triggerBlobDownload(blob, fileName) {
   window.setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
-export function OrderFillApp({ companyId, resumeJob, onHome, onHelp, onStage, embedded = false }) {
+export function OrderFillApp({ companyId, canSelectCompany = false, resumeJob, onHome, onHelp, onStage, onJobReady, embedded = false }) {
   const [stage, setStage] = useState(resumeJob ? (resumeJob.finalized ? "preview" : "fill") : "upload");
   const [brand, setBrand] = useState(resumeJob?.brand || "");
   const [month, setMonth] = useState(resumeJob?.month || "");
   const [sourceFile, setSourceFile] = useState(null);
+  const [warehouseFile, setWarehouseFile] = useState(null);
   const [blankFiles, setBlankFiles] = useState({});
   const [processing, setProcessing] = useState(false);
   const [progress, setProgress] = useState(0);
@@ -65,10 +68,14 @@ export function OrderFillApp({ companyId, resumeJob, onHome, onHelp, onStage, em
   const [finalized, setFinalized] = useState(Boolean(resumeJob?.finalized));
   const [editsDirty, setEditsDirty] = useState(false);
   const [previewEpoch, setPreviewEpoch] = useState(0);
+  const [leaveUploadConfirm, setLeaveUploadConfirm] = useState(false);
+  const [acknowledgedDuplicates, setAcknowledgedDuplicates] = useState(() => new Set());
   const acknowledgedKeysRef = useRef(new Set());
 
   function rememberAcknowledgedKeys(keys = new Set()) {
-    acknowledgedKeysRef.current = keys;
+    const next = keys instanceof Set ? keys : new Set(keys);
+    acknowledgedKeysRef.current = next;
+    setAcknowledgedDuplicates(next);
   }
 
   function commentBlockers() {
@@ -104,13 +111,18 @@ export function OrderFillApp({ companyId, resumeJob, onHome, onHelp, onStage, em
     setStatus("");
     setProgress(0);
     setProcessing(false);
+    rememberAcknowledgedKeys(new Set());
   }
 
   async function processFiles() {
     const blanks = uploadSlots.map((slot) => blankFiles[slot.id]).filter(Boolean);
     if (!sourceFile || blanks.length < 1) return;
+    if (sameSelectedFile(sourceFile, warehouseFile)) {
+      setError("Один файл нельзя использовать и для офиса, и для склада доставки.");
+      return;
+    }
     if (!companyId) {
-      setError("Сначала выберите компанию в ленте выгрузок.");
+      setError(missingCompanyMessage(canSelectCompany));
       return;
     }
 
@@ -123,6 +135,7 @@ export function OrderFillApp({ companyId, resumeJob, onHome, onHelp, onStage, em
         api: { createOrderFillJob, pollJob, getJobReport },
         command: {
           sourceFile,
+          warehouseFile,
           blankFiles: blanks,
           companyId,
         },
@@ -134,6 +147,7 @@ export function OrderFillApp({ companyId, resumeJob, onHome, onHelp, onStage, em
         },
       });
       setJobId(result.jobId);
+      onJobReady?.(result.jobId);
       setBrand(result.job?.brand || "");
       setMonth(result.job?.order_month || "");
       setRows(result.rows);
@@ -334,7 +348,10 @@ export function OrderFillApp({ companyId, resumeJob, onHome, onHelp, onStage, em
         monthLabel={monthLabel}
         filesReady={filesReady}
         onGoto={(next) => {
-          if (next === "upload" && (stage === "fill" || stage === "preview")) resetResult();
+          if (next === "upload" && (stage === "fill" || stage === "preview")) {
+            setLeaveUploadConfirm(true);
+            return;
+          }
           setStage(next);
         }}
       />
@@ -342,6 +359,7 @@ export function OrderFillApp({ companyId, resumeJob, onHome, onHelp, onStage, em
         {(stage === "upload" || stage === "processing") && (
           <UploadStage
             sourceFile={sourceFile}
+            warehouseFile={warehouseFile}
             blankFiles={blankFiles}
             onSource={(file) => {
               const previousSlots = blankSlotsForSource(sourceFile?.name)
@@ -351,7 +369,20 @@ export function OrderFillApp({ companyId, resumeJob, onHome, onHelp, onStage, em
                 .map((slot) => slot.id)
                 .join();
               setSourceFile(file);
+              resetResult();
+              if (sameSelectedFile(file, warehouseFile)) {
+                setWarehouseFile(null);
+                setError("Один файл нельзя использовать и для офиса, и для склада доставки.");
+              }
               if (previousSlots !== nextSlots) setBlankFiles({});
+            }}
+            onWarehouse={(file) => {
+              if (sameSelectedFile(sourceFile, file)) {
+                setWarehouseFile(null);
+                setError("Один файл нельзя использовать и для офиса, и для склада доставки.");
+                return;
+              }
+              setWarehouseFile(file);
               resetResult();
             }}
             onBlank={(id, file) => {
@@ -379,6 +410,11 @@ export function OrderFillApp({ companyId, resumeJob, onHome, onHelp, onStage, em
             banner={banner}
             onDownloadFiles={openPreview}
             onIssueReport={downloadIssueReport}
+            acknowledgedDuplicates={acknowledgedDuplicates}
+            onAcknowledgedDuplicates={(next) => {
+              const keys = typeof next === "function" ? next(acknowledgedDuplicates) : next;
+              rememberAcknowledgedKeys(keys);
+            }}
           />
         )}
         {stage === "preview" && (
@@ -437,6 +473,21 @@ export function OrderFillApp({ companyId, resumeJob, onHome, onHelp, onStage, em
           {confirmLines.join("\n")}
         </Modal>
       )}
+      {leaveUploadConfirm ? (
+        <Modal
+          title="Начать загрузку заново?"
+          cancelLabel="Остаться"
+          confirmLabel="Сбросить"
+          onCancel={() => setLeaveUploadConfirm(false)}
+          onConfirm={() => {
+            setLeaveUploadConfirm(false);
+            resetResult();
+            setStage("upload");
+          }}
+        >
+          Заполнение и проверка сбросятся. Файлы можно выбрать снова.
+        </Modal>
+      ) : null}
     </div>
   );
 }

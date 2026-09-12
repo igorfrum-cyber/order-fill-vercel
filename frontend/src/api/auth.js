@@ -36,10 +36,10 @@ export function enableTwoFactor(code) {
   });
 }
 
-export function disableTwoFactor(password) {
+export function disableTwoFactor(password, code) {
   return apiClient.request("/api/v1/auth/2fa/disable", {
     method: "POST",
-    body: JSON.stringify({ password }),
+    body: JSON.stringify({ password, code }),
   });
 }
 

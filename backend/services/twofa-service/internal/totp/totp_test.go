@@ -41,27 +41,41 @@ func TestWrongTOTPCodeFails(t *testing.T) {
 }
 
 func TestRecoveryCodeAcceptedOnce(t *testing.T) {
-	raw, hashes, err := GenerateRecoveryCodes(8)
+	raw, hashes, err := GenerateRecoveryCodes(8, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
 	if len(raw) != 8 || len(hashes) != 8 {
 		t.Fatalf("got %d raw and %d hashes", len(raw), len(hashes))
 	}
-	remaining, err := ConsumeRecoveryCode(hashes, raw[0])
+	remaining, err := ConsumeRecoveryCode(hashes, raw[0], nil)
 	if err != nil {
 		t.Fatalf("expected accepted recovery code: %v", err)
 	}
 	if len(remaining) != 7 {
 		t.Fatalf("remaining hashes: %d", len(remaining))
 	}
-	if _, err := ConsumeRecoveryCode(remaining, raw[0]); err == nil {
+	if _, err := ConsumeRecoveryCode(remaining, raw[0], nil); err == nil {
 		t.Fatal("expected recovery code to work once")
 	}
 }
 
+func TestRecoveryCodeHasAtLeast80Bits(t *testing.T) {
+	t.Parallel()
+	raw, _, err := GenerateRecoveryCodes(8, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, code := range raw {
+		got := normalizeRecoveryCode(code)
+		if len(got) < 20 {
+			t.Fatalf("recovery code entropy too low: %q (%d hex chars)", code, len(got))
+		}
+	}
+}
+
 func TestRecoveryCodeHashDoesNotStoreRawCode(t *testing.T) {
-	raw, hashes, err := GenerateRecoveryCodes(8)
+	raw, hashes, err := GenerateRecoveryCodes(8, nil)
 	if err != nil {
 		t.Fatal(err)
 	}

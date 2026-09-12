@@ -25,6 +25,8 @@ type SourceItem struct {
 	SourceComment  string
 	Stock          string
 	InTransit      string
+	BudgetCategory string
+	BudgetDemand   float64
 }
 
 // Source is the parsed 1C export together with the metadata the report shows.
@@ -127,7 +129,7 @@ func readSource(command FillCommand, rule brand.RuleConfig, report func(fraction
 	}
 
 	bounds := detection.Sheet.Bounds()
-	items, err := collectSourceItems(detection, rule, bounds, report)
+	items, err := collectSourceItems(detection, rule, calculationColumns, bounds, report)
 	if err != nil {
 		return Source{}, err
 	}
@@ -150,7 +152,7 @@ type scannedSourceRow struct {
 	err  error
 }
 
-func collectSourceItems(detection Detection, rule brand.RuleConfig, bounds spreadsheet.Bounds, report func(float64, string)) ([]SourceItem, error) {
+func collectSourceItems(detection Detection, rule brand.RuleConfig, calculation *calculationColumns, bounds spreadsheet.Bounds, report func(float64, string)) ([]SourceItem, error) {
 	start := detection.HeaderRow + 1
 	if bounds.MaxRow < start {
 		return nil, nil
@@ -176,6 +178,12 @@ func collectSourceItems(detection Detection, rule brand.RuleConfig, bounds sprea
 		orderedFactRaw := detection.Sheet.Value(row, detection.Columns[ColumnOrderedFact])
 		orderedFact, hasParsedFact := normalize.ParseNumber(orderedFactRaw)
 		hasOrderedFact := normalize.AsText(orderedFactRaw) != ""
+		budgetCategory := ""
+		budgetDemand := 0.0
+		if calculation != nil {
+			budgetCategory = normalize.NormalizeCategory(detection.Sheet.Value(row, calculation.category))
+			budgetDemand, _ = normalize.ParseNumber(detection.Sheet.Value(row, calculation.averageMonthly))
+		}
 
 		if articleRaw == "" && name == "" && !hasRecommended {
 			return
@@ -198,6 +206,8 @@ func collectSourceItems(detection Detection, rule brand.RuleConfig, bounds sprea
 				SourceComment:  normalize.AsText(detection.Sheet.Value(row, detection.Columns[ColumnComment])),
 				Stock:          normalize.AsText(detection.Sheet.Value(row, detection.Columns[ColumnStock])),
 				InTransit:      normalize.AsText(detection.Sheet.Value(row, detection.Columns[ColumnInTransit])),
+				BudgetCategory: budgetCategory,
+				BudgetDemand:   budgetDemand,
 			},
 		}
 		if offset%512 == 0 {

@@ -18,8 +18,9 @@ const (
 
 // Roles of the uploaded input files.
 const (
-	RoleSource = "source"
-	RoleBlank  = "blank"
+	RoleSource    = "source"
+	RoleBlank     = "blank"
+	RoleWarehouse = "warehouse"
 )
 
 // JobMessage is the queue contract published by job-service.
@@ -30,6 +31,7 @@ type JobMessage struct {
 	Brand        string        `json:"brand"`
 	OrderMonth   string        `json:"order_month"`
 	MatchingMode string        `json:"matching_mode,omitempty"`
+	CompanyID    string        `json:"company_id,omitempty"`
 	Inputs       []MessageFile `json:"inputs"`
 	Edits        []MessageEdit `json:"edits,omitempty"`
 }

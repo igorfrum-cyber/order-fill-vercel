@@ -13,6 +13,7 @@ import (
 
 	"github.com/redis/go-redis/v9"
 
+	"order-fill/backend/pkg/grpcutil"
 	"order-fill/backend/services/document-service/internal/app/port"
 )
 
@@ -23,7 +24,7 @@ const (
 	DefaultGroupName    = "document-service"
 	messagePayloadField = "payload"
 	serviceName         = "document-service"
-	defaultClaimMinIdle = 5 * time.Minute
+	defaultClaimMinIdle = 30 * time.Minute
 )
 
 // pollTimeout keeps XREADGROUP short so the loop notices a cancelled context
@@ -33,8 +34,8 @@ const (
 	errorBackoff = time.Second
 )
 
-// Handler processes one job message. Returning an error drops the message: the
-// use case has already recorded the failure on the job itself.
+// Handler processes one job message. Returning an error leaves the message
+// pending for retry. Invalid payloads are logged and acknowledged.
 type Handler func(ctx context.Context, message port.JobMessage) error
 
 // Consumer reads job messages from a Redis stream consumer group.
@@ -143,7 +144,9 @@ func (c *Consumer) Run(ctx context.Context, handle Handler) error {
 		if !ok {
 			continue
 		}
-		c.dispatch(ctx, message.payload, handle)
+		if err := c.dispatch(ctx, message.payload, handle); err != nil {
+			continue
+		}
 		if err := c.ack(ctx, message.id); err != nil {
 			if ctx.Err() != nil {
 				continue
@@ -230,7 +233,7 @@ func (c *Consumer) poll(ctx context.Context) (queuedMessage, bool, error) {
 	return firstStreamMessage(streams[0].Messages)
 }
 
-func (c *Consumer) dispatch(ctx context.Context, payload string, handle Handler) {
+func (c *Consumer) dispatch(ctx context.Context, payload string, handle Handler) error {
 	message, err := decodeMessage([]byte(payload))
 	if err != nil {
 		c.logger.ErrorContext(ctx, "queue message rejected",
@@ -240,9 +243,9 @@ func (c *Consumer) dispatch(ctx context.Context, payload string, handle Handler)
 			"error_code", "invalid_payload",
 			"error", err,
 		)
-		return
+		return nil
 	}
-	if err := handle(ctx, message); err != nil {
+	if err := handle(grpcutil.WithCompany(ctx, message.CompanyID), message); err != nil {
 		c.logger.ErrorContext(ctx, "queue message handling failed",
 			"service", serviceName,
 			"job_id", message.JobID,
@@ -250,7 +253,9 @@ func (c *Consumer) dispatch(ctx context.Context, payload string, handle Handler)
 			"error_code", "handler_error",
 			"error", err,
 		)
+		return err
 	}
+	return nil
 }
 
 func (c *Consumer) ack(ctx context.Context, messageID string) error {

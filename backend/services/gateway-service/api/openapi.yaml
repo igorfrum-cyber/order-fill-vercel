@@ -299,16 +299,18 @@ paths:
     post:
       operationId: disableTwoFactor
       tags: [auth]
-      summary: Disable two-factor authentication
+      summary: Disable two-factor authentication with password and TOTP or recovery code
       requestBody:
         required: true
         content:
           application/json:
             schema:
               type: object
-              required: [password]
+              required: [password, code]
               properties:
                 password:
+                  type: string
+                code:
                   type: string
       responses:
         "204":
@@ -1424,6 +1426,10 @@ components:
         source_file:
           type: string
           format: binary
+        warehouse_file:
+          type: string
+          format: binary
+          description: Optional second Tyumen location table (warehouse). Must be a different file from source_file.
         blank_files:
           type: array
           minItems: 1
@@ -1449,6 +1455,10 @@ components:
         tyumen_source_file:
           type: string
           format: binary
+        warehouse_file:
+          type: string
+          format: binary
+          description: Optional warehouse table merged with tyumen_source_file.
         company_id:
           type: string
           description: Required when the actor is platform_admin.
@@ -1611,6 +1621,18 @@ components:
           type: string
         in_transit:
           type: string
+        has_budget_data:
+          type: boolean
+          description: True when the server found an unambiguous supplier price and ABC demand inputs for budget planning.
+        budget_category:
+          type: string
+          enum: [C, B, A, A+]
+        budget_demand:
+          type: number
+          minimum: 0
+        budget_price:
+          type: number
+          minimum: 0
         recommended:
           type: [number, "null"]
         rounded:

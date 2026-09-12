@@ -129,6 +129,7 @@ message ValidateSessionResponse {
 
 message GetMeRequest {
   string session_token = 1;
+  orderfill.common.v1.RequestMeta meta = 2;
 }
 
 message GetMeResponse {

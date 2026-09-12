@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"image/png"
 	"net/url"
+	"slices"
 	"strings"
 	"time"
 
@@ -20,8 +21,8 @@ const (
 	totpIssuer         = "Order Fill"
 	totpPeriod         = uint(30)
 	recoveryCodeCount  = 8
-	recoveryCodeBytes  = 5
-	recoveryCodeDigits = 8
+	recoveryCodeBytes  = 10
+	recoveryCodeDigits = 20
 )
 
 func NewTOTPSecret() (string, error) {
@@ -54,13 +55,16 @@ func VerifyTOTP(secret string, code string, at time.Time) error {
 	return nil
 }
 
-func GenerateRecoveryCodes(count int) ([]string, []string, error) {
+func GenerateRecoveryCodes(count int, hash func(string) string) ([]string, []string, error) {
 	if count <= 0 {
 		count = recoveryCodeCount
 	}
+	if hash == nil {
+		hash = secret.HashSecret
+	}
 	raw := make([]string, count)
 	hashes := make([]string, count)
-	for i := 0; i < count; i++ {
+	for i := range count {
 		buf := make([]byte, recoveryCodeBytes)
 		if _, err := rand.Read(buf); err != nil {
 			return nil, nil, fmt.Errorf("generate recovery code: %w", err)
@@ -69,29 +73,37 @@ func GenerateRecoveryCodes(count int) ([]string, []string, error) {
 		if len(encoded) < recoveryCodeDigits {
 			return nil, nil, fmt.Errorf("generate recovery code: too short")
 		}
-		code := encoded[:4] + "-" + encoded[4:recoveryCodeDigits]
+		code := formatRecoveryCode(encoded[:recoveryCodeDigits])
 		raw[i] = code
-		hashes[i] = secret.HashSecret(normalizeRecoveryCode(code))
+		hashes[i] = hash(normalizeRecoveryCode(code))
 	}
 	return raw, hashes, nil
 }
 
-func ConsumeRecoveryCode(hashes []string, code string) ([]string, error) {
-	want := secret.HashSecret(normalizeRecoveryCode(code))
-	found := -1
-	for i, hash := range hashes {
-		if secret.SecretEqual(hash, want) {
-			found = i
-			break
+func ConsumeRecoveryCode(hashes []string, code string, hash func(string) string) ([]string, error) {
+	norm := normalizeRecoveryCode(code)
+	legacy := secret.HashSecret(norm)
+	found := slices.IndexFunc(hashes, func(stored string) bool {
+		if hash != nil && secret.SecretEqual(stored, hash(norm)) {
+			return true
 		}
-	}
+		return secret.SecretEqual(stored, legacy)
+	})
 	if found < 0 {
 		return nil, domain.ErrInvalidTOTP
 	}
-	remaining := make([]string, 0, len(hashes)-1)
-	remaining = append(remaining, hashes[:found]...)
-	remaining = append(remaining, hashes[found+1:]...)
-	return remaining, nil
+	return append(slices.Clone(hashes[:found]), hashes[found+1:]...), nil
+}
+
+func formatRecoveryCode(encoded string) string {
+	var b strings.Builder
+	for i := range encoded {
+		if i > 0 && i%4 == 0 {
+			b.WriteByte('-')
+		}
+		b.WriteByte(encoded[i])
+	}
+	return b.String()
 }
 
 func normalizeRecoveryCode(code string) string {

@@ -123,7 +123,7 @@ func (u *ProcessJob) process(ctx context.Context, message port.JobMessage) error
 		return fmt.Errorf("%w: тип задачи %q пока не поддерживается сервисом", orderfill.ErrInvalidInput, message.Type)
 	}
 
-	sourceInput, blankInputs, err := splitInputs(message.Inputs)
+	sourceInput, warehouseInput, blankInputs, err := splitInputs(message.Inputs)
 	if err != nil {
 		return err
 	}
@@ -132,6 +132,7 @@ func (u *ProcessJob) process(ctx context.Context, message port.JobMessage) error
 		workbook spreadsheet.Workbook
 	}
 	sourceLoaded := loadedFile{}
+	warehouseLoaded := loadedFile{}
 	blanksLoaded := make([]loadedFile, len(blankInputs))
 	var sourceFrac, blankFrac float64
 	var fracMu sync.Mutex
@@ -159,6 +160,13 @@ func (u *ProcessJob) process(ctx context.Context, message port.JobMessage) error
 			return err
 		}
 		sourceLoaded.workbook = workbook
+		if warehouseInput.StorageKey != "" {
+			workbook, err = u.loadWorkbook(groupCtx, warehouseInput.StorageKey, nil)
+			if err != nil {
+				return err
+			}
+			warehouseLoaded.workbook = workbook
+		}
 		fracMu.Lock()
 		sourceFrac = 1
 		fracMu.Unlock()
@@ -208,6 +216,13 @@ func (u *ProcessJob) process(ctx context.Context, message port.JobMessage) error
 	}
 	if err := u.jobs.SetIdentity(ctx, message.JobID, detectedBrand, orderMonth, u.now()); err != nil {
 		return fmt.Errorf("save detected brand: %w", err)
+	}
+	if warehouseInput.StorageKey != "" {
+		progress.Set(ctx, 0.59, "Объединяю офис и склад доставки")
+		sourceLoaded.workbook, err = orderfill.MergeTyumenSources(sourceLoaded.workbook, warehouseLoaded.workbook, orderMonth, rule)
+		if err != nil {
+			return err
+		}
 	}
 
 	blankNames := make([]string, len(blankInputs))
@@ -311,7 +326,7 @@ func (u *ProcessJob) finalize(ctx context.Context, message port.JobMessage) erro
 		return fmt.Errorf("load job outputs: %w", err)
 	}
 
-	sourceInput, blankInputs, err := splitInputs(message.Inputs)
+	sourceInput, _, blankInputs, err := splitInputs(message.Inputs)
 	if err != nil {
 		return err
 	}
@@ -516,24 +531,27 @@ func (u *ProcessJob) resolveIdentity(ctx context.Context, workbook spreadsheet.W
 	return detected, orderMonth, rule, nil
 }
 
-func splitInputs(inputs []port.MessageFile) (port.MessageFile, []port.MessageFile, error) {
+func splitInputs(inputs []port.MessageFile) (port.MessageFile, port.MessageFile, []port.MessageFile, error) {
 	var source port.MessageFile
+	var warehouse port.MessageFile
 	blanks := make([]port.MessageFile, 0, len(inputs))
 	for _, input := range inputs {
 		switch input.Role {
 		case port.RoleSource:
 			source = input
+		case port.RoleWarehouse:
+			warehouse = input
 		case port.RoleBlank:
 			blanks = append(blanks, input)
 		}
 	}
 	if source.StorageKey == "" {
-		return port.MessageFile{}, nil, fmt.Errorf("%w: не хватает таблицы продаж из 1С. Загрузите её в первое поле", orderfill.ErrInvalidInput)
+		return port.MessageFile{}, port.MessageFile{}, nil, fmt.Errorf("%w: не хватает таблицы продаж из 1С. Загрузите её в первое поле", orderfill.ErrInvalidInput)
 	}
 	if len(blanks) == 0 {
-		return port.MessageFile{}, nil, fmt.Errorf("%w: не хватает бланка поставщика. Загрузите бланк заказа", orderfill.ErrInvalidInput)
+		return port.MessageFile{}, port.MessageFile{}, nil, fmt.Errorf("%w: не хватает бланка поставщика. Загрузите бланк заказа", orderfill.ErrInvalidInput)
 	}
-	return source, blanks, nil
+	return source, warehouse, blanks, nil
 }
 
 // blankID is stable across the process and finalize stages because the queue

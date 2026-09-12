@@ -95,9 +95,15 @@ func (a *API) gate(next http.Handler) http.Handler {
 			next.ServeHTTP(w, r)
 			return
 		}
-		if r.URL.Path == "/api/v1/auth/login" || r.URL.Path == "/api/v1/auth/login/2fa" || r.URL.Path == "/api/v1/auth/invite" ||
-			r.URL.Path == "/api/v1/auth/passkeys/login/begin" || r.URL.Path == "/api/v1/auth/passkeys/login/finish" ||
-			publicCompanyLoginPath(r.URL.Path) {
+		if publicCompanyLoginPath(r.URL.Path) {
+			next.ServeHTTP(w, r)
+			return
+		}
+		if publicAuthPath(r.URL.Path) {
+			if r.Method == http.MethodPost && !publicOriginAllowed(r, a.AllowedOrigins) {
+				writeError(w, http.StatusForbidden, "forbidden", "request was rejected")
+				return
+			}
 			next.ServeHTTP(w, r)
 			return
 		}

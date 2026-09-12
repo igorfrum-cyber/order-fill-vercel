@@ -1,6 +1,8 @@
 package httpapi
 
 import (
+	"net/http"
+	"net/http/httptest"
 	"testing"
 
 	commonv1 "order-fill/backend/proto/gen/go/orderfill/common/v1"
@@ -53,5 +55,43 @@ func TestPresentCompanyForHidesMatchingMode(t *testing.T) {
 	purchaser := api.presentCompanyFor(t.Context(), User{Role: "purchaser"}, company)
 	if _, ok := purchaser["matching_mode"]; ok {
 		t.Fatalf("purchaser saw matching_mode: %#v", purchaser)
+	}
+}
+
+func TestListAuditRequiresPlatformAdmin(t *testing.T) {
+	t.Parallel()
+	api := &API{}
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/audit", nil)
+	req = req.WithContext(withUser(req.Context(), User{Role: "purchaser", CompanyID: "co-1"}))
+	rec := httptest.NewRecorder()
+	api.listAudit(rec, req)
+	if rec.Code != http.StatusNotFound {
+		t.Fatalf("status=%d", rec.Code)
+	}
+}
+
+func TestListCompaniesRequiresPlatformAdmin(t *testing.T) {
+	t.Parallel()
+	api := &API{}
+	for _, role := range []string{"purchaser", "company_admin", "company_owner"} {
+		req := httptest.NewRequest(http.MethodGet, "/api/v1/companies", nil)
+		req = req.WithContext(withUser(req.Context(), User{Role: role, CompanyID: "co-1"}))
+		rec := httptest.NewRecorder()
+		api.listCompanies(rec, req)
+		if rec.Code != http.StatusNotFound {
+			t.Fatalf("%s status=%d", role, rec.Code)
+		}
+	}
+}
+
+func TestListStatusRequiresPlatformAdmin(t *testing.T) {
+	t.Parallel()
+	api := &API{}
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/status", nil)
+	req = req.WithContext(withUser(req.Context(), User{Role: "company_owner", CompanyID: "co-1"}))
+	rec := httptest.NewRecorder()
+	api.listStatus(rec, req)
+	if rec.Code != http.StatusNotFound {
+		t.Fatalf("status=%d", rec.Code)
 	}
 }

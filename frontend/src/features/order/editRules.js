@@ -8,6 +8,13 @@ export function normalizeOrderValue(value) {
   return number;
 }
 
+export function parseQuantityInput(text) {
+  const cleaned = String(text ?? "").replace(/[^\d.,]/g, "").replace(",", ".");
+  if (cleaned === "" || cleaned === ".") return "";
+  if (cleaned.endsWith(".")) return cleaned;
+  return normalizeOrderValue(cleaned);
+}
+
 export function editRequiresComment({ value, baseline, initial, comment, autoComment }) {
   const normalizedComment = String(comment || "").trim().toLowerCase();
   const normalizedAutoComment = String(autoComment || "").trim().toLowerCase();

@@ -16,11 +16,27 @@ import (
 
 type Server struct {
 	jobsv1.UnimplementedJobServiceServer
-	svc *jobs.Service
+	svc         *jobs.Service
+	actors      ActorLookup
+	workerToken string
 }
 
-func NewServer(svc *jobs.Service) *Server {
-	return &Server{svc: svc}
+type ActorLookup interface {
+	Actor(ctx context.Context, userID string) (domain.Actor, error)
+}
+
+func NewServer(svc *jobs.Service, actors ActorLookup, workerToken string) *Server {
+	return &Server{svc: svc, actors: actors, workerToken: workerToken}
+}
+
+func (s *Server) requireWorker(ctx context.Context) error {
+	if s.workerToken == "" {
+		return nil
+	}
+	if !grpcutil.WorkerAuthorized(ctx, s.workerToken) {
+		return domain.ErrUnauthorized
+	}
+	return nil
 }
 
 func New(handler jobsv1.JobServiceServer) *grpc.Server {
@@ -31,15 +47,21 @@ func New(handler jobsv1.JobServiceServer) *grpc.Server {
 	return s
 }
 
-func actorFrom(ctx context.Context, meta *commonv1.RequestMeta) domain.Actor {
-	role := domain.RoleName(grpcutil.ActorRole(ctx))
-	if role == "" {
-		role = domain.RolePurchaser
+func (s *Server) actorFrom(ctx context.Context, meta *commonv1.RequestMeta) (domain.Actor, error) {
+	userID := ""
+	companyID := ""
+	if meta != nil {
+		userID = meta.GetActorUserId()
+		companyID = meta.GetCompanyId()
 	}
-	if meta == nil {
-		return domain.Actor{Role: role}
+	if s.actors != nil {
+		return s.actors.Actor(ctx, userID)
 	}
-	return domain.Actor{UserID: meta.GetActorUserId(), CompanyID: meta.GetCompanyId(), Role: role}
+	if userID == "" {
+		return domain.Actor{}, domain.ErrUnauthorized
+	}
+	// ponytail: without identity, ignore x-actor-role and stay purchaser. Look up role when IDENTITY_GRPC_ADDR is set.
+	return domain.Actor{UserID: userID, CompanyID: companyID, Role: domain.RolePurchaser}, nil
 }
 
 func protoJob(job domain.Job) *jobsv1.Job {
@@ -63,11 +85,15 @@ func protoJob(job domain.Job) *jobsv1.Job {
 }
 
 func (s *Server) CreateJob(ctx context.Context, req *jobsv1.CreateJobRequest) (*jobsv1.CreateJobResponse, error) {
+	actor, err := s.actorFrom(ctx, req.GetMeta())
+	if err != nil {
+		return nil, err
+	}
 	jobType, err := domain.ParseType(req.GetType())
 	if err != nil {
 		return nil, err
 	}
-	job, err := s.svc.Create(ctx, actorFrom(ctx, req.GetMeta()), jobType, req.GetInputFileIds(), req.GetBrand())
+	job, err := s.svc.Create(ctx, actor, jobType, req.GetInputFileIds(), req.GetBrand())
 	if err != nil {
 		return nil, err
 	}
@@ -75,7 +101,11 @@ func (s *Server) CreateJob(ctx context.Context, req *jobsv1.CreateJobRequest) (*
 }
 
 func (s *Server) GetJob(ctx context.Context, req *jobsv1.GetJobRequest) (*jobsv1.GetJobResponse, error) {
-	job, err := s.svc.Get(ctx, actorFrom(ctx, req.GetMeta()), req.GetJobId())
+	actor, err := s.actorFrom(ctx, req.GetMeta())
+	if err != nil {
+		return nil, err
+	}
+	job, err := s.svc.Get(ctx, actor, req.GetJobId())
 	if err != nil {
 		return nil, err
 	}
@@ -83,7 +113,11 @@ func (s *Server) GetJob(ctx context.Context, req *jobsv1.GetJobRequest) (*jobsv1
 }
 
 func (s *Server) ListJobs(ctx context.Context, req *jobsv1.ListJobsRequest) (*jobsv1.ListJobsResponse, error) {
-	items, err := s.svc.List(ctx, actorFrom(ctx, req.GetMeta()))
+	actor, err := s.actorFrom(ctx, req.GetMeta())
+	if err != nil {
+		return nil, err
+	}
+	items, err := s.svc.List(ctx, actor)
 	if err != nil {
 		return nil, err
 	}
@@ -95,6 +129,9 @@ func (s *Server) ListJobs(ctx context.Context, req *jobsv1.ListJobsRequest) (*jo
 }
 
 func (s *Server) CompleteJob(ctx context.Context, req *jobsv1.CompleteJobRequest) (*jobsv1.CompleteJobResponse, error) {
+	if err := s.requireWorker(ctx); err != nil {
+		return nil, err
+	}
 	files := make([]domain.FileRef, 0, len(req.GetFiles()))
 	for _, file := range req.GetFiles() {
 		files = append(files, domain.FileRef{
@@ -123,6 +160,9 @@ func (s *Server) CompleteJob(ctx context.Context, req *jobsv1.CompleteJobRequest
 }
 
 func (s *Server) FailJob(ctx context.Context, req *jobsv1.FailJobRequest) (*jobsv1.FailJobResponse, error) {
+	if err := s.requireWorker(ctx); err != nil {
+		return nil, err
+	}
 	if err := s.svc.Fail(ctx, req.GetJobId(), req.GetErrorMessage()); err != nil {
 		return nil, err
 	}
@@ -130,11 +170,15 @@ func (s *Server) FailJob(ctx context.Context, req *jobsv1.FailJobRequest) (*jobs
 }
 
 func (s *Server) SubmitEdits(ctx context.Context, req *jobsv1.SubmitEditsRequest) (*jobsv1.SubmitEditsResponse, error) {
+	actor, err := s.actorFrom(ctx, req.GetMeta())
+	if err != nil {
+		return nil, err
+	}
 	edits := make([]domain.Edit, 0, len(req.GetEdits()))
 	for _, edit := range req.GetEdits() {
 		edits = append(edits, domain.Edit{RowKey: edit.GetRowKey(), Field: edit.GetField(), Value: edit.GetValue(), Comment: edit.GetComment()})
 	}
-	job, err := s.svc.SubmitEdits(ctx, actorFrom(ctx, req.GetMeta()), req.GetJobId(), edits)
+	job, err := s.svc.SubmitEdits(ctx, actor, req.GetJobId(), edits)
 	if err != nil {
 		return nil, err
 	}
@@ -142,7 +186,11 @@ func (s *Server) SubmitEdits(ctx context.Context, req *jobsv1.SubmitEditsRequest
 }
 
 func (s *Server) GetReport(ctx context.Context, req *jobsv1.GetReportRequest) (*jobsv1.GetReportResponse, error) {
-	report, err := s.svc.GetReport(ctx, actorFrom(ctx, req.GetMeta()), req.GetJobId())
+	actor, err := s.actorFrom(ctx, req.GetMeta())
+	if err != nil {
+		return nil, err
+	}
+	report, err := s.svc.GetReport(ctx, actor, req.GetJobId())
 	if err != nil {
 		return nil, err
 	}
@@ -153,7 +201,11 @@ func (s *Server) GetReport(ctx context.Context, req *jobsv1.GetReportRequest) (*
 }
 
 func (s *Server) ListFiles(ctx context.Context, req *jobsv1.ListFilesRequest) (*jobsv1.ListFilesResponse, error) {
-	files, err := s.svc.ListFiles(ctx, actorFrom(ctx, req.GetMeta()), req.GetJobId())
+	actor, err := s.actorFrom(ctx, req.GetMeta())
+	if err != nil {
+		return nil, err
+	}
+	files, err := s.svc.ListFiles(ctx, actor, req.GetJobId())
 	if err != nil {
 		return nil, err
 	}
@@ -168,6 +220,9 @@ func (s *Server) ListFiles(ctx context.Context, req *jobsv1.ListFilesRequest) (*
 }
 
 func (s *Server) UpdateProgress(ctx context.Context, req *jobsv1.UpdateProgressRequest) (*jobsv1.UpdateProgressResponse, error) {
+	if err := s.requireWorker(ctx); err != nil {
+		return nil, err
+	}
 	if err := s.svc.UpdateProgress(ctx, req.GetJobId(), domain.Status(req.GetStatus()), req.GetMessage(), req.GetProgress()); err != nil {
 		return nil, err
 	}

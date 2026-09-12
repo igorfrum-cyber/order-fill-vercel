@@ -28,8 +28,9 @@ const (
 type Role string
 
 const (
-	RoleSource Role = "source"
-	RoleBlank  Role = "blank"
+	RoleSource    Role = "source"
+	RoleBlank     Role = "blank"
+	RoleWarehouse Role = "warehouse"
 )
 
 type Job struct {
@@ -108,6 +109,8 @@ func ValidateUploads(jobType Type, uploads []UploadMeta) error {
 	}
 	blanks := 0
 	sources := 0
+	warehouses := 0
+	seen := map[string]struct{}{}
 	for _, upload := range uploads {
 		if strings.TrimSpace(upload.Name) == "" {
 			return fmt.Errorf("%w: file name is required", ErrInvalid)
@@ -115,23 +118,42 @@ func ValidateUploads(jobType Type, uploads []UploadMeta) error {
 		if !hasWorkbookExtension(upload.Name) {
 			return fmt.Errorf("%w: file %q must be .xlsx or .xlsm", ErrInvalid, upload.Name)
 		}
+		key := strings.ToLower(strings.TrimSpace(upload.Name))
+		if _, dup := seen[key]; dup {
+			return fmt.Errorf("%w: файл %q загружен дважды", ErrInvalid, upload.Name)
+		}
+		seen[key] = struct{}{}
 		switch upload.Role {
 		case RoleBlank:
 			blanks++
 		case RoleSource:
 			sources++
+		case RoleWarehouse:
+			warehouses++
 		default:
 			return fmt.Errorf("%w: unsupported file role %q", ErrInvalid, upload.Role)
 		}
 	}
-	if blanks == 0 {
-		return fmt.Errorf("%w: blank_files is required", ErrInvalid)
+	if warehouses > 1 {
+		return fmt.Errorf("%w: at most one warehouse file is allowed", ErrInvalid)
 	}
-	if jobType == TypeOrderFill && blanks > 2 {
-		return fmt.Errorf("%w: order fill accepts at most two blank_files", ErrInvalid)
-	}
-	if jobType == TypeOrderFill && sources != 1 {
-		return fmt.Errorf("%w: exactly one source_file is required", ErrInvalid)
+	switch jobType {
+	case TypeOrderFill:
+		if blanks == 0 {
+			return fmt.Errorf("%w: blank_files is required", ErrInvalid)
+		}
+		if blanks > 2 {
+			return fmt.Errorf("%w: order fill accepts at most two blank_files", ErrInvalid)
+		}
+		if sources != 1 {
+			return fmt.Errorf("%w: exactly one source_file is required", ErrInvalid)
+		}
+	case TypeNorthMerge:
+		if blanks == 0 {
+			return fmt.Errorf("%w: blank_files is required", ErrInvalid)
+		}
+	default:
+		return fmt.Errorf("%w: unsupported job type %q", ErrInvalid, jobType)
 	}
 	return nil
 }

@@ -21,6 +21,24 @@ func Dial(ctx context.Context, addr string) (*Client, error) {
 	return &Client{api: identityv1.NewIdentityServiceClient(conn)}, nil
 }
 
+func (c *Client) Actor(ctx context.Context, userID string) (domain.Actor, error) {
+	if userID == "" {
+		return domain.Actor{}, domain.ErrUnauthorized
+	}
+	resp, err := c.api.GetMe(ctx, &identityv1.GetMeRequest{
+		Meta: &commonv1.RequestMeta{ActorUserId: userID},
+	})
+	if err != nil || resp.GetUser() == nil || resp.GetUser().GetId() == "" {
+		return domain.Actor{}, domain.ErrUnauthorized
+	}
+	user := resp.GetUser()
+	return domain.Actor{
+		UserID:    user.GetId(),
+		CompanyID: user.GetCompanyId(),
+		Role:      domain.RoleName(user.GetRole()),
+	}, nil
+}
+
 func (c *Client) MatchingMode(ctx context.Context, actor domain.Actor) (domain.MatchingMode, error) {
 	resp, err := c.api.ListCompanies(ctx, &identityv1.ListCompaniesRequest{
 		Meta: &commonv1.RequestMeta{ActorUserId: actor.UserID, CompanyId: actor.CompanyID},

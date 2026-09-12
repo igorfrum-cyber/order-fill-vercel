@@ -107,12 +107,38 @@ export function nearestNorthMultiple(value, multiple) {
   return upper - number <= number - lower ? upper : lower;
 }
 
+export function northTyumenFreeStock(stock, inTransit, plannedOrder, target, warehouseStock = null, warehouseTransit = null) {
+  const free = Math.max(0, Number(stock) + Number(inTransit) + Number(plannedOrder) - Number(target));
+  return warehouseStock == null ? free : Math.min(free, Math.max(0, Number(warehouseStock) + (warehouseTransit || 0) + Number(plannedOrder)));
+}
+
+function northBrand(summary = {}) {
+  return summary.brand || summary.kind || "";
+}
+
+function northBoxStep(brand, row = {}) {
+  const box = Number(row.blankBoxSize);
+  const boxBrand = !["christina", "klapp", "novacutan", "sothys", "skin_synergy"].includes(brand);
+  return boxBrand && Number.isFinite(box) && box > 0 ? Math.ceil(box) : 1;
+}
+
+/** North supplier rounding from origin/main defaultNorthActualSupplierOrder, not blank AdjustQuantity. */
 export function defaultNorthActual(row, supplierNeed, summary = {}) {
   if (supplierNeed <= 0) return "";
-  if (summary.kind === "klapp") return nearestNorthMultiple(supplierNeed, 3);
-  if (summary.kind !== "novacutan") return Number(supplierNeed.toFixed(2));
-  const minimum = Number(row.novacutanMinimum || 100);
-  return Math.round(Math.max(supplierNeed, minimum) / 10) * 10;
+  const brand = northBrand(summary);
+  const variant = summary.variant || "";
+  if (brand === "christina" || variant === "home" || variant === "proff") {
+    return Math.ceil(Number(supplierNeed) / 3 - 1e-10) * 3;
+  }
+  if (brand === "novacutan") {
+    const minimum = Number(row.novacutanMinimum || 100);
+    const base = Math.max(Number(supplierNeed), minimum);
+    if (Number(row.supplierUnitSize || 1) > 1) return Number(base.toFixed(2));
+    return Math.round(base / 10) * 10;
+  }
+  if (brand === "klapp") return nearestNorthMultiple(supplierNeed, 3);
+  const step = northBoxStep(brand, row);
+  return Math.ceil(Number(supplierNeed) / step - 1e-10) * step;
 }
 
 export function recalculateNorthRow(row, quantities) {
@@ -121,7 +147,10 @@ export function recalculateNorthRow(row, quantities) {
   const tyumenPlannedOrder = cityMap.has("tyumen") ? tyumenUploadedOrder : Number(row.tyumenPlannedOrder || 0);
   const tyumenSupplierNeed = Math.max(0, tyumenPlannedOrder);
   const supplierUnitSize = Number(row.supplierUnitSize || 1);
-  let freeLeft = Math.max(0, Number(row.tyumenStock || 0) + Number(row.tyumenInTransit || 0) + tyumenPlannedOrder - Number(row.tyumenTarget || 0));
+  const warehouseStock = row.hasWarehouseStock ? Number(row.warehouseStock || 0) : null;
+  const warehouseTransit = row.hasWarehouseStock ? Number(row.warehouseTransit || 0) : null;
+  const tyumenFree = northTyumenFreeStock(row.tyumenStock || 0, row.tyumenInTransit || 0, tyumenPlannedOrder, row.tyumenTarget || 0, warehouseStock, warehouseTransit);
+  let freeLeft = tyumenFree;
   const supplierParts = [];
   const tyumenParts = [];
   let northNeed = 0;
@@ -154,7 +183,7 @@ export function recalculateNorthRow(row, quantities) {
     ...row,
     northNeed: Number(northNeed.toFixed(2)),
     cities,
-    tyumenFree: Number(Math.max(0, Number(row.tyumenStock || 0) + Number(row.tyumenInTransit || 0) + tyumenPlannedOrder - Number(row.tyumenTarget || 0)).toFixed(2)),
+    tyumenFree: Number(tyumenFree.toFixed(2)),
     fromTyumen: Number(fromTyumen.toFixed(2)),
     supplierNorthNeed: Number(supplierNorthNeed.toFixed(2)),
     supplierDemandNeed,

@@ -34,6 +34,7 @@ export function NorthApp({ companyId, onHome, onHelp }) {
   const [homeFiles, setHomeFiles] = useState([]);
   const [proffFiles, setProffFiles] = useState([]);
   const [tyumenFile, setTyumenFile] = useState(null);
+  const [warehouseFile, setWarehouseFile] = useState(null);
   const [status, setStatus] = useState("Готов к загрузке");
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
@@ -64,6 +65,7 @@ export function NorthApp({ companyId, onHome, onHelp }) {
     setHomeFiles([]);
     setProffFiles([]);
     setTyumenFile(null);
+    setWarehouseFile(null);
     resetPlan();
     setStatus("Готов к загрузке");
   }
@@ -123,7 +125,7 @@ export function NorthApp({ companyId, onHome, onHelp }) {
     try {
       const jobResult = await runNorthMergeJob({
         api: { createNorthMergeJob, pollJob, getJobReport },
-        command: { brand, blankFiles: entries, tyumenSourceFile: tyumenFile, companyId },
+        command: { brand, blankFiles: entries, tyumenSourceFile: tyumenFile, warehouseFile, companyId },
         onStatus: (text) => setStatus(text),
       });
       setMergePrompt({ entries, result: jobResult });
@@ -253,7 +255,7 @@ export function NorthApp({ companyId, onHome, onHelp }) {
                 ))}
               </ol>
               <p className="mt-2 text-[13px] text-[var(--color-ink-faint)]">
-                {excelAcceptHint} {selectedFileCountLabel(northSelectedCount({ files, homeFiles, proffFiles, tyumenFile }))}
+                {excelAcceptHint} {selectedFileCountLabel(northSelectedCount({ files, homeFiles, proffFiles, tyumenFile, warehouseFile }))}
               </p>
             </div>
             <div className="w-64">
@@ -271,10 +273,15 @@ export function NorthApp({ companyId, onHome, onHelp }) {
             homeFiles={homeFiles}
             proffFiles={proffFiles}
             tyumenFile={tyumenFile}
+            warehouseFile={warehouseFile}
             onAdd={addFiles}
             onRemove={removeFile}
             onPickTyumen={(file) => {
               setTyumenFile(file);
+              resetPlan();
+            }}
+            onPickWarehouse={(file) => {
+              setWarehouseFile(file);
               resetPlan();
             }}
           />

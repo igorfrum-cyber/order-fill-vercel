@@ -37,12 +37,27 @@ func TestValidateRejectsProductionMissingQueue(t *testing.T) {
 }
 
 func TestValidateAcceptsProductionConfig(t *testing.T) {
+	t.Setenv("GRPC_TLS_MODE", "mtls")
+	t.Setenv("GRPC_TLS_CERT_FILE", "cert.pem")
+	t.Setenv("GRPC_TLS_KEY_FILE", "key.pem")
+	t.Setenv("GRPC_TLS_CA_FILE", "ca.pem")
 	cfg := Config{
-		Environment: "production", DatabaseURL: "postgres://db", QueueURL: "redis://redis:6379/0",
-		FileAddr: "file:9095", IdentityAddr: "identity:9091",
+		Environment: "production", DatabaseURL: "postgres://user:secret@db/order_fill?sslmode=require", QueueURL: "redis://:secret@redis:6379/0",
+		FileAddr: "file:9095", IdentityAddr: "identity:9091", WorkerToken: "production-worker-token",
 	}
 	if err := cfg.Validate(); err != nil {
 		t.Fatal(err)
+	}
+}
+
+func TestValidateRejectsProductionDefaultWorkerToken(t *testing.T) {
+	t.Setenv("GRPC_TLS_MODE", "mtls")
+	cfg := Config{
+		Environment: "production", DatabaseURL: "postgres://user:secret@db/order_fill?sslmode=require", QueueURL: "redis://:secret@redis:6379/0",
+		FileAddr: "file:9095", IdentityAddr: "identity:9091", WorkerToken: "local-dev-worker-token",
+	}
+	if err := cfg.Validate(); err == nil {
+		t.Fatal("expected default worker token error")
 	}
 }
 

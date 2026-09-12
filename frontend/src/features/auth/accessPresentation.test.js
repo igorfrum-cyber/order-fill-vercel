@@ -68,6 +68,8 @@ test("company admin cannot disable or reset the company owner", () => {
   assert.equal(canManageListedUser("company_admin", "purchaser"), true);
   assert.equal(canManageListedUser("company_admin", "company_owner"), false);
   assert.equal(canManageListedUser("purchaser", "purchaser"), false);
+  assert.equal(canManageListedUser("company_owner", "company_owner"), false);
+  assert.equal(canManageListedUser("company_admin", "company_admin"), false);
 });
 
 test("accessSummary explains what each role can do", () => {

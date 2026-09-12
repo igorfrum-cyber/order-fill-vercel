@@ -1,4 +1,8 @@
-.PHONY: verify lint test up down logs load-order-fill lan-https lan-https-down https https-down
+.PHONY: verify lint test docs docs-sync contracts security up down logs load-order-fill lan-https lan-https-down https https-down hooks
+
+hooks:
+	git config core.hooksPath .githooks
+	chmod +x .githooks/pre-commit .githooks/pre-push
 
 verify:
 	bash scripts/verify.sh
@@ -24,6 +28,19 @@ test:
 			GOMODCACHE="$${GOMODCACHE:-$$root/.cache/go-mod}" \
 			go test ./...); \
 	done
+
+docs-sync:
+	node scripts/sync-docs.mjs --write
+
+docs:
+	node scripts/sync-docs.mjs --write
+	node scripts/verify-docs.mjs
+
+contracts:
+	bash scripts/verify-contracts.sh
+
+security:
+	bash scripts/verify-vulns.sh
 
 COMPOSE := docker compose $(if $(wildcard .env),--env-file .env) -f deploy/docker-compose.yml
 

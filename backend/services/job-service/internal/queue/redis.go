@@ -31,6 +31,7 @@ type Message struct {
 	Stage        string  `json:"stage"`
 	Brand        string  `json:"brand,omitempty"`
 	MatchingMode string  `json:"matching_mode"`
+	CompanyID    string  `json:"company_id,omitempty"`
 	Inputs       []Input `json:"inputs"`
 	Edits        []Edit  `json:"edits,omitempty"`
 }

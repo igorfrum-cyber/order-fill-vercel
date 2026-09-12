@@ -10,8 +10,11 @@ import (
 )
 
 const (
-	zipDataDescriptorFlag = uint16(0x8)
-	zip64ExtraID          = uint16(0x0001)
+	zipDataDescriptorFlag  = uint16(0x8)
+	zip64ExtraID           = uint16(0x0001)
+	maxZipEntries          = 4096
+	maxUncompressedEntry   = 64 << 20
+	maxArchiveUncompressed = 256 << 20
 )
 
 // part is one zip entry of the uploaded document. The original compressed bytes
@@ -23,11 +26,13 @@ type part struct {
 	plain   []byte
 	updated []byte
 	removed bool
+	owner   *archive
 }
 
 type archive struct {
-	parts []*part
-	index map[string]*part
+	parts        []*part
+	index        map[string]*part
+	uncompressed int
 }
 
 func readArchive(content []byte) (*archive, error) {
@@ -35,13 +40,16 @@ func readArchive(content []byte) (*archive, error) {
 	if err != nil {
 		return nil, err
 	}
+	if len(reader.File) > maxZipEntries {
+		return nil, fmt.Errorf("too many zip entries")
+	}
 	result := &archive{index: make(map[string]*part, len(reader.File))}
 	for _, file := range reader.File {
 		raw, err := readRaw(file)
 		if err != nil {
 			return nil, fmt.Errorf("read entry %s: %w", file.Name, err)
 		}
-		entry := &part{header: file.FileHeader, raw: raw}
+		entry := &part{header: file.FileHeader, raw: raw, owner: result}
 		result.parts = append(result.parts, entry)
 		if _, exists := result.index[file.Name]; !exists {
 			result.index[file.Name] = entry
@@ -98,6 +106,11 @@ func (p *part) bytesWithProgress(report func(float64)) ([]byte, error) {
 	if err != nil {
 		return nil, fmt.Errorf("decompress entry %s: %w", p.header.Name, err)
 	}
+	if p.owner != nil {
+		if err := p.owner.consume(len(decoded)); err != nil {
+			return nil, fmt.Errorf("decompress entry %s: %w", p.header.Name, err)
+		}
+	}
 	p.plain = decoded
 	reportProgress(report, 1)
 	return decoded, nil
@@ -142,15 +155,26 @@ func readRaw(file *zip.File) ([]byte, error) {
 	return io.ReadAll(reader)
 }
 
+func (a *archive) consume(n int) error {
+	if n > maxUncompressedEntry || a.uncompressed+n > maxArchiveUncompressed {
+		return fmt.Errorf("uncompressed size exceeds limit")
+	}
+	a.uncompressed += n
+	return nil
+}
+
 func decompressWithProgress(method uint16, raw []byte, report func(float64)) ([]byte, error) {
 	switch method {
 	case zip.Store:
+		if len(raw) > maxUncompressedEntry {
+			return nil, fmt.Errorf("uncompressed size exceeds limit")
+		}
 		reportProgress(report, 1)
 		return raw, nil
 	case zip.Deflate:
 		reader := flate.NewReader(bytes.NewReader(raw))
 		defer func() { _ = reader.Close() }()
-		decoded, err := io.ReadAll(reader)
+		decoded, err := readLimited(reader, maxUncompressedEntry)
 		if err != nil {
 			return nil, err
 		}
@@ -159,6 +183,17 @@ func decompressWithProgress(method uint16, raw []byte, report func(float64)) ([]
 	default:
 		return nil, fmt.Errorf("unsupported compression method %d", method)
 	}
+}
+
+func readLimited(r io.Reader, limit int64) ([]byte, error) {
+	decoded, err := io.ReadAll(io.LimitReader(r, limit+1))
+	if err != nil {
+		return nil, err
+	}
+	if int64(len(decoded)) > limit {
+		return nil, fmt.Errorf("uncompressed size exceeds limit")
+	}
+	return decoded, nil
 }
 
 func stripZip64Extra(extra []byte) []byte {

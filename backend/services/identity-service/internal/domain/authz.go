@@ -34,6 +34,9 @@ func CanManageUser(actor User, target User) bool {
 	if actor.Disabled() {
 		return false
 	}
+	if actor.ID != "" && actor.ID == target.ID {
+		return false
+	}
 	if actor.Role == RolePlatformAdmin {
 		return true
 	}
@@ -41,6 +44,9 @@ func CanManageUser(actor User, target User) bool {
 		return false
 	}
 	if target.Role == RolePlatformAdmin {
+		return false
+	}
+	if actor.Role == target.Role {
 		return false
 	}
 	if actor.Role == RoleCompanyAdmin && target.Role == RoleCompanyOwner {

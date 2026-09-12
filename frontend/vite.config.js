@@ -17,4 +17,9 @@ export default defineConfig({
     port: 3200,
     allowedHosts: [".localhost", "localhost"],
   },
+  test: {
+    environment: "jsdom",
+    include: ["src/**/*.ui.test.jsx"],
+    setupFiles: ["./vitest.setup.js"],
+  },
 });

@@ -26,7 +26,7 @@ export function passkeyUsable(location = globalThis.location) {
 }
 
 function isLoopbackPasskeyHost(host) {
-  return host === "localhost" || host === "127.0.0.1" || host === "::1" || host.endsWith(".localhost");
+  return host === "localhost" || host.endsWith(".localhost");
 }
 
 function isIPAddress(host) {

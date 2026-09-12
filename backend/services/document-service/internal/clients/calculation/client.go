@@ -13,13 +13,17 @@ type NorthNeed struct {
 }
 
 type TyumenStock struct {
-	Article, Name            string
-	Stock, InTransit, Target float64
+	Article, Name                    string
+	Stock, InTransit, Target         float64
+	WarehouseStock, WarehouseTransit float64
+	HasWarehouseStock                bool
 }
 
 type NorthRow struct {
 	Article, Name, Comment              string
 	TyumenQty, TransferQty, SupplierQty float64
+	WarehouseStock, WarehouseTransit    float64
+	HasWarehouseStock                   bool
 }
 
 type Client interface {

@@ -117,8 +117,10 @@ func (a *API) setCompanyLogo(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusBadRequest, "bad_request", err.Error())
 		return
 	}
+	meta := a.meta(user)
+	meta.CompanyId = companyID
 	_, err = a.Clients.Files.PutObject(r.Context(), &filesv1.PutObjectRequest{
-		Key: companyLogoKey(companyID), Name: "logo", ContentType: contentType, Body: content,
+		Meta: meta, Key: companyLogoKey(companyID), Name: "logo", ContentType: contentType, Body: content,
 	})
 	if err != nil {
 		writeGRPCError(w, "set_company_logo_failed", err)
@@ -134,8 +136,10 @@ func (a *API) clearCompanyLogo(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusNotFound, "not_found", "not found")
 		return
 	}
+	meta := a.meta(user)
+	meta.CompanyId = companyID
 	_, err := a.Clients.Files.PutObject(r.Context(), &filesv1.PutObjectRequest{
-		Key: companyLogoKey(companyID), Name: "logo", ContentType: "application/octet-stream",
+		Meta: meta, Key: companyLogoKey(companyID), Name: "logo", ContentType: "application/octet-stream",
 	})
 	if err != nil {
 		writeGRPCError(w, "clear_company_logo_failed", err)
@@ -212,6 +216,10 @@ func (a *API) resetUser(w http.ResponseWriter, r *http.Request) {
 
 func (a *API) listAudit(w http.ResponseWriter, r *http.Request) {
 	user, _ := userFrom(r)
+	if user.Role != "platform_admin" {
+		writeError(w, http.StatusNotFound, "not_found", "not found")
+		return
+	}
 	resp, err := a.Clients.Audit.ListEvents(r.Context(), &auditv1.ListEventsRequest{Meta: a.meta(user), CompanyId: user.CompanyID})
 	if err != nil {
 		writeGRPCError(w, "list_audit_failed", err)

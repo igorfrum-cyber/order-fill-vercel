@@ -35,6 +35,8 @@ type User struct {
 	HasLogo     bool
 	TwoFactor   bool
 	HasPasskey  bool
+	LastSeenAt  string
+	DisabledAt  string
 }
 
 func userFromProto(u *identityv1.User) User {
@@ -45,6 +47,7 @@ func userFromProto(u *identityv1.User) User {
 		ID: u.GetId(), Login: u.GetLogin(), Role: u.GetRole(), CompanyID: u.GetCompanyId(),
 		CompanyName: u.GetCompanyName(), LoginSlug: u.GetLoginSlug(), HasLogo: u.GetHasLogo(),
 		TwoFactor: u.GetTwoFactorEnabled(), HasPasskey: u.GetHasPasskey(),
+		LastSeenAt: u.GetLastSeenAt(), DisabledAt: u.GetDisabledAt(),
 	}
 }
 
@@ -135,11 +138,23 @@ func csrfAllowed(r *http.Request, allowedOrigins []string) bool {
 	if r.Header.Get("X-Requested-With") != "fetch" {
 		return false
 	}
-	origin := strings.TrimRight(strings.TrimSpace(r.Header.Get("Origin")), "/")
+	origin := requestOrigin(r)
 	if origin == "" {
 		return true
 	}
 	return originAllowed(origin, allowedOrigins)
+}
+
+func publicOriginAllowed(r *http.Request, allowedOrigins []string) bool {
+	origin := requestOrigin(r)
+	if origin == "" {
+		return false
+	}
+	return originAllowed(origin, allowedOrigins)
+}
+
+func requestOrigin(r *http.Request) string {
+	return strings.TrimRight(strings.TrimSpace(r.Header.Get("Origin")), "/")
 }
 
 func originAllowed(origin string, allowedOrigins []string) bool {
@@ -262,6 +277,16 @@ func withCORS(next http.Handler, allowedOrigins []string) http.Handler {
 	})
 }
 
+func publicAuthPath(path string) bool {
+	switch path {
+	case "/api/v1/auth/login", "/api/v1/auth/login/2fa", "/api/v1/auth/invite",
+		"/api/v1/auth/passkeys/login/begin", "/api/v1/auth/passkeys/login/finish":
+		return true
+	default:
+		return false
+	}
+}
+
 func publicCompanyLoginPath(path string) bool {
 	const prefix = "/api/v1/public/companies/"
 	rest, ok := strings.CutPrefix(path, prefix)
@@ -278,6 +303,9 @@ func setSecurityHeaders(w http.ResponseWriter) {
 	header.Set("X-Frame-Options", "DENY")
 	header.Set("Referrer-Policy", "no-referrer")
 	header.Set("Permissions-Policy", "camera=(), microphone=(), geolocation=()")
+	header.Set("Cache-Control", "private, no-store")
+	header.Set("Cross-Origin-Opener-Policy", "same-origin")
+	header.Set("Cross-Origin-Resource-Policy", "same-origin")
 }
 
 func publicErrorMessage(code, message string) string {

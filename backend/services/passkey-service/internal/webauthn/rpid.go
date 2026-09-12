@@ -12,7 +12,7 @@ func resolveRPID(origin string, configured string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	if ip := net.ParseIP(host); ip != nil && !ip.IsLoopback() {
+	if ip := net.ParseIP(host); ip != nil {
 		return "", fmt.Errorf("origin %s is an IP address; passkeys need a domain", origin)
 	}
 	configured = strings.TrimSpace(configured)

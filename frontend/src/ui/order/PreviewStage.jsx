@@ -52,7 +52,16 @@ export function PreviewStage({
   const [overlays, setOverlays] = useState(() => new Map());
   const workAreaRef = useRef(null);
   const autoScrolledRef = useRef(false);
-  const [narrow] = useState(() => window.matchMedia("(max-width: 768px)").matches);
+  const [narrow, setNarrow] = useState(() => window.matchMedia("(max-width: 768px)").matches);
+
+  useEffect(() => {
+    const media = window.matchMedia("(max-width: 768px)");
+    function onChange() {
+      setNarrow(media.matches);
+    }
+    media.addEventListener("change", onChange);
+    return () => media.removeEventListener("change", onChange);
+  }, []);
 
   const file = files.find((item) => item.id === fileId) || files[0];
   const sheets = meta?.sheets || [];
@@ -264,10 +273,11 @@ export function PreviewStage({
               setFindStatus("");
             }}
             placeholder="Найти артикул"
+            aria-label="Найти артикул"
             className="w-full rounded-lg border border-[var(--color-line)] bg-[var(--color-surface)] py-2 pl-8 pr-8 text-[14px] outline-none transition focus:border-[var(--color-brand)] focus:ring-4 focus:ring-[var(--color-brand-soft)]"
           />
           {query && (
-            <button type="button" onClick={() => setQuery("")} className="absolute right-2 top-1/2 -translate-y-1/2 text-[var(--color-ink-faint)] hover:text-[var(--color-ink)]">
+            <button type="button" onClick={() => setQuery("")} className="absolute right-2 top-1/2 -translate-y-1/2 text-[var(--color-ink-faint)] hover:text-[var(--color-ink)]" aria-label="Очистить поиск">
               <IconX className="h-4 w-4" />
             </button>
           )}

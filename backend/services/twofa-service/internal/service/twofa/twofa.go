@@ -17,6 +17,7 @@ type Store interface {
 	Save(ctx context.Context, cred domain.Credential) error
 	Get(ctx context.Context, userID string) (domain.Credential, error)
 	Delete(ctx context.Context, userID string) error
+	CompareAndSwapRecovery(ctx context.Context, userID string, oldHashes, newHashes []string) error
 }
 
 type Service struct {
@@ -76,7 +77,7 @@ func (s *Service) Enable(ctx context.Context, userID, code string) ([]string, er
 	if err := totp.VerifyTOTP(cred.Secret, code, s.now()); err != nil {
 		return nil, domain.ErrUnauthorized
 	}
-	raw, hashes, err := totp.GenerateRecoveryCodes(8)
+	raw, hashes, err := totp.GenerateRecoveryCodes(8, s.box.HMAC)
 	if err != nil {
 		return nil, err
 	}
@@ -90,8 +91,7 @@ func (s *Service) Enable(ctx context.Context, userID, code string) ([]string, er
 
 func (s *Service) Disable(ctx context.Context, userID, code string) error {
 	if strings.TrimSpace(code) == "" {
-		// ponytail: gateway already checked the account password; twofa has no actor auth.
-		return s.store.Delete(ctx, userID)
+		return domain.ErrUnauthorized
 	}
 	if _, err := s.Verify(ctx, userID, code); err != nil {
 		return err
@@ -116,21 +116,18 @@ func (s *Service) Verify(ctx context.Context, userID, code string) (usedRecovery
 	}
 	cred, err := s.load(ctx, userID)
 	if err != nil || !cred.IsEnabled() {
-		s.limit.Fail(ctx, userID)
 		return false, domain.ErrUnauthorized
 	}
 	if err := totp.VerifyTOTP(cred.Secret, code, s.now()); err == nil {
 		s.limit.Clear(ctx, userID)
 		return false, nil
 	}
-	remaining, recErr := totp.ConsumeRecoveryCode(slices.Clone(cred.RecoveryCodeHashes), code)
+	remaining, recErr := totp.ConsumeRecoveryCode(slices.Clone(cred.RecoveryCodeHashes), code, s.box.HMAC)
 	if recErr != nil {
-		s.limit.Fail(ctx, userID)
 		return false, domain.ErrUnauthorized
 	}
-	cred.RecoveryCodeHashes = remaining
-	if err := s.save(ctx, cred); err != nil {
-		return false, err
+	if err := s.store.CompareAndSwapRecovery(ctx, userID, cred.RecoveryCodeHashes, remaining); err != nil {
+		return false, domain.ErrUnauthorized
 	}
 	s.limit.Clear(ctx, userID)
 	return true, nil

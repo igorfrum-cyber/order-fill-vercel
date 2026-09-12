@@ -47,12 +47,15 @@ internal/domain                  Item, Result, Reasons, Category и Mode
 
 Сервис реализует `orderfill.matching.v1.MatchingService`; полный контракт — [`../../proto/orderfill/matching/v1/matching.proto`](../../proto/orderfill/matching/v1/matching.proto), категории и режимы — [`../../proto/orderfill/common/v1/common.proto`](../../proto/orderfill/common/v1/common.proto).
 
+
+<!-- docs-sync:rpc -->
 | RPC | Полный путь | Назначение |
 | --- | --- | --- |
 | `MatchRows` | `/orderfill.matching.v1.MatchingService/MatchRows` | Сопоставляет `blank_items` с `source_items`; принимает режим, `prefix_aliases` и `preserve_hyphen`, возвращает результат, score, причины и отсортированные candidate IDs. |
 | `MergeChestnyZnak` | `/orderfill.matching.v1.MatchingService/MergeChestnyZnak` | Возвращает целевую строку, список ЧЗ-клонов и `needs_decision`. |
 | `NormalizeArticle` | `/orderfill.matching.v1.MatchingService/NormalizeArticle` | Возвращает нормализованный артикул с опциональным сохранением дефиса. |
 | `NormalizeName` | `/orderfill.matching.v1.MatchingService/NormalizeName` | Возвращает нормализованное название. |
+<!-- /docs-sync:rpc -->
 
 Неуказанный режим трактуется как `STANDARD`. REST/HTTP бизнес-API нет; HTTP используется только для health endpoints. Поле `RequestMeta` сейчас не влияет на matching.
 
@@ -62,16 +65,20 @@ internal/domain                  Item, Result, Reasons, Category и Mode
 
 ## Конфигурация
 
+
+<!-- docs-sync:env -->
 | Переменная | По умолчанию | Обязательность и смысл |
 | --- | --- | --- |
 | `MATCHING_GRPC_ADDR` | `:9097` | Адрес gRPC listener. |
 | `MATCHING_HEALTH_ADDR` | `:8088` | Адрес HTTP listener для `/healthz` и `/readyz`. |
-| `MATCHING_ENV` | `local` | Загружается, но сейчас не меняет поведение. |
-| `GRPC_TLS_MODE` | пусто, то есть `insecure` | `insecure`/`disabled`/`off`, `tls` или `mtls`. |
+| `MATCHING_ENV` | `APP_ENV`, затем `local` | Вне local `Validate` требует `GRPC_TLS_MODE=mtls`. |
+| `APP_ENV` | `local` | Общий fallback окружения; пустое значение и `local` включают local-режим. |
+| `GRPC_TLS_MODE` | `insecure` | `insecure`/`disabled`/`off`, `tls` или `mtls`. |
 | `GRPC_TLS_CERT_FILE` | пусто | Сертификат сервера; с ключом обязателен для `tls`/`mtls`. |
 | `GRPC_TLS_KEY_FILE` | пусто | Закрытый ключ; хранить как секрет вне репозитория. |
 | `GRPC_TLS_CA_FILE` | пусто | CA bundle; обязателен для `mtls`. |
 | `GRPC_TLS_SERVER_NAME` | пусто | Настройка исходящих клиентов; у сервиса их сейчас нет. |
+<!-- /docs-sync:env -->
 
 ## Docker и Compose
 

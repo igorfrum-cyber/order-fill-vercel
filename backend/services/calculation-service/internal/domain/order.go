@@ -17,4 +17,9 @@ type OrderRow struct {
 	CumulativePercent float64
 	AverageMonthly    float64
 	TotalQuantity     float64
+	BoxSize           float64
+	HasBoxSize        bool
+	WarehouseStock    float64
+	WarehouseTransit  float64
+	HasWarehouseStock bool
 }

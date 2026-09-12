@@ -11,6 +11,7 @@ import (
 )
 
 const gzipContentType = "application/gzip"
+const maxGunzipJSON = 16 << 20
 
 // Object is one sidecar file stored next to the generated workbook.
 type Object struct {
@@ -148,9 +149,12 @@ func gunzipJSON(raw []byte, dest any) error {
 		return err
 	}
 	defer func() { _ = reader.Close() }()
-	decoded, err := io.ReadAll(reader)
+	decoded, err := io.ReadAll(io.LimitReader(reader, maxGunzipJSON+1))
 	if err != nil {
 		return err
+	}
+	if len(decoded) > maxGunzipJSON {
+		return fmt.Errorf("gzip payload exceeds limit")
 	}
 	return json.Unmarshal(decoded, dest)
 }

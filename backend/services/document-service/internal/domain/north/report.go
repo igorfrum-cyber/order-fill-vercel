@@ -29,6 +29,8 @@ type ConfirmationGroup struct {
 type Planned struct {
 	Article, Name, Comment              string
 	TyumenQty, TransferQty, SupplierQty float64
+	WarehouseStock, WarehouseTransit    float64
+	HasWarehouseStock                   bool
 }
 
 type Transfer struct {
@@ -51,6 +53,9 @@ type PlanRow struct {
 	NorthNeed           float64   `json:"northNeed"`
 	Comment             string    `json:"comment"`
 	HasTyumenSource     bool      `json:"hasTyumenSource"`
+	WarehouseStock      float64   `json:"warehouseStock"`
+	WarehouseTransit    float64   `json:"warehouseTransit"`
+	HasWarehouseStock   bool      `json:"hasWarehouseStock"`
 }
 
 type Summary struct {
@@ -130,6 +135,9 @@ func BuildReport(brand string, needs []Need, stock []Stock, planned []Planned, g
 			NorthNeed:           northNeed,
 			Comment:             plan.Comment,
 			HasTyumenSource:     inStock,
+			WarehouseStock:      plan.WarehouseStock,
+			WarehouseTransit:    plan.WarehouseTransit,
+			HasWarehouseStock:   plan.HasWarehouseStock,
 		}
 		rows = append(rows, row)
 		if plan.TransferQty > 0 {

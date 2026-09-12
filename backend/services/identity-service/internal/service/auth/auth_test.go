@@ -96,6 +96,42 @@ func TestLoginMissingUserAndWrongPasswordMatch(t *testing.T) {
 	}
 }
 
+func TestLoginLockoutAfterRepeatedFailures(t *testing.T) {
+	t.Parallel()
+	now := time.Date(2026, 9, 5, 12, 0, 0, 0, time.UTC)
+	store := memory.NewStore()
+	hash, err := password.HashPassword(testPassword)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := store.CreateCompany(t.Context(), domain.Company{
+		ID: "co-1", Name: "Acme", LoginSlug: "acme", MatchingMode: domain.MatchingModeStandard, CreatedAt: now,
+	}); err != nil {
+		t.Fatal(err)
+	}
+	if err := store.CreateUser(t.Context(), domain.User{
+		ID: "user-1", Login: "buyer", PasswordHash: hash, Role: domain.RolePurchaser, CompanyID: "co-1", CreatedAt: now,
+	}); err != nil {
+		t.Fatal(err)
+	}
+	svc := auth.New(store, nil, nil, func() time.Time { return now })
+	ctx := t.Context()
+	for range 5 {
+		_, err := svc.Login(ctx, "buyer", "wrong-password-that-is-long")
+		if !errors.Is(err, domain.ErrUnauthorized) {
+			t.Fatalf("wrong password: %v", err)
+		}
+	}
+	_, err = svc.Login(ctx, "buyer", testPassword)
+	if !errors.Is(err, domain.ErrUnauthorized) {
+		t.Fatalf("locked correct password: %v", err)
+	}
+	now = now.Add(16 * time.Minute)
+	if _, err := svc.Login(ctx, "buyer", testPassword); err != nil {
+		t.Fatalf("after window: %v", err)
+	}
+}
+
 func TestDisabledUserCannotLogin(t *testing.T) {
 	t.Parallel()
 	store, svc, _, user, _, _ := setup(t)
@@ -224,5 +260,23 @@ func TestTOTPEnabledUserGetsChallengeUntilVerified(t *testing.T) {
 	}
 	if store.SessionCount() != 1 {
 		t.Fatalf("sessions=%d", store.SessionCount())
+	}
+}
+
+func TestChangePasswordDeletesSessions(t *testing.T) {
+	t.Parallel()
+	store, svc, _, user, _, _ := setup(t)
+	ctx := t.Context()
+	if _, err := svc.Login(ctx, user.Login, testPassword); err != nil {
+		t.Fatal(err)
+	}
+	if store.SessionCount() != 1 {
+		t.Fatalf("sessions=%d", store.SessionCount())
+	}
+	if err := svc.ChangePassword(ctx, user, testPassword, "newpassword10"); err != nil {
+		t.Fatal(err)
+	}
+	if store.SessionCount() != 0 {
+		t.Fatalf("sessions after password change=%d", store.SessionCount())
 	}
 }

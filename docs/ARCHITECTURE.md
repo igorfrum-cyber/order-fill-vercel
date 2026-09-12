@@ -40,9 +40,14 @@ Frontend в production отдает статические файлы через
 - Jobs, входные файлы, результаты и audit-события хранятся в durable
   зависимостях.
 - Production-конфигурация fail-fast: без PostgreSQL, Redis, object storage,
-  корректного CORS и secure cookies сервис не стартует.
+  корректного CORS, secure cookies, `WORKER_TOKEN` и `GRPC_TLS_MODE=mtls` сервис
+  не стартует. `make https` / production overlay выпускает отдельный сертификат
+  на каждый сервис (`scripts/gen-internal-tls.sh`) и монтирует в контейнер
+  только его ключ.
 - Внутренний insecure gRPC допустим только для локальной разработки. Для
-  production предусмотрен `GRPC_TLS_MODE=tls|mtls`.
+  production обязателен `GRPC_TLS_MODE=mtls`: клиент проверяет DNS-имя пира,
+  сервер требует клиентский сертификат того же CA. Allowlist RPC по имени
+  клиента (кто именно может вызвать Complete/GetMe) — следующий потолок.
 
 ## Сервисы
 
@@ -88,6 +93,7 @@ work messages в Redis stream.
 ### file-service
 
 Единственный владелец object storage операций для входных и выходных файлов.
+Объекты несут `company_id`; Get/Put сверяют его с identity-актором или `WORKER_TOKEN`.
 Локально может работать с MinIO, в production должен использовать
 S3-compatible storage с непустыми credentials и TLS endpoint.
 

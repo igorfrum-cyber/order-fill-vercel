@@ -23,18 +23,19 @@ const (
 )
 
 type Job struct {
-	state           protoimpl.MessageState `protogen:"open.v1"`
-	Id              string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
-	Type            string                 `protobuf:"bytes,2,opt,name=type,proto3" json:"type,omitempty"`
-	Status          string                 `protobuf:"bytes,3,opt,name=status,proto3" json:"status,omitempty"`
-	OwnerUserId     string                 `protobuf:"bytes,4,opt,name=owner_user_id,json=ownerUserId,proto3" json:"owner_user_id,omitempty"`
-	CompanyId       string                 `protobuf:"bytes,5,opt,name=company_id,json=companyId,proto3" json:"company_id,omitempty"`
-	MatchingMode    v1.MatchingMode        `protobuf:"varint,6,opt,name=matching_mode,json=matchingMode,proto3,enum=orderfill.common.v1.MatchingMode" json:"matching_mode,omitempty"`
-	CreatedAt       string                 `protobuf:"bytes,7,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
-	ErrorMessage    string                 `protobuf:"bytes,8,opt,name=error_message,json=errorMessage,proto3" json:"error_message,omitempty"`
-	Progress        float64                `protobuf:"fixed64,9,opt,name=progress,proto3" json:"progress,omitempty"`
-	ProgressMessage string                 `protobuf:"bytes,10,opt,name=progress_message,json=progressMessage,proto3" json:"progress_message,omitempty"`
-	UpdatedAt       string                 `protobuf:"bytes,11,opt,name=updated_at,json=updatedAt,proto3" json:"updated_at,omitempty"`
+	state       protoimpl.MessageState `protogen:"open.v1"`
+	Id          string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	Type        string                 `protobuf:"bytes,2,opt,name=type,proto3" json:"type,omitempty"`
+	Status      string                 `protobuf:"bytes,3,opt,name=status,proto3" json:"status,omitempty"`
+	OwnerUserId string                 `protobuf:"bytes,4,opt,name=owner_user_id,json=ownerUserId,proto3" json:"owner_user_id,omitempty"`
+	CompanyId   string                 `protobuf:"bytes,5,opt,name=company_id,json=companyId,proto3" json:"company_id,omitempty"`
+	// matching_mode is snapshotted from the company at job creation.
+	MatchingMode    v1.MatchingMode `protobuf:"varint,6,opt,name=matching_mode,json=matchingMode,proto3,enum=orderfill.common.v1.MatchingMode" json:"matching_mode,omitempty"`
+	CreatedAt       string          `protobuf:"bytes,7,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
+	ErrorMessage    string          `protobuf:"bytes,8,opt,name=error_message,json=errorMessage,proto3" json:"error_message,omitempty"`
+	Progress        float64         `protobuf:"fixed64,9,opt,name=progress,proto3" json:"progress,omitempty"`
+	ProgressMessage string          `protobuf:"bytes,10,opt,name=progress_message,json=progressMessage,proto3" json:"progress_message,omitempty"`
+	UpdatedAt       string          `protobuf:"bytes,11,opt,name=updated_at,json=updatedAt,proto3" json:"updated_at,omitempty"`
 	unknownFields   protoimpl.UnknownFields
 	sizeCache       protoimpl.SizeCache
 }
@@ -230,6 +231,7 @@ func (x *FileRef) GetContentType() string {
 	return ""
 }
 
+// ReportSummary counts canonical ReportCategory values.
 type ReportSummary struct {
 	state             protoimpl.MessageState `protogen:"open.v1"`
 	NeedsDecision     int32                  `protobuf:"varint,1,opt,name=needs_decision,json=needsDecision,proto3" json:"needs_decision,omitempty"`
@@ -315,12 +317,13 @@ func (x *ReportSummary) GetOrderNotNeeded() int32 {
 }
 
 type ReportRow struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
-	Category      v1.ReportCategory      `protobuf:"varint,2,opt,name=category,proto3,enum=orderfill.common.v1.ReportCategory" json:"category,omitempty"`
-	Article       string                 `protobuf:"bytes,3,opt,name=article,proto3" json:"article,omitempty"`
-	Name          string                 `protobuf:"bytes,4,opt,name=name,proto3" json:"name,omitempty"`
-	Reasons       []string               `protobuf:"bytes,5,rep,name=reasons,proto3" json:"reasons,omitempty"`
+	state protoimpl.MessageState `protogen:"open.v1"`
+	Id    string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	// category is the canonical buyer-facing classification of this row.
+	Category      v1.ReportCategory `protobuf:"varint,2,opt,name=category,proto3,enum=orderfill.common.v1.ReportCategory" json:"category,omitempty"`
+	Article       string            `protobuf:"bytes,3,opt,name=article,proto3" json:"article,omitempty"`
+	Name          string            `protobuf:"bytes,4,opt,name=name,proto3" json:"name,omitempty"`
+	Reasons       []string          `protobuf:"bytes,5,rep,name=reasons,proto3" json:"reasons,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }

@@ -13,9 +13,10 @@ export const DEFAULT_POLL_TIMEOUT_MS = 600000;
 
 const absoluteUrl = (path) => apiClient.absoluteUrl(path);
 
-export function createOrderFillJob({ sourceFile, blankFiles, companyId }) {
+export function createOrderFillJob({ sourceFile, blankFiles, warehouseFile = null, companyId }) {
   const formData = new FormData();
   formData.append("source_file", sourceFile);
+  if (warehouseFile) formData.append("warehouse_file", warehouseFile);
   for (const file of blankFiles) formData.append("blank_files", file);
   if (companyId) formData.append("company_id", companyId);
   return apiClient.request("/api/v1/jobs/order-fill", {
@@ -24,11 +25,12 @@ export function createOrderFillJob({ sourceFile, blankFiles, companyId }) {
   });
 }
 
-export function createNorthMergeJob({ brand, blankFiles, tyumenSourceFile = null, companyId }) {
+export function createNorthMergeJob({ brand, blankFiles, tyumenSourceFile = null, warehouseFile = null, companyId }) {
   const formData = new FormData();
   formData.append("brand", brand);
   for (const entry of blankFiles) formData.append("blank_files", entry.file || entry);
   if (tyumenSourceFile) formData.append("tyumen_source_file", tyumenSourceFile);
+  if (warehouseFile) formData.append("warehouse_file", warehouseFile);
   if (companyId) formData.append("company_id", companyId);
   return apiClient.request("/api/v1/jobs/north-merge", {
     method: "POST",
@@ -41,7 +43,12 @@ export function getJob(jobId) {
 }
 
 export async function getJobReport(jobId) {
-  return mapReport(await apiClient.request(`/api/v1/jobs/${encodeURIComponent(jobId)}/report`));
+  return mapJobReportPayload(await apiClient.request(`/api/v1/jobs/${encodeURIComponent(jobId)}/report`));
+}
+
+export function mapJobReportPayload(payload) {
+  if (payload && ("plan_rows" in payload || "has_tyumen_source" in payload)) return payload;
+  return mapReport(payload);
 }
 
 export function submitJobEdits(jobId, edits) {

@@ -73,11 +73,12 @@ export function navItemsForRole(role) {
 
 export function canManageListedUser(actorRole, targetRole) {
   if (actorRole === "platform_admin") return true;
+  if (actorRole === targetRole) return false;
   if (actorRole === "company_owner") {
-    return targetRole === "company_owner" || targetRole === "company_admin" || targetRole === "purchaser";
+    return targetRole === "company_admin" || targetRole === "purchaser";
   }
   if (actorRole === "company_admin") {
-    return targetRole === "company_admin" || targetRole === "purchaser";
+    return targetRole === "purchaser";
   }
   return false;
 }

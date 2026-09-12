@@ -12,7 +12,7 @@ func (s *Service) Create(ctx context.Context, actor domain.Actor, jobType domain
 	if !domain.CanCreateJob(actor) {
 		return domain.Job{}, domain.ErrUnauthorized
 	}
-	files, err := s.files.Describe(ctx, fileIDs)
+	files, err := s.files.Describe(ctx, actor, fileIDs)
 	if err != nil {
 		return domain.Job{}, err
 	}
@@ -51,9 +51,14 @@ func (s *Service) Create(ctx context.Context, actor domain.Actor, jobType domain
 		Type:         string(job.Type),
 		Stage:        "process",
 		MatchingMode: string(job.MatchingMode),
+		CompanyID:    job.CompanyID,
 		Brand:        brand,
 		Inputs:       queueInputs(files),
 	}); err != nil {
+		job.Status = domain.StatusFailed
+		job.ErrorMessage = "enqueue failed"
+		job.UpdatedAt = s.now().UTC()
+		_ = s.store.Update(ctx, job)
 		return domain.Job{}, fmt.Errorf("enqueue job: %w", err)
 	}
 	return job, nil

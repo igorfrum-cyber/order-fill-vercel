@@ -2,34 +2,42 @@ package config
 
 import (
 	"fmt"
+	"net/url"
 	"os"
 	"strings"
+
+	"order-fill/backend/pkg/grpcutil"
+	"order-fill/backend/pkg/securecfg"
 )
 
 type Config struct {
-	GRPCAddr    string
-	HealthAddr  string
-	Environment string
-	S3Endpoint  string
-	S3AccessKey string
-	S3SecretKey string
-	S3Bucket    string
-	S3UseSSL    bool
-	DatabaseURL string
+	GRPCAddr     string
+	HealthAddr   string
+	Environment  string
+	S3Endpoint   string
+	S3AccessKey  string
+	S3SecretKey  string
+	S3Bucket     string
+	S3UseSSL     bool
+	DatabaseURL  string
+	IdentityAddr string
+	WorkerToken  string
 }
 
 func Load() Config {
 	env := getenv("FILE_ENV", getenv("APP_ENV", "local"))
 	return Config{
-		GRPCAddr:    getenv("FILE_GRPC_ADDR", ":9095"),
-		HealthAddr:  getenv("FILE_HEALTH_ADDR", ":8086"),
-		Environment: env,
-		S3Endpoint:  getenv("FILE_S3_ENDPOINT", ""),
-		S3AccessKey: getenv("FILE_S3_ACCESS_KEY", "minioadmin"),
-		S3SecretKey: getenv("FILE_S3_SECRET_KEY", "minioadmin"),
-		S3Bucket:    getenv("FILE_S3_BUCKET", "order-fill"),
-		S3UseSSL:    s3UseSSL(env),
-		DatabaseURL: getenv("DATABASE_URL", ""),
+		GRPCAddr:     getenv("FILE_GRPC_ADDR", ":9095"),
+		HealthAddr:   getenv("FILE_HEALTH_ADDR", ":8086"),
+		Environment:  env,
+		S3Endpoint:   getenv("FILE_S3_ENDPOINT", ""),
+		S3AccessKey:  getenv("FILE_S3_ACCESS_KEY", "minioadmin"),
+		S3SecretKey:  getenv("FILE_S3_SECRET_KEY", "minioadmin"),
+		S3Bucket:     getenv("FILE_S3_BUCKET", "order-fill"),
+		S3UseSSL:     s3UseSSL(env),
+		DatabaseURL:  getenv("DATABASE_URL", ""),
+		IdentityAddr: getenv("IDENTITY_GRPC_ADDR", ""),
+		WorkerToken:  getenv("WORKER_TOKEN", ""),
 	}
 }
 
@@ -52,7 +60,19 @@ func (c Config) Validate() error {
 	if c.S3AccessKey == "minioadmin" || c.S3SecretKey == "minioadmin" {
 		return fmt.Errorf("default MinIO credentials are not allowed outside local environment")
 	}
-	return nil
+	if err := rejectHTTPEndpoint(c.S3Endpoint); err != nil {
+		return err
+	}
+	if err := securecfg.Postgres(c.Environment, c.DatabaseURL); err != nil {
+		return err
+	}
+	if strings.TrimSpace(c.IdentityAddr) == "" {
+		return fmt.Errorf("IDENTITY_GRPC_ADDR is required outside local environment")
+	}
+	if err := grpcutil.CheckWorkerToken(c.Environment, c.WorkerToken); err != nil {
+		return err
+	}
+	return grpcutil.CheckTLSMode(c.Environment)
 }
 
 func s3UseSSL(env string) bool {
@@ -60,6 +80,21 @@ func s3UseSSL(env string) bool {
 		return raw == "true"
 	}
 	return !localEnv(env)
+}
+
+func rejectHTTPEndpoint(endpoint string) error {
+	trimmed := strings.TrimSpace(endpoint)
+	if !strings.Contains(trimmed, "://") {
+		return nil
+	}
+	parsed, err := url.Parse(trimmed)
+	if err != nil {
+		return fmt.Errorf("FILE_S3_ENDPOINT is invalid: %w", err)
+	}
+	if strings.EqualFold(parsed.Scheme, "http") {
+		return fmt.Errorf("FILE_S3_ENDPOINT must not use http outside local environment")
+	}
+	return nil
 }
 
 func localEnv(env string) bool {

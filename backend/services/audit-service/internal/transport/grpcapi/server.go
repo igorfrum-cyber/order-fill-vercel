@@ -8,15 +8,26 @@ import (
 
 	"order-fill/backend/pkg/grpcutil"
 	auditv1 "order-fill/backend/proto/gen/go/orderfill/audit/v1"
+	"order-fill/backend/services/audit-service/internal/clients/identity"
+	"order-fill/backend/services/audit-service/internal/domain"
 	"order-fill/backend/services/audit-service/internal/service/audit"
 )
 
+const rolePlatformAdmin = "platform_admin"
+
 type Server struct {
 	auditv1.UnimplementedAuditServiceServer
-	svc *audit.Service
+	svc    *audit.Service
+	actors ActorLookup
 }
 
-func NewServer(svc *audit.Service) *Server { return &Server{svc: svc} }
+type ActorLookup interface {
+	Actor(ctx context.Context, userID string) (identity.Actor, error)
+}
+
+func NewServer(svc *audit.Service, actors ActorLookup) *Server {
+	return &Server{svc: svc, actors: actors}
+}
 
 func New(handler auditv1.AuditServiceServer) *grpc.Server {
 	s := grpcutil.NewServer()
@@ -43,6 +54,24 @@ func (s *Server) ListEvents(ctx context.Context, req *auditv1.ListEventsRequest)
 	company := req.GetCompanyId()
 	if company == "" && req.GetMeta() != nil {
 		company = req.GetMeta().GetCompanyId()
+	}
+	userID := ""
+	if req.GetMeta() != nil {
+		userID = req.GetMeta().GetActorUserId()
+	}
+	if s.actors != nil {
+		actor, err := s.actors.Actor(ctx, userID)
+		if err != nil {
+			return nil, err
+		}
+		if actor.Role != rolePlatformAdmin {
+			if actor.CompanyID == "" {
+				return nil, domain.ErrUnauthorized
+			}
+			company = actor.CompanyID
+		}
+	} else if company == "" {
+		return nil, domain.ErrUnauthorized
 	}
 	events, err := s.svc.List(ctx, company)
 	if err != nil {

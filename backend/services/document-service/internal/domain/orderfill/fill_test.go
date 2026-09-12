@@ -179,6 +179,84 @@ func TestFillWritesRecommendedQuantityIntoBlank(t *testing.T) {
 	}
 }
 
+func TestFillCarriesBudgetInputsFromSourceAndBlank(t *testing.T) {
+	source := chzSourceGrid()
+	source[4][9] = "B"
+	source[4][10] = "11"
+	blank := chzBlankGrid()
+	blank[0] = append(blank[0], "Закупочная цена")
+	blank[1] = append(blank[1], "250,50")
+	blank[2] = append(blank[2], "100")
+
+	result, err := testFill(FillCommand{
+		Source:     newFakeWorkbook("Заказ", source),
+		Blank:      newFakeWorkbook("Бланк", blank),
+		OrderMonth: "2026-09",
+		Brand:      "angiopharm",
+		BlankID:    "blank-1",
+		BlankLabel: "Бланк",
+	})
+	if err != nil {
+		t.Fatalf("fill failed: %v", err)
+	}
+	row := rowByKey(t, result, "blank-1:2")
+	if !row.HasBudgetData || row.BudgetCategory != "B" || row.BudgetDemand != 11 || row.BudgetPrice != 250.5 {
+		t.Fatalf("budget inputs = enabled:%v category:%q demand:%v price:%v", row.HasBudgetData, row.BudgetCategory, row.BudgetDemand, row.BudgetPrice)
+	}
+}
+
+func TestFillUsesDiscountedPriceWhenBlankAlsoHasRetailPrice(t *testing.T) {
+	source := chzSourceGrid()
+	source[4][9] = "B"
+	source[4][10] = "11"
+	blank := chzBlankGrid()
+	blank[0] = append(blank[0], "Цена со скидкой 35%", "Розничная цена", "Итого, цена с вашей скидкой")
+	blank[1] = append(blank[1], "250,50", "385", "250,50")
+	blank[2] = append(blank[2], "100", "154", "100")
+
+	result, err := testFill(FillCommand{
+		Source:     newFakeWorkbook("Заказ", source),
+		Blank:      newFakeWorkbook("Бланк", blank),
+		OrderMonth: "2026-09",
+		Brand:      "angiopharm",
+		BlankID:    "blank-1",
+		BlankLabel: "Бланк",
+	})
+	if err != nil {
+		t.Fatalf("fill failed: %v", err)
+	}
+	row := rowByKey(t, result, "blank-1:2")
+	if !row.HasBudgetData || row.BudgetPrice != 250.5 {
+		t.Fatalf("budget price = enabled:%v price:%v, want discounted price 250.5", row.HasBudgetData, row.BudgetPrice)
+	}
+}
+
+func TestFillNormalizesCyrillicBudgetCategory(t *testing.T) {
+	source := chzSourceGrid()
+	source[4][9] = "А+"
+	source[4][10] = "11"
+	blank := chzBlankGrid()
+	blank[0] = append(blank[0], "Закупочная цена")
+	blank[1] = append(blank[1], "250,50")
+	blank[2] = append(blank[2], "100")
+
+	result, err := testFill(FillCommand{
+		Source:     newFakeWorkbook("Заказ", source),
+		Blank:      newFakeWorkbook("Бланк", blank),
+		OrderMonth: "2026-09",
+		Brand:      "angiopharm",
+		BlankID:    "blank-1",
+		BlankLabel: "Бланк",
+	})
+	if err != nil {
+		t.Fatalf("fill failed: %v", err)
+	}
+	row := rowByKey(t, result, "blank-1:2")
+	if !row.HasBudgetData || row.BudgetCategory != "A+" {
+		t.Fatalf("budget category = enabled:%v category:%q, want canonical A+", row.HasBudgetData, row.BudgetCategory)
+	}
+}
+
 func TestFillRoundsUpToBoxWhenCloseEnough(t *testing.T) {
 	result := fillFixture(t)
 	sheet, _ := result.Blank.Sheet("Бланк")

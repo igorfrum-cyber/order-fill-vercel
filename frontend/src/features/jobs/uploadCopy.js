@@ -1,4 +1,14 @@
-export const excelAcceptHint = "Подходят Excel-файлы.";
+export const excelAcceptHint = "Подходят .xlsx и .xlsm.";
+
+export function fileMatchesAccept(file, accept) {
+  if (!accept) return true;
+  const name = String(file?.name || "").toLowerCase();
+  return String(accept)
+    .split(",")
+    .map((part) => part.trim().toLowerCase())
+    .filter(Boolean)
+    .some((ext) => name.endsWith(ext));
+}
 
 export const northDuplicateFileMessage = "Все выбранные бланки уже добавлены.";
 
@@ -14,7 +24,8 @@ export function orderUploadSteps() {
 export function northUploadSteps() {
   return [
     { n: 1, title: "Бланки городов" },
-    { n: 2, title: "Таблица Тюмени, если нужно учесть остатки" },
+    { n: 2, title: "Таблица офиса Тюмени, если нужно учесть остатки" },
+    { n: 3, title: "Таблица склада доставки, если Тюмень ведётся в двух местах" },
   ];
 }
 
@@ -25,10 +36,15 @@ export function selectedFileCountLabel(count) {
   return `Выбрано файлов: ${n}.`;
 }
 
-export function orderSelectedCount(sourceFile, blankFiles = {}) {
-  return Number(Boolean(sourceFile)) + Object.values(blankFiles).filter(Boolean).length;
+export function orderSelectedCount(sourceFile, blankFiles = {}, warehouseFile = null) {
+  return Number(Boolean(sourceFile)) + Object.values(blankFiles).filter(Boolean).length + Number(Boolean(warehouseFile));
 }
 
-export function northSelectedCount({ files = [], homeFiles = [], proffFiles = [], tyumenFile } = {}) {
-  return files.length + homeFiles.length + proffFiles.length + Number(Boolean(tyumenFile));
+export function sameSelectedFile(left, right) {
+  const leftName = String(left?.name || "").trim().toLowerCase();
+  return Boolean(leftName && leftName === String(right?.name || "").trim().toLowerCase());
+}
+
+export function northSelectedCount({ files = [], homeFiles = [], proffFiles = [], tyumenFile, warehouseFile } = {}) {
+  return files.length + homeFiles.length + proffFiles.length + Number(Boolean(tyumenFile)) + Number(Boolean(warehouseFile));
 }

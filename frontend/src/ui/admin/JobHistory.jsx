@@ -7,7 +7,7 @@ import {
   jobNextAction,
   jobStatusHint,
   jobStatusLabel,
-  jobsEmptyState,
+  jobsEmptyMessage,
 } from "../../features/report/reportModel.js";
 import { userFacingError } from "../../features/help/errors.js";
 
@@ -118,7 +118,7 @@ export function JobHistory({ me, companyId, onOpen, onNew }) {
       </div>
       {!canCreate ? (
         <p className="mb-4 text-[14px] text-[var(--color-ink-soft)]">
-          Здесь только просмотр: новую выгрузку создаёт закупщик или администратор компании.
+          Здесь только просмотр: новую выгрузку создаёт закупщик, владелец или администратор компании.
         </p>
       ) : null}
       {error ? <p className="text-[var(--color-danger)]">{error}</p> : null}
@@ -193,7 +193,7 @@ export function JobHistory({ me, companyId, onOpen, onNew }) {
             {jobs && !visible.length ? (
               <tr>
                 <td className="px-4 py-8 text-[var(--color-ink-faint)]" colSpan={6}>
-                  {jobsEmptyState(me.role)}
+                  {jobsEmptyMessage(me.role, jobs, visible, companyId)}
                 </td>
               </tr>
             ) : null}

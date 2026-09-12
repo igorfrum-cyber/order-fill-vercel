@@ -14,7 +14,7 @@ import (
 
 type fakeFiles map[string]domain.FileRef
 
-func (f fakeFiles) Describe(_ context.Context, ids []string) ([]domain.FileRef, error) {
+func (f fakeFiles) Describe(_ context.Context, _ domain.Actor, ids []string) ([]domain.FileRef, error) {
 	out := make([]domain.FileRef, 0, len(ids))
 	for _, id := range ids {
 		file, ok := f[id]
@@ -24,6 +24,20 @@ func (f fakeFiles) Describe(_ context.Context, ids []string) ([]domain.FileRef, 
 		out = append(out, file)
 	}
 	return out, nil
+}
+
+type tenantFiles struct {
+	files   fakeFiles
+	company map[string]string
+}
+
+func (f tenantFiles) Describe(ctx context.Context, actor domain.Actor, ids []string) ([]domain.FileRef, error) {
+	for _, id := range ids {
+		if company, ok := f.company[id]; ok && company != actor.CompanyID {
+			return nil, domain.ErrNotFound
+		}
+	}
+	return f.files.Describe(ctx, actor, ids)
 }
 
 type fakeCompanies struct{ mode domain.MatchingMode }
@@ -53,8 +67,28 @@ func TestCreatePublishesOneVersionedMessage(t *testing.T) {
 		t.Fatalf("mode=%s", job.MatchingMode)
 	}
 	msgs := pub.Messages()
-	if len(msgs) != 1 || msgs[0].Version != queue.Version || msgs[0].JobID != job.ID || msgs[0].Brand != "angiopharm" {
+	if len(msgs) != 1 || msgs[0].Version != queue.Version || msgs[0].JobID != job.ID || msgs[0].Brand != "angiopharm" || msgs[0].CompanyID != "co" {
 		t.Fatalf("messages=%v", msgs)
+	}
+}
+
+type errPublisher struct{}
+
+func (errPublisher) Publish(context.Context, queue.Message) error {
+	return errors.New("xadd failed")
+}
+
+func TestCreateMarksFailedWhenEnqueueFails(t *testing.T) {
+	t.Parallel()
+	store := memory.NewStore()
+	svc := jobs.New(store, orderFillFiles(), fakeCompanies{}, errPublisher{}, nil)
+	actor := domain.Actor{UserID: "u1", CompanyID: "co", Role: domain.RolePurchaser}
+	if _, err := svc.Create(t.Context(), actor, domain.TypeOrderFill, []string{"src", "blank"}, ""); err == nil {
+		t.Fatal("expected enqueue error")
+	}
+	items, err := store.List(t.Context())
+	if err != nil || len(items) != 1 || items[0].Status != domain.StatusFailed {
+		t.Fatalf("items=%v err=%v", items, err)
 	}
 }
 
@@ -82,10 +116,33 @@ func TestCreateSnapshotsCompanyMatchingModeIntoQueue(t *testing.T) {
 	}
 }
 
+func TestCreateRejectsForeignCompanyFile(t *testing.T) {
+	t.Parallel()
+	files := tenantFiles{
+		files:   orderFillFiles(),
+		company: map[string]string{"src": "other"},
+	}
+	svc := jobs.New(memory.NewStore(), files, fakeCompanies{}, queue.NewRedis(), nil)
+	actor := domain.Actor{UserID: "u1", CompanyID: "co", Role: domain.RolePurchaser}
+	_, err := svc.Create(t.Context(), actor, domain.TypeOrderFill, []string{"src", "blank"}, "")
+	if !errors.Is(err, domain.ErrNotFound) {
+		t.Fatalf("got %v", err)
+	}
+}
+
 func TestCreateRequiresOwner(t *testing.T) {
 	t.Parallel()
 	svc := jobs.New(memory.NewStore(), orderFillFiles(), fakeCompanies{}, queue.NewRedis(), nil)
 	_, err := svc.Create(t.Context(), domain.Actor{Role: domain.RolePurchaser}, domain.TypeOrderFill, []string{"src", "blank"}, "")
+	if !errors.Is(err, domain.ErrUnauthorized) {
+		t.Fatalf("got %v", err)
+	}
+}
+
+func TestCreateRejectsPlatformAdmin(t *testing.T) {
+	t.Parallel()
+	svc := jobs.New(memory.NewStore(), orderFillFiles(), fakeCompanies{}, queue.NewRedis(), nil)
+	_, err := svc.Create(t.Context(), domain.Actor{UserID: "p1", Role: domain.RolePlatformAdmin}, domain.TypeOrderFill, []string{"src", "blank"}, "")
 	if !errors.Is(err, domain.ErrUnauthorized) {
 		t.Fatalf("got %v", err)
 	}
@@ -150,6 +207,47 @@ func TestCompletedJobAcceptsEdits(t *testing.T) {
 	}
 	if _, err := svc.SubmitEdits(t.Context(), actor, job.ID, nil); err != nil {
 		t.Fatal(err)
+	}
+	if len(pub.Messages()) != 2 {
+		t.Fatalf("messages=%d", len(pub.Messages()))
+	}
+}
+
+func TestSubmitEditsRejectsConcurrentFinalize(t *testing.T) {
+	t.Parallel()
+	store := memory.NewStore()
+	pub := queue.NewRedis()
+	svc := jobs.New(store, orderFillFiles(), fakeCompanies{}, pub, nil)
+	actor := domain.Actor{UserID: "u1", CompanyID: "co", Role: domain.RolePurchaser}
+	job, err := svc.Create(t.Context(), actor, domain.TypeOrderFill, []string{"src", "blank"}, "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := svc.Complete(t.Context(), job.ID, domain.Report{}, nil); err != nil {
+		t.Fatal(err)
+	}
+	errs := make(chan error, 2)
+	for range 2 {
+		go func() {
+			_, err := svc.SubmitEdits(t.Context(), actor, job.ID, nil)
+			errs <- err
+		}()
+	}
+	var conflict, ok int
+	for range 2 {
+		err := <-errs
+		if err == nil {
+			ok++
+			continue
+		}
+		if errors.Is(err, domain.ErrConflict) {
+			conflict++
+			continue
+		}
+		t.Fatalf("unexpected: %v", err)
+	}
+	if ok != 1 || conflict != 1 {
+		t.Fatalf("ok=%d conflict=%d messages=%d", ok, conflict, len(pub.Messages()))
 	}
 	if len(pub.Messages()) != 2 {
 		t.Fatalf("messages=%d", len(pub.Messages()))

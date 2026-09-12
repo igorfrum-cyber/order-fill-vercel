@@ -14,7 +14,18 @@ const (
 	keyPrefix     = "twofa:fail:"
 )
 
-// Limiter counts failed TOTP attempts per user.
+var consumeScript = redis.NewScript(`
+local n = redis.call("INCR", KEYS[1])
+if n == 1 then
+  redis.call("EXPIRE", KEYS[1], ARGV[1])
+end
+if n > tonumber(ARGV[2]) then
+  return 0
+end
+return 1
+`)
+
+// Limiter counts TOTP attempts per user.
 type Limiter struct {
 	mu     sync.Mutex
 	window time.Duration
@@ -50,17 +61,14 @@ func NewRedis(now func() time.Time) *Limiter {
 
 func (l *Limiter) Allow(ctx context.Context, key string) bool {
 	if l == nil {
-		return true
+		return false
 	}
 	if l.client != nil {
-		n, err := l.client.Get(ctx, keyPrefix+key).Int()
-		if err == redis.Nil {
-			return true
-		}
+		allowed, err := consumeScript.Run(ctx, l.client, []string{keyPrefix + key}, int(l.window.Seconds()), l.max).Int()
 		if err != nil {
-			return true
+			return false
 		}
-		return n < l.max
+		return allowed == 1
 	}
 	l.mu.Lock()
 	defer l.mu.Unlock()
@@ -76,25 +84,8 @@ func (l *Limiter) Allow(ctx context.Context, key string) bool {
 		l.hits[key] = kept
 		return false
 	}
-	l.hits[key] = kept
+	l.hits[key] = append(kept, now)
 	return true
-}
-
-func (l *Limiter) Fail(ctx context.Context, key string) {
-	if l == nil {
-		return
-	}
-	if l.client != nil {
-		pipe := l.client.TxPipeline()
-		k := keyPrefix + key
-		pipe.Incr(ctx, k)
-		pipe.Expire(ctx, k, l.window)
-		_, _ = pipe.Exec(ctx)
-		return
-	}
-	l.mu.Lock()
-	defer l.mu.Unlock()
-	l.hits[key] = append(l.hits[key], l.now())
 }
 
 func (l *Limiter) Clear(ctx context.Context, key string) {

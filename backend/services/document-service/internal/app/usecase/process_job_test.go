@@ -288,6 +288,25 @@ func processMessage() port.JobMessage {
 	}
 }
 
+func TestSplitInputsKeepsOptionalWarehouse(t *testing.T) {
+	inputs := []port.MessageFile{
+		{Role: port.RoleSource, Name: "Офис.xlsx", StorageKey: "source"},
+		{Role: port.RoleWarehouse, Name: "Склад.xlsx", StorageKey: "warehouse"},
+		{Role: port.RoleBlank, Name: "Бланк.xlsx", StorageKey: "blank"},
+	}
+
+	source, warehouse, blanks, err := splitInputs(inputs)
+	if err != nil {
+		t.Fatalf("split inputs: %v", err)
+	}
+	if source.StorageKey != "source" || warehouse.StorageKey != "warehouse" {
+		t.Fatalf("unexpected source roles: source=%q warehouse=%q", source.StorageKey, warehouse.StorageKey)
+	}
+	if len(blanks) != 1 || blanks[0].StorageKey != "blank" {
+		t.Fatalf("unexpected blanks: %#v", blanks)
+	}
+}
+
 func newStorageWithInputs() *fakeStorage {
 	return &fakeStorage{objects: map[string][]byte{
 		"jobs/job-1/inputs/0-source.xlsx": []byte("source"),
@@ -648,5 +667,25 @@ func TestProcessJobNorthMergeReadsTyumenTarget(t *testing.T) {
 	}
 	if len(calc.stock) != 1 || calc.stock[0].Target != 5 || calc.stock[0].Stock != 20 {
 		t.Fatalf("tyumen stock=%+v", calc.stock)
+	}
+}
+
+func TestCombineTyumenLocationsKeepsWarehouseAvailabilitySeparate(t *testing.T) {
+	office := []north.Stock{{Article: "A1", Name: "Cream", Stock: 20, InTransit: 2, Target: 5}}
+	warehouse := []north.Stock{
+		{Article: "A1", Name: "Cream", Stock: 10, InTransit: 3},
+		{Article: "A2", Name: "Serum", Stock: 8},
+	}
+
+	combined, calcRows := combineTyumenLocations(office, warehouse)
+
+	if len(combined) != 2 || combined[0].Article != "A1" || combined[0].Stock != 30 || combined[0].InTransit != 5 {
+		t.Fatalf("combined=%+v", combined)
+	}
+	if len(calcRows) != 2 || !calcRows[0].HasWarehouseStock || calcRows[0].WarehouseStock != 10 || calcRows[0].WarehouseTransit != 3 {
+		t.Fatalf("calculation rows=%+v", calcRows)
+	}
+	if !calcRows[1].HasWarehouseStock || calcRows[1].Stock != 8 || calcRows[1].WarehouseStock != 8 {
+		t.Fatalf("warehouse-only row=%+v", calcRows[1])
 	}
 }

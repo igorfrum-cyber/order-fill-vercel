@@ -1,13 +1,15 @@
 import { useRef, useState } from "react";
 import { blankSlotsForSource, looksLikeChristinaSource } from "../../features/brands/brandPresentation.js";
-import { excelAcceptHint, orderSelectedCount, orderUploadSteps, selectedFileCountLabel } from "../../features/jobs/uploadCopy.js";
+import { excelAcceptHint, fileMatchesAccept, orderSelectedCount, orderUploadSteps, selectedFileCountLabel } from "../../features/jobs/uploadCopy.js";
 import { IconCheck, IconChevron, IconFile, IconUpload } from "../icons.jsx";
 import { PrimaryButton, ProgressBar, StageHeading } from "../widgets.jsx";
 
 export function UploadStage({
   sourceFile,
+  warehouseFile,
   blankFiles,
   onSource,
+  onWarehouse,
   onBlank,
   onHome,
   onProcess,
@@ -16,10 +18,11 @@ export function UploadStage({
   progress,
   error,
 }) {
+  const [twoLocations, setTwoLocations] = useState(Boolean(warehouseFile));
   const slots = blankSlotsForSource(sourceFile?.name);
   const steps = orderUploadSteps();
-  const ready = Boolean(sourceFile && slots.filter((slot) => !slot.optional).every((slot) => blankFiles[slot.id]));
-  const selectedCount = orderSelectedCount(sourceFile, blankFiles);
+  const ready = Boolean(sourceFile && (!twoLocations || warehouseFile) && slots.filter((slot) => !slot.optional).every((slot) => blankFiles[slot.id]));
+  const selectedCount = orderSelectedCount(sourceFile, blankFiles, warehouseFile);
   return (
     <div className="mx-auto flex h-full max-w-2xl flex-col justify-center px-6">
       <StageHeading index="01" kicker="Бланк закупки" title="Загрузите файлы">
@@ -36,22 +39,49 @@ export function UploadStage({
         </p>
       </StageHeading>
 
-      <div className={`mt-9 grid gap-4 ${slots.length > 1 ? "sm:grid-cols-3" : "sm:grid-cols-2"}`}>
+      <label className="mt-7 flex min-h-11 cursor-pointer items-center gap-3 rounded-xl border border-[var(--color-line)] bg-[var(--color-surface)] px-4 py-3 text-[15px] font-medium transition-colors hover:border-[var(--color-ink-faint)]">
+        <input
+          type="checkbox"
+          checked={twoLocations}
+          onChange={(event) => {
+            setTwoLocations(event.target.checked);
+            if (!event.target.checked) onWarehouse(null);
+          }}
+        />
+        <span>
+          Учитывать второй склад Тюмени
+          <span className="mt-0.5 block text-[13px] font-normal text-[var(--color-ink-soft)]">Продажи и остатки офиса и склада будут объединены перед расчётом.</span>
+        </span>
+      </label>
+
+      <div className={`mt-4 grid gap-4 ${slots.length > 1 || twoLocations ? "sm:grid-cols-3" : "sm:grid-cols-2"}`}>
         <Dropzone
-          title={`${steps[0].n}. ${steps[0].title}`}
+          title={`${steps[0].n}. ${twoLocations ? "Таблица офиса Тюмени" : steps[0].title}`}
           hint={excelAcceptHint}
           file={sourceFile}
-          accept=".xlsx,.xlsm,.xls"
+          accept=".xlsx,.xlsm"
+          inputLabel="Таблица продаж из 1С"
           tour="source"
           onPick={onSource}
         />
+        {twoLocations ? (
+          <Dropzone
+            title="2. Таблица склада доставки"
+            hint={excelAcceptHint}
+            file={warehouseFile}
+            accept=".xlsx,.xlsm"
+            inputLabel="Таблица склада доставки"
+            onPick={onWarehouse}
+          />
+        ) : null}
         {slots.map((slot, index) => (
           <Dropzone
             key={slot.id}
-            title={`${index + 2}. ${slot.optional ? `${slot.label} (необязательно)` : slot.label}`}
+            title={`${index + (twoLocations ? 3 : 2)}. ${slot.optional ? `${slot.label} (необязательно)` : slot.label}`}
             hint={excelAcceptHint}
             file={blankFiles[slot.id] || null}
             accept={slot.accept}
+            inputLabel={slot.label}
             tour={index === 0 ? "blank" : undefined}
             onPick={(file) => onBlank(slot.id, file)}
           />
@@ -84,7 +114,7 @@ export function UploadStage({
   );
 }
 
-function Dropzone({ title, hint, file, accept, onPick, tour }) {
+function Dropzone({ title, hint, file, accept, onPick, tour, inputLabel = title }) {
   const [drag, setDrag] = useState(false);
   const inputRef = useRef(null);
   return (
@@ -99,7 +129,7 @@ function Dropzone({ title, hint, file, accept, onPick, tour }) {
         event.preventDefault();
         setDrag(false);
         const next = event.dataTransfer.files[0];
-        if (next) onPick(next);
+        if (next && fileMatchesAccept(next, accept)) onPick(next);
       }}
       className={`relative rounded-xl border-2 border-dashed p-6 transition ${
         file
@@ -113,6 +143,7 @@ function Dropzone({ title, hint, file, accept, onPick, tour }) {
         ref={inputRef}
         type="file"
         accept={accept}
+        aria-label={inputLabel}
         className="hidden"
         onChange={(event) => onPick(event.target.files?.[0] || null)}
       />

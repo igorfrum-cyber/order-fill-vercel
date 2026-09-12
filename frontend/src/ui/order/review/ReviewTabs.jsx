@@ -31,10 +31,11 @@ export function ReviewTabs({ tabs, counts, activeTab, query, onTab, onQuery, dup
             value={query}
             onChange={(event) => onQuery(event.target.value)}
             placeholder="Артикул или наименование"
+            aria-label="Артикул или наименование"
             className="w-full rounded-lg border border-[var(--color-line)] bg-[var(--color-surface)] py-2 pl-8 pr-8 text-[14px] outline-none transition focus:border-[var(--color-brand)] focus:ring-4 focus:ring-[var(--color-brand-soft)]"
           />
           {query && (
-            <button type="button" onClick={() => onQuery("")} className="absolute right-2 top-1/2 -translate-y-1/2 text-[var(--color-ink-faint)] hover:text-[var(--color-ink)]">
+            <button type="button" onClick={() => onQuery("")} className="absolute right-2 top-1/2 -translate-y-1/2 text-[var(--color-ink-faint)] hover:text-[var(--color-ink)]" aria-label="Очистить поиск">
               <IconX className="h-4 w-4" />
             </button>
           )}
@@ -43,7 +44,7 @@ export function ReviewTabs({ tabs, counts, activeTab, query, onTab, onQuery, dup
 
       {activeTab === "needs_decision" && duplicateCount > 0 ? (
         <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[color-mix(in_srgb,var(--color-danger)_25%,white)] bg-[var(--color-danger-soft)] px-6 py-2.5 text-[14px] text-[var(--color-ink)]">
-          <span>В таблице заказа несколько строк на одну позицию бланка. На каждой строке отметьте «оставляю», когда разобрали конфликт.</span>
+          <span>{hint || "На каждой строке отметьте «оставляю», когда разобрали."}</span>
           <span className="font-mono text-[13px] tabular-nums text-[var(--color-ink-soft)]">
             {acknowledgedCount} из {duplicateCount} подтверждены
           </span>

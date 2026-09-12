@@ -187,6 +187,28 @@ export function canProceedPastDuplicates({ duplicateKeys = [], acknowledgedKeys 
   return duplicateKeys.every((key) => acknowledgedKeys.has(key));
 }
 
+export function needsAcknowledgement(row) {
+  return presentationStatus(row) === "needs_decision";
+}
+
+export function isDuplicateDecision(row) {
+  return Boolean(
+    row.duplicate || row.matchReasons?.duplicates === "needs_choice" || row.status === "source_duplicate",
+  );
+}
+
+export function decisionHint(rows = []) {
+  const pending = rows.filter(needsAcknowledgement);
+  if (!pending.length) return "";
+  if (pending.every(isDuplicateDecision)) {
+    return "В таблице заказа несколько строк на одну позицию бланка. На каждой строке отметьте «оставляю», когда разобрали конфликт.";
+  }
+  if (pending.some(isDuplicateDecision)) {
+    return "Есть дубли и сомнительные пары. На каждой строке отметьте «оставляю», когда разобрали.";
+  }
+  return "Эти позиции найдены только по названию. На каждой строке отметьте «оставляю», если пара верная.";
+}
+
 export function quantityDisplay(value) {
   if (value == null || value === "") return "";
   const number = Number(value);

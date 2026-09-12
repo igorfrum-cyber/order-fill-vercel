@@ -28,11 +28,11 @@ curl http://127.0.0.1:8080/readyz
 
 - HTTP API для входа по паролю, TOTP/recovery code и passkey, управления сессиями и смены пароля.
 - Административные операции над компаниями и пользователями с ролевыми ограничениями.
-- Прием исходных книг через `multipart/form-data`, создание заданий `order_fill` и `north_merge`, чтение статуса/отчета, отправка ручных правок.
+- Прием исходных книг через `multipart/form-data`, создание заданий `order_fill` и `north_merge` (опционально `warehouse_file` второго склада Тюмени), чтение статуса/отчета, отправка ручных правок.
 - Скачивание отдельных файлов и ZIP-архива, а также выдача метаданных и окон табличного preview без распаковки всей книги в gateway.
 - Публичные метаданные и логотип страницы входа компании по `login_slug`.
 - Аудит отдельных административных действий и агрегированный статус инфраструктуры для `platform_admin`.
-- CORS, CSRF-проверка POST-запросов, security headers и HTTP-only cookie `order_fill_session`.
+- CORS, CSRF-проверка POST-запросов (включая public login/invite/passkey), security headers (`Cache-Control: private, no-store`, `Cross-Origin-Opener-Policy`/`Cross-Origin-Resource-Policy: same-origin`) и HTTP-only cookie `order_fill_session`.
 
 Gateway не владеет постоянным хранилищем. `POSTGRES_ADDR` и `REDIS_ADDR` используются только диагностическим `/api/v1/status`.
 
@@ -61,13 +61,9 @@ Gateway не владеет постоянным хранилищем. `POSTGRES
 
 Полные схемы запросов, ответов и ошибок находятся в [`api/openapi.yaml`](api/openapi.yaml). Реально зарегистрированные маршруты:
 
-### Состояние процесса
-
+<!-- docs-sync:http -->
 - `GET /healthz`
 - `GET /readyz`
-
-### Аутентификация и учетная запись
-
 - `POST /api/v1/auth/login`
 - `POST /api/v1/auth/login/2fa`
 - `POST /api/v1/auth/invite`
@@ -86,26 +82,6 @@ Gateway не владеет постоянным хранилищем. `POSTGRES
 - `POST /api/v1/auth/passkeys/{id}/delete`
 - `POST /api/v1/auth/passkeys/login/begin`
 - `POST /api/v1/auth/passkeys/login/finish`
-
-### Компании, пользователи и аудит
-
-- `GET|POST /api/v1/companies`
-- `POST /api/v1/companies/{company_id}/login-slug`
-- `POST /api/v1/companies/{company_id}/profile`
-- `POST /api/v1/companies/{company_id}/logo`
-- `POST /api/v1/companies/{company_id}/logo/clear`
-- `POST /api/v1/companies/{company_id}/disable`
-- `GET|POST /api/v1/companies/{company_id}/users`
-- `POST /api/v1/users/{user_id}/disable`
-- `POST /api/v1/users/{user_id}/reset`
-- `GET /api/v1/audit`
-- `GET /api/v1/status`
-- `GET /api/v1/public/companies/{slug}/login`
-- `GET /api/v1/public/companies/{slug}/logo`
-
-### Задания и файлы
-
-- `GET /api/v1/jobs`
 - `POST /api/v1/jobs/order-fill`
 - `POST /api/v1/jobs/north-merge`
 - `GET /api/v1/jobs/{job_id}`
@@ -117,10 +93,27 @@ Gateway не владеет постоянным хранилищем. `POSTGRES
 - `GET /api/v1/jobs/{job_id}/files/{file_id}/preview`
 - `GET /api/v1/jobs/{job_id}/files/{file_id}/preview/window`
 - `GET /api/v1/jobs/{job_id}/files/{file_id}/preview/find`
+- `GET /api/v1/jobs`
+- `GET /api/v1/companies`
+- `POST /api/v1/companies`
+- `POST /api/v1/companies/{company_id}/disable`
+- `POST /api/v1/companies/{company_id}/login-slug`
+- `POST /api/v1/companies/{company_id}/profile`
+- `POST /api/v1/companies/{company_id}/logo`
+- `POST /api/v1/companies/{company_id}/logo/clear`
+- `GET /api/v1/companies/{company_id}/users`
+- `POST /api/v1/companies/{company_id}/users`
+- `POST /api/v1/users/{user_id}/disable`
+- `POST /api/v1/users/{user_id}/reset`
+- `GET /api/v1/audit`
+- `GET /api/v1/status`
+- `GET /api/v1/public/companies/{slug}/login`
+- `GET /api/v1/public/companies/{slug}/logo`
+<!-- /docs-sync:http -->
 
 Без cookie доступны health/readiness, login, завершение 2FA-login, прием invite, начало/завершение passkey-login и публичные маршруты компании. Остальные маршруты проходят через `ValidateSession`. POST-запросы дополнительно требуют `X-Requested-With: fetch`; если указан `Origin`, он должен входить в разрешенный список.
 
-Сессионная cookie имеет `HttpOnly`, `SameSite=Lax`, TTL 8 часов и получает `Secure`/`Domain` из конфигурации. JSON для auth/admin ограничен 8 KiB, JSON задания — 1 MiB, все multipart-тело задания — 64 MiB. Логотип ограничен 512 KiB и форматами PNG, JPEG или WebP.
+Сессионная cookie имеет `HttpOnly`, `SameSite=Lax`, TTL 8 часов и получает `Secure`/`Domain` из конфигурации. JSON для auth/admin ограничен 8 KiB, JSON задания — 1 MiB, все multipart-тело задания — 64 MiB. MIME загружаемой книги берётся из расширения (`.xlsx`/`.xlsm`), клиентский `Content-Type` игнорируется. Логотип ограничен 512 KiB и форматами PNG, JPEG или WebP.
 
 ## Внутренние зависимости
 
@@ -140,6 +133,8 @@ gRPC-контракты находятся в [`../../proto/orderfill`](../../pr
 
 Значения читаются только из переменных окружения. Пустая строка считается отсутствующим значением и заменяется default.
 
+
+<!-- docs-sync:env -->
 | Переменная | Default | Обязательность и назначение |
 | --- | --- | --- |
 | `GATEWAY_ENV` | значение `APP_ENV`, затем `local` | Среда именно gateway; имеет приоритет над `APP_ENV`. |
@@ -156,8 +151,14 @@ gRPC-контракты находятся в [`../../proto/orderfill`](../../pr
 | `POSTGRES_ADDR` | `127.0.0.1:5432` | TCP-адрес PostgreSQL для `/api/v1/status`. |
 | `REDIS_ADDR` | `127.0.0.1:6379` | TCP-адрес Redis для `/api/v1/status`. |
 | `API_ALLOWED_ORIGINS` | `http://127.0.0.1:3200,http://localhost:3200` в local; пусто вне local | Разделенный запятыми allowlist CORS/CSRF. Вне local обязателен, `*` запрещен, все origins должны быть валидными HTTPS URL. |
-| `SESSION_COOKIE_SECURE` | `false` в local, `true` вне local | Только строка `true` включает Secure. Вне local значение обязано быть истинным. |
 | `SESSION_COOKIE_DOMAIN` | пусто | Необязательный атрибут Domain cookie. |
+| `SESSION_COOKIE_SECURE` | `false` в local, `true` вне local | Только строка `true` включает Secure. Вне local значение обязано быть истинным. |
+| `GRPC_TLS_MODE` | `insecure` | Читается из окружения; назначение см. config.go. |
+| `GRPC_TLS_CERT_FILE` | пусто | Читается из окружения; назначение см. config.go. |
+| `GRPC_TLS_KEY_FILE` | пусто | Читается из окружения; назначение см. config.go. |
+| `GRPC_TLS_CA_FILE` | пусто | Читается из окружения; назначение см. config.go. |
+| `GRPC_TLS_SERVER_NAME` | пусто | Необязательное имя для проверки TLS-сертификата исходящих gRPC-клиентов. |
+<!-- /docs-sync:env -->
 
 Все исходящие gRPC-клиенты используют общую TLS-конфигурацию:
 
@@ -212,7 +213,7 @@ go test ./...
 ## Эксплуатационные заметки и ограничения
 
 - `/healthz` — liveness, `/readyz` сейчас всегда отвечает `200` и не отражает доступность gRPC-зависимостей.
-- `/api/v1/status` доступен только `platform_admin` и проверяет worker, PostgreSQL, Redis и file-service с общим deadline 2 секунды. Identity, TwoFA, Passkey, Job и Audit в эту диагностику не входят.
-- Вне local сервис отказывается запускаться с insecure cookie, пустым CORS allowlist, wildcard origin или origin без HTTPS.
-- `GRPC_TLS_MODE=insecure` — default для разработки. В production внутреннюю сеть нужно защищать TLS/mTLS и сетевыми политиками.
+- `/api/v1/status` и `GET /api/v1/audit` доступны только `platform_admin`. Status проверяет worker, PostgreSQL, Redis и file-service с общим deadline 2 секунды. Identity, TwoFA, Passkey, Job и Audit в эту диагностику не входят.
+- Вне local сервис отказывается запускаться с insecure cookie, пустым CORS allowlist, wildcard origin, origin без HTTPS, `GRPC_TLS_MODE` отличным от `mtls` или без путей сертификата/ключа/CA.
+- Смена пароля и включение 2FA отзывают cookie-сессии. Отключение 2FA требует пароль и TOTP/recovery code.
 - В репозитории нет файла `LICENSE`; условия распространения сервиса в README не зафиксированы.

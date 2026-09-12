@@ -71,7 +71,7 @@ export function blankSlotsForBrand(_brand) {
       id: "main",
       label: "Текущий бланк",
       hint: `Бланк для заполнения количеств`,
-      accept: ".xlsx,.xlsm,.xls",
+      accept: ".xlsx,.xlsm",
     },
   ];
 }
@@ -87,7 +87,7 @@ export function blankSlotsForSource(_fileName) {
       id: "main",
       label: "Бланк",
       hint: "Бланк для заполнения количеств",
-      accept: ".xlsx,.xlsm,.xls",
+      accept: ".xlsx,.xlsm",
     },
   ];
 }

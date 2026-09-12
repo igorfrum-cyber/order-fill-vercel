@@ -54,6 +54,17 @@ curl http://127.0.0.1:8084/readyz
 
 ## Внутренний gRPC API
 
+<!-- docs-sync:rpc -->
+| RPC | Полный gRPC method | Назначение |
+| --- | --- | --- |
+| `BeginRegistration` | `/orderfill.passkey.v1.PasskeyService/BeginRegistration` | RPC из protobuf-контракта. |
+| `FinishRegistration` | `/orderfill.passkey.v1.PasskeyService/FinishRegistration` | RPC из protobuf-контракта. |
+| `ListCredentials` | `/orderfill.passkey.v1.PasskeyService/ListCredentials` | RPC из protobuf-контракта. |
+| `DeleteCredential` | `/orderfill.passkey.v1.PasskeyService/DeleteCredential` | RPC из protobuf-контракта. |
+| `BeginLogin` | `/orderfill.passkey.v1.PasskeyService/BeginLogin` | RPC из protobuf-контракта. |
+| `FinishLogin` | `/orderfill.passkey.v1.PasskeyService/FinishLogin` | RPC из protobuf-контракта. |
+<!-- /docs-sync:rpc -->
+
 Контракт: [`../../proto/orderfill/passkey/v1/passkey.proto`](../../proto/orderfill/passkey/v1/passkey.proto), package `orderfill.passkey.v1`, service `PasskeyService`.
 
 - `BeginRegistration` — принимает `actor_user_id` и `origin`, возвращает `challenge_id` и WebAuthn `options_json`.
@@ -90,6 +101,8 @@ curl http://127.0.0.1:8084/readyz
 
 ## Конфигурация
 
+
+<!-- docs-sync:env -->
 | Переменная | Default | Обязательность и назначение |
 | --- | --- | --- |
 | `PASSKEY_ENV` | значение `APP_ENV`, затем `local` | Среда сервиса; имеет приоритет над `APP_ENV`. |
@@ -101,6 +114,12 @@ curl http://127.0.0.1:8084/readyz
 | `REDIS_URL` | пусто | Fallback Redis URL, если `QUEUE_URL` не задан. |
 | `WEBAUTHN_RP_ID` | пусто | Явный RP ID; обязателен вне local. Не включает scheme или port. |
 | `WEBAUTHN_RP_DISPLAY_NAME` | `Order Fill` | Имя relying party в WebAuthn UI. |
+| `GRPC_TLS_MODE` | `insecure` | Читается из окружения; назначение см. config.go. |
+| `GRPC_TLS_CERT_FILE` | пусто | Читается из окружения; назначение см. config.go. |
+| `GRPC_TLS_KEY_FILE` | пусто | Читается из окружения; назначение см. config.go. |
+| `GRPC_TLS_CA_FILE` | пусто | Читается из окружения; назначение см. config.go. |
+| `GRPC_TLS_SERVER_NAME` | пусто | Необязательное имя для проверки TLS-сертификата исходящих gRPC-клиентов. |
+<!-- /docs-sync:env -->
 
 Конфигурация входящего gRPC TLS:
 

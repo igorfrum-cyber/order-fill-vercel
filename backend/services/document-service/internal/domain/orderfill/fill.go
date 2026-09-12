@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"strconv"
+	"strings"
 
 	"order-fill/backend/services/document-service/internal/domain/brand"
 	"order-fill/backend/services/document-service/internal/domain/normalize"
@@ -80,6 +81,7 @@ type blankPosition struct {
 	name                string
 	unit                string
 	boxSize             string
+	budgetPrice         float64
 	duplicate           bool
 	duplicateCandidates []DuplicateCandidate
 }
@@ -303,6 +305,7 @@ func applyMatch(position blankPosition, result MatchResult, byID map[string]Sour
 
 func blankPositions(blank Detection, blankID string, rule brand.RuleConfig) []blankPosition {
 	bounds := blank.Sheet.Bounds()
+	priceColumn := budgetPriceColumn(blank)
 	positions := make([]blankPosition, 0)
 	for row := blank.HeaderRow + 1; row <= bounds.MaxRow; row++ {
 		articleRaw := normalize.AsText(blank.Sheet.Value(row, blank.Columns[ColumnArticle]))
@@ -325,9 +328,60 @@ func blankPositions(blank Detection, blankID string, rule brand.RuleConfig) []bl
 			name:                normalize.AsText(blank.Sheet.Value(row, blank.Columns[ColumnName])),
 			unit:                normalize.AsText(blank.Sheet.Value(row, blank.Columns[ColumnUnit])),
 			boxSize:             boxSize,
+			budgetPrice:         budgetPriceAt(blank.Sheet, row, priceColumn),
 		})
 	}
 	return positions
+}
+
+func budgetPriceColumn(blank Detection) int {
+	preferred := 0
+	discounted := 0
+	fallback := 0
+	for column := 1; column <= blank.Sheet.Bounds().MaxColumn; column++ {
+		header := normalize.NormalizeHeader(blank.Sheet.Value(blank.HeaderRow, column))
+		if !strings.Contains(header, "цена") || strings.Contains(header, "сумма") || strings.Contains(header, "итого") {
+			continue
+		}
+		if header == "закупочная цена" || header == "цена закупки" {
+			if preferred != 0 {
+				return 0
+			}
+			preferred = column
+			continue
+		}
+		if strings.Contains(header, "скид") {
+			if discounted != 0 {
+				discounted = -1
+			} else {
+				discounted = column
+			}
+		}
+		if fallback != 0 {
+			fallback = -1
+		} else {
+			fallback = column
+		}
+	}
+	if preferred != 0 {
+		return preferred
+	}
+	if discounted > 0 {
+		return discounted
+	}
+	if fallback > 0 {
+		return fallback
+	}
+	return 0
+}
+
+func budgetPriceAt(sheet spreadsheet.Sheet, row, column int) float64 {
+	if column <= 0 {
+		return 0
+	}
+	value := sheet.Value(row, column)
+	number, _ := normalize.ParseNumber(value)
+	return number
 }
 
 func countDuplicateArticles(positions []blankPosition) int {

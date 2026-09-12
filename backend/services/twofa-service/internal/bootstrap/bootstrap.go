@@ -2,7 +2,6 @@ package bootstrap
 
 import (
 	"context"
-	"crypto/sha256"
 	"log/slog"
 	"net/http"
 
@@ -33,8 +32,7 @@ func Run(ctx context.Context, cfg config.Config, log *slog.Logger) error {
 	if err := cfg.Validate(); err != nil {
 		return err
 	}
-	key := sha256.Sum256([]byte(cfg.MasterKey))
-	box, err := secret.NewBox(key[:])
+	box, err := secret.NewBoxFromMaster(cfg.MasterKey)
 	if err != nil {
 		return err
 	}

@@ -5,6 +5,7 @@ import (
 	"io"
 	"log/slog"
 	"testing"
+	"time"
 
 	"github.com/redis/go-redis/v9"
 
@@ -16,6 +17,12 @@ func TestDefaultStreamName(t *testing.T) {
 	// handover between the two services.
 	if DefaultStreamName != "order-fill:jobs" {
 		t.Fatalf("stream name: got %q", DefaultStreamName)
+	}
+}
+
+func TestDefaultClaimMinIdleAllowsLongJobs(t *testing.T) {
+	if defaultClaimMinIdle != 30*time.Minute {
+		t.Fatalf("claim min idle: got %s", defaultClaimMinIdle)
 	}
 }
 
@@ -50,6 +57,7 @@ func TestDecodeMessageFromJobService(t *testing.T) {
 		"brand": "ANGIOPHARM",
 		"order_month": "2026-09",
 		"matching_mode": "smart",
+		"company_id": "co-1",
 		"inputs": [
 			{"role": "source", "name": "order.xlsx", "storage_key": "jobs/job-123/inputs/order.xlsx"},
 			{"role": "blank", "name": "blank.xlsx", "storage_key": "jobs/job-123/inputs/blank.xlsx"}
@@ -82,6 +90,9 @@ func TestDecodeMessageFromJobService(t *testing.T) {
 	}
 	if message.MatchingMode != "smart" {
 		t.Fatalf("matching mode: got %q", message.MatchingMode)
+	}
+	if message.CompanyID != "co-1" {
+		t.Fatalf("company id: got %q", message.CompanyID)
 	}
 
 	if len(message.Inputs) != 2 {
@@ -195,6 +206,30 @@ func TestRunStopsOnCancelledContext(t *testing.T) {
 		t.Fatal("handler must not run for a cancelled context")
 	}
 }
+
+func TestDispatchLeavesHandlerErrorUnacked(t *testing.T) {
+	t.Parallel()
+	consumer := &Consumer{logger: discardLogger()}
+	err := consumer.dispatch(t.Context(), `{"job_id":"job-1","type":"order_fill"}`, func(context.Context, port.JobMessage) error {
+		return errHandlerFailed
+	})
+	if err == nil {
+		t.Fatal("expected handler error")
+	}
+}
+
+func TestDispatchAcksInvalidPayload(t *testing.T) {
+	t.Parallel()
+	consumer := &Consumer{logger: discardLogger()}
+	if err := consumer.dispatch(t.Context(), `{`, func(context.Context, port.JobMessage) error {
+		t.Fatal("handler must not run")
+		return nil
+	}); err != nil {
+		t.Fatalf("invalid payload must be acknowledged: %v", err)
+	}
+}
+
+var errHandlerFailed = redisError("handler failed")
 
 func TestIsBusyGroupError(t *testing.T) {
 	tests := []struct {

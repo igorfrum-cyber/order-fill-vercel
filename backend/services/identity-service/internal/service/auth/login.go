@@ -9,10 +9,16 @@ import (
 )
 
 func (a *Auth) Login(ctx context.Context, login, secret string) (LoginResult, error) {
+	if !a.guard.allow(login, a.now()) {
+		_ = password.VerifyPassword(password.DummyPasswordHash(), secret)
+		return LoginResult{}, domain.ErrUnauthorized
+	}
 	user, err := a.verifyLogin(ctx, login, secret)
 	if err != nil {
+		a.guard.fail(login, a.now())
 		return LoginResult{}, err
 	}
+	a.guard.clear(login)
 	if a.twoFA != nil {
 		enabled, err := a.twoFA.IsEnabled(ctx, user.ID)
 		if err != nil {

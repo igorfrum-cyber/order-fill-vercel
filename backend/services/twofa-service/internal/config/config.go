@@ -4,6 +4,9 @@ import (
 	"fmt"
 	"os"
 	"strings"
+
+	"order-fill/backend/pkg/grpcutil"
+	"order-fill/backend/pkg/securecfg"
 )
 
 type Config struct {
@@ -40,7 +43,13 @@ func (c Config) Validate() error {
 	if c.MasterKey == "" || c.MasterKey == "local-dev-twofa-master-key" || len(c.MasterKey) < 32 {
 		return fmt.Errorf("TWOFA_MASTER_KEY must be a non-default value with at least 32 bytes outside local environment")
 	}
-	return nil
+	if err := securecfg.Postgres(c.Environment, c.DatabaseURL); err != nil {
+		return err
+	}
+	if err := securecfg.Redis(c.Environment, c.RedisURL); err != nil {
+		return err
+	}
+	return grpcutil.CheckTLSMode(c.Environment)
 }
 
 func localEnv(env string) bool {

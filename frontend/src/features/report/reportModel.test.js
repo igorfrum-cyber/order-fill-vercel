@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { combinedSummary, filterJobs, historyDeskLine, initialComment, jobNextAction, jobProgress, jobStatusText, jobStatusLabel, jobsEmptyState, jobStatusHint, liveJobs, queueJobs, reportSummaryFromRows, statusLabel } from "./reportModel.js";
+import { combinedSummary, filterJobs, historyDeskLine, initialComment, jobNextAction, jobProgress, jobStatusText, jobStatusLabel, jobsEmptyMessage, jobsEmptyState, jobStatusHint, liveJobs, queueJobs, reportSummaryFromRows, statusLabel } from "./reportModel.js";
 
 test("reportSummaryFromRows derives dashboard metrics from API report rows", () => {
   const rows = [
@@ -84,7 +84,11 @@ test("jobsEmptyState tells company users how to start and platform admin that th
     jobsEmptyState("company_admin"),
     "Пока нет выгрузок. Начните с бланка закупки или объединения Севера.",
   );
-  assert.equal(jobsEmptyState("platform_admin"), "Пока нет выгрузок по выбранной компании.");
+  assert.equal(jobsEmptyState("platform_admin"), "Пока нет выгрузок. Выберите компанию.");
+  assert.equal(jobsEmptyState("platform_admin", "c-1"), "Пока нет выгрузок по выбранной компании.");
+  assert.equal(jobsEmptyMessage("purchaser", [{ id: "1" }], []), "Нет выгрузок с такими фильтрами.");
+  assert.equal(jobsEmptyMessage("purchaser", [], []), jobsEmptyState("purchaser"));
+  assert.equal(jobsEmptyMessage("platform_admin", [], [], "c-1"), "Пока нет выгрузок по выбранной компании.");
 });
 
 test("jobStatusHint explains each status without putting a paragraph in the row", () => {
@@ -158,6 +162,10 @@ test("historyDeskLine names leftover review work", () => {
     historyDeskLine([{ status: "needs_review" }, { status: "needs_review" }]),
     "2 выгрузки ждут проверки.",
   );
+  assert.equal(
+    historyDeskLine(Array.from({ length: 5 }, () => ({ status: "needs_review" }))),
+    "5 выгрузок ждут проверки.",
+  );
   assert.equal(historyDeskLine([{ status: "failed" }]), "Есть выгрузки со сбоем.");
   assert.equal(historyDeskLine([{ status: "completed" }]), "Готовые файлы и текущие выгрузки.");
 });
@@ -178,4 +186,16 @@ test("filterJobs keeps brand status and month", () => {
   assert.equal(filterJobs(jobs, { brand: "christina" }).length, 1);
   assert.equal(filterJobs(jobs, { status: "needs_review" })[0].id, "2");
   assert.equal(filterJobs(jobs, { month: "2026-09" })[0].id, "1");
+  assert.deepEqual(
+    filterJobs(
+      [
+        { id: "q", status: "queued" },
+        { id: "r", status: "needs_review" },
+        { id: "p", status: "processing" },
+        { id: "c", status: "completed" },
+      ],
+      { status: "live" },
+    ).map((job) => job.id),
+    ["q", "p"],
+  );
 });
