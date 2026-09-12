@@ -336,10 +336,11 @@ func blankPositions(blank Detection, blankID string, rule brand.RuleConfig) []bl
 
 func budgetPriceColumn(blank Detection) int {
 	preferred := 0
+	discounted := 0
 	fallback := 0
 	for column := 1; column <= blank.Sheet.Bounds().MaxColumn; column++ {
 		header := normalize.NormalizeHeader(blank.Sheet.Value(blank.HeaderRow, column))
-		if !strings.Contains(header, "цена") || strings.Contains(header, "сумма") {
+		if !strings.Contains(header, "цена") || strings.Contains(header, "сумма") || strings.Contains(header, "итого") {
 			continue
 		}
 		if header == "закупочная цена" || header == "цена закупки" {
@@ -349,6 +350,13 @@ func budgetPriceColumn(blank Detection) int {
 			preferred = column
 			continue
 		}
+		if strings.Contains(header, "скид") {
+			if discounted != 0 {
+				discounted = -1
+			} else {
+				discounted = column
+			}
+		}
 		if fallback != 0 {
 			fallback = -1
 		} else {
@@ -357,6 +365,9 @@ func budgetPriceColumn(blank Detection) int {
 	}
 	if preferred != 0 {
 		return preferred
+	}
+	if discounted > 0 {
+		return discounted
 	}
 	if fallback > 0 {
 		return fallback

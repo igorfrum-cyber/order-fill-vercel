@@ -181,7 +181,7 @@ func collectSourceItems(detection Detection, rule brand.RuleConfig, calculation 
 		budgetCategory := ""
 		budgetDemand := 0.0
 		if calculation != nil {
-			budgetCategory = normalize.AsText(detection.Sheet.Value(row, calculation.category))
+			budgetCategory = normalize.NormalizeCategory(detection.Sheet.Value(row, calculation.category))
 			budgetDemand, _ = normalize.ParseNumber(detection.Sheet.Value(row, calculation.averageMonthly))
 		}
 
