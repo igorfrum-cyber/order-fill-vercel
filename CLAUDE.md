@@ -252,7 +252,7 @@ genuine external blocker.
 - `Docker Compose` — backend and root configuration validation;
 - `Required checks` — one aggregate result for branch protection.
 - `Deploy self-hosted` — only on push to `dev` after required checks; pulls
-  and rebuilds Compose on the laptop runner. Never runs on pull requests.
+  and rebuilds Compose on the self-hosted Linux x64 runner. Never runs on pull requests.
 
 The workflow uses least-privilege read permissions, cancels obsolete runs for
 the same ref, and keeps matrix failures independent. The self-hosted runner

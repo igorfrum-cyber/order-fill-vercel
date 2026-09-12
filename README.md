@@ -389,9 +389,9 @@ GitHub Actions уже гоняет полный verify на каждый push и
 `git pull --ff-only` и `docker compose up -d --build`, не трогая `.env` и
 volumes.
 
-Один раз на ноуте:
+Один раз на deploy-хосте:
 
-1. [Settings → Actions → Runners](https://github.com/igorfrum-cyber/order-fill-vercel/settings/actions/runners) → New self-hosted runner, label `order-fill`.
+1. [Settings → Actions → Runners](https://github.com/igorfrum-cyber/order-fill-vercel/settings/actions/runners) → New self-hosted Linux x64 runner. Стандартных labels `self-hosted`, `Linux`, `X64` достаточно; установочный скрипт дополнительно ставит `order-fill`.
 2. `RUNNER_TOKEN=... bash scripts/install-github-runner.sh`
 3. `cd ~/actions-runner && sudo ./svc.sh install && sudo ./svc.sh start`
 
