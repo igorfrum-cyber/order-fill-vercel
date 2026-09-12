@@ -61,6 +61,10 @@ type ReportRow struct {
 	SourceComment       string               `json:"source_comment"`
 	Stock               string               `json:"stock"`
 	InTransit           string               `json:"in_transit"`
+	HasBudgetData       bool                 `json:"has_budget_data"`
+	BudgetCategory      string               `json:"budget_category,omitempty"`
+	BudgetDemand        float64              `json:"budget_demand,omitempty"`
+	BudgetPrice         float64              `json:"budget_price,omitempty"`
 	Recommended         *float64             `json:"recommended"`
 	Rounded             *int                 `json:"rounded"`
 	BaseRounded         *int                 `json:"base_rounded"`
@@ -130,6 +134,10 @@ func matchedRow(
 		SourceComment:       selected.SourceComment,
 		Stock:               selected.Stock,
 		InTransit:           selected.InTransit,
+		HasBudgetData:       position.budgetPrice > 0 && selected.BudgetDemand > 0 && budgetCategorySupported(selected.BudgetCategory),
+		BudgetCategory:      selected.BudgetCategory,
+		BudgetDemand:        selected.BudgetDemand,
+		BudgetPrice:         position.budgetPrice,
 		Recommended:         &recommended,
 		Rounded:             &rounded,
 		BaseRounded:         &baseRounded,
@@ -147,6 +155,15 @@ func matchedRow(
 		row.OrderedFact = &fact
 	}
 	return row
+}
+
+func budgetCategorySupported(category string) bool {
+	switch category {
+	case "C", "B", "A", "A+":
+		return true
+	default:
+		return false
+	}
 }
 
 // MaxNotInBlankReportRows keeps the review payload bounded when the 1C export

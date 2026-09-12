@@ -20,10 +20,14 @@ test("orderUploadSteps list the sales table before the supplier blank", () => {
   );
 });
 
-test("northUploadSteps list city blanks before the optional Tyumen table", () => {
+test("northUploadSteps list city blanks before the optional Tyumen locations", () => {
   assert.deepEqual(
     northUploadSteps().map((step) => `${step.n}. ${step.title}`),
-    ["1. Бланки городов", "2. Таблица Тюмени, если нужно учесть остатки"],
+    [
+      "1. Бланки городов",
+      "2. Таблица офиса Тюмени, если нужно учесть остатки",
+      "3. Таблица склада доставки, если Тюмень ведётся в двух местах",
+    ],
   );
 });
 
@@ -50,8 +54,8 @@ test("orderSelectedCount counts the sales table and each attached blank", () => 
   assert.equal(orderSelectedCount({ name: "sales.xlsx" }, { home: { name: "home.xlsx" }, proff: null }), 2);
 });
 
-test("northSelectedCount counts city blanks and the Tyumen table", () => {
-  assert.equal(northSelectedCount({ files: [{ name: "surgut.xlsx" }], tyumenFile: { name: "tyumen.xlsx" } }), 2);
+test("northSelectedCount counts city blanks and both Tyumen locations", () => {
+  assert.equal(northSelectedCount({ files: [{ name: "surgut.xlsx" }], tyumenFile: { name: "tyumen.xlsx" }, warehouseFile: { name: "warehouse.xlsx" } }), 3);
   assert.equal(northSelectedCount({ homeFiles: [{ name: "a.xlsx" }], proffFiles: [{ name: "b.xlsx" }] }), 2);
 });
 

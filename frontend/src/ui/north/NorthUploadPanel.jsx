@@ -2,7 +2,7 @@ import { useRef } from "react";
 import { excelAcceptHint, northUploadSteps } from "../../features/jobs/uploadCopy.js";
 import { IconCheck, IconFile, IconUpload, IconX } from "../icons.jsx";
 
-export function NorthUploadPanel({ christina, files, homeFiles, proffFiles, tyumenFile, onAdd, onRemove, onPickTyumen }) {
+export function NorthUploadPanel({ christina, files, homeFiles, proffFiles, tyumenFile, warehouseFile, onAdd, onRemove, onPickTyumen, onPickWarehouse }) {
   const steps = northUploadSteps();
   return (
     <div className="grid gap-4 lg:grid-cols-2">
@@ -15,6 +15,7 @@ export function NorthUploadPanel({ christina, files, homeFiles, proffFiles, tyum
         <MultiDropzone tour="north-cities" title={`${steps[0].n}. ${steps[0].title}`} hint={excelAcceptHint} files={files} onAdd={(incoming) => onAdd("default", incoming)} onRemove={(index) => onRemove("default", index)} />
       )}
       <SingleDropzone tour="north-tyumen" title={`${steps[1].n}. ${steps[1].title}`} hint={excelAcceptHint} file={tyumenFile} onPick={onPickTyumen} />
+      <SingleDropzone tour="north-warehouse" title={`${steps[2].n}. ${steps[2].title}`} hint={excelAcceptHint} file={warehouseFile} onPick={onPickWarehouse} />
     </div>
   );
 }

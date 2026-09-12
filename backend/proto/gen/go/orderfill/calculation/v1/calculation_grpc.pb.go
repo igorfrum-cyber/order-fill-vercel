@@ -24,6 +24,8 @@ const (
 	CalculationService_CalculateNorthPlan_FullMethodName            = "/orderfill.calculation.v1.CalculationService/CalculateNorthPlan"
 	CalculationService_RecalculateNorthRow_FullMethodName           = "/orderfill.calculation.v1.CalculationService/RecalculateNorthRow"
 	CalculationService_ValidateManualEdits_FullMethodName           = "/orderfill.calculation.v1.CalculationService/ValidateManualEdits"
+	CalculationService_PlanBudget_FullMethodName                    = "/orderfill.calculation.v1.CalculationService/PlanBudget"
+	CalculationService_CalculateWarehouseTransfer_FullMethodName    = "/orderfill.calculation.v1.CalculationService/CalculateWarehouseTransfer"
 )
 
 // CalculationServiceClient is the client API for CalculationService service.
@@ -35,6 +37,8 @@ type CalculationServiceClient interface {
 	CalculateNorthPlan(ctx context.Context, in *CalculateNorthPlanRequest, opts ...grpc.CallOption) (*CalculateNorthPlanResponse, error)
 	RecalculateNorthRow(ctx context.Context, in *RecalculateNorthRowRequest, opts ...grpc.CallOption) (*RecalculateNorthRowResponse, error)
 	ValidateManualEdits(ctx context.Context, in *ValidateManualEditsRequest, opts ...grpc.CallOption) (*ValidateManualEditsResponse, error)
+	PlanBudget(ctx context.Context, in *PlanBudgetRequest, opts ...grpc.CallOption) (*PlanBudgetResponse, error)
+	CalculateWarehouseTransfer(ctx context.Context, in *CalculateWarehouseTransferRequest, opts ...grpc.CallOption) (*CalculateWarehouseTransferResponse, error)
 }
 
 type calculationServiceClient struct {
@@ -95,6 +99,26 @@ func (c *calculationServiceClient) ValidateManualEdits(ctx context.Context, in *
 	return out, nil
 }
 
+func (c *calculationServiceClient) PlanBudget(ctx context.Context, in *PlanBudgetRequest, opts ...grpc.CallOption) (*PlanBudgetResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(PlanBudgetResponse)
+	err := c.cc.Invoke(ctx, CalculationService_PlanBudget_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *calculationServiceClient) CalculateWarehouseTransfer(ctx context.Context, in *CalculateWarehouseTransferRequest, opts ...grpc.CallOption) (*CalculateWarehouseTransferResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(CalculateWarehouseTransferResponse)
+	err := c.cc.Invoke(ctx, CalculationService_CalculateWarehouseTransfer_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // CalculationServiceServer is the server API for CalculationService service.
 // All implementations must embed UnimplementedCalculationServiceServer
 // for forward compatibility.
@@ -104,6 +128,8 @@ type CalculationServiceServer interface {
 	CalculateNorthPlan(context.Context, *CalculateNorthPlanRequest) (*CalculateNorthPlanResponse, error)
 	RecalculateNorthRow(context.Context, *RecalculateNorthRowRequest) (*RecalculateNorthRowResponse, error)
 	ValidateManualEdits(context.Context, *ValidateManualEditsRequest) (*ValidateManualEditsResponse, error)
+	PlanBudget(context.Context, *PlanBudgetRequest) (*PlanBudgetResponse, error)
+	CalculateWarehouseTransfer(context.Context, *CalculateWarehouseTransferRequest) (*CalculateWarehouseTransferResponse, error)
 	mustEmbedUnimplementedCalculationServiceServer()
 }
 
@@ -128,6 +154,12 @@ func (UnimplementedCalculationServiceServer) RecalculateNorthRow(context.Context
 }
 func (UnimplementedCalculationServiceServer) ValidateManualEdits(context.Context, *ValidateManualEditsRequest) (*ValidateManualEditsResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method ValidateManualEdits not implemented")
+}
+func (UnimplementedCalculationServiceServer) PlanBudget(context.Context, *PlanBudgetRequest) (*PlanBudgetResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method PlanBudget not implemented")
+}
+func (UnimplementedCalculationServiceServer) CalculateWarehouseTransfer(context.Context, *CalculateWarehouseTransferRequest) (*CalculateWarehouseTransferResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method CalculateWarehouseTransfer not implemented")
 }
 func (UnimplementedCalculationServiceServer) mustEmbedUnimplementedCalculationServiceServer() {}
 func (UnimplementedCalculationServiceServer) testEmbeddedByValue()                            {}
@@ -240,6 +272,42 @@ func _CalculationService_ValidateManualEdits_Handler(srv interface{}, ctx contex
 	return interceptor(ctx, in, info, handler)
 }
 
+func _CalculationService_PlanBudget_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(PlanBudgetRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(CalculationServiceServer).PlanBudget(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: CalculationService_PlanBudget_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(CalculationServiceServer).PlanBudget(ctx, req.(*PlanBudgetRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _CalculationService_CalculateWarehouseTransfer_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(CalculateWarehouseTransferRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(CalculationServiceServer).CalculateWarehouseTransfer(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: CalculationService_CalculateWarehouseTransfer_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(CalculationServiceServer).CalculateWarehouseTransfer(ctx, req.(*CalculateWarehouseTransferRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // CalculationService_ServiceDesc is the grpc.ServiceDesc for CalculationService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -266,6 +334,14 @@ var CalculationService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "ValidateManualEdits",
 			Handler:    _CalculationService_ValidateManualEdits_Handler,
+		},
+		{
+			MethodName: "PlanBudget",
+			Handler:    _CalculationService_PlanBudget_Handler,
+		},
+		{
+			MethodName: "CalculateWarehouseTransfer",
+			Handler:    _CalculationService_CalculateWarehouseTransfer_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

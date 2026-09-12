@@ -32,6 +32,10 @@ test("mapReport converts the API contract into the shape the UI renders", () => 
         source_row: 12,
         auto_comment: "до коробки",
         inserted: 12,
+        has_budget_data: true,
+        budget_category: "A",
+        budget_demand: 4.5,
+        budget_price: 125.25,
         duplicate_candidates: [{ source_row: 12, source_article: "A1", in_transit: "3" }],
       },
     ],
@@ -49,6 +53,10 @@ test("mapReport converts the API contract into the shape the UI renders", () => 
   assert.equal(row.sourceRow, 12);
   assert.equal(row.autoComment, "до коробки");
   assert.equal(row.inserted, 12);
+  assert.equal(row.hasBudgetData, true);
+  assert.equal(row.budgetCategory, "A");
+  assert.equal(row.budgetDemand, 4.5);
+  assert.equal(row.budgetPrice, 125.25);
   assert.equal(row.editable, true);
   assert.deepEqual(row.duplicateCandidates, [
     { sourceRow: 12, sourceArticle: "A1", sourceName: "", recommended: null, rounded: null, stock: "", inTransit: "3" },

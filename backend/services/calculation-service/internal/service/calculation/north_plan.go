@@ -38,9 +38,17 @@ func (s *Service) NorthPlan(brand string, needs []domain.CityNeed, tyumen []doma
 			row.TyumenTransit = src.InTransit
 			row.TyumenTarget = src.TargetStock
 			row.Name = src.Name
+			row.BoxSize = src.BoxSize
+			row.HasBoxSize = src.HasBoxSize
+			row.WarehouseStock = src.WarehouseStock
+			row.WarehouseTransit = src.WarehouseTransit
+			row.HasWarehouseStock = src.HasWarehouseStock
 		}
-		planned := recalculateNorthRow(row, cities, brand)
-		out = append(out, planned)
+		if brand == "novacutan" {
+			row.UnitSize = NovacutanSupplierUnitSize(row.Name)
+			row.NovacutanMin = NovacutanMinimumQuantity(row.Name)
+		}
+		out = append(out, recalculateNorthRow(row, cities, brand))
 	}
 	return out
 }
@@ -52,7 +60,7 @@ func (s *Service) RecalculateNorthRow(brand string, row domain.PlanRow, editedQt
 
 func recalculateNorthRow(row domain.PlanRow, cities map[string]float64, brand string) domain.PlanRow {
 	tyumenPlanned := cities["tyumen"]
-	freeLeft := math.Max(0, row.TyumenStock+row.TyumenTransit+tyumenPlanned-row.TyumenTarget)
+	freeLeft := NorthTyumenFreeStock(row.TyumenStock, row.TyumenTransit, tyumenPlanned, row.TyumenTarget, row.WarehouseStock, row.WarehouseTransit, row.HasWarehouseStock)
 	fromTyumen := 0.0
 	supplierNorth := 0.0
 	northNeed := 0.0
@@ -63,7 +71,7 @@ func recalculateNorthRow(row domain.PlanRow, cities map[string]float64, brand st
 			continue
 		}
 		northNeed += qty
-		fromTyumenPart := math.Min(qty, freeLeft)
+		fromTyumenPart := min(qty, freeLeft)
 		fromSupplierPart := qty - fromTyumenPart
 		freeLeft -= fromTyumenPart
 		fromTyumen += fromTyumenPart
@@ -73,14 +81,22 @@ func recalculateNorthRow(row domain.PlanRow, cities map[string]float64, brand st
 		}
 	}
 	row.TransferQty = roundTo2(fromTyumen)
-	demand := roundTo2(math.Max(0, tyumenPlanned) + supplierNorth)
+	demand := roundTo2(max(0, tyumenPlanned) + supplierNorth)
 	unit := row.UnitSize
-	if unit <= 1 {
-		row.SupplierQty = defaultNorthActual(brand, demand, row.NovacutanMin)
-	} else {
-		row.SupplierQty = defaultNorthActual(brand, math.Ceil(demand/unit), row.NovacutanMin)
+	if unit == 0 || math.IsNaN(unit) {
+		unit = 1
 	}
-	row.TyumenQty = roundTo2(math.Max(0, tyumenPlanned))
+	need := demand
+	if unit > 1 {
+		need = math.Ceil(demand / unit)
+	}
+	row.SupplierQty = DefaultNorthActualSupplierOrder(brand, row.Variant, domain.NorthSupplierPosition{
+		BlankBoxSize:     row.BoxSize,
+		HasBoxSize:       row.HasBoxSize,
+		SupplierUnitSize: unit,
+		NovacutanMinimum: row.NovacutanMin,
+	}, need)
+	row.TyumenQty = roundTo2(max(0, tyumenPlanned))
 	if row.SupplierQty > 0 {
 		commentParts = append([]string{fmt.Sprintf("Заказать у поставщика: %s", formatQty(row.SupplierQty))}, commentParts...)
 	}
@@ -88,28 +104,7 @@ func recalculateNorthRow(row domain.PlanRow, cities map[string]float64, brand st
 		commentParts = append(commentParts, "Закрывается остатком Тюмени")
 	}
 	row.Comment = strings.Join(commentParts, "\n")
-	_ = northNeed
 	return row
-}
-
-func defaultNorthActual(brand string, supplierNeed, novacutanMin float64) float64 {
-	if supplierNeed <= 0 {
-		return 0
-	}
-	if brand == "klapp" {
-		v, ok := nearestMultipleValue(supplierNeed, 3)
-		if ok {
-			return v
-		}
-	}
-	if brand == "novacutan" {
-		minimum := novacutanMin
-		if minimum <= 0 {
-			minimum = 100
-		}
-		return math.Round(math.Max(supplierNeed, minimum)/10) * 10
-	}
-	return roundTo2(supplierNeed)
 }
 
 func formatQty(value float64) string {

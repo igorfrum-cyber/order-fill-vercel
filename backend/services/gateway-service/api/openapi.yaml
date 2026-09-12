@@ -1426,6 +1426,10 @@ components:
         source_file:
           type: string
           format: binary
+        warehouse_file:
+          type: string
+          format: binary
+          description: Optional second Tyumen location table (warehouse). Must be a different file from source_file.
         blank_files:
           type: array
           minItems: 1
@@ -1451,6 +1455,10 @@ components:
         tyumen_source_file:
           type: string
           format: binary
+        warehouse_file:
+          type: string
+          format: binary
+          description: Optional warehouse table merged with tyumen_source_file.
         company_id:
           type: string
           description: Required when the actor is platform_admin.
@@ -1613,6 +1621,18 @@ components:
           type: string
         in_transit:
           type: string
+        has_budget_data:
+          type: boolean
+          description: True when the server found an unambiguous supplier price and ABC demand inputs for budget planning.
+        budget_category:
+          type: string
+          enum: [C, B, A, A+]
+        budget_demand:
+          type: number
+          minimum: 0
+        budget_price:
+          type: number
+          minimum: 0
         recommended:
           type: [number, "null"]
         rounded:

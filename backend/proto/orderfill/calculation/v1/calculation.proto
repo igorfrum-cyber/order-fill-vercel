@@ -12,6 +12,8 @@ service CalculationService {
   rpc CalculateNorthPlan(CalculateNorthPlanRequest) returns (CalculateNorthPlanResponse);
   rpc RecalculateNorthRow(RecalculateNorthRowRequest) returns (RecalculateNorthRowResponse);
   rpc ValidateManualEdits(ValidateManualEditsRequest) returns (ValidateManualEditsResponse);
+  rpc PlanBudget(PlanBudgetRequest) returns (PlanBudgetResponse);
+  rpc CalculateWarehouseTransfer(CalculateWarehouseTransferRequest) returns (CalculateWarehouseTransferResponse);
 }
 
 message OrderRow {
@@ -29,6 +31,11 @@ message OrderRow {
   double cumulative_percent = 12;
   double average_monthly = 13;
   double total_quantity = 14;
+  double warehouse_stock = 15;
+  double warehouse_transit = 16;
+  bool has_warehouse_stock = 17;
+  double box_size = 18;
+  bool has_box_size = 19;
 }
 
 message CalculateOrderRecommendationsRequest {
@@ -76,6 +83,17 @@ message NorthPlanRow {
   double transfer_qty = 4;
   double supplier_qty = 5;
   string comment = 6;
+  string variant = 7;
+  double tyumen_stock = 8;
+  double tyumen_transit = 9;
+  double tyumen_target = 10;
+  double unit_size = 11;
+  double novacutan_min = 12;
+  double box_size = 13;
+  bool has_box_size = 14;
+  double warehouse_stock = 15;
+  double warehouse_transit = 16;
+  bool has_warehouse_stock = 17;
 }
 
 message CalculateNorthPlanRequest {
@@ -113,4 +131,57 @@ message ValidateManualEditsRequest {
 message ValidateManualEditsResponse {
   bool ok = 1;
   repeated string blocking_row_ids = 2;
+}
+
+message BudgetRow {
+  string key = 1;
+  string name = 2;
+  string category = 3;
+  double quantity = 4;
+  double price = 5;
+  double demand = 6;
+  double delivery = 7;
+  double stock = 8;
+  double transit = 9;
+  double outbound = 10;
+  double unit = 11;
+  double step = 12;
+  double minimum = 13;
+  bool locked = 14;
+  bool excluded = 15;
+  bool unsafe = 16;
+}
+
+message PlanBudgetRequest {
+  repeated BudgetRow rows = 1;
+  double target = 2;
+  bool allow_over_six = 3;
+  bool allow_below_one = 4;
+}
+
+message PlannedBudgetRow {
+  string key = 1;
+  string name = 2;
+  double before = 3;
+  double quantity = 4;
+  string comment = 5;
+}
+
+message PlanBudgetResponse {
+  repeated PlannedBudgetRow rows = 1;
+  double before = 2;
+  double total = 3;
+  double target = 4;
+  string reason = 5;
+  bool complete = 6;
+}
+
+message CalculateWarehouseTransferRequest {
+  double office_stock = 1;
+  double warehouse_stock = 2;
+}
+
+message CalculateWarehouseTransferResponse {
+  double quantity = 1;
+  double target = 2;
 }

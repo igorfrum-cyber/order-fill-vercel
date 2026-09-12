@@ -1,6 +1,8 @@
 import { defineConfig, devices } from "@playwright/test";
 
 const ci = Boolean(process.env.CI);
+const port = process.env.PLAYWRIGHT_PORT || "3217";
+const baseURL = `http://127.0.0.1:${port}`;
 
 export default defineConfig({
   testDir: "./e2e",
@@ -10,7 +12,7 @@ export default defineConfig({
   retries: ci ? 1 : 0,
   reporter: ci ? "github" : "list",
   use: {
-    baseURL: "http://127.0.0.1:3200",
+    baseURL,
     headless: ci,
     launchOptions: ci ? undefined : { slowMo: 120 },
     screenshot: "only-on-failure",
@@ -18,8 +20,8 @@ export default defineConfig({
   },
   projects: [{ name: "chromium", use: { ...devices["Desktop Chrome"] } }],
   webServer: {
-    command: "npm run dev",
-    url: "http://127.0.0.1:3200",
+    command: `npm run dev -- --port ${port}`,
+    url: baseURL,
     reuseExistingServer: !ci,
   },
 });

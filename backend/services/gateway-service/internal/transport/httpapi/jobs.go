@@ -57,6 +57,12 @@ func (a *API) createJob(w http.ResponseWriter, r *http.Request, jobType string) 
 		}
 		ids = append(ids, uploaded...)
 	}
+	warehouse, err := a.uploadParts(r, "warehouse_file", "warehouse", false)
+	if err != nil {
+		writeError(w, http.StatusBadRequest, "bad_request", err.Error())
+		return
+	}
+	ids = append(ids, warehouse...)
 	blanks, err := a.uploadParts(r, "blank_files", "blank", true)
 	if err != nil {
 		writeError(w, http.StatusBadRequest, "bad_request", err.Error())

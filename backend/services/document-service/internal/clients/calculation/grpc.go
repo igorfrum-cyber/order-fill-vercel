@@ -100,6 +100,7 @@ func (c *GRPC) NorthPlan(ctx context.Context, brand string, needs []NorthNeed, s
 	for _, row := range stock {
 		req.TyumenStock = append(req.TyumenStock, &calculationv1.OrderRow{
 			Article: row.Article, Name: row.Name, Stock: row.Stock, InTransit: row.InTransit, TargetStock: row.Target,
+			WarehouseStock: row.WarehouseStock, WarehouseTransit: row.WarehouseTransit, HasWarehouseStock: row.HasWarehouseStock,
 		})
 	}
 	resp, err := c.client.CalculateNorthPlan(ctx, req)
@@ -111,6 +112,7 @@ func (c *GRPC) NorthPlan(ctx context.Context, brand string, needs []NorthNeed, s
 		out = append(out, NorthRow{
 			Article: row.GetArticle(), Name: row.GetName(), Comment: row.GetComment(),
 			TyumenQty: row.GetTyumenQty(), TransferQty: row.GetTransferQty(), SupplierQty: row.GetSupplierQty(),
+			WarehouseStock: row.GetWarehouseStock(), WarehouseTransit: row.GetWarehouseTransit(), HasWarehouseStock: row.GetHasWarehouseStock(),
 		})
 	}
 	return out, nil

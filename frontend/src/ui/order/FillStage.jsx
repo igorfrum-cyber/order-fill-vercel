@@ -17,6 +17,7 @@ import { GhostButton, PrimaryButton, ProgressBar } from "../widgets.jsx";
 import { ReviewSummary } from "./review/ReviewSummary.jsx";
 import { ReviewTable } from "./review/ReviewTable.jsx";
 import { ReviewTabs } from "./review/ReviewTabs.jsx";
+import { BudgetPanel } from "./BudgetPanel.jsx";
 
 export function FillStage({
   brand,
@@ -104,6 +105,7 @@ export function FillStage({
           <IconDownload className="h-4 w-4" />
           Отчёт для 1С
         </GhostButton>
+        <BudgetPanel brand={brand} deliveryWeeks={summary.deliveryWeeks} rows={rows} edits={edits} onEdit={onEdit} />
         <div className="ml-auto flex flex-wrap items-center gap-3">
           <span className="font-mono text-[13px] text-[var(--color-ink-soft)]">
             {status ? (

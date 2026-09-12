@@ -24,7 +24,8 @@ export function orderUploadSteps() {
 export function northUploadSteps() {
   return [
     { n: 1, title: "Бланки городов" },
-    { n: 2, title: "Таблица Тюмени, если нужно учесть остатки" },
+    { n: 2, title: "Таблица офиса Тюмени, если нужно учесть остатки" },
+    { n: 3, title: "Таблица склада доставки, если Тюмень ведётся в двух местах" },
   ];
 }
 
@@ -39,6 +40,6 @@ export function orderSelectedCount(sourceFile, blankFiles = {}) {
   return Number(Boolean(sourceFile)) + Object.values(blankFiles).filter(Boolean).length;
 }
 
-export function northSelectedCount({ files = [], homeFiles = [], proffFiles = [], tyumenFile } = {}) {
-  return files.length + homeFiles.length + proffFiles.length + Number(Boolean(tyumenFile));
+export function northSelectedCount({ files = [], homeFiles = [], proffFiles = [], tyumenFile, warehouseFile } = {}) {
+  return files.length + homeFiles.length + proffFiles.length + Number(Boolean(tyumenFile)) + Number(Boolean(warehouseFile));
 }

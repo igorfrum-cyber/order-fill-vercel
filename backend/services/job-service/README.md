@@ -72,7 +72,7 @@ gateway-service
 - при создании задачи `GetObject` идёт от имени актора: чужой `file_id` другой компании `file-service` скрывает как not found;
 - `UpdateProgress`, `CompleteJob` и `FailJob` требуют metadata `x-worker-token`, совпадающий с `WORKER_TOKEN`. Вне local токен обязателен и не может быть local default.
 
-Поддерживаются статусы `queued`, `processing`, `needs_review`, `finalizing`, `completed`, `failed`. Для `order_fill` нужен ровно один файл с ролью `source` и от одного до двух `blank`; для `north_merge` нужен минимум один `blank`, а `source` необязателен. Все входы должны иметь расширение `.xlsx` или `.xlsm`. Роль берётся из первого сегмента object key, который вернул `file-service`.
+Поддерживаются статусы `queued`, `processing`, `needs_review`, `finalizing`, `completed`, `failed`. Для `order_fill` нужен ровно один файл с ролью `source`, не больше одного `warehouse` и от одного до двух `blank`; для `north_merge` нужен минимум один `blank`, а `source` и `warehouse` необязательны. Один и тот же файл (совпадающее имя) дважды не принимается. Все входы должны иметь расширение `.xlsx` или `.xlsm`. Роль берётся из первого сегмента object key, который вернул `file-service`.
 
 Redis message хранится в поле `payload` записи stream `order-fill:jobs` как JSON версии `v1`: `job_id`, `type`, `stage`, `matching_mode`, `inputs`, а также `brand` для process и `edits` для finalize.
 

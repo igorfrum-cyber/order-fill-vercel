@@ -15,6 +15,7 @@ export function NorthPlanTable({
   onActualChange,
   onDownload,
 }) {
+  const hasWarehouse = plan.planRows.some((row) => row.hasWarehouseStock);
   return (
     <section className="mt-8 overflow-hidden rounded-xl border border-[var(--color-line)] bg-[var(--color-surface)]">
       <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[var(--color-line)] px-5 py-4">
@@ -23,6 +24,7 @@ export function NorthPlanTable({
           <p className="mt-1 text-[12.5px] text-[var(--color-ink-soft)]">
             Города: {plan.uploadedCities.join(", ") || "—"}. К заказу у поставщика: {supplierRows}. Закрыто остатком Тюмени: {tyumenCovered}. Перемещений: {plan.transfers.length}.
             {plan.hasTyumenSource ? "" : " Таблица Тюмени не загружена."}
+            {hasWarehouse ? " Доступный остаток ограничен складом доставки." : ""}
           </p>
         </div>
         <PrimaryButton onClick={onDownload} disabled={busy}>
@@ -31,10 +33,10 @@ export function NorthPlanTable({
         </PrimaryButton>
       </div>
       <div className="max-h-[520px] overflow-auto">
-        <table className="w-full min-w-[980px] border-separate border-spacing-0 text-[13px]">
+        <table className={`w-full ${hasWarehouse ? "min-w-[1080px]" : "min-w-[980px]"} border-separate border-spacing-0 text-[13px]`}>
           <thead>
             <tr className="text-left text-[11.5px] font-medium text-[var(--color-ink-faint)]">
-              {["Позиция", "По городам", "Нужно северу", "Остаток Тюмени", "Свободно", "Из Тюмени", "Нужно заказать", "Факт. у поставщика", "Комментарий"].map((header) => (
+              {["Позиция", "По городам", "Нужно северу", "Всего в Тюмени", ...(hasWarehouse ? ["Склад доставки"] : []), "Свободно", "Из Тюмени", "Нужно заказать", "Факт. у поставщика", "Комментарий"].map((header) => (
                 <th key={header} className="sticky top-0 bg-[var(--color-ground)] px-3 py-2">{header}</th>
               ))}
             </tr>
@@ -77,12 +79,23 @@ export function NorthPlanTable({
                     {Number(row.tyumenInTransit || 0) > 0 ? `, в пути ${formatNorthQuantity(row.tyumenInTransit)}` : ""}
                     {Number(row.tyumenTarget || 0) > 0 ? `, цель ${formatNorthQuantity(row.tyumenTarget)}` : ""}
                   </td>
+                  {hasWarehouse ? (
+                    <td className="border-b border-[var(--color-line-soft)] px-3 py-2 text-[12px] text-[var(--color-ink-soft)]">
+                      {row.hasWarehouseStock ? (
+                        <>
+                          ост. {formatNorthQuantity(row.warehouseStock) || "0"}
+                          {Number(row.warehouseTransit || 0) > 0 ? `, в пути ${formatNorthQuantity(row.warehouseTransit)}` : ""}
+                        </>
+                      ) : "нет позиции"}
+                    </td>
+                  ) : null}
                   <td className="border-b border-[var(--color-line-soft)] px-3 py-2 font-mono">{formatNorthQuantity(row.tyumenFree)}</td>
                   <td className="border-b border-[var(--color-line-soft)] px-3 py-2 font-mono">{formatNorthQuantity(row.fromTyumen)}</td>
                   <td className="border-b border-[var(--color-line-soft)] px-3 py-2 font-mono">{formatNorthQuantity(row.supplierNeed)}</td>
                   <td className="border-b border-[var(--color-line-soft)] px-3 py-2">
                     <input
                       type="number"
+                      aria-label={`Фактический заказ у поставщика для ${row.name}`}
                       min="0"
                       step="1"
                       value={actual}

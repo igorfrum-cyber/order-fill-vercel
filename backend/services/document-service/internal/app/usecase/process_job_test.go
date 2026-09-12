@@ -650,3 +650,23 @@ func TestProcessJobNorthMergeReadsTyumenTarget(t *testing.T) {
 		t.Fatalf("tyumen stock=%+v", calc.stock)
 	}
 }
+
+func TestCombineTyumenLocationsKeepsWarehouseAvailabilitySeparate(t *testing.T) {
+	office := []north.Stock{{Article: "A1", Name: "Cream", Stock: 20, InTransit: 2, Target: 5}}
+	warehouse := []north.Stock{
+		{Article: "A1", Name: "Cream", Stock: 10, InTransit: 3},
+		{Article: "A2", Name: "Serum", Stock: 8},
+	}
+
+	combined, calcRows := combineTyumenLocations(office, warehouse)
+
+	if len(combined) != 2 || combined[0].Article != "A1" || combined[0].Stock != 30 || combined[0].InTransit != 5 {
+		t.Fatalf("combined=%+v", combined)
+	}
+	if len(calcRows) != 2 || !calcRows[0].HasWarehouseStock || calcRows[0].WarehouseStock != 10 || calcRows[0].WarehouseTransit != 3 {
+		t.Fatalf("calculation rows=%+v", calcRows)
+	}
+	if !calcRows[1].HasWarehouseStock || calcRows[1].Stock != 8 || calcRows[1].WarehouseStock != 8 {
+		t.Fatalf("warehouse-only row=%+v", calcRows[1])
+	}
+}

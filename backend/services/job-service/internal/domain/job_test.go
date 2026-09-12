@@ -71,3 +71,42 @@ func TestCompletedJobAcceptsEdits(t *testing.T) {
 		t.Fatal("processing must not accept edits")
 	}
 }
+
+func TestValidateUploadsWarehouseRules(t *testing.T) {
+	t.Parallel()
+	cases := []struct {
+		name    string
+		jobType Type
+		uploads []UploadMeta
+		wantErr bool
+	}{
+		{
+			name: "order fill accepts warehouse", jobType: TypeOrderFill,
+			uploads: []UploadMeta{{Role: RoleSource, Name: "office.xlsx"}, {Role: RoleWarehouse, Name: "stock.xlsx"}, {Role: RoleBlank, Name: "blank.xlsx"}},
+		},
+		{
+			name: "north accepts warehouse without source", jobType: TypeNorthMerge,
+			uploads: []UploadMeta{{Role: RoleBlank, Name: "surgut.xlsx"}, {Role: RoleWarehouse, Name: "stock.xlsx"}},
+		},
+		{
+			name: "duplicate name is rejected", jobType: TypeOrderFill, wantErr: true,
+			uploads: []UploadMeta{{Role: RoleSource, Name: "same.xlsx"}, {Role: RoleWarehouse, Name: " SAME.xlsx "}, {Role: RoleBlank, Name: "blank.xlsx"}},
+		},
+		{
+			name: "second warehouse is rejected", jobType: TypeNorthMerge, wantErr: true,
+			uploads: []UploadMeta{{Role: RoleBlank, Name: "surgut.xlsx"}, {Role: RoleWarehouse, Name: "one.xlsx"}, {Role: RoleWarehouse, Name: "two.xlsx"}},
+		},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			err := ValidateUploads(tc.jobType, tc.uploads)
+			if tc.wantErr && !errors.Is(err, ErrInvalid) {
+				t.Fatalf("got %v, want invalid upload", err)
+			}
+			if !tc.wantErr && err != nil {
+				t.Fatal(err)
+			}
+		})
+	}
+}

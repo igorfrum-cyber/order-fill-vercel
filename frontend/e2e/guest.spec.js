@@ -1,5 +1,9 @@
 import { expect, test } from "@playwright/test";
 
+test.beforeEach(async ({ page }) => {
+  await page.route("**/api/v1/**", (route) => route.fulfill({ status: 401, json: { code: "unauthenticated", message: "sign in" } }));
+});
+
 test("signed-out visitor sees login on app routes", async ({ page }) => {
   await page.goto("/overview");
   await expect(page.getByRole("heading", { name: "Вход" })).toBeVisible();
