@@ -132,7 +132,7 @@ test("navItemsForRole lists only what the role may open", () => {
   assert.deepEqual(navItemsForRole("purchaser").map((item) => item.id), ["order", "history"]);
   assert.deepEqual(navItemsForRole("company_admin").map((item) => item.id), ["queue", "users", "company", "history"]);
   assert.deepEqual(navItemsForRole("company_owner").map((item) => item.id), ["queue", "users", "company", "history"]);
-  assert.deepEqual(navItemsForRole("platform_admin").map((item) => item.id), ["overview", "history", "companies", "users"]);
+  assert.deepEqual(navItemsForRole("platform_admin").map((item) => item.id), ["overview", "history", "companies", "brand-rules", "users"]);
 });
 
 test("platform admin must pick a company to manage users", () => {

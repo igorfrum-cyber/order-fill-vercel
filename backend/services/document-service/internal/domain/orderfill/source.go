@@ -384,6 +384,10 @@ func detectDeliveryWeeks(workbook spreadsheet.Workbook) float64 {
 	return 1
 }
 
+func DeliveryWeeks(workbook spreadsheet.Workbook) float64 {
+	return math.Max(1, detectDeliveryWeeks(workbook))
+}
+
 func isUrengoySource(workbook spreadsheet.Workbook) bool {
 	for _, sheet := range workbook.Sheets() {
 		bounds := sheet.Bounds()

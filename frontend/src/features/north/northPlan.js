@@ -93,6 +93,7 @@ export function northPlanComment(row, actualValue = row.actualSupplierOrder) {
     lines.push(`Оставить в Тюмени: ${formatNorthCommentQuantity(tyumenSupplier.quantity)}`);
   }
   if (!lines.length && row.northNeed > 0) lines.push("Закрывается остатком Тюмени");
+  if (row.budgetComment) lines.push(row.budgetComment);
   return lines.join("\n");
 }
 

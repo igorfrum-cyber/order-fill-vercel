@@ -110,8 +110,10 @@ func (c *GRPC) NorthPlan(ctx context.Context, brand string, needs []NorthNeed, s
 	out := make([]NorthRow, 0, len(resp.GetRows()))
 	for _, row := range resp.GetRows() {
 		out = append(out, NorthRow{
-			Article: row.GetArticle(), Name: row.GetName(), Comment: row.GetComment(),
+			Article: row.GetArticle(), Name: row.GetName(), Variant: row.GetVariant(), Comment: row.GetComment(),
 			TyumenQty: row.GetTyumenQty(), TransferQty: row.GetTransferQty(), SupplierQty: row.GetSupplierQty(),
+			TyumenStock: row.GetTyumenStock(), TyumenTransit: row.GetTyumenTransit(), TyumenTarget: row.GetTyumenTarget(),
+			UnitSize: row.GetUnitSize(), NovacutanMin: row.GetNovacutanMin(), BoxSize: row.GetBoxSize(), HasBoxSize: row.GetHasBoxSize(),
 			WarehouseStock: row.GetWarehouseStock(), WarehouseTransit: row.GetWarehouseTransit(), HasWarehouseStock: row.GetHasWarehouseStock(),
 		})
 	}

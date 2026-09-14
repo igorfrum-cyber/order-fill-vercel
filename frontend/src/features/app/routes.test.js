@@ -14,6 +14,7 @@ test("parseAppPath reads signed-in screens and job ids", () => {
   assert.deepEqual(parseAppPath("/users"), { screen: "users", jobId: "", unknown: false });
   assert.deepEqual(parseAppPath("/account"), { screen: "account", jobId: "", unknown: false });
   assert.deepEqual(parseAppPath("/companies"), { screen: "companies", jobId: "", unknown: false });
+  assert.deepEqual(parseAppPath("/brand-rules"), { screen: "brand-rules", jobId: "", unknown: false });
   assert.deepEqual(parseAppPath("/north"), { screen: "north", jobId: "", unknown: false });
   assert.equal(parseAppPath("/nope").unknown, true);
 });
@@ -31,6 +32,7 @@ test("pathForScreen writes the URL for a screen", () => {
   assert.equal(pathForScreen("order", "abc"), "/jobs/abc");
   assert.equal(pathForScreen("company"), "/company");
   assert.equal(pathForScreen("north"), "/north");
+  assert.equal(pathForScreen("brand-rules"), "/brand-rules");
 });
 
 test("resolveOrderNavJobId keeps the open job when Work is clicked again", () => {
@@ -58,6 +60,8 @@ test("screenAllowed rejects foreign screens", () => {
   assert.equal(screenAllowed("company_admin", "order"), true);
   assert.equal(screenAllowed("company_owner", "north"), true);
   assert.equal(screenAllowed("platform_admin", "north"), false);
+  assert.equal(screenAllowed("platform_admin", "brand-rules"), true);
+  assert.equal(screenAllowed("company_owner", "brand-rules"), false);
 });
 
 test("companyQuery reads and writes platform company id", () => {

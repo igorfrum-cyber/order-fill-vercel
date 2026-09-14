@@ -18,9 +18,11 @@ const (
 
 // Roles of the uploaded input files.
 const (
-	RoleSource    = "source"
-	RoleBlank     = "blank"
-	RoleWarehouse = "warehouse"
+	RoleSource     = "source"
+	RoleBlank      = "blank"
+	RoleBlankHome  = "blank-home"
+	RoleBlankProff = "blank-proff"
+	RoleWarehouse  = "warehouse"
 )
 
 // JobMessage is the queue contract published by job-service.

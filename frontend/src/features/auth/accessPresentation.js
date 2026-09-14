@@ -54,6 +54,7 @@ export function navItemsForRole(role) {
       { id: "overview", path: "/overview", label: "Обзор" },
       { id: "history", path: "/jobs", label: "Выгрузки" },
       { id: "companies", path: "/companies", label: "Компании" },
+      { id: "brand-rules", path: "/brand-rules", label: "Правила брендов" },
       { id: "users", path: "/users", label: "Пользователи" },
     ];
   }

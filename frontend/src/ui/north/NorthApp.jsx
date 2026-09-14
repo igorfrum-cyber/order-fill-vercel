@@ -25,6 +25,7 @@ import { IconChevron } from "../icons.jsx";
 import { Field, GhostButton, PrimaryButton, Select } from "../widgets.jsx";
 import { TopBar } from "../chrome.jsx";
 import { NorthPlanTable } from "./NorthPlanTable.jsx";
+import { NorthBudgetPanel } from "./NorthBudgetPanel.jsx";
 import { NorthPrompts } from "./NorthPrompts.jsx";
 import { NorthUploadPanel } from "./NorthUploadPanel.jsx";
 
@@ -46,6 +47,8 @@ export function NorthApp({ companyId, onHome, onHelp }) {
   const [cityEdits, setCityEdits] = useState(new Map());
   const [actualEdits, setActualEdits] = useState(new Map());
   const [manualActual, setManualActual] = useState(new Set());
+  const [budgetDiscounts, setBudgetDiscounts] = useState(new Map());
+  const [budgetComments, setBudgetComments] = useState(new Map());
 
   const christina = usesChristinaSplitBlank(brand);
 
@@ -56,6 +59,8 @@ export function NorthApp({ companyId, onHome, onHelp }) {
     setCityEdits(new Map());
     setActualEdits(new Map());
     setManualActual(new Set());
+    setBudgetDiscounts(new Map());
+    setBudgetComments(new Map());
     setError("");
   }
 
@@ -150,12 +155,14 @@ export function NorthApp({ companyId, onHome, onHelp }) {
     setActualEdits(nextActual);
     setCityEdits(new Map());
     setManualActual(new Set());
+    setBudgetComments(new Map());
     setStatus("Проверьте расчет");
   }
 
   function displayRow(source) {
     const quantities = cityEdits.get(source.key);
-    return quantities ? recalculateNorthRow(source, quantities) : source;
+    const row = quantities ? recalculateNorthRow(source, quantities) : source;
+    return budgetComments.has(source.key) ? { ...row, budgetComment: budgetComments.get(source.key) } : row;
   }
 
   function cityQuantities(source) {
@@ -208,6 +215,11 @@ export function NorthApp({ companyId, onHome, onHelp }) {
         key: source.key,
         cities: cityQuantities(source),
         actualSupplierOrder: actualValue(source) === "" ? null : Number(actualValue(source)),
+        comment: JSON.stringify({
+          cities: cityQuantities(source),
+          discount: budgetDiscounts.get(source.variant || "main") || 0,
+          budgetComment: budgetComments.get(source.key) || "",
+        }),
       }));
       if (edits.some((edit) => edit.actualSupplierOrder != null && edit.actualSupplierOrder < 0)) {
         throw new Error("Фактический заказ у поставщика не может быть отрицательным.");
@@ -307,6 +319,24 @@ export function NorthApp({ companyId, onHome, onHelp }) {
           </div>
 
           {plan && (
+            <div className="mt-6 rounded-xl border border-[var(--color-line)] bg-[var(--color-surface)] px-5 py-4">
+              <NorthBudgetPanel
+                brand={brand}
+                plan={plan}
+                rows={plan.planRows.map(displayRow)}
+                actualValue={actualValue}
+                lockedKeys={manualActual}
+                discounts={budgetDiscounts}
+                onApply={(key, value, comment) => {
+                  setActualEdits((current) => new Map(current).set(key, value));
+                  setBudgetComments((current) => new Map(current).set(key, comment));
+                }}
+                onDiscount={(group, value) => setBudgetDiscounts((current) => new Map(current).set(group, value))}
+              />
+            </div>
+          )}
+
+          {plan && (
             <NorthPlanTable
               plan={plan}
               downloads={downloads}
@@ -326,6 +356,11 @@ export function NorthApp({ companyId, onHome, onHelp }) {
               onActualChange={(key, value) => {
                 setManualActual(new Set(manualActual).add(key));
                 setActualEdits(new Map(actualEdits).set(key, value));
+                setBudgetComments((current) => {
+                  const next = new Map(current);
+                  next.delete(key);
+                  return next;
+                });
               }}
               onDownload={downloadPlan}
             />

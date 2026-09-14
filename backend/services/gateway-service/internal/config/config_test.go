@@ -16,7 +16,7 @@ func TestLoadDefaults(t *testing.T) {
 	t.Setenv("SESSION_COOKIE_SECURE", "")
 	cfg := Load()
 	if cfg.Addr != ":8080" || cfg.Environment != "local" || cfg.CookieSecure ||
-		cfg.AllowedOrigins != "http://127.0.0.1:3200,http://localhost:3200" {
+		cfg.AllowedOrigins != "http://127.0.0.1:3200,http://localhost:3200" || cfg.BrandGRPC != "127.0.0.1:9098" {
 		t.Fatalf("%+v", cfg)
 	}
 	if err := cfg.Validate(); err != nil {

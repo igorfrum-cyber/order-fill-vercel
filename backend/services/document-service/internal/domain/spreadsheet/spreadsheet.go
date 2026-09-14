@@ -35,6 +35,11 @@ type Codec interface {
 	Load(content []byte) (Workbook, error)
 }
 
+// TableCodec creates small generated workbooks such as 1C transfer documents.
+type TableCodec interface {
+	NewTable(sheetName string, headers []string, rows [][]any) (Workbook, error)
+}
+
 // LoadProgress reports a 0..1 fraction of workbook loading.
 type LoadProgress func(fraction float64)
 

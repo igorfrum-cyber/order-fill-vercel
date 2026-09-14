@@ -38,6 +38,25 @@ func TestDefaultNorthActualSupplierOrder(t *testing.T) {
 	}
 }
 
+func TestNorthPlanKeepsChristinaVariantsSeparate(t *testing.T) {
+	t.Parallel()
+	service := calculation.New()
+	rows := service.NorthPlan("christina", []domain.CityNeed{
+		{City: "surgut", Article: "home:A1", Qty: 2},
+		{City: "surgut", Article: "proff:A1", Qty: 4},
+	}, []domain.OrderRow{{Article: "A1", Name: "Cream"}})
+	if len(rows) != 2 {
+		t.Fatalf("rows=%v", rows)
+	}
+	got := map[string]float64{}
+	for _, row := range rows {
+		got[row.Variant] = row.SupplierQty
+	}
+	if got["home"] != 3 || got["proff"] != 6 {
+		t.Fatalf("supplier quantities=%v", got)
+	}
+}
+
 func TestChristinaNorthSupplierQuantity(t *testing.T) {
 	t.Parallel()
 	cases := []struct {

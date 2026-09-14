@@ -28,7 +28,10 @@ export function createOrderFillJob({ sourceFile, blankFiles, warehouseFile = nul
 export function createNorthMergeJob({ brand, blankFiles, tyumenSourceFile = null, warehouseFile = null, companyId }) {
   const formData = new FormData();
   formData.append("brand", brand);
-  for (const entry of blankFiles) formData.append("blank_files", entry.file || entry);
+  for (const entry of blankFiles) {
+    const field = entry.variant === "home" ? "blank_home_files" : entry.variant === "proff" ? "blank_proff_files" : "blank_files";
+    formData.append(field, entry.file || entry);
+  }
   if (tyumenSourceFile) formData.append("tyumen_source_file", tyumenSourceFile);
   if (warehouseFile) formData.append("warehouse_file", warehouseFile);
   if (companyId) formData.append("company_id", companyId);
