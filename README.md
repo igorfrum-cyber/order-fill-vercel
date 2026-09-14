@@ -280,6 +280,19 @@ npm ci --prefix frontend
 npm run dev --prefix frontend
 ```
 
+### Playwright на реальных Excel
+
+Полный браузерный сценарий с настоящими файлами из `testdata/private` запускается
+отдельно от быстрой mock-регрессии и требует поднятого локального стенда и
+учётной записи закупщика:
+
+```bash
+REAL_E2E_LOGIN=<login> REAL_E2E_PASSWORD=<password> npm run test:e2e:real --prefix frontend
+```
+
+По умолчанию тест использует `http://127.0.0.1:3200`. Другой стенд и каталог
+fixtures задаются через `REAL_E2E_BASE_URL` и `ORDER_FILL_PRIVATE_TESTDATA`.
+
 Vite слушает `127.0.0.1:3200`. Для работы UI с API gateway должен быть доступен
 по адресу, заданному в frontend-конфигурации; production Docker использует
 same-origin `/api/` через nginx.
@@ -311,6 +324,7 @@ make -C backend check
 | `npm run test:ui --prefix frontend` | Unit + component + Playwright; локально Chromium на экране |
 | `npm run test:component --prefix frontend` | Vitest + Testing Library: поведение компонентов |
 | `npm run test:e2e --prefix frontend` | Playwright: UI и действия пользователя в браузере |
+| `npm run test:e2e:real --prefix frontend` | Playwright против поднятого стенда и реальных Excel из `testdata/private` |
 | `make lint` | Проверяет toolchain, frontend lint и Go lint/security/tidy |
 | `make docs` | Проверяет обязательные README и локальные Markdown-ссылки |
 | `make docs-sync` | Обновляет таблицы env/RPC/HTTP в README сервисов из config.go, proto и router |

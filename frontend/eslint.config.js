@@ -32,7 +32,7 @@ export default [
     rules: sharedRules,
   },
   {
-    files: ["e2e/**/*.js", "playwright.config.js", "scripts/**/*.{js,mjs}", "vitest.setup.js", "vite.config.js", "eslint.config.js"],
+    files: ["e2e/**/*.js", "playwright*.config.js", "scripts/**/*.{js,mjs}", "vitest.setup.js", "vite.config.js", "eslint.config.js"],
     languageOptions: {
       ecmaVersion: 2024,
       sourceType: "module",
