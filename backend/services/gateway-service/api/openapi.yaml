@@ -885,7 +885,7 @@ paths:
       operationId: listBrandRules
       tags: [brands]
       summary: List effective brand rules
-      description: Available only to platform_admin. Rules are read-only and come from brand-service.
+      description: Available only to platform_admin. Rules come from brand-service.
       responses:
         "200":
           description: Effective static brand rules.
@@ -899,6 +899,37 @@ paths:
                     type: array
                     items:
                       $ref: "#/components/schemas/BrandRule"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /api/v1/brand-rules/{brand}:
+    post:
+      operationId: updateBrandRule
+      tags: [brands]
+      summary: Update an effective brand rule
+      description: Available only to platform_admin. The saved rule is used by subsequent jobs.
+      parameters:
+        - in: path
+          name: brand
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/BrandRule"
+      responses:
+        "200":
+          description: Saved effective brand rule.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BrandRule"
+        "400":
+          $ref: "#/components/responses/BadRequest"
         "401":
           $ref: "#/components/responses/Unauthorized"
         "404":
@@ -1233,7 +1264,7 @@ components:
   schemas:
     User:
       type: object
-      required: [id, login, role]
+      required: [id, login, role, activated]
       properties:
         id:
           type: string
@@ -1254,6 +1285,9 @@ components:
           type: boolean
         has_passkey:
           type: boolean
+        activated:
+          type: boolean
+          description: The invite was accepted and the account currently has a password.
         last_seen_at:
           type: string
           format: date-time
@@ -1534,7 +1568,7 @@ components:
         allow_small_positive_order:
           type: boolean
         require_unit:
-          type: boolean
+          type: [boolean, "null"]
     JobReport:
       type: object
       required: [job_id, summary, rows]

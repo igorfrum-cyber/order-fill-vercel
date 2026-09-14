@@ -17,6 +17,13 @@ func TestPresentUserIncludesDisabledAndLastSeen(t *testing.T) {
 		t.Fatalf("got %#v", got)
 	}
 	active := presentUser(User{ID: "u2", Login: "keeper", Role: "company_admin"})
+	if activated, ok := active["activated"].(bool); !ok || activated {
+		t.Fatalf("pending user activation = %#v", active["activated"])
+	}
+	accepted := presentUser(User{ID: "u3", Login: "ready", Role: "purchaser", Activated: true})
+	if accepted["activated"] != true {
+		t.Fatalf("accepted user activation = %#v", accepted["activated"])
+	}
 	if _, ok := active["disabled_at"]; ok {
 		t.Fatal("active user must omit disabled_at")
 	}

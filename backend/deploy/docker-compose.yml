@@ -315,9 +315,13 @@ services:
       <<: [*app-env, *grpc-tls-env]
       BRAND_GRPC_ADDR: ":9098"
       BRAND_HEALTH_ADDR: ":8089"
+      DATABASE_URL: ${DATABASE_URL:-postgres://order_fill:order_fill@postgres:5432/order_fill?sslmode=disable}
     expose:
       - "9098"
       - "8089"
+    depends_on:
+      postgres:
+        condition: service_healthy
     healthcheck:
       test: ["CMD", "wget", "-qO-", "http://localhost:8089/healthz"]
       interval: 10s

@@ -98,6 +98,8 @@ Source of truth — [`../../proto/orderfill/identity/v1/identity.proto`](../../p
 - `CreateCompany`, `ListCompanies`, `UpdateCompany`, `DisableCompany`.
 - `CreateUser`, `ListUsers`, `DisableUser`, `ResetUserAccess`.
 
+`User.activated` показывает, принял ли пользователь текущее приглашение и установил ли пароль. После `ResetUserAccess` значение снова становится ложным до принятия новой ссылки.
+
 Сервис принимает actor/user ID в protobuf-запросах и применяет доменные role checks, но на gRPC-слое не проверяет самостоятельную сессию вызывающего. API предназначен только для доверенных внутренних клиентов за сетевой границей; публичным клиентом должен быть gateway.
 
 ## Зависимости и взаимодействия

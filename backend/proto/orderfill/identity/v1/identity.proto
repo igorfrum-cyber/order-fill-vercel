@@ -41,6 +41,7 @@ message User {
   bool has_passkey = 9;
   string last_seen_at = 10;
   string disabled_at = 11;
+  bool activated = 12;
 }
 
 message Company {

@@ -4,10 +4,13 @@ package orderfill.brand.v1;
 
 option go_package = "order-fill/backend/proto/gen/go/orderfill/brand/v1;brandv1";
 
+import "orderfill/common/v1/common.proto";
+
 service BrandService {
   rpc GetBrandPolicy(GetBrandPolicyRequest) returns (GetBrandPolicyResponse);
   rpc ListBrands(ListBrandsRequest) returns (ListBrandsResponse);
   rpc DetectBrand(DetectBrandRequest) returns (DetectBrandResponse);
+  rpc UpdateBrandPolicy(UpdateBrandPolicyRequest) returns (UpdateBrandPolicyResponse);
 }
 
 message BrandPolicy {
@@ -53,4 +56,13 @@ message DetectBrandRequest {
 message DetectBrandResponse {
   string brand = 1;
   string variant = 2;
+}
+
+message UpdateBrandPolicyRequest {
+  orderfill.common.v1.RequestMeta meta = 1;
+  BrandPolicy policy = 2;
+}
+
+message UpdateBrandPolicyResponse {
+  BrandPolicy policy = 1;
 }

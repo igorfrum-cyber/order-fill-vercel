@@ -20,6 +20,7 @@ func protoUser(u domain.User) *identityv1.User {
 		HasLogo:          u.CompanyHasLogo,
 		TwoFactorEnabled: u.TwoFactorEnabled,
 		HasPasskey:       u.HasPasskey,
+		Activated:        u.PasswordHash != "",
 	}
 	if u.LastSeenAt != nil {
 		out.LastSeenAt = u.LastSeenAt.UTC().Format(time.RFC3339)

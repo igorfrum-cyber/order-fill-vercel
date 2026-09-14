@@ -35,6 +35,7 @@ type User struct {
 	HasPasskey       bool                   `protobuf:"varint,9,opt,name=has_passkey,json=hasPasskey,proto3" json:"has_passkey,omitempty"`
 	LastSeenAt       string                 `protobuf:"bytes,10,opt,name=last_seen_at,json=lastSeenAt,proto3" json:"last_seen_at,omitempty"`
 	DisabledAt       string                 `protobuf:"bytes,11,opt,name=disabled_at,json=disabledAt,proto3" json:"disabled_at,omitempty"`
+	Activated        bool                   `protobuf:"varint,12,opt,name=activated,proto3" json:"activated,omitempty"`
 	unknownFields    protoimpl.UnknownFields
 	sizeCache        protoimpl.SizeCache
 }
@@ -144,6 +145,13 @@ func (x *User) GetDisabledAt() string {
 		return x.DisabledAt
 	}
 	return ""
+}
+
+func (x *User) GetActivated() bool {
+	if x != nil {
+		return x.Activated
+	}
+	return false
 }
 
 type Company struct {
@@ -2366,7 +2374,7 @@ var File_orderfill_identity_v1_identity_proto protoreflect.FileDescriptor
 
 const file_orderfill_identity_v1_identity_proto_rawDesc = "" +
 	"\n" +
-	"$orderfill/identity/v1/identity.proto\x12\x15orderfill.identity.v1\x1a orderfill/common/v1/common.proto\"\xce\x02\n" +
+	"$orderfill/identity/v1/identity.proto\x12\x15orderfill.identity.v1\x1a orderfill/common/v1/common.proto\"\xec\x02\n" +
 	"\x04User\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x14\n" +
 	"\x05login\x18\x02 \x01(\tR\x05login\x12\x12\n" +
@@ -2384,7 +2392,8 @@ const file_orderfill_identity_v1_identity_proto_rawDesc = "" +
 	" \x01(\tR\n" +
 	"lastSeenAt\x12\x1f\n" +
 	"\vdisabled_at\x18\v \x01(\tR\n" +
-	"disabledAt\"\xef\x01\n" +
+	"disabledAt\x12\x1c\n" +
+	"\tactivated\x18\f \x01(\bR\tactivated\"\xef\x01\n" +
 	"\aCompany\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12\x1d\n" +

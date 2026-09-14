@@ -24,16 +24,25 @@ export function UsersScreen({ companyId, actorRole, actorId, onCompany }) {
   const [error, setError] = useState("");
   const [resetTarget, setResetTarget] = useState(null);
   const [disableTarget, setDisableTarget] = useState(null);
+  const [refreshing, setRefreshing] = useState(false);
   const picker = needsUsersCompanyPicker(actorRole);
   const activeCompanies = companies.filter((company) => !company.disabled_at);
   const prompt = usersCompanyPrompt(companyId, companies);
 
-  function reload() {
+  async function reload() {
     if (!companyId) return;
-    listUsers(companyId).then((payload) => setUsers(payload.users || [])).catch(() => setUsers([]));
+    setRefreshing(true);
+    try {
+      const payload = await listUsers(companyId);
+      setUsers(payload.users || []);
+    } catch {
+      setUsers([]);
+    } finally {
+      setRefreshing(false);
+    }
   }
 
-  useEffect(reload, [companyId]);
+  useEffect(() => { reload(); }, [companyId]);
 
   useEffect(() => {
     if (!picker) return undefined;
@@ -60,8 +69,9 @@ export function UsersScreen({ companyId, actorRole, actorId, onCompany }) {
             Новый человек входит только по ссылке-приглашению. Пароль ему не задаёте — он сам его поставит.
           </p>
         </div>
-        {picker ? (
-          <select
+        <div className="flex items-center gap-2">
+          {companyId ? <GhostButton onClick={reload} disabled={refreshing}>{refreshing ? "Обновляю…" : "Обновить"}</GhostButton> : null}
+          {picker ? <select
             className="input max-w-xs"
             value={companyId}
             onChange={(event) => onCompany?.(event.target.value)}
@@ -76,8 +86,8 @@ export function UsersScreen({ companyId, actorRole, actorId, onCompany }) {
                 {company.name}
               </option>
             ))}
-          </select>
-        ) : null}
+          </select> : null}
+        </div>
       </div>
       {!companyId ? (
         <p className="text-[14px] text-[var(--color-ink-faint)]">{prompt}</p>
@@ -214,7 +224,10 @@ function UserCard({ user, canManage, isSelf, onReset, onDisable }) {
             {isSelf ? " · это вы" : ""}
           </div>
           <div className="mt-1 text-[13px] text-[var(--color-ink-faint)]">
-            {isSelf && !user.last_seen_at ? "Сейчас в системе" : lastSeenLabel(user.last_seen_at)}
+            <span className={user.activated ? "text-[var(--color-ok)]" : "text-[var(--color-warn)]"}>
+              {user.activated ? "Аккаунт активирован" : "Ждёт активации по ссылке"}
+            </span>
+            {user.activated ? ` · ${isSelf && !user.last_seen_at ? "Сейчас в системе" : lastSeenLabel(user.last_seen_at)}` : ""}
           </div>
         </div>
       </div>

@@ -32,7 +32,7 @@ curl http://127.0.0.1:8080/readyz
 - Скачивание отдельных файлов и ZIP-архива, а также выдача метаданных и окон табличного preview без распаковки всей книги в gateway.
 - Публичные метаданные и логотип страницы входа компании по `login_slug`.
 - Аудит отдельных административных действий и агрегированный статус инфраструктуры для `platform_admin`.
-- Read-only выдача действующих правил брендов для страницы администратора платформы.
+- Просмотр и изменение действующих правил брендов администратором платформы.
 - CORS, CSRF-проверка POST-запросов (включая public login/invite/passkey), security headers (`Cache-Control: private, no-store`, `Cross-Origin-Opener-Policy`/`Cross-Origin-Resource-Policy: same-origin`) и HTTP-only cookie `order_fill_session`.
 
 Gateway не владеет постоянным хранилищем. `POSTGRES_ADDR` и `REDIS_ADDR` используются только диагностическим `/api/v1/status`.
@@ -97,6 +97,7 @@ Gateway не владеет постоянным хранилищем. `POSTGRES
 - `GET /api/v1/jobs`
 - `GET /api/v1/companies`
 - `GET /api/v1/brand-rules`
+- `POST /api/v1/brand-rules/{brand}`
 - `POST /api/v1/companies`
 - `POST /api/v1/companies/{company_id}/disable`
 - `POST /api/v1/companies/{company_id}/login-slug`
@@ -127,7 +128,7 @@ Gateway не владеет постоянным хранилищем. `POSTGRES
 | `job-service` | Создание и чтение заданий, отчетов, файлов и ручных правок. |
 | `file-service` | Загрузка и скачивание объектов, архивы, логотипы и preview-чанки. |
 | `audit-service` | Запись и чтение событий аудита. Запись выполняется best-effort с таймаутом 750 ms. |
-| `brand-service` | Read-only каталог и действующие политики для администратора платформы. |
+| `brand-service` | Каталог, действующие политики и сохранение изменений администратора платформы. |
 | document worker, PostgreSQL, Redis | Только проверки для `/api/v1/status`; gateway не обращается к их данным напрямую. |
 
 gRPC-контракты находятся в [`../../proto/orderfill`](../../proto/orderfill). Максимальный размер gRPC-сообщения — 64 MiB.
@@ -149,7 +150,7 @@ gRPC-контракты находятся в [`../../proto/orderfill`](../../pr
 | `JOB_GRPC_ADDR` | `127.0.0.1:9094` | Адрес `job-service`. |
 | `FILE_GRPC_ADDR` | `127.0.0.1:9095` | Адрес `file-service`. |
 | `AUDIT_GRPC_ADDR` | `127.0.0.1:9100` | Адрес `audit-service`. |
-| `BRAND_GRPC_ADDR` | `127.0.0.1:9098` | Адрес `brand-service` для read-only страницы правил. |
+| `BRAND_GRPC_ADDR` | `127.0.0.1:9098` | Адрес `brand-service` для страницы правил. |
 | `WORKER_HEALTH_URL` | `http://127.0.0.1:8092/healthz` | HTTP URL document worker для `/api/v1/status`. |
 | `FILE_HEALTH_URL` | `http://127.0.0.1:8086/healthz` | HTTP URL `file-service` для `/api/v1/status`. |
 | `POSTGRES_ADDR` | `127.0.0.1:5432` | TCP-адрес PostgreSQL для `/api/v1/status`. |

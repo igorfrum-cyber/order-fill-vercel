@@ -19,9 +19,10 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	BrandService_GetBrandPolicy_FullMethodName = "/orderfill.brand.v1.BrandService/GetBrandPolicy"
-	BrandService_ListBrands_FullMethodName     = "/orderfill.brand.v1.BrandService/ListBrands"
-	BrandService_DetectBrand_FullMethodName    = "/orderfill.brand.v1.BrandService/DetectBrand"
+	BrandService_GetBrandPolicy_FullMethodName    = "/orderfill.brand.v1.BrandService/GetBrandPolicy"
+	BrandService_ListBrands_FullMethodName        = "/orderfill.brand.v1.BrandService/ListBrands"
+	BrandService_DetectBrand_FullMethodName       = "/orderfill.brand.v1.BrandService/DetectBrand"
+	BrandService_UpdateBrandPolicy_FullMethodName = "/orderfill.brand.v1.BrandService/UpdateBrandPolicy"
 )
 
 // BrandServiceClient is the client API for BrandService service.
@@ -31,6 +32,7 @@ type BrandServiceClient interface {
 	GetBrandPolicy(ctx context.Context, in *GetBrandPolicyRequest, opts ...grpc.CallOption) (*GetBrandPolicyResponse, error)
 	ListBrands(ctx context.Context, in *ListBrandsRequest, opts ...grpc.CallOption) (*ListBrandsResponse, error)
 	DetectBrand(ctx context.Context, in *DetectBrandRequest, opts ...grpc.CallOption) (*DetectBrandResponse, error)
+	UpdateBrandPolicy(ctx context.Context, in *UpdateBrandPolicyRequest, opts ...grpc.CallOption) (*UpdateBrandPolicyResponse, error)
 }
 
 type brandServiceClient struct {
@@ -71,6 +73,16 @@ func (c *brandServiceClient) DetectBrand(ctx context.Context, in *DetectBrandReq
 	return out, nil
 }
 
+func (c *brandServiceClient) UpdateBrandPolicy(ctx context.Context, in *UpdateBrandPolicyRequest, opts ...grpc.CallOption) (*UpdateBrandPolicyResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(UpdateBrandPolicyResponse)
+	err := c.cc.Invoke(ctx, BrandService_UpdateBrandPolicy_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // BrandServiceServer is the server API for BrandService service.
 // All implementations must embed UnimplementedBrandServiceServer
 // for forward compatibility.
@@ -78,6 +90,7 @@ type BrandServiceServer interface {
 	GetBrandPolicy(context.Context, *GetBrandPolicyRequest) (*GetBrandPolicyResponse, error)
 	ListBrands(context.Context, *ListBrandsRequest) (*ListBrandsResponse, error)
 	DetectBrand(context.Context, *DetectBrandRequest) (*DetectBrandResponse, error)
+	UpdateBrandPolicy(context.Context, *UpdateBrandPolicyRequest) (*UpdateBrandPolicyResponse, error)
 	mustEmbedUnimplementedBrandServiceServer()
 }
 
@@ -96,6 +109,9 @@ func (UnimplementedBrandServiceServer) ListBrands(context.Context, *ListBrandsRe
 }
 func (UnimplementedBrandServiceServer) DetectBrand(context.Context, *DetectBrandRequest) (*DetectBrandResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method DetectBrand not implemented")
+}
+func (UnimplementedBrandServiceServer) UpdateBrandPolicy(context.Context, *UpdateBrandPolicyRequest) (*UpdateBrandPolicyResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method UpdateBrandPolicy not implemented")
 }
 func (UnimplementedBrandServiceServer) mustEmbedUnimplementedBrandServiceServer() {}
 func (UnimplementedBrandServiceServer) testEmbeddedByValue()                      {}
@@ -172,6 +188,24 @@ func _BrandService_DetectBrand_Handler(srv interface{}, ctx context.Context, dec
 	return interceptor(ctx, in, info, handler)
 }
 
+func _BrandService_UpdateBrandPolicy_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(UpdateBrandPolicyRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(BrandServiceServer).UpdateBrandPolicy(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: BrandService_UpdateBrandPolicy_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(BrandServiceServer).UpdateBrandPolicy(ctx, req.(*UpdateBrandPolicyRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // BrandService_ServiceDesc is the grpc.ServiceDesc for BrandService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -190,6 +224,10 @@ var BrandService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "DetectBrand",
 			Handler:    _BrandService_DetectBrand_Handler,
+		},
+		{
+			MethodName: "UpdateBrandPolicy",
+			Handler:    _BrandService_UpdateBrandPolicy_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
