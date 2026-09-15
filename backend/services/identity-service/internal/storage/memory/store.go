@@ -104,6 +104,18 @@ func (s *Store) SetCompanyProfile(_ context.Context, id, name, slug string, mode
 	return nil
 }
 
+func (s *Store) SetCompanyOrderProfile(_ context.Context, id string, profile domain.OrderProfile) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	c, ok := s.companies[id]
+	if !ok {
+		return domain.ErrNotFound
+	}
+	c.OrderProfile = profile
+	s.companies[id] = c
+	return nil
+}
+
 func (s *Store) DisableCompany(_ context.Context, id string, at time.Time) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -190,9 +202,28 @@ func (s *Store) DisableUser(_ context.Context, id string, at time.Time) error {
 	return nil
 }
 
+func (s *Store) EnableUser(_ context.Context, id string) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	u, ok := s.users[id]
+	if !ok {
+		return domain.ErrNotFound
+	}
+	u.DisabledAt = nil
+	s.users[id] = u
+	return nil
+}
+
 func (s *Store) CreateSession(_ context.Context, session domain.LoginSession) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
+	u, ok := s.users[session.UserID]
+	if !ok {
+		return domain.ErrNotFound
+	}
+	seenAt := session.CreatedAt.UTC()
+	u.LastSeenAt = new(seenAt)
+	s.users[session.UserID] = u
 	s.sessions[session.TokenHash] = session
 	return nil
 }

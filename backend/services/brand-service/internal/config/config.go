@@ -1,15 +1,19 @@
 package config
 
 import (
+	"fmt"
 	"os"
+	"strings"
 
 	"order-fill/backend/pkg/grpcutil"
+	"order-fill/backend/pkg/securecfg"
 )
 
 type Config struct {
 	GRPCAddr    string
 	HealthAddr  string
 	Environment string
+	DatabaseURL string
 }
 
 func Load() Config {
@@ -17,11 +21,24 @@ func Load() Config {
 		GRPCAddr:    getenv("BRAND_GRPC_ADDR", ":9098"),
 		HealthAddr:  getenv("BRAND_HEALTH_ADDR", ":8089"),
 		Environment: getenv("BRAND_ENV", getenv("APP_ENV", "local")),
+		DatabaseURL: getenv("DATABASE_URL", ""),
 	}
 }
 
 func (c Config) Validate() error {
+	if !localEnv(c.Environment) {
+		if strings.TrimSpace(c.DatabaseURL) == "" {
+			return fmt.Errorf("DATABASE_URL is required outside local environment")
+		}
+		if err := securecfg.Postgres(c.Environment, c.DatabaseURL); err != nil {
+			return err
+		}
+	}
 	return grpcutil.CheckTLSMode(c.Environment)
+}
+
+func localEnv(env string) bool {
+	return strings.EqualFold(strings.TrimSpace(env), "local") || strings.TrimSpace(env) == ""
 }
 
 func getenv(key, fallback string) string {

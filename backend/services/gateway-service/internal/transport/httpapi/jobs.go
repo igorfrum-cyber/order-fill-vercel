@@ -63,12 +63,27 @@ func (a *API) createJob(w http.ResponseWriter, r *http.Request, jobType string) 
 		return
 	}
 	ids = append(ids, warehouse...)
-	blanks, err := a.uploadParts(r, "blank_files", "blank", true)
+	requireDefaultBlanks := jobType != "north_merge" || (len(r.MultipartForm.File["blank_home_files"]) == 0 && len(r.MultipartForm.File["blank_proff_files"]) == 0)
+	blanks, err := a.uploadParts(r, "blank_files", "blank", requireDefaultBlanks)
 	if err != nil {
 		writeError(w, http.StatusBadRequest, "bad_request", err.Error())
 		return
 	}
 	ids = append(ids, blanks...)
+	if jobType == "north_merge" {
+		home, err := a.uploadParts(r, "blank_home_files", "blank-home", false)
+		if err != nil {
+			writeError(w, http.StatusBadRequest, "bad_request", err.Error())
+			return
+		}
+		proff, err := a.uploadParts(r, "blank_proff_files", "blank-proff", false)
+		if err != nil {
+			writeError(w, http.StatusBadRequest, "bad_request", err.Error())
+			return
+		}
+		ids = append(ids, home...)
+		ids = append(ids, proff...)
+	}
 	resp, err := a.Clients.Jobs.CreateJob(a.jobCtx(r, user), &jobsv1.CreateJobRequest{
 		Meta: a.meta(user), Type: jobType, InputFileIds: ids, Brand: r.FormValue("brand"),
 	})

@@ -30,6 +30,14 @@ func TestCityFromFileName(t *testing.T) {
 	}
 }
 
+func TestCityFromWorkbookPrefersWorkbookContent(t *testing.T) {
+	t.Parallel()
+	key, _, ok := CityFromWorkbook(gridBook([][]string{{"Заказ для склада Сургут"}}), "Тюмень.xlsx")
+	if !ok || key != "surgut" {
+		t.Fatalf("key=%q ok=%v", key, ok)
+	}
+}
+
 func TestStockFromSourceReadsTarget(t *testing.T) {
 	t.Parallel()
 	got, err := StockFromSource(gridBook([][]string{
@@ -44,6 +52,24 @@ func TestStockFromSourceReadsTarget(t *testing.T) {
 	}
 }
 
+func TestStockFromSourceKeepsTyumenPlannedOrder(t *testing.T) {
+	t.Parallel()
+	got, err := StockFromSource(gridBook([][]string{
+		{"Артикул", "Товар", "Рекомендуемый заказ", "Остаток", "В пути", "Заказано по факту", "Комментарий"},
+		{"A1", "Cream", "7", "20", "2", "9", ""},
+		{"A2", "Serum", "4", "10", "0", "", ""},
+	}))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(got) != 2 || !got[0].HasActual || got[0].Actual != 9 || got[0].Recommended != 7 || got[1].HasActual || got[1].Recommended != 4 {
+		t.Fatalf("stock=%+v", got)
+	}
+	if got[0].Target != 29 || got[1].Target != 14 {
+		t.Fatalf("fallback targets=%+v", got)
+	}
+}
+
 func TestNeedsFromBlankUsesRule(t *testing.T) {
 	t.Parallel()
 	got, err := NeedsFromBlank(gridBook([][]string{
@@ -54,6 +80,21 @@ func TestNeedsFromBlankUsesRule(t *testing.T) {
 		t.Fatal(err)
 	}
 	if len(got) != 1 || got[0].City != "surgut" || got[0].Qty != 10 {
+		t.Fatalf("needs=%+v", got)
+	}
+}
+
+func TestNeedsFromBlankKeepsVariantAndSkipsRepeatedHeader(t *testing.T) {
+	t.Parallel()
+	got, err := NeedsFromBlank(gridBook([][]string{
+		{"Артикул", "Наименование", "Объем", "Кол-во", "Шт. в коробке"},
+		{"A-1", "Cream", "50 мл", "10", "3"},
+		{"", "Промо-продукция", "", "КОЛ-ВО", ""},
+	}), brand.Rule("christina"), "surgut", "home")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(got) != 1 || got[0].Article != "home:A1" || got[0].Variant != "home" {
 		t.Fatalf("needs=%+v", got)
 	}
 }

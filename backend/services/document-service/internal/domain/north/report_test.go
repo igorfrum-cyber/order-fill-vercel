@@ -73,3 +73,49 @@ func TestApplyEditsSetsActualSupplierOrder(t *testing.T) {
 		t.Fatalf("actual=%v", report.PlanRows[0].ActualSupplierOrder)
 	}
 }
+
+func TestApplyEditsValidatesAndKeepsCityQuantities(t *testing.T) {
+	t.Parallel()
+	report := BuildReport("angiopharm", []Need{{City: "surgut", Article: "A1", Qty: 3}}, nil, []Planned{{Article: "A1", SupplierQty: 3}}, nil)
+	err := ApplyEdits(&report, []Edit{{Key: "A1", Value: "8", Comment: `{"cities":{"surgut":5,"urengoy":2},"discount":30}`}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(report.PlanRows[0].Cities) != 2 || report.PlanRows[0].BudgetDiscount != 30 {
+		t.Fatalf("row=%+v", report.PlanRows[0])
+	}
+	if err := ApplyEdits(&report, []Edit{{Key: "A1", Value: "8", Comment: `{"cities":{"surgut":-1}}`}}); err == nil {
+		t.Fatal("negative city quantity must fail")
+	}
+}
+
+func TestPopulateAllocationIncludesTyumenOrderAndWarehouseCap(t *testing.T) {
+	t.Parallel()
+	row := PlanRow{
+		Cities: []CityQty{
+			{Key: "tyumen", Quantity: 8},
+			{Key: "nizhnevartovsk", Quantity: 6},
+			{Key: "surgut", Quantity: 6},
+		},
+		TyumenStock: 20, TyumenTarget: 5,
+		WarehouseStock: 4, HasWarehouseStock: true,
+	}
+	PopulateAllocation(&row)
+	if row.TyumenFree != 12 || len(row.TyumenParts) != 2 || len(row.SupplierParts) != 1 || row.SupplierParts[0].Key != "tyumen" {
+		t.Fatalf("allocation=%+v", row)
+	}
+}
+
+func TestPopulateAllocationUsesTyumenSourcePlanWhenNoTyumenBlank(t *testing.T) {
+	t.Parallel()
+	row := PlanRow{
+		Cities:             []CityQty{{Key: "surgut", Quantity: 6}},
+		TyumenStock:        2,
+		TyumenTarget:       5,
+		TyumenPlannedOrder: 8,
+	}
+	PopulateAllocation(&row)
+	if row.TyumenFree != 5 || len(row.TyumenParts) != 1 || len(row.SupplierParts) != 2 || row.SupplierParts[0].Key != "tyumen" || row.SupplierParts[1].Key != "surgut" {
+		t.Fatalf("allocation=%+v", row)
+	}
+}

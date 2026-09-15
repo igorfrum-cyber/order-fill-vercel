@@ -22,7 +22,7 @@ func TestGetMeResolvesActorWithoutSession(t *testing.T) {
 		t.Fatal(err)
 	}
 	if err := store.CreateUser(t.Context(), domain.User{
-		ID: "u1", Login: "buyer", Role: domain.RolePurchaser, CompanyID: "co-1",
+		ID: "u1", Login: "admin", Role: domain.RolePlatformAdmin, IsPrimaryAdmin: true,
 	}); err != nil {
 		t.Fatal(err)
 	}
@@ -32,7 +32,7 @@ func TestGetMeResolvesActorWithoutSession(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if resp.GetUser().GetId() != "u1" || resp.GetUser().GetRole() != string(domain.RolePurchaser) {
+	if resp.GetUser().GetId() != "u1" || resp.GetUser().GetRole() != string(domain.RolePlatformAdmin) || !resp.GetUser().GetIsPrimaryAdmin() {
 		t.Fatalf("%+v", resp.GetUser())
 	}
 }

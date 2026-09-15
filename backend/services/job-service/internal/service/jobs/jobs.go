@@ -25,7 +25,7 @@ type Files interface {
 }
 
 type Companies interface {
-	MatchingMode(ctx context.Context, actor domain.Actor) (domain.MatchingMode, error)
+	Config(ctx context.Context, actor domain.Actor) (domain.CompanyConfig, error)
 }
 
 type Publisher interface {

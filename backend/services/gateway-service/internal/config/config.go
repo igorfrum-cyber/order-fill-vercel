@@ -18,6 +18,7 @@ type Config struct {
 	JobGRPC        string
 	FileGRPC       string
 	AuditGRPC      string
+	BrandGRPC      string
 	WorkerHealth   string
 	FileHealth     string
 	PostgresAddr   string
@@ -38,6 +39,7 @@ func Load() Config {
 		JobGRPC:        getenv("JOB_GRPC_ADDR", "127.0.0.1:9094"),
 		FileGRPC:       getenv("FILE_GRPC_ADDR", "127.0.0.1:9095"),
 		AuditGRPC:      getenv("AUDIT_GRPC_ADDR", "127.0.0.1:9100"),
+		BrandGRPC:      getenv("BRAND_GRPC_ADDR", "127.0.0.1:9098"),
 		WorkerHealth:   getenv("WORKER_HEALTH_URL", "http://127.0.0.1:8092/healthz"),
 		FileHealth:     getenv("FILE_HEALTH_URL", "http://127.0.0.1:8086/healthz"),
 		PostgresAddr:   getenv("POSTGRES_ADDR", "127.0.0.1:5432"),

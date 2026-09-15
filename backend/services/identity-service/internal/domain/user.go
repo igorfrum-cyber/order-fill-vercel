@@ -18,6 +18,7 @@ type User struct {
 	TwoFactorEnabled bool
 	HasPasskey       bool
 	LastSeenAt       *time.Time
+	IsPrimaryAdmin   bool
 }
 
 func (u User) Disabled() bool {

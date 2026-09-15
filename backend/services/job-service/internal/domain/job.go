@@ -28,9 +28,11 @@ const (
 type Role string
 
 const (
-	RoleSource    Role = "source"
-	RoleBlank     Role = "blank"
-	RoleWarehouse Role = "warehouse"
+	RoleSource     Role = "source"
+	RoleBlank      Role = "blank"
+	RoleBlankHome  Role = "blank-home"
+	RoleBlankProff Role = "blank-proff"
+	RoleWarehouse  Role = "warehouse"
 )
 
 type Job struct {
@@ -61,6 +63,33 @@ type FileRef struct {
 type UploadMeta struct {
 	Role Role
 	Name string
+}
+
+type CompanyConfig struct {
+	MatchingMode MatchingMode
+	OrderProfile OrderProfile
+}
+
+type OrderProfile struct {
+	LegalName           string
+	Consignee           string
+	Address             string
+	ContactName         string
+	ContactPhone        string
+	Carrier             string
+	DeliveryPayer       string
+	DeliveryDestination string
+	BrandTerms          []BrandTerms
+}
+
+type BrandTerms struct {
+	Brand               string
+	DealerName          string
+	PaymentMethod       string
+	PaymentControl      string
+	CustomerType        string
+	DiscountBasisPoints int32
+	DiscountSet         bool
 }
 
 func ParseType(raw string) (Type, error) {
@@ -124,7 +153,7 @@ func ValidateUploads(jobType Type, uploads []UploadMeta) error {
 		}
 		seen[key] = struct{}{}
 		switch upload.Role {
-		case RoleBlank:
+		case RoleBlank, RoleBlankHome, RoleBlankProff:
 			blanks++
 		case RoleSource:
 			sources++
@@ -139,6 +168,11 @@ func ValidateUploads(jobType Type, uploads []UploadMeta) error {
 	}
 	switch jobType {
 	case TypeOrderFill:
+		for _, upload := range uploads {
+			if upload.Role == RoleBlankHome || upload.Role == RoleBlankProff {
+				return fmt.Errorf("%w: variant blanks are supported only for north merge", ErrInvalid)
+			}
+		}
 		if blanks == 0 {
 			return fmt.Errorf("%w: blank_files is required", ErrInvalid)
 		}

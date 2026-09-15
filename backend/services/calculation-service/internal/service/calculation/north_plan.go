@@ -32,8 +32,9 @@ func (s *Service) NorthPlan(brand string, needs []domain.CityNeed, tyumen []doma
 	}
 	out := make([]domain.PlanRow, 0, len(byArticle))
 	for article, cities := range byArticle {
-		row := domain.PlanRow{Article: article, Name: names[article], UnitSize: 1, NovacutanMin: 100}
-		if src, ok := stock[article]; ok {
+		variant, baseArticle := splitNorthKey(article)
+		row := domain.PlanRow{Article: article, Variant: variant, Name: names[article], UnitSize: 1, NovacutanMin: 100}
+		if src, ok := stock[baseArticle]; ok {
 			row.TyumenStock = src.Stock
 			row.TyumenTransit = src.InTransit
 			row.TyumenTarget = src.TargetStock
@@ -51,6 +52,16 @@ func (s *Service) NorthPlan(brand string, needs []domain.CityNeed, tyumen []doma
 		out = append(out, recalculateNorthRow(row, cities, brand))
 	}
 	return out
+}
+
+func splitNorthKey(key string) (variant, base string) {
+	if rest, ok := strings.CutPrefix(key, "home:"); ok {
+		return "home", rest
+	}
+	if rest, ok := strings.CutPrefix(key, "proff:"); ok {
+		return "proff", rest
+	}
+	return "", key
 }
 
 func (s *Service) RecalculateNorthRow(brand string, row domain.PlanRow, editedQty float64) domain.PlanRow {

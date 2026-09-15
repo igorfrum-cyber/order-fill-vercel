@@ -109,13 +109,15 @@ S3-compatible storage с непустыми credentials и TLS endpoint.
 "Север", генерацию отчетов, preview sidecar objects и итоговых workbook files.
 Сопоставление товаров не считает сам: передаёт структурированные строки в
 `matching-service` и записывает возвращённые `category` / `match_reasons` в
-`report.json`. Режим сопоставления берёт из snapshot `matching_mode` в Redis
+`report.json`. Режим сопоставления и реквизиты заказа берёт из snapshot `matching_mode`/`order_profile` в Redis
 message, а не из identity-service.
 
 ### brand-service, matching-service, calculation-service
 
 Внутренние вычислительные сервисы под правила брендов, сопоставление и расчеты.
-Они не доступны из браузера напрямую. `matching-service` возвращает канонические
+Они не доступны из браузера напрямую. Gateway предоставляет администратору
+платформы только read-only HTTP-проекцию каталога `brand-service` на странице
+правил. `matching-service` возвращает канонические
 категории отчёта; Excel не читает.
 
 ### audit-service
@@ -149,7 +151,7 @@ outputs и архивов.
 5. job-service сохраняет metadata в PostgreSQL и публикует Redis message.
 6. document-worker читает сообщение из consumer group.
 7. document-worker получает input files через file-service/object storage.
-8. document-worker читает Excel, вызывает matching-service с matching_mode из сообщения очереди и сохраняет report.json плюс output artifacts.
+8. document-worker читает Excel, вызывает matching-service с matching_mode из сообщения очереди, подставляет реквизиты компании в поддерживаемые поля бланка и сохраняет report.json плюс output artifacts.
 9. document-worker обновляет job status/report/output metadata через job-service.
 10. frontend читает status/report/preview через gateway-service.
 11. Пользователь отправляет ручные правки.
@@ -161,15 +163,15 @@ outputs и архивов.
 ## Поток "Север"
 
 ```text
-1. Пользователь загружает заполненные бланки городов.
+1. Пользователь загружает заполненные бланки городов; для Christina HOME и PROFF идут раздельными ролями.
 2. gateway-service создает north-merge job через job-service.
 3. document-worker определяет города и типы бланков.
 4. document-worker собирает потребности по городам.
-5. document-worker учитывает остаток, товар в пути и целевой запас Тюмени.
+5. document-worker учитывает остаток, товар в пути, план Тюмени (факт либо рекомендацию из её таблицы), целевой запас и при наличии ограничение склада доставки.
 6. document-worker строит план: из Тюмени / у поставщика.
 7. frontend показывает расчет для проверки.
-8. Пользователь правит фактический заказ у поставщика.
-9. document-worker формирует общий бланк, перемещения и таблицу заказа.
+8. Пользователь правит города и фактический заказ либо применяет расчёт до суммы со скидкой; ручные значения остаются закреплёнными.
+9. document-worker повторно считает план на сервере и формирует общий бланк по варианту и отдельные перемещения городам.
 ```
 
 ## Production Минимум

@@ -11,5 +11,5 @@ func (s *Server) PublicCompany(ctx context.Context, req *identityv1.PublicCompan
 	if err != nil {
 		return nil, toStatus(err)
 	}
-	return &identityv1.PublicCompanyResponse{Company: protoCompany(company)}, nil
+	return &identityv1.PublicCompanyResponse{Company: protoPublicCompany(company)}, nil
 }

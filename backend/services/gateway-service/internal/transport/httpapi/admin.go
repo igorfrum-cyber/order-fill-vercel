@@ -75,6 +75,108 @@ func (a *API) updateCompany(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, a.presentCompanyFor(r.Context(), user, resp.GetCompany()))
 }
 
+func (a *API) getCompanyOrderProfile(w http.ResponseWriter, r *http.Request) {
+	user, _ := userFrom(r)
+	companyID := r.PathValue("company_id")
+	if !canManageCompany(user, companyID) {
+		writeError(w, http.StatusNotFound, "not_found", "not found")
+		return
+	}
+	resp, err := a.Clients.Identity.ListCompanies(r.Context(), &identityv1.ListCompaniesRequest{Meta: a.meta(user)})
+	if err != nil {
+		writeGRPCError(w, "get_company_order_profile_failed", err)
+		return
+	}
+	for _, company := range resp.GetCompanies() {
+		if company.GetId() == companyID {
+			writeJSON(w, http.StatusOK, presentOrderProfile(company.GetOrderProfile()))
+			return
+		}
+	}
+	writeError(w, http.StatusNotFound, "not_found", "not found")
+}
+
+func (a *API) updateCompanyOrderProfile(w http.ResponseWriter, r *http.Request) {
+	user, _ := userFrom(r)
+	companyID := r.PathValue("company_id")
+	if !canManageCompany(user, companyID) {
+		writeError(w, http.StatusNotFound, "not_found", "not found")
+		return
+	}
+	var payload companyOrderProfilePayload
+	if !decodeJSON(w, r, &payload, companyJSONLimit) {
+		return
+	}
+	resp, err := a.Clients.Identity.UpdateCompanyOrderProfile(r.Context(), &identityv1.UpdateCompanyOrderProfileRequest{
+		Meta: a.meta(user), CompanyId: companyID, OrderProfile: payload.proto(),
+	})
+	if err != nil {
+		writeGRPCError(w, "update_company_order_profile_failed", err)
+		return
+	}
+	writeJSON(w, http.StatusOK, presentOrderProfile(resp.GetCompany().GetOrderProfile()))
+}
+
+type companyOrderProfilePayload struct {
+	LegalName           string                     `json:"legal_name"`
+	Consignee           string                     `json:"consignee"`
+	Address             string                     `json:"address"`
+	ContactName         string                     `json:"contact_name"`
+	ContactPhone        string                     `json:"contact_phone"`
+	Carrier             string                     `json:"carrier"`
+	DeliveryPayer       string                     `json:"delivery_payer"`
+	DeliveryDestination string                     `json:"delivery_destination"`
+	BrandTerms          []companyBrandTermsPayload `json:"brand_terms"`
+}
+
+type companyBrandTermsPayload struct {
+	Brand               string `json:"brand"`
+	DealerName          string `json:"dealer_name"`
+	PaymentMethod       string `json:"payment_method"`
+	PaymentControl      string `json:"payment_control"`
+	CustomerType        string `json:"customer_type"`
+	DiscountBasisPoints int32  `json:"discount_basis_points"`
+	DiscountSet         bool   `json:"discount_set"`
+}
+
+func (p companyOrderProfilePayload) proto() *identityv1.CompanyOrderProfile {
+	out := &identityv1.CompanyOrderProfile{
+		LegalName: p.LegalName, Consignee: p.Consignee, Address: p.Address,
+		ContactName: p.ContactName, ContactPhone: p.ContactPhone, Carrier: p.Carrier,
+		DeliveryPayer: p.DeliveryPayer, DeliveryDestination: p.DeliveryDestination,
+	}
+	for _, item := range p.BrandTerms {
+		out.BrandTerms = append(out.BrandTerms, &identityv1.CompanyBrandTerms{
+			Brand: item.Brand, DealerName: item.DealerName, PaymentMethod: item.PaymentMethod,
+			PaymentControl: item.PaymentControl, CustomerType: item.CustomerType,
+			DiscountBasisPoints: item.DiscountBasisPoints,
+			DiscountSet:         item.DiscountSet,
+		})
+	}
+	return out
+}
+
+func presentOrderProfile(profile *identityv1.CompanyOrderProfile) map[string]any {
+	if profile == nil {
+		profile = &identityv1.CompanyOrderProfile{}
+	}
+	terms := make([]map[string]any, 0, len(profile.GetBrandTerms()))
+	for _, item := range profile.GetBrandTerms() {
+		terms = append(terms, map[string]any{
+			"brand": item.GetBrand(), "dealer_name": item.GetDealerName(), "payment_method": item.GetPaymentMethod(),
+			"payment_control": item.GetPaymentControl(), "customer_type": item.GetCustomerType(),
+			"discount_basis_points": item.GetDiscountBasisPoints(),
+			"discount_set":          item.GetDiscountSet(),
+		})
+	}
+	return map[string]any{
+		"legal_name": profile.GetLegalName(), "consignee": profile.GetConsignee(), "address": profile.GetAddress(),
+		"contact_name": profile.GetContactName(), "contact_phone": profile.GetContactPhone(), "carrier": profile.GetCarrier(),
+		"delivery_payer": profile.GetDeliveryPayer(), "delivery_destination": profile.GetDeliveryDestination(),
+		"brand_terms": terms,
+	}
+}
+
 func (a *API) disableCompany(w http.ResponseWriter, r *http.Request) {
 	user, _ := userFrom(r)
 	companyID := r.PathValue("company_id")
@@ -189,6 +291,51 @@ func (a *API) createUser(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+func (a *API) listPlatformAdmins(w http.ResponseWriter, r *http.Request) {
+	user, _ := userFrom(r)
+	if user.Role != "platform_admin" {
+		writeError(w, http.StatusNotFound, "not_found", "not found")
+		return
+	}
+	resp, err := a.Clients.Identity.ListUsers(r.Context(), &identityv1.ListUsersRequest{Meta: a.meta(user)})
+	if err != nil {
+		writeGRPCError(w, "list_platform_admins_failed", err)
+		return
+	}
+	items := make([]map[string]any, 0, len(resp.GetUsers()))
+	for _, item := range resp.GetUsers() {
+		items = append(items, a.presentUser(r.Context(), userFromProto(item)))
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"users": items})
+}
+
+func (a *API) createPlatformAdmin(w http.ResponseWriter, r *http.Request) {
+	user, _ := userFrom(r)
+	if user.Role != "platform_admin" || !user.IsPrimaryAdmin {
+		writeError(w, http.StatusNotFound, "not_found", "not found")
+		return
+	}
+	var payload struct {
+		Login string `json:"login"`
+	}
+	if !decodeJSON(w, r, &payload, authJSONLimit) {
+		return
+	}
+	resp, err := a.Clients.Identity.CreateUser(r.Context(), &identityv1.CreateUserRequest{
+		Meta: a.meta(user), Login: payload.Login, Role: "platform_admin",
+	})
+	if err != nil {
+		writeGRPCError(w, "create_platform_admin_failed", err)
+		return
+	}
+	a.recordAudit(r.Context(), user, "platform_admin_invited", "", "")
+	writeJSON(w, http.StatusCreated, map[string]any{
+		"user":         a.presentUser(r.Context(), userFromProto(resp.GetUser())),
+		"invite_token": resp.GetInviteToken(),
+		"invite_url":   "/invite/" + resp.GetInviteToken(),
+	})
+}
+
 func (a *API) disableUser(w http.ResponseWriter, r *http.Request) {
 	user, _ := userFrom(r)
 	_, err := a.Clients.Identity.DisableUser(r.Context(), &identityv1.DisableUserRequest{Meta: a.meta(user), UserId: r.PathValue("user_id")})
@@ -197,6 +344,17 @@ func (a *API) disableUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	a.recordAudit(r.Context(), user, "user_disabled", user.CompanyID, user.CompanyName)
+	w.WriteHeader(http.StatusNoContent)
+}
+
+func (a *API) enableUser(w http.ResponseWriter, r *http.Request) {
+	user, _ := userFrom(r)
+	_, err := a.Clients.Identity.EnableUser(r.Context(), &identityv1.EnableUserRequest{Meta: a.meta(user), UserId: r.PathValue("user_id")})
+	if err != nil {
+		writeGRPCError(w, "enable_user_failed", err)
+		return
+	}
+	a.recordAudit(r.Context(), user, "user_enabled", user.CompanyID, user.CompanyName)
 	w.WriteHeader(http.StatusNoContent)
 }
 
@@ -342,6 +500,7 @@ func presentCompany(c *identityv1.Company) map[string]any {
 		"id": c.GetId(), "name": c.GetName(), "login_slug": c.GetLoginSlug(),
 		"has_logo": c.GetHasLogo(), "created_at": c.GetCreatedAt(), "disabled_at": c.GetDisabledAt(),
 		"matching_mode": companyMatchingMode(c),
+		"order_profile": presentOrderProfile(c.GetOrderProfile()),
 	}
 }
 

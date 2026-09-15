@@ -2,6 +2,7 @@ package postgres
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"time"
@@ -15,7 +16,7 @@ import (
 
 const userSelect = `u.id, COALESCE(u.company_id, ''), COALESCE(c.name, ''), COALESCE(c.login_slug, ''),
 	COALESCE(c.logo_content_type, '') <> '', u.login, u.password_hash, u.role, u.created_at, u.disabled_at,
-	c.disabled_at IS NOT NULL, false, false`
+	c.disabled_at IS NOT NULL, false, false, u.last_login_at, u.is_primary_admin`
 
 type Store struct {
 	pool *pgxpool.Pool
@@ -46,17 +47,17 @@ func (s *Store) CreateCompany(ctx context.Context, company domain.Company) error
 
 func (s *Store) GetCompany(ctx context.Context, id string) (domain.Company, error) {
 	return s.scanCompany(s.pool.QueryRow(ctx,
-		`SELECT id, name, login_slug, logo_content_type, matching_mode, created_at, disabled_at FROM companies WHERE id = $1`, id))
+		`SELECT id, name, login_slug, logo_content_type, matching_mode, created_at, disabled_at, order_profile FROM companies WHERE id = $1`, id))
 }
 
 func (s *Store) GetCompanyByLoginSlug(ctx context.Context, slug string) (domain.Company, error) {
 	return s.scanCompany(s.pool.QueryRow(ctx,
-		`SELECT id, name, login_slug, logo_content_type, matching_mode, created_at, disabled_at FROM companies WHERE login_slug = $1`, slug))
+		`SELECT id, name, login_slug, logo_content_type, matching_mode, created_at, disabled_at, order_profile FROM companies WHERE login_slug = $1`, slug))
 }
 
 func (s *Store) ListCompanies(ctx context.Context) ([]domain.Company, error) {
 	rows, err := s.pool.Query(ctx,
-		`SELECT id, name, login_slug, logo_content_type, matching_mode, created_at, disabled_at FROM companies ORDER BY created_at`)
+		`SELECT id, name, login_slug, logo_content_type, matching_mode, created_at, disabled_at, order_profile FROM companies ORDER BY created_at`)
 	if err != nil {
 		return nil, fmt.Errorf("list companies: %w", err)
 	}
@@ -70,6 +71,21 @@ func (s *Store) ListCompanies(ctx context.Context) ([]domain.Company, error) {
 		out = append(out, c)
 	}
 	return out, rows.Err()
+}
+
+func (s *Store) SetCompanyOrderProfile(ctx context.Context, id string, profile domain.OrderProfile) error {
+	payload, err := json.Marshal(profile)
+	if err != nil {
+		return fmt.Errorf("marshal company order profile: %w", err)
+	}
+	tag, err := s.pool.Exec(ctx, `UPDATE companies SET order_profile = $2 WHERE id = $1`, id, payload)
+	if err != nil {
+		return fmt.Errorf("set company order profile: %w", err)
+	}
+	if tag.RowsAffected() == 0 {
+		return domain.ErrNotFound
+	}
+	return nil
 }
 
 func (s *Store) SetCompanyProfile(ctx context.Context, id, name, slug string, mode domain.MatchingMode) error {
@@ -110,9 +126,9 @@ func (s *Store) CreateUser(ctx context.Context, user domain.User) error {
 		created = time.Now().UTC()
 	}
 	_, err := s.pool.Exec(ctx,
-		`INSERT INTO users (id, company_id, login, password_hash, role, created_at)
-		 VALUES ($1, $2, $3, $4, $5, $6)`,
-		user.ID, nullIfEmpty(user.CompanyID), user.Login, user.PasswordHash, string(user.Role), created)
+		`INSERT INTO users (id, company_id, login, password_hash, role, created_at, is_primary_admin)
+		 VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+		user.ID, nullIfEmpty(user.CompanyID), user.Login, user.PasswordHash, string(user.Role), created, user.IsPrimaryAdmin)
 	if err != nil {
 		return mapConflict(err)
 	}
@@ -174,14 +190,28 @@ func (s *Store) DisableUser(ctx context.Context, id string, at time.Time) error 
 	return nil
 }
 
+func (s *Store) EnableUser(ctx context.Context, id string) error {
+	tag, err := s.pool.Exec(ctx, `UPDATE users SET disabled_at = NULL WHERE id = $1`, id)
+	if err != nil {
+		return fmt.Errorf("enable user: %w", err)
+	}
+	if tag.RowsAffected() == 0 {
+		return domain.ErrNotFound
+	}
+	return nil
+}
+
 func (s *Store) CreateSession(ctx context.Context, session domain.LoginSession) error {
 	created := session.CreatedAt.UTC()
 	if created.IsZero() {
 		created = time.Now().UTC()
 	}
 	_, err := s.pool.Exec(ctx,
-		`INSERT INTO sessions (token_hash, user_id, expires_at, id, created_at, user_agent, ip)
-		 VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+		`WITH touched AS (
+			UPDATE users SET last_login_at = $5 WHERE id = $2 RETURNING id
+		)
+		INSERT INTO sessions (token_hash, user_id, expires_at, id, created_at, user_agent, ip)
+		SELECT $1, touched.id, $3, $4, $5, $6, $7 FROM touched`,
 		session.TokenHash, session.UserID, session.ExpiresAt.UTC(), session.ID, created, session.UserAgent, session.IP)
 	if err != nil {
 		return fmt.Errorf("insert session: %w", err)
@@ -319,7 +349,8 @@ func scanUserRow(row scanner) (domain.User, error) {
 	err := row.Scan(
 		&user.ID, &user.CompanyID, &user.CompanyName, &user.CompanyLoginSlug, &user.CompanyHasLogo,
 		&user.Login, &user.PasswordHash, &role, &user.CreatedAt, &user.DisabledAt,
-		&user.CompanyDisabled, &user.TwoFactorEnabled, &user.HasPasskey,
+		&user.CompanyDisabled, &user.TwoFactorEnabled, &user.HasPasskey, &user.LastSeenAt,
+		&user.IsPrimaryAdmin,
 	)
 	if err != nil {
 		return domain.User{}, err
@@ -332,8 +363,14 @@ func scanUserRow(row scanner) (domain.User, error) {
 func scanCompanyRow(row scanner) (domain.Company, error) {
 	var c domain.Company
 	var mode string
-	if err := row.Scan(&c.ID, &c.Name, &c.LoginSlug, &c.LogoContentType, &mode, &c.CreatedAt, &c.DisabledAt); err != nil {
+	var profile []byte
+	if err := row.Scan(&c.ID, &c.Name, &c.LoginSlug, &c.LogoContentType, &mode, &c.CreatedAt, &c.DisabledAt, &profile); err != nil {
 		return domain.Company{}, err
+	}
+	if len(profile) > 0 {
+		if err := json.Unmarshal(profile, &c.OrderProfile); err != nil {
+			return domain.Company{}, fmt.Errorf("decode company order profile: %w", err)
+		}
 	}
 	c.MatchingMode = domain.ParseMatchingMode(mode)
 	c.CreatedAt = c.CreatedAt.UTC()

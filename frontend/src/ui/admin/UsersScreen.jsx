@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { createUser, disableUser, listCompanies, listUsers, resetUser } from "../../api/auth.js";
+import { createPlatformAdmin, createUser, disableUser, enableUser, listCompanies, listPlatformAdmins, listUsers, resetUser } from "../../api/auth.js";
 import {
   canManageListedUser,
   inviteRoleHint,
@@ -13,10 +13,12 @@ import { userFacingError } from "../../features/help/errors.js";
 import { IconCopy } from "../icons.jsx";
 import { Field, GhostButton, Modal, PrimaryButton } from "../widgets.jsx";
 
-export function UsersScreen({ companyId, actorRole, actorId, onCompany }) {
+export function UsersScreen({ companyId, actorRole, actorId, actorIsPrimaryAdmin = false, onCompany }) {
   const [users, setUsers] = useState([]);
+  const [platformAdmins, setPlatformAdmins] = useState([]);
   const [companies, setCompanies] = useState([]);
   const [login, setLogin] = useState("");
+  const [adminLogin, setAdminLogin] = useState("");
   const roles = inviteRoleOptions(actorRole);
   const [role, setRole] = useState(() => (roles.includes("purchaser") ? "purchaser" : roles[0] || "purchaser"));
   const [invite, setInvite] = useState("");
@@ -24,16 +26,36 @@ export function UsersScreen({ companyId, actorRole, actorId, onCompany }) {
   const [error, setError] = useState("");
   const [resetTarget, setResetTarget] = useState(null);
   const [disableTarget, setDisableTarget] = useState(null);
+  const [refreshing, setRefreshing] = useState(false);
   const picker = needsUsersCompanyPicker(actorRole);
   const activeCompanies = companies.filter((company) => !company.disabled_at);
   const prompt = usersCompanyPrompt(companyId, companies);
 
-  function reload() {
+  async function reload() {
     if (!companyId) return;
-    listUsers(companyId).then((payload) => setUsers(payload.users || [])).catch(() => setUsers([]));
+    setRefreshing(true);
+    try {
+      const payload = await listUsers(companyId);
+      setUsers(payload.users || []);
+    } catch {
+      setUsers([]);
+    } finally {
+      setRefreshing(false);
+    }
   }
 
-  useEffect(reload, [companyId]);
+  async function reloadPlatformAdmins() {
+    if (actorRole !== "platform_admin") return;
+    try {
+      const payload = await listPlatformAdmins();
+      setPlatformAdmins(payload.users || []);
+    } catch {
+      setPlatformAdmins([]);
+    }
+  }
+
+  useEffect(() => { reload(); }, [companyId]);
+  useEffect(() => { reloadPlatformAdmins(); }, [actorRole]);
 
   useEffect(() => {
     if (!picker) return undefined;
@@ -60,8 +82,9 @@ export function UsersScreen({ companyId, actorRole, actorId, onCompany }) {
             Новый человек входит только по ссылке-приглашению. Пароль ему не задаёте — он сам его поставит.
           </p>
         </div>
-        {picker ? (
-          <select
+        <div className="flex items-center gap-2">
+          {companyId ? <GhostButton onClick={() => { reload(); reloadPlatformAdmins(); }} disabled={refreshing}>{refreshing ? "Обновляю…" : "Обновить"}</GhostButton> : null}
+          {picker ? <select
             className="input max-w-xs"
             value={companyId}
             onChange={(event) => onCompany?.(event.target.value)}
@@ -76,9 +99,66 @@ export function UsersScreen({ companyId, actorRole, actorId, onCompany }) {
                 {company.name}
               </option>
             ))}
-          </select>
-        ) : null}
+          </select> : null}
+        </div>
       </div>
+      {actorRole === "platform_admin" ? (
+        <section className="space-y-3 rounded-xl border border-[var(--color-line)] bg-[var(--color-surface)] p-4">
+          <div>
+            <h2 className="text-[16px] font-semibold">Администраторы сервиса</h2>
+            <p className="mt-1 text-[13px] text-[var(--color-ink-soft)]">
+              Главный администратор управляет доступом остальных. Его аккаунт нельзя выключить или сбросить.
+            </p>
+          </div>
+          {actorIsPrimaryAdmin ? (
+            <form
+              className="flex flex-wrap items-end gap-3"
+              onSubmit={async (event) => {
+                event.preventDefault();
+                setError("");
+                try {
+                  const created = await createPlatformAdmin(adminLogin);
+                  await showInvite(created.invite_url);
+                  setAdminLogin("");
+                  reloadPlatformAdmins();
+                } catch (err) {
+                  setError(userFacingError(err, "Не удалось пригласить администратора."));
+                }
+              }}
+            >
+              <Field label="Логин администратора">
+                <input className="input w-full" value={adminLogin} onChange={(event) => setAdminLogin(event.target.value)} autoComplete="off" placeholder="admin-ops" />
+              </Field>
+              <PrimaryButton type="submit" disabled={!adminLogin.trim()}>Пригласить администратора</PrimaryButton>
+            </form>
+          ) : null}
+          <ul className="grid gap-3 sm:grid-cols-2">
+            {platformAdmins.map((user) => (
+              <li key={user.id}>
+                <UserCard
+                  user={user}
+                  roleText={user.is_primary_admin ? "Главный администратор" : "Администратор сервиса"}
+                  isSelf={user.id === actorId}
+                  canManage={canManageListedUser(actorRole, user.role, actorIsPrimaryAdmin, user.is_primary_admin)}
+                  onReset={() => setResetTarget(user)}
+                  onDisable={() => setDisableTarget(user)}
+                  onEnable={async () => {
+                    setError("");
+                    try {
+                      await enableUser(user.id);
+                      reloadPlatformAdmins();
+                    } catch (err) {
+                      setError(userFacingError(err, "Не удалось включить администратора."));
+                    }
+                  }}
+                />
+              </li>
+            ))}
+          </ul>
+        </section>
+      ) : null}
+      {error ? <p className="text-[14px] text-[var(--color-danger)]">{error}</p> : null}
+      {invite ? <InviteBanner url={invite} copied={copied} onCopy={async () => setCopied(await copyText(invite))} /> : null}
       {!companyId ? (
         <p className="text-[14px] text-[var(--color-ink-faint)]">{prompt}</p>
       ) : (
@@ -118,8 +198,6 @@ export function UsersScreen({ companyId, actorRole, actorId, onCompany }) {
             </PrimaryButton>
           </form>
           {roles.length ? <p className="text-[13px] text-[var(--color-ink-faint)]">{inviteRoleHint}</p> : null}
-          {error ? <p className="text-[14px] text-[var(--color-danger)]">{error}</p> : null}
-          {invite ? <InviteBanner url={invite} copied={copied} onCopy={async () => setCopied(await copyText(invite))} /> : null}
           <div data-tour="users-list" className="space-y-5">
             {bands.map((band) => (
               <section key={band.key}>
@@ -134,6 +212,15 @@ export function UsersScreen({ companyId, actorRole, actorId, onCompany }) {
                           canManage={canManageListedUser(actorRole, user.role)}
                           onReset={() => setResetTarget(user)}
                           onDisable={() => setDisableTarget(user)}
+                          onEnable={async () => {
+                            setError("");
+                            try {
+                              await enableUser(user.id);
+                              reload();
+                            } catch (err) {
+                              setError(userFacingError(err, "Не удалось включить пользователя."));
+                            }
+                          }}
                         />
                       </li>
                     ))}
@@ -159,6 +246,7 @@ export function UsersScreen({ companyId, actorRole, actorId, onCompany }) {
                   await showInvite(payload.invite_url);
                   setResetTarget(null);
                   reload();
+                  reloadPlatformAdmins();
                 } catch (err) {
                   setError(userFacingError(err, "Не удалось сбросить доступ."));
                   setResetTarget(null);
@@ -180,13 +268,14 @@ export function UsersScreen({ companyId, actorRole, actorId, onCompany }) {
                   await disableUser(disableTarget.id);
                   setDisableTarget(null);
                   reload();
+                  reloadPlatformAdmins();
                 } catch (err) {
                   setError(userFacingError(err, "Не удалось выключить пользователя."));
                   setDisableTarget(null);
                 }
               }}
             >
-              Человек больше не сможет войти. Включить обратно через этот экран нельзя.
+              Человек больше не сможет войти, а его активные сеансы завершатся. Позже аккаунт можно включить здесь снова.
             </Modal>
           ) : null}
         </>
@@ -195,13 +284,14 @@ export function UsersScreen({ companyId, actorRole, actorId, onCompany }) {
   );
 }
 
-function UserCard({ user, canManage, isSelf, onReset, onDisable }) {
+function UserCard({ user, canManage, isSelf, roleText = "", onReset, onDisable, onEnable }) {
+  const status = user.disabled_at
+    ? { label: "Выключен", className: "text-[var(--color-danger)]" }
+    : user.activated
+      ? { label: "Активен", className: "text-[var(--color-ok)]" }
+      : { label: "Ждёт активации", className: "text-[var(--color-warn)]" };
   return (
-    <article
-      className={`rounded-[10px] border border-[var(--color-line)] bg-[var(--color-surface)] p-4 ${
-        user.disabled_at ? "opacity-55" : ""
-      }`}
-    >
+    <article className="rounded-[10px] border border-[var(--color-line)] bg-[var(--color-surface)] p-4">
       <div className="flex items-start gap-3">
         <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-[var(--color-neutral-soft)] text-[14px] font-semibold text-[var(--color-ink-soft)]">
           {userInitial(user.login)}
@@ -209,19 +299,19 @@ function UserCard({ user, canManage, isSelf, onReset, onDisable }) {
         <div className="min-w-0 flex-1">
           <div className="truncate text-[15px] font-semibold">{user.login}</div>
           <div className="mt-0.5 text-[13px] text-[var(--color-ink-soft)]">
-            {roleLabel(user.role)}
-            {user.disabled_at ? " · выключен" : ""}
+            {roleText || roleLabel(user.role)}
             {isSelf ? " · это вы" : ""}
           </div>
           <div className="mt-1 text-[13px] text-[var(--color-ink-faint)]">
-            {isSelf && !user.last_seen_at ? "Сейчас в системе" : lastSeenLabel(user.last_seen_at)}
+            <span className={status.className}>{status.label}</span>
+            {user.activated ? ` · ${isSelf && !user.last_seen_at ? "Сейчас в системе" : lastSeenLabel(user.last_seen_at)}` : ""}
           </div>
         </div>
       </div>
       {canManage && !isSelf ? (
         <div className="mt-3 flex flex-wrap gap-2">
           <GhostButton onClick={onReset}>Сброс доступа</GhostButton>
-          {user.disabled_at ? null : <GhostButton onClick={onDisable}>Выключить</GhostButton>}
+          {user.disabled_at ? <GhostButton onClick={onEnable}>Включить</GhostButton> : <GhostButton onClick={onDisable}>Выключить</GhostButton>}
         </div>
       ) : null}
     </article>

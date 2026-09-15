@@ -9,6 +9,7 @@ package brandv1
 import (
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
+	v1 "order-fill/backend/proto/gen/go/orderfill/common/v1"
 	reflect "reflect"
 	sync "sync"
 	unsafe "unsafe"
@@ -473,11 +474,107 @@ func (x *DetectBrandResponse) GetVariant() string {
 	return ""
 }
 
+type UpdateBrandPolicyRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Meta          *v1.RequestMeta        `protobuf:"bytes,1,opt,name=meta,proto3" json:"meta,omitempty"`
+	Policy        *BrandPolicy           `protobuf:"bytes,2,opt,name=policy,proto3" json:"policy,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *UpdateBrandPolicyRequest) Reset() {
+	*x = UpdateBrandPolicyRequest{}
+	mi := &file_orderfill_brand_v1_brand_proto_msgTypes[7]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *UpdateBrandPolicyRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*UpdateBrandPolicyRequest) ProtoMessage() {}
+
+func (x *UpdateBrandPolicyRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_orderfill_brand_v1_brand_proto_msgTypes[7]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use UpdateBrandPolicyRequest.ProtoReflect.Descriptor instead.
+func (*UpdateBrandPolicyRequest) Descriptor() ([]byte, []int) {
+	return file_orderfill_brand_v1_brand_proto_rawDescGZIP(), []int{7}
+}
+
+func (x *UpdateBrandPolicyRequest) GetMeta() *v1.RequestMeta {
+	if x != nil {
+		return x.Meta
+	}
+	return nil
+}
+
+func (x *UpdateBrandPolicyRequest) GetPolicy() *BrandPolicy {
+	if x != nil {
+		return x.Policy
+	}
+	return nil
+}
+
+type UpdateBrandPolicyResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Policy        *BrandPolicy           `protobuf:"bytes,1,opt,name=policy,proto3" json:"policy,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *UpdateBrandPolicyResponse) Reset() {
+	*x = UpdateBrandPolicyResponse{}
+	mi := &file_orderfill_brand_v1_brand_proto_msgTypes[8]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *UpdateBrandPolicyResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*UpdateBrandPolicyResponse) ProtoMessage() {}
+
+func (x *UpdateBrandPolicyResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_orderfill_brand_v1_brand_proto_msgTypes[8]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use UpdateBrandPolicyResponse.ProtoReflect.Descriptor instead.
+func (*UpdateBrandPolicyResponse) Descriptor() ([]byte, []int) {
+	return file_orderfill_brand_v1_brand_proto_rawDescGZIP(), []int{8}
+}
+
+func (x *UpdateBrandPolicyResponse) GetPolicy() *BrandPolicy {
+	if x != nil {
+		return x.Policy
+	}
+	return nil
+}
+
 var File_orderfill_brand_v1_brand_proto protoreflect.FileDescriptor
 
 const file_orderfill_brand_v1_brand_proto_rawDesc = "" +
 	"\n" +
-	"\x1eorderfill/brand/v1/brand.proto\x12\x12orderfill.brand.v1\"\xe4\x04\n" +
+	"\x1eorderfill/brand/v1/brand.proto\x12\x12orderfill.brand.v1\x1a orderfill/common/v1/common.proto\"\xe4\x04\n" +
 	"\vBrandPolicy\x12\x14\n" +
 	"\x05brand\x18\x01 \x01(\tR\x05brand\x12\x18\n" +
 	"\avariant\x18\x02 \x01(\tR\avariant\x12+\n" +
@@ -515,12 +612,18 @@ const file_orderfill_brand_v1_brand_proto_rawDesc = "" +
 	"\tfile_name\x18\x03 \x01(\tR\bfileName\"E\n" +
 	"\x13DetectBrandResponse\x12\x14\n" +
 	"\x05brand\x18\x01 \x01(\tR\x05brand\x12\x18\n" +
-	"\avariant\x18\x02 \x01(\tR\avariant2\xb4\x02\n" +
+	"\avariant\x18\x02 \x01(\tR\avariant\"\x89\x01\n" +
+	"\x18UpdateBrandPolicyRequest\x124\n" +
+	"\x04meta\x18\x01 \x01(\v2 .orderfill.common.v1.RequestMetaR\x04meta\x127\n" +
+	"\x06policy\x18\x02 \x01(\v2\x1f.orderfill.brand.v1.BrandPolicyR\x06policy\"T\n" +
+	"\x19UpdateBrandPolicyResponse\x127\n" +
+	"\x06policy\x18\x01 \x01(\v2\x1f.orderfill.brand.v1.BrandPolicyR\x06policy2\xa6\x03\n" +
 	"\fBrandService\x12g\n" +
 	"\x0eGetBrandPolicy\x12).orderfill.brand.v1.GetBrandPolicyRequest\x1a*.orderfill.brand.v1.GetBrandPolicyResponse\x12[\n" +
 	"\n" +
 	"ListBrands\x12%.orderfill.brand.v1.ListBrandsRequest\x1a&.orderfill.brand.v1.ListBrandsResponse\x12^\n" +
-	"\vDetectBrand\x12&.orderfill.brand.v1.DetectBrandRequest\x1a'.orderfill.brand.v1.DetectBrandResponseB<Z:order-fill/backend/proto/gen/go/orderfill/brand/v1;brandv1b\x06proto3"
+	"\vDetectBrand\x12&.orderfill.brand.v1.DetectBrandRequest\x1a'.orderfill.brand.v1.DetectBrandResponse\x12p\n" +
+	"\x11UpdateBrandPolicy\x12,.orderfill.brand.v1.UpdateBrandPolicyRequest\x1a-.orderfill.brand.v1.UpdateBrandPolicyResponseB<Z:order-fill/backend/proto/gen/go/orderfill/brand/v1;brandv1b\x06proto3"
 
 var (
 	file_orderfill_brand_v1_brand_proto_rawDescOnce sync.Once
@@ -534,29 +637,37 @@ func file_orderfill_brand_v1_brand_proto_rawDescGZIP() []byte {
 	return file_orderfill_brand_v1_brand_proto_rawDescData
 }
 
-var file_orderfill_brand_v1_brand_proto_msgTypes = make([]protoimpl.MessageInfo, 7)
+var file_orderfill_brand_v1_brand_proto_msgTypes = make([]protoimpl.MessageInfo, 9)
 var file_orderfill_brand_v1_brand_proto_goTypes = []any{
-	(*BrandPolicy)(nil),            // 0: orderfill.brand.v1.BrandPolicy
-	(*GetBrandPolicyRequest)(nil),  // 1: orderfill.brand.v1.GetBrandPolicyRequest
-	(*GetBrandPolicyResponse)(nil), // 2: orderfill.brand.v1.GetBrandPolicyResponse
-	(*ListBrandsRequest)(nil),      // 3: orderfill.brand.v1.ListBrandsRequest
-	(*ListBrandsResponse)(nil),     // 4: orderfill.brand.v1.ListBrandsResponse
-	(*DetectBrandRequest)(nil),     // 5: orderfill.brand.v1.DetectBrandRequest
-	(*DetectBrandResponse)(nil),    // 6: orderfill.brand.v1.DetectBrandResponse
+	(*BrandPolicy)(nil),               // 0: orderfill.brand.v1.BrandPolicy
+	(*GetBrandPolicyRequest)(nil),     // 1: orderfill.brand.v1.GetBrandPolicyRequest
+	(*GetBrandPolicyResponse)(nil),    // 2: orderfill.brand.v1.GetBrandPolicyResponse
+	(*ListBrandsRequest)(nil),         // 3: orderfill.brand.v1.ListBrandsRequest
+	(*ListBrandsResponse)(nil),        // 4: orderfill.brand.v1.ListBrandsResponse
+	(*DetectBrandRequest)(nil),        // 5: orderfill.brand.v1.DetectBrandRequest
+	(*DetectBrandResponse)(nil),       // 6: orderfill.brand.v1.DetectBrandResponse
+	(*UpdateBrandPolicyRequest)(nil),  // 7: orderfill.brand.v1.UpdateBrandPolicyRequest
+	(*UpdateBrandPolicyResponse)(nil), // 8: orderfill.brand.v1.UpdateBrandPolicyResponse
+	(*v1.RequestMeta)(nil),            // 9: orderfill.common.v1.RequestMeta
 }
 var file_orderfill_brand_v1_brand_proto_depIdxs = []int32{
 	0, // 0: orderfill.brand.v1.GetBrandPolicyResponse.policy:type_name -> orderfill.brand.v1.BrandPolicy
-	1, // 1: orderfill.brand.v1.BrandService.GetBrandPolicy:input_type -> orderfill.brand.v1.GetBrandPolicyRequest
-	3, // 2: orderfill.brand.v1.BrandService.ListBrands:input_type -> orderfill.brand.v1.ListBrandsRequest
-	5, // 3: orderfill.brand.v1.BrandService.DetectBrand:input_type -> orderfill.brand.v1.DetectBrandRequest
-	2, // 4: orderfill.brand.v1.BrandService.GetBrandPolicy:output_type -> orderfill.brand.v1.GetBrandPolicyResponse
-	4, // 5: orderfill.brand.v1.BrandService.ListBrands:output_type -> orderfill.brand.v1.ListBrandsResponse
-	6, // 6: orderfill.brand.v1.BrandService.DetectBrand:output_type -> orderfill.brand.v1.DetectBrandResponse
-	4, // [4:7] is the sub-list for method output_type
-	1, // [1:4] is the sub-list for method input_type
-	1, // [1:1] is the sub-list for extension type_name
-	1, // [1:1] is the sub-list for extension extendee
-	0, // [0:1] is the sub-list for field type_name
+	9, // 1: orderfill.brand.v1.UpdateBrandPolicyRequest.meta:type_name -> orderfill.common.v1.RequestMeta
+	0, // 2: orderfill.brand.v1.UpdateBrandPolicyRequest.policy:type_name -> orderfill.brand.v1.BrandPolicy
+	0, // 3: orderfill.brand.v1.UpdateBrandPolicyResponse.policy:type_name -> orderfill.brand.v1.BrandPolicy
+	1, // 4: orderfill.brand.v1.BrandService.GetBrandPolicy:input_type -> orderfill.brand.v1.GetBrandPolicyRequest
+	3, // 5: orderfill.brand.v1.BrandService.ListBrands:input_type -> orderfill.brand.v1.ListBrandsRequest
+	5, // 6: orderfill.brand.v1.BrandService.DetectBrand:input_type -> orderfill.brand.v1.DetectBrandRequest
+	7, // 7: orderfill.brand.v1.BrandService.UpdateBrandPolicy:input_type -> orderfill.brand.v1.UpdateBrandPolicyRequest
+	2, // 8: orderfill.brand.v1.BrandService.GetBrandPolicy:output_type -> orderfill.brand.v1.GetBrandPolicyResponse
+	4, // 9: orderfill.brand.v1.BrandService.ListBrands:output_type -> orderfill.brand.v1.ListBrandsResponse
+	6, // 10: orderfill.brand.v1.BrandService.DetectBrand:output_type -> orderfill.brand.v1.DetectBrandResponse
+	8, // 11: orderfill.brand.v1.BrandService.UpdateBrandPolicy:output_type -> orderfill.brand.v1.UpdateBrandPolicyResponse
+	8, // [8:12] is the sub-list for method output_type
+	4, // [4:8] is the sub-list for method input_type
+	4, // [4:4] is the sub-list for extension type_name
+	4, // [4:4] is the sub-list for extension extendee
+	0, // [0:4] is the sub-list for field type_name
 }
 
 func init() { file_orderfill_brand_v1_brand_proto_init() }
@@ -571,7 +682,7 @@ func file_orderfill_brand_v1_brand_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_orderfill_brand_v1_brand_proto_rawDesc), len(file_orderfill_brand_v1_brand_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   7,
+			NumMessages:   9,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

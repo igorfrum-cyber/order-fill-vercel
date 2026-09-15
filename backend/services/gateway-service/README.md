@@ -27,11 +27,14 @@ curl http://127.0.0.1:8080/readyz
 ## Возможности и границы ответственности
 
 - HTTP API для входа по паролю, TOTP/recovery code и passkey, управления сессиями и смены пароля.
-- Административные операции над компаниями и пользователями с ролевыми ограничениями.
+- Административные операции над компаниями и пользователями с ролевыми ограничениями, включая безопасное отключение и повторное включение аккаунтов.
 - Прием исходных книг через `multipart/form-data`, создание заданий `order_fill` и `north_merge` (опционально `warehouse_file` второго склада Тюмени), чтение статуса/отчета, отправка ручных правок.
 - Скачивание отдельных файлов и ZIP-архива, а также выдача метаданных и окон табличного preview без распаковки всей книги в gateway.
 - Публичные метаданные и логотип страницы входа компании по `login_slug`.
 - Аудит отдельных административных действий и агрегированный статус инфраструктуры для `platform_admin`.
+- Список администраторов платформы доступен всем `platform_admin`; приглашение и управление дополнительными администраторами доступны только защищённому главному администратору.
+- Просмотр и изменение действующих правил брендов администратором платформы.
+- Просмотр и изменение реквизитов заказа своей компании; скидка хранится отдельно по бренду и валидируется как процент от 0 до 100.
 - CORS, CSRF-проверка POST-запросов (включая public login/invite/passkey), security headers (`Cache-Control: private, no-store`, `Cross-Origin-Opener-Policy`/`Cross-Origin-Resource-Policy: same-origin`) и HTTP-only cookie `order_fill_session`.
 
 Gateway не владеет постоянным хранилищем. `POSTGRES_ADDR` и `REDIS_ADDR` используются только диагностическим `/api/v1/status`.
@@ -95,15 +98,22 @@ Gateway не владеет постоянным хранилищем. `POSTGRES
 - `GET /api/v1/jobs/{job_id}/files/{file_id}/preview/find`
 - `GET /api/v1/jobs`
 - `GET /api/v1/companies`
+- `GET /api/v1/brand-rules`
+- `POST /api/v1/brand-rules/{brand}`
 - `POST /api/v1/companies`
 - `POST /api/v1/companies/{company_id}/disable`
 - `POST /api/v1/companies/{company_id}/login-slug`
 - `POST /api/v1/companies/{company_id}/profile`
+- `GET /api/v1/companies/{company_id}/order-profile`
+- `POST /api/v1/companies/{company_id}/order-profile`
 - `POST /api/v1/companies/{company_id}/logo`
 - `POST /api/v1/companies/{company_id}/logo/clear`
 - `GET /api/v1/companies/{company_id}/users`
 - `POST /api/v1/companies/{company_id}/users`
+- `GET /api/v1/platform-admins`
+- `POST /api/v1/platform-admins`
 - `POST /api/v1/users/{user_id}/disable`
+- `POST /api/v1/users/{user_id}/enable`
 - `POST /api/v1/users/{user_id}/reset`
 - `GET /api/v1/audit`
 - `GET /api/v1/status`
@@ -113,7 +123,7 @@ Gateway не владеет постоянным хранилищем. `POSTGRES
 
 Без cookie доступны health/readiness, login, завершение 2FA-login, прием invite, начало/завершение passkey-login и публичные маршруты компании. Остальные маршруты проходят через `ValidateSession`. POST-запросы дополнительно требуют `X-Requested-With: fetch`; если указан `Origin`, он должен входить в разрешенный список.
 
-Сессионная cookie имеет `HttpOnly`, `SameSite=Lax`, TTL 8 часов и получает `Secure`/`Domain` из конфигурации. JSON для auth/admin ограничен 8 KiB, JSON задания — 1 MiB, все multipart-тело задания — 64 MiB. MIME загружаемой книги берётся из расширения (`.xlsx`/`.xlsm`), клиентский `Content-Type` игнорируется. Логотип ограничен 512 KiB и форматами PNG, JPEG или WebP.
+Сессионная cookie имеет `HttpOnly`, `SameSite=Lax`, TTL 8 часов и получает `Secure`/`Domain` из конфигурации. JSON для auth/admin ограничен 8 KiB, профиль реквизитов компании — 32 KiB, JSON задания — 1 MiB, все multipart-тело задания — 64 MiB. MIME загружаемой книги берётся из расширения (`.xlsx`/`.xlsm`), клиентский `Content-Type` игнорируется. Логотип ограничен 512 KiB и форматами PNG, JPEG или WebP.
 
 ## Внутренние зависимости
 
@@ -125,6 +135,7 @@ Gateway не владеет постоянным хранилищем. `POSTGRES
 | `job-service` | Создание и чтение заданий, отчетов, файлов и ручных правок. |
 | `file-service` | Загрузка и скачивание объектов, архивы, логотипы и preview-чанки. |
 | `audit-service` | Запись и чтение событий аудита. Запись выполняется best-effort с таймаутом 750 ms. |
+| `brand-service` | Каталог, действующие политики и сохранение изменений администратора платформы. |
 | document worker, PostgreSQL, Redis | Только проверки для `/api/v1/status`; gateway не обращается к их данным напрямую. |
 
 gRPC-контракты находятся в [`../../proto/orderfill`](../../proto/orderfill). Максимальный размер gRPC-сообщения — 64 MiB.
@@ -146,6 +157,7 @@ gRPC-контракты находятся в [`../../proto/orderfill`](../../pr
 | `JOB_GRPC_ADDR` | `127.0.0.1:9094` | Адрес `job-service`. |
 | `FILE_GRPC_ADDR` | `127.0.0.1:9095` | Адрес `file-service`. |
 | `AUDIT_GRPC_ADDR` | `127.0.0.1:9100` | Адрес `audit-service`. |
+| `BRAND_GRPC_ADDR` | `127.0.0.1:9098` | Адрес `brand-service` для страницы правил. |
 | `WORKER_HEALTH_URL` | `http://127.0.0.1:8092/healthz` | HTTP URL document worker для `/api/v1/status`. |
 | `FILE_HEALTH_URL` | `http://127.0.0.1:8086/healthz` | HTTP URL `file-service` для `/api/v1/status`. |
 | `POSTGRES_ADDR` | `127.0.0.1:5432` | TCP-адрес PostgreSQL для `/api/v1/status`. |

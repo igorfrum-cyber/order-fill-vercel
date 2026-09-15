@@ -7,7 +7,7 @@ import { companyLoginURL, companySlugFromHost, companySlugFromPath, homeScreen, 
 import { shouldAutoStartTour, tourSceneForView } from "./features/help/firstRun.js";
 import { headerContext, roleLabel, securitySetupLabel, twoFactorRequiredHint } from "./features/help/copy.js";
 import { initialEditState } from "./features/order/reviewEdits.js";
-import { CompaniesScreen, CompanyScreen, JobHistory, OverviewScreen, QueueScreen, UsersScreen } from "./ui/admin/AdminScreens.jsx";
+import { BrandRulesScreen, CompaniesScreen, CompanyScreen, JobHistory, OverviewScreen, QueueScreen, UsersScreen } from "./ui/admin/AdminScreens.jsx";
 import { AccountScreen, InviteScreen, LoginScreen } from "./ui/auth/AuthScreens.jsx";
 import { HelpButton, ProfileMenu } from "./ui/chrome.jsx";
 import { HelpDrawer } from "./ui/help/HelpDrawer.jsx";
@@ -340,6 +340,7 @@ export default function App() {
               />
             ) : null}
             {screen === "companies" ? <CompaniesScreen selectedId={companyId} onSelect={selectCompany} /> : null}
+            {screen === "brand-rules" ? <BrandRulesScreen /> : null}
             {screen === "company" ? (
               <CompanyScreen
                 me={me}
@@ -354,7 +355,7 @@ export default function App() {
               />
             ) : null}
             {screen === "users" ? (
-              <UsersScreen actorId={me.id} actorRole={me.role} companyId={resolveUsersCompanyId(me.role, companyId, me.company_id)} onCompany={selectCompany} />
+              <UsersScreen actorId={me.id} actorRole={me.role} actorIsPrimaryAdmin={me.is_primary_admin} companyId={resolveUsersCompanyId(me.role, companyId, me.company_id)} onCompany={selectCompany} />
             ) : null}
             {screen === "account" ? (
               <AccountScreen

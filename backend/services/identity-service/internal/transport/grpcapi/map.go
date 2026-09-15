@@ -20,6 +20,8 @@ func protoUser(u domain.User) *identityv1.User {
 		HasLogo:          u.CompanyHasLogo,
 		TwoFactorEnabled: u.TwoFactorEnabled,
 		HasPasskey:       u.HasPasskey,
+		Activated:        u.PasswordHash != "",
+		IsPrimaryAdmin:   u.IsPrimaryAdmin,
 	}
 	if u.LastSeenAt != nil {
 		out.LastSeenAt = u.LastSeenAt.UTC().Format(time.RFC3339)
@@ -37,12 +39,56 @@ func protoCompany(c domain.Company) *identityv1.Company {
 		LoginSlug:    c.LoginSlug,
 		HasLogo:      c.HasLogo(),
 		MatchingMode: protoMatchingMode(c.MatchingMode),
+		OrderProfile: protoOrderProfile(c.OrderProfile),
 	}
 	if !c.CreatedAt.IsZero() {
 		out.CreatedAt = c.CreatedAt.UTC().Format(time.RFC3339)
 	}
 	if c.DisabledAt != nil {
 		out.DisabledAt = c.DisabledAt.UTC().Format(time.RFC3339)
+	}
+	return out
+}
+
+func protoPublicCompany(c domain.Company) *identityv1.Company {
+	out := protoCompany(c)
+	out.OrderProfile = nil
+	return out
+}
+
+func protoOrderProfile(profile domain.OrderProfile) *identityv1.CompanyOrderProfile {
+	out := &identityv1.CompanyOrderProfile{
+		LegalName: profile.LegalName, Consignee: profile.Consignee, Address: profile.Address,
+		ContactName: profile.ContactName, ContactPhone: profile.ContactPhone, Carrier: profile.Carrier,
+		DeliveryPayer: profile.DeliveryPayer, DeliveryDestination: profile.DeliveryDestination,
+	}
+	for _, item := range profile.BrandTerms {
+		out.BrandTerms = append(out.BrandTerms, &identityv1.CompanyBrandTerms{
+			Brand: item.Brand, DealerName: item.DealerName, PaymentMethod: item.PaymentMethod,
+			PaymentControl: item.PaymentControl, CustomerType: item.CustomerType,
+			DiscountBasisPoints: item.DiscountBasisPoints,
+			DiscountSet:         item.DiscountSet,
+		})
+	}
+	return out
+}
+
+func domainOrderProfile(profile *identityv1.CompanyOrderProfile) domain.OrderProfile {
+	if profile == nil {
+		return domain.OrderProfile{}
+	}
+	out := domain.OrderProfile{
+		LegalName: profile.GetLegalName(), Consignee: profile.GetConsignee(), Address: profile.GetAddress(),
+		ContactName: profile.GetContactName(), ContactPhone: profile.GetContactPhone(), Carrier: profile.GetCarrier(),
+		DeliveryPayer: profile.GetDeliveryPayer(), DeliveryDestination: profile.GetDeliveryDestination(),
+	}
+	for _, item := range profile.GetBrandTerms() {
+		out.BrandTerms = append(out.BrandTerms, domain.BrandTerms{
+			Brand: item.GetBrand(), DealerName: item.GetDealerName(), PaymentMethod: item.GetPaymentMethod(),
+			PaymentControl: item.GetPaymentControl(), CustomerType: item.GetCustomerType(),
+			DiscountBasisPoints: item.GetDiscountBasisPoints(),
+			DiscountSet:         item.GetDiscountSet(),
+		})
 	}
 	return out
 }

@@ -20,23 +20,26 @@ import (
 const (
 	sessionCookieName = "order_fill_session"
 	authJSONLimit     = 8 << 10
+	companyJSONLimit  = 32 << 10
 	jobJSONLimit      = 1 << 20
 )
 
 type userContextKey struct{}
 
 type User struct {
-	ID          string
-	Login       string
-	Role        string
-	CompanyID   string
-	CompanyName string
-	LoginSlug   string
-	HasLogo     bool
-	TwoFactor   bool
-	HasPasskey  bool
-	LastSeenAt  string
-	DisabledAt  string
+	ID             string
+	Login          string
+	Role           string
+	CompanyID      string
+	CompanyName    string
+	LoginSlug      string
+	HasLogo        bool
+	TwoFactor      bool
+	HasPasskey     bool
+	LastSeenAt     string
+	DisabledAt     string
+	Activated      bool
+	IsPrimaryAdmin bool
 }
 
 func userFromProto(u *identityv1.User) User {
@@ -48,6 +51,7 @@ func userFromProto(u *identityv1.User) User {
 		CompanyName: u.GetCompanyName(), LoginSlug: u.GetLoginSlug(), HasLogo: u.GetHasLogo(),
 		TwoFactor: u.GetTwoFactorEnabled(), HasPasskey: u.GetHasPasskey(),
 		LastSeenAt: u.GetLastSeenAt(), DisabledAt: u.GetDisabledAt(),
+		Activated: u.GetActivated(), IsPrimaryAdmin: u.GetIsPrimaryAdmin(),
 	}
 }
 

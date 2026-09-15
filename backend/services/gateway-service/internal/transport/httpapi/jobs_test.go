@@ -101,3 +101,34 @@ func TestCreateOrderFillUploadsWarehouseWithItsOwnRole(t *testing.T) {
 		t.Fatalf("input ids=%v want %v", got, wantIDs)
 	}
 }
+
+func TestCreateNorthMergeKeepsChristinaVariants(t *testing.T) {
+	t.Parallel()
+	var body bytes.Buffer
+	form := multipart.NewWriter(&body)
+	for _, item := range []struct{ field, name string }{{"blank_home_files", "surgut-home.xlsx"}, {"blank_proff_files", "surgut-proff.xlsx"}} {
+		part, err := form.CreateFormFile(item.field, item.name)
+		if err != nil {
+			t.Fatal(err)
+		}
+		_, _ = io.WriteString(part, item.name)
+	}
+	_ = form.WriteField("brand", "christina")
+	if err := form.Close(); err != nil {
+		t.Fatal(err)
+	}
+	files := &uploadFileClient{}
+	jobs := &uploadJobClient{}
+	api := &API{Clients: clients.Clients{Files: files, Jobs: jobs}}
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/jobs/north-merge", &body)
+	req.Header.Set("Content-Type", form.FormDataContentType())
+	req = req.WithContext(withUser(t.Context(), User{ID: "user-1", CompanyID: "company-1", Role: "purchaser"}))
+	recorder := httptest.NewRecorder()
+	api.createNorthMerge(recorder, req)
+	if recorder.Code != http.StatusAccepted {
+		t.Fatalf("status=%d body=%s", recorder.Code, recorder.Body.String())
+	}
+	if got := []string{files.requests[0].GetKey(), files.requests[1].GetKey()}; !strings.HasPrefix(got[0], "blank-home/") || !strings.HasPrefix(got[1], "blank-proff/") {
+		t.Fatalf("variant keys=%v", got)
+	}
+}

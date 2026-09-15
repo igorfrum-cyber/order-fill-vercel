@@ -149,6 +149,17 @@ export function updateCompany(companyId, name, loginSlug, matchingMode) {
   });
 }
 
+export function getCompanyOrderProfile(companyId) {
+  return apiClient.request(`/api/v1/companies/${encodeURIComponent(companyId)}/order-profile`);
+}
+
+export function updateCompanyOrderProfile(companyId, profile) {
+  return apiClient.request(`/api/v1/companies/${encodeURIComponent(companyId)}/order-profile`, {
+    method: "POST",
+    body: JSON.stringify(profile),
+  });
+}
+
 export function setCompanyLogo(companyId, file) {
   const body = new FormData();
   body.append("logo", file);
@@ -183,8 +194,26 @@ export function createUser(companyId, login, role) {
   });
 }
 
+export function listPlatformAdmins() {
+  return apiClient.request("/api/v1/platform-admins");
+}
+
+export function createPlatformAdmin(login) {
+  return apiClient.request("/api/v1/platform-admins", {
+    method: "POST",
+    body: JSON.stringify({ login }),
+  });
+}
+
 export function disableUser(userId) {
   return apiClient.request(`/api/v1/users/${encodeURIComponent(userId)}/disable`, {
+    method: "POST",
+    body: JSON.stringify({}),
+  });
+}
+
+export function enableUser(userId) {
+  return apiClient.request(`/api/v1/users/${encodeURIComponent(userId)}/enable`, {
     method: "POST",
     body: JSON.stringify({}),
   });

@@ -29,6 +29,49 @@ func TestUpdateKeepsNameWhenOnlySlugSent(t *testing.T) {
 	}
 }
 
+func TestUpdateOrderProfileNormalizesAndScopesCompany(t *testing.T) {
+	t.Parallel()
+	store := memory.NewStore()
+	svc := companies.New(store, nil)
+	platform := domain.User{ID: "platform", Role: domain.RolePlatformAdmin}
+	company, err := svc.Create(t.Context(), platform, "Acme", "acme-profile", domain.MatchingModeStandard)
+	if err != nil {
+		t.Fatal(err)
+	}
+	owner := domain.User{ID: "owner", Role: domain.RoleCompanyOwner, CompanyID: company.ID}
+	got, err := svc.UpdateOrderProfile(t.Context(), owner, "ignored", domain.OrderProfile{
+		LegalName:  "  ООО Тест  ",
+		BrandTerms: []domain.BrandTerms{{Brand: "ANGIOPHARM", DiscountBasisPoints: 3_525, DiscountSet: true}},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.ID != company.ID || got.OrderProfile.LegalName != "ООО Тест" || got.OrderProfile.BrandTerms[0].Brand != "angiopharm" {
+		t.Fatalf("got %+v", got)
+	}
+}
+
+func TestUpdateOrderProfileRejectsPurchaserAndInvalidDiscount(t *testing.T) {
+	t.Parallel()
+	store := memory.NewStore()
+	svc := companies.New(store, nil)
+	platform := domain.User{ID: "platform", Role: domain.RolePlatformAdmin}
+	company, err := svc.Create(t.Context(), platform, "Acme", "acme-invalid-profile", domain.MatchingModeStandard)
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, err = svc.UpdateOrderProfile(t.Context(), domain.User{ID: "buyer", Role: domain.RolePurchaser, CompanyID: company.ID}, company.ID, domain.OrderProfile{})
+	if !errors.Is(err, domain.ErrNotFound) {
+		t.Fatalf("purchaser got %v", err)
+	}
+	_, err = svc.UpdateOrderProfile(t.Context(), platform, company.ID, domain.OrderProfile{
+		BrandTerms: []domain.BrandTerms{{Brand: "klapp", DiscountBasisPoints: 10_001, DiscountSet: true}},
+	})
+	if !errors.Is(err, domain.ErrInvalid) {
+		t.Fatalf("discount got %v", err)
+	}
+}
+
 func TestListReturnsOwnCompanyForPurchaser(t *testing.T) {
 	t.Parallel()
 	now := time.Date(2026, 9, 5, 12, 0, 0, 0, time.UTC)

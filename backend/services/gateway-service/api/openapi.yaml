@@ -18,6 +18,7 @@ tags:
   - name: preview
   - name: audit
   - name: status
+  - name: brands
 paths:
   /readyz:
     get:
@@ -674,6 +675,49 @@ paths:
           $ref: "#/components/responses/NotFound"
         "409":
           $ref: "#/components/responses/Conflict"
+  /api/v1/companies/{company_id}/order-profile:
+    get:
+      operationId: getCompanyOrderProfile
+      tags: [companies]
+      summary: Read company requisites and supplier-specific order terms
+      parameters:
+        - $ref: "#/components/parameters/CompanyId"
+      responses:
+        "200":
+          description: Company order profile.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CompanyOrderProfile"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    post:
+      operationId: updateCompanyOrderProfile
+      tags: [companies]
+      summary: Replace company requisites and supplier-specific order terms
+      parameters:
+        - $ref: "#/components/parameters/CompanyId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CompanyOrderProfile"
+      responses:
+        "200":
+          description: Saved company order profile.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CompanyOrderProfile"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
   /api/v1/companies/{company_id}/logo:
     post:
       operationId: setCompanyLogo
@@ -813,6 +857,75 @@ paths:
           $ref: "#/components/responses/Unauthorized"
         "404":
           $ref: "#/components/responses/NotFound"
+  /api/v1/platform-admins:
+    get:
+      operationId: listPlatformAdmins
+      tags: [users]
+      summary: List platform administrators
+      responses:
+        "200":
+          description: Platform administrators.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [users]
+                properties:
+                  users:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/User"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    post:
+      operationId: createPlatformAdmin
+      tags: [users]
+      summary: Invite a secondary platform administrator (primary admin only)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [login]
+              properties:
+                login:
+                  type: string
+      responses:
+        "201":
+          description: Platform administrator created with a one-time invite URL.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [user, invite_url]
+                properties:
+                  user:
+                    $ref: "#/components/schemas/User"
+                  invite_url:
+                    type: string
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /api/v1/users/{user_id}/enable:
+    post:
+      operationId: enableUser
+      tags: [users]
+      summary: Enable a disabled user without restoring old sessions
+      parameters:
+        - $ref: "#/components/parameters/UserId"
+      responses:
+        "204":
+          description: Enabled.
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
   /api/v1/users/{user_id}/reset:
     post:
       operationId: resetUserAccess
@@ -875,6 +988,60 @@ paths:
                     type: array
                     items:
                       $ref: "#/components/schemas/StatusComponent"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /api/v1/brand-rules:
+    get:
+      operationId: listBrandRules
+      tags: [brands]
+      summary: List effective brand rules
+      description: Available only to platform_admin. Rules come from brand-service.
+      responses:
+        "200":
+          description: Effective static brand rules.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [rules]
+                properties:
+                  rules:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/BrandRule"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /api/v1/brand-rules/{brand}:
+    post:
+      operationId: updateBrandRule
+      tags: [brands]
+      summary: Update an effective brand rule
+      description: Available only to platform_admin. The saved rule is used by subsequent jobs.
+      parameters:
+        - in: path
+          name: brand
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/BrandRule"
+      responses:
+        "200":
+          description: Saved effective brand rule.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BrandRule"
+        "400":
+          $ref: "#/components/responses/BadRequest"
         "401":
           $ref: "#/components/responses/Unauthorized"
         "404":
@@ -1209,7 +1376,7 @@ components:
   schemas:
     User:
       type: object
-      required: [id, login, role]
+      required: [id, login, role, activated, is_primary_admin]
       properties:
         id:
           type: string
@@ -1230,6 +1397,12 @@ components:
           type: boolean
         has_passkey:
           type: boolean
+        activated:
+          type: boolean
+          description: The invite was accepted and the account currently has a password.
+        is_primary_admin:
+          type: boolean
+          description: True only for the protected bootstrap platform administrator.
         last_seen_at:
           type: string
           format: date-time
@@ -1303,6 +1476,68 @@ components:
           type: string
           enum: [standard, smart]
           description: Present only for platform admin.
+        order_profile:
+          $ref: "#/components/schemas/CompanyOrderProfile"
+    CompanyOrderProfile:
+      type: object
+      required: [legal_name, consignee, address, contact_name, contact_phone, carrier, delivery_payer, delivery_destination, brand_terms]
+      properties:
+        legal_name:
+          type: string
+          maxLength: 300
+        consignee:
+          type: string
+          maxLength: 300
+        address:
+          type: string
+          maxLength: 300
+        contact_name:
+          type: string
+          maxLength: 300
+        contact_phone:
+          type: string
+          maxLength: 300
+        carrier:
+          type: string
+          maxLength: 300
+        delivery_payer:
+          type: string
+          maxLength: 300
+        delivery_destination:
+          type: string
+          maxLength: 300
+        brand_terms:
+          type: array
+          maxItems: 20
+          items:
+            $ref: "#/components/schemas/CompanyBrandTerms"
+    CompanyBrandTerms:
+      type: object
+      required: [brand, dealer_name, payment_method, payment_control, customer_type, discount_basis_points, discount_set]
+      properties:
+        brand:
+          type: string
+          pattern: "^[a-z][a-z0-9_]{0,49}$"
+        dealer_name:
+          type: string
+          maxLength: 300
+        payment_method:
+          type: string
+          maxLength: 300
+        payment_control:
+          type: string
+          maxLength: 300
+        customer_type:
+          type: string
+          maxLength: 300
+        discount_basis_points:
+          type: integer
+          minimum: 0
+          maximum: 10000
+          description: Hundredths of one percent; 3025 means 30.25%.
+        discount_set:
+          type: boolean
+          description: False preserves the supplier blank's existing discount.
     JobListItem:
       type: object
       required: [id, type, status, created_at]
@@ -1441,7 +1676,8 @@ components:
           description: Required when the actor is platform_admin.
     NorthMergeRequest:
       type: object
-      required: [brand, blank_files]
+      required: [brand]
+      description: At least one of blank_files, blank_home_files, or blank_proff_files is required.
       properties:
         brand:
           type: string
@@ -1452,6 +1688,18 @@ components:
           items:
             type: string
             format: binary
+        blank_home_files:
+          type: array
+          items:
+            type: string
+            format: binary
+          description: Christina HOME city blanks.
+        blank_proff_files:
+          type: array
+          items:
+            type: string
+            format: binary
+          description: Christina PROFF city blanks.
         tyumen_source_file:
           type: string
           format: binary
@@ -1462,6 +1710,42 @@ components:
         company_id:
           type: string
           description: Required when the actor is platform_admin.
+    BrandRule:
+      type: object
+      required: [brand, label, adjustment]
+      properties:
+        brand:
+          type: string
+        label:
+          type: string
+        variant:
+          type: string
+        adjustment:
+          type: string
+        adjustment_label:
+          type: string
+        adjustment_comment:
+          type: string
+        quantity_multiple:
+          type: integer
+        min_quantity:
+          type: integer
+        preserve_hyphen:
+          type: boolean
+        prefix_aliases:
+          type: array
+          items:
+            type: string
+        blank_quantity_header:
+          type: string
+        blank_box_header:
+          type: string
+        blank_layout:
+          type: string
+        allow_small_positive_order:
+          type: boolean
+        require_unit:
+          type: [boolean, "null"]
     JobReport:
       type: object
       required: [job_id, summary, rows]

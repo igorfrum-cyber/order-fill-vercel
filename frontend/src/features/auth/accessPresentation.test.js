@@ -61,6 +61,12 @@ test("canInviteRole follows inviteRoleOptions", () => {
   assert.equal(canInviteRole("purchaser", "purchaser"), false);
 });
 
+test("only primary platform admin manages other platform admins", () => {
+  assert.equal(canManageListedUser("platform_admin", "platform_admin", true, false), true);
+  assert.equal(canManageListedUser("platform_admin", "platform_admin", false, false), false);
+  assert.equal(canManageListedUser("platform_admin", "platform_admin", true, true), false);
+});
+
 test("company admin cannot disable or reset the company owner", () => {
   assert.equal(canManageListedUser("platform_admin", "company_owner"), true);
   assert.equal(canManageListedUser("company_owner", "company_admin"), true);
@@ -132,7 +138,7 @@ test("navItemsForRole lists only what the role may open", () => {
   assert.deepEqual(navItemsForRole("purchaser").map((item) => item.id), ["order", "history"]);
   assert.deepEqual(navItemsForRole("company_admin").map((item) => item.id), ["queue", "users", "company", "history"]);
   assert.deepEqual(navItemsForRole("company_owner").map((item) => item.id), ["queue", "users", "company", "history"]);
-  assert.deepEqual(navItemsForRole("platform_admin").map((item) => item.id), ["overview", "history", "companies", "users"]);
+  assert.deepEqual(navItemsForRole("platform_admin").map((item) => item.id), ["overview", "history", "companies", "brand-rules", "users"]);
 });
 
 test("platform admin must pick a company to manage users", () => {

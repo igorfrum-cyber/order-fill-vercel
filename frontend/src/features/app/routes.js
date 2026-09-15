@@ -14,6 +14,7 @@ export function parseAppPath(pathname) {
   if (path === "/users") return { screen: "users", jobId: "", unknown: false };
   if (path === "/account") return { screen: "account", jobId: "", unknown: false };
   if (path === "/companies") return { screen: "companies", jobId: "", unknown: false };
+  if (path === "/brand-rules") return { screen: "brand-rules", jobId: "", unknown: false };
   if (path === "/north") return { screen: "north", jobId: "", unknown: false };
   const job = path.match(/^\/jobs\/([^/]+)$/);
   if (job) return { screen: "order", jobId: decodeURIComponent(job[1]), unknown: false };
@@ -30,6 +31,7 @@ export function pathForScreen(screen, jobId = "") {
   if (screen === "users") return "/users";
   if (screen === "account") return "/account";
   if (screen === "companies") return "/companies";
+  if (screen === "brand-rules") return "/brand-rules";
   if (screen === "north") return "/north";
   return "/";
 }

@@ -1,0 +1,1 @@
+ALTER TABLE companies ADD COLUMN IF NOT EXISTS order_profile JSONB NOT NULL DEFAULT '{}'::jsonb;

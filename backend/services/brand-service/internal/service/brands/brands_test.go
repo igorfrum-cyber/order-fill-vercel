@@ -1,6 +1,7 @@
 package brands_test
 
 import (
+	"context"
 	"slices"
 	"testing"
 
@@ -8,6 +9,17 @@ import (
 	"order-fill/backend/services/brand-service/internal/service/brands"
 	"order-fill/backend/services/brand-service/internal/storage/static"
 )
+
+type policyStore struct{ policy domain.Policy }
+
+func (s *policyStore) Get(context.Context, string) (domain.Policy, bool, error) {
+	return s.policy, s.policy.Key != "", nil
+}
+
+func (s *policyStore) Save(_ context.Context, policy domain.Policy, _ string) error {
+	s.policy = policy
+	return nil
+}
 
 func TestAllCurrentBrandsHavePolicies(t *testing.T) {
 	t.Parallel()
@@ -61,5 +73,25 @@ func TestDetectChristinaVariantFromFileName(t *testing.T) {
 	_, variant, ok = brands.Detect("Кристина", "бланк HOME.xlsx")
 	if !ok || variant != "HOME" {
 		t.Fatalf("home variant=%q", variant)
+	}
+}
+
+func TestUpdatePolicyValidatesAndOverridesDefault(t *testing.T) {
+	t.Parallel()
+	store := &policyStore{}
+	svc := brands.New(store)
+	policy := static.Policy("klapp")
+	policy.Multiple = 6
+	updated, err := svc.UpdatePolicy(t.Context(), policy, "admin")
+	if err != nil || updated.Multiple != 6 {
+		t.Fatalf("UpdatePolicy() = %+v, %v", updated, err)
+	}
+	got, err := svc.GetPolicy(t.Context(), "klapp", "PROFF")
+	if err != nil || got.Multiple != 6 || got.Variant != "PROFF" {
+		t.Fatalf("GetPolicy() = %+v, %v", got, err)
+	}
+	policy.Multiple = 0
+	if _, err := svc.UpdatePolicy(t.Context(), policy, "admin"); err == nil {
+		t.Fatal("expected invalid multiple")
 	}
 }

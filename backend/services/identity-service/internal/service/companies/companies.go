@@ -17,7 +17,30 @@ type Store interface {
 	GetCompanyByLoginSlug(ctx context.Context, slug string) (domain.Company, error)
 	ListCompanies(ctx context.Context) ([]domain.Company, error)
 	SetCompanyProfile(ctx context.Context, id, name, slug string, mode domain.MatchingMode) error
+	SetCompanyOrderProfile(ctx context.Context, id string, profile domain.OrderProfile) error
 	DisableCompany(ctx context.Context, id string, at time.Time) error
+}
+
+func (c *Companies) UpdateOrderProfile(ctx context.Context, actor domain.User, companyID string, profile domain.OrderProfile) (domain.Company, error) {
+	if domain.BoundToOwnCompany(actor) {
+		companyID = actor.CompanyID
+	}
+	if !domain.CanManageCompany(actor, companyID) || companyID == "" {
+		return domain.Company{}, domain.ErrNotFound
+	}
+	company, err := c.store.GetCompany(ctx, companyID)
+	if err != nil {
+		return domain.Company{}, domain.ErrNotFound
+	}
+	profile, err = domain.NormalizeOrderProfile(profile)
+	if err != nil {
+		return domain.Company{}, err
+	}
+	if err := c.store.SetCompanyOrderProfile(ctx, company.ID, profile); err != nil {
+		return domain.Company{}, err
+	}
+	company.OrderProfile = profile
+	return company, nil
 }
 
 type Companies struct {

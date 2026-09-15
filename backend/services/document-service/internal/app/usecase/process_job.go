@@ -261,6 +261,18 @@ func (u *ProcessJob) process(ctx context.Context, message port.JobMessage) error
 		if err != nil {
 			return err
 		}
+		orderfill.ApplyCompanyOrderProfile(
+			blanksLoaded[plan.Index].workbook,
+			detectedBrand,
+			orderfill.CompanyOrderProfile{
+				LegalName: message.OrderProfile.LegalName, Consignee: message.OrderProfile.Consignee,
+				Address: message.OrderProfile.Address, ContactName: message.OrderProfile.ContactName,
+				ContactPhone: message.OrderProfile.ContactPhone, Carrier: message.OrderProfile.Carrier,
+				DeliveryPayer: message.OrderProfile.DeliveryPayer, DeliveryDestination: message.OrderProfile.DeliveryDestination,
+				BrandTerms: companyBrandTerms(message.OrderProfile.BrandTerms),
+			},
+			u.now(),
+		)
 		rows = append(rows, result.Rows...)
 		summary = mergeSummary(summary, result.Summary)
 	}
@@ -309,6 +321,18 @@ func (u *ProcessJob) process(ctx context.Context, message port.JobMessage) error
 		return fmt.Errorf("save job result: %w", err)
 	}
 	return nil
+}
+
+func companyBrandTerms(items []port.BrandTerms) []orderfill.CompanyBrandTerms {
+	out := make([]orderfill.CompanyBrandTerms, 0, len(items))
+	for _, item := range items {
+		out = append(out, orderfill.CompanyBrandTerms{
+			Brand: item.Brand, DealerName: item.DealerName, PaymentMethod: item.PaymentMethod,
+			PaymentControl: item.PaymentControl, CustomerType: item.CustomerType,
+			DiscountBasisPoints: item.DiscountBasisPoints, DiscountSet: item.DiscountSet,
+		})
+	}
+	return out
 }
 
 func (u *ProcessJob) finalize(ctx context.Context, message port.JobMessage) error {

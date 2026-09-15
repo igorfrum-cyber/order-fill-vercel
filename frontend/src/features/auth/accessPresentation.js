@@ -54,6 +54,7 @@ export function navItemsForRole(role) {
       { id: "overview", path: "/overview", label: "Обзор" },
       { id: "history", path: "/jobs", label: "Выгрузки" },
       { id: "companies", path: "/companies", label: "Компании" },
+      { id: "brand-rules", path: "/brand-rules", label: "Правила брендов" },
       { id: "users", path: "/users", label: "Пользователи" },
     ];
   }
@@ -71,8 +72,11 @@ export function navItemsForRole(role) {
   ];
 }
 
-export function canManageListedUser(actorRole, targetRole) {
-  if (actorRole === "platform_admin") return true;
+export function canManageListedUser(actorRole, targetRole, actorIsPrimaryAdmin = false, targetIsPrimaryAdmin = false) {
+  if (actorRole === "platform_admin") {
+    if (targetRole === "platform_admin") return actorIsPrimaryAdmin && !targetIsPrimaryAdmin;
+    return true;
+  }
   if (actorRole === targetRole) return false;
   if (actorRole === "company_owner") {
     return targetRole === "company_admin" || targetRole === "purchaser";

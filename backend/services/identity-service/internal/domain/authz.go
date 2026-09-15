@@ -20,6 +20,9 @@ func CanInviteRole(actor User, role Role) bool {
 	}
 	switch actor.Role {
 	case RolePlatformAdmin:
+		if role == RolePlatformAdmin {
+			return actor.IsPrimaryAdmin
+		}
 		return role == RoleCompanyOwner || role == RoleCompanyAdmin || role == RolePurchaser
 	case RoleCompanyOwner:
 		return role == RoleCompanyAdmin || role == RolePurchaser
@@ -38,6 +41,9 @@ func CanManageUser(actor User, target User) bool {
 		return false
 	}
 	if actor.Role == RolePlatformAdmin {
+		if target.Role == RolePlatformAdmin {
+			return actor.IsPrimaryAdmin && !target.IsPrimaryAdmin
+		}
 		return true
 	}
 	if !companyActor(actor) || actor.CompanyID == "" || actor.CompanyID != target.CompanyID {

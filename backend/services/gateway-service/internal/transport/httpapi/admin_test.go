@@ -58,6 +58,36 @@ func TestPresentCompanyForHidesMatchingMode(t *testing.T) {
 	}
 }
 
+func TestCompanyOrderProfileTransportPreservesExplicitZeroDiscount(t *testing.T) {
+	t.Parallel()
+	payload := companyOrderProfilePayload{
+		LegalName:  "ООО Тест",
+		BrandTerms: []companyBrandTermsPayload{{Brand: "klapp", DiscountSet: true}},
+	}
+	profile := payload.proto()
+	if profile.GetLegalName() != "ООО Тест" || len(profile.GetBrandTerms()) != 1 || !profile.GetBrandTerms()[0].GetDiscountSet() {
+		t.Fatalf("proto=%+v", profile)
+	}
+	presented := presentOrderProfile(profile)
+	terms, ok := presented["brand_terms"].([]map[string]any)
+	if !ok || len(terms) != 1 || terms[0]["discount_set"] != true || terms[0]["discount_basis_points"] != int32(0) {
+		t.Fatalf("presented=%#v", presented)
+	}
+}
+
+func TestGetCompanyOrderProfileRejectsPurchaserBeforeCallingIdentity(t *testing.T) {
+	t.Parallel()
+	api := &API{}
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/companies/co-1/order-profile", nil)
+	req.SetPathValue("company_id", "co-1")
+	req = req.WithContext(withUser(req.Context(), User{Role: "purchaser", CompanyID: "co-1"}))
+	rec := httptest.NewRecorder()
+	api.getCompanyOrderProfile(rec, req)
+	if rec.Code != http.StatusNotFound {
+		t.Fatalf("status=%d", rec.Code)
+	}
+}
+
 func TestListAuditRequiresPlatformAdmin(t *testing.T) {
 	t.Parallel()
 	api := &API{}
@@ -93,5 +123,26 @@ func TestListStatusRequiresPlatformAdmin(t *testing.T) {
 	api.listStatus(rec, req)
 	if rec.Code != http.StatusNotFound {
 		t.Fatalf("status=%d", rec.Code)
+	}
+}
+
+func TestPlatformAdminManagementRequiresPlatformRoleAndPrimaryForCreate(t *testing.T) {
+	t.Parallel()
+	api := &API{}
+
+	listReq := httptest.NewRequest(http.MethodGet, "/api/v1/platform-admins", nil)
+	listReq = listReq.WithContext(withUser(listReq.Context(), User{Role: "company_owner", CompanyID: "co-1"}))
+	listRec := httptest.NewRecorder()
+	api.listPlatformAdmins(listRec, listReq)
+	if listRec.Code != http.StatusNotFound {
+		t.Fatalf("company owner list status=%d", listRec.Code)
+	}
+
+	createReq := httptest.NewRequest(http.MethodPost, "/api/v1/platform-admins", nil)
+	createReq = createReq.WithContext(withUser(createReq.Context(), User{Role: "platform_admin"}))
+	createRec := httptest.NewRecorder()
+	api.createPlatformAdmin(createRec, createReq)
+	if createRec.Code != http.StatusNotFound {
+		t.Fatalf("secondary admin create status=%d", createRec.Code)
 	}
 }

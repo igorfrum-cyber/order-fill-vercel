@@ -6,7 +6,7 @@
 
 - создаёт задачи типов `order_fill` и `north_merge` после проверки входных файлов;
 - получает метаданные файлов из `file-service` от имени актора, без worker token, и режим сопоставления компании из `identity-service`;
-- фиксирует `matching_mode` в задаче и в сообщении очереди на момент создания;
+- фиксирует `matching_mode` в задаче и передаёт в первое сообщение очереди снимок реквизитов заказа компании;
 - публикует стадии `process` и `finalize` в Redis Stream `order-fill:jobs`;
 - хранит статусы, progress, ошибки, входные/выходные ссылки и отчёт, а ручные правки публикует worker-у;
 - ограничивает чтение задач ролью, компанией и владельцем;
@@ -25,7 +25,7 @@ internal/config/             env-конфигурация и production-вали
 internal/domain/             Job, Report, статусы, роли и authz
 internal/service/jobs/       create/list/report/edit/complete use cases
 internal/clients/files/      gRPC-клиент метаданных файлов
-internal/clients/identity/   gRPC-клиент режима сопоставления компании
+internal/clients/identity/   gRPC-клиент режима сопоставления и реквизитов компании
 internal/queue/              Redis Stream и in-memory publisher
 internal/storage/postgres/   jobs/job_reports через pgx
 internal/storage/memory/     непостоянный store для разработки
@@ -38,7 +38,7 @@ internal/transport/grpcapi/  protobuf/gRPC adapter
 ```text
 gateway-service
   -> file-service: метаданные входов
-  -> identity-service: matching_mode компании
+  -> identity-service: matching_mode и order_profile компании
   -> job-service: запись queued + XADD stage=process
   -> document-worker: обработка и progress
   -> job-service: report/files + needs_review или completed
@@ -72,9 +72,9 @@ gateway-service
 - при создании задачи `GetObject` идёт от имени актора: чужой `file_id` другой компании `file-service` скрывает как not found;
 - `UpdateProgress`, `CompleteJob` и `FailJob` требуют metadata `x-worker-token`, совпадающий с `WORKER_TOKEN`. Вне local токен обязателен и не может быть local default.
 
-Поддерживаются статусы `queued`, `processing`, `needs_review`, `finalizing`, `completed`, `failed`. Для `order_fill` нужен ровно один файл с ролью `source`, не больше одного `warehouse` и от одного до двух `blank`; для `north_merge` нужен минимум один `blank`, а `source` и `warehouse` необязательны. Один и тот же файл (совпадающее имя) дважды не принимается. Все входы должны иметь расширение `.xlsx` или `.xlsm`. Роль берётся из первого сегмента object key, который вернул `file-service`.
+Поддерживаются статусы `queued`, `processing`, `needs_review`, `finalizing`, `completed`, `failed`. Для `order_fill` нужен ровно один файл с ролью `source`, не больше одного `warehouse` и от одного до двух `blank`; вариантные роли там запрещены. Для `north_merge` нужен минимум один `blank`, `blank-home` или `blank-proff`, а `source` и `warehouse` необязательны. Один и тот же файл (совпадающее имя) дважды не принимается. Все входы должны иметь расширение `.xlsx` или `.xlsm`. Роль берётся из первого сегмента object key, который вернул `file-service`.
 
-Redis message хранится в поле `payload` записи stream `order-fill:jobs` как JSON версии `v1`: `job_id`, `type`, `stage`, `matching_mode`, `inputs`, а также `brand` для process и `edits` для finalize.
+Redis message хранится в поле `payload` записи stream `order-fill:jobs` как JSON версии `v1`: `job_id`, `type`, `stage`, `matching_mode`, `inputs`, а также `brand` и `order_profile` для process и `edits` для finalize. Профиль берётся из `identity-service` в момент создания, поэтому уже запущенная обработка не меняется при последующей правке реквизитов.
 
 HTTP-интерфейс:
 
@@ -90,7 +90,7 @@ HTTP-интерфейс:
 - `github.com/jackc/pgx/v5` `v5.10.0` для PostgreSQL;
 - `github.com/redis/go-redis/v9` `v9.22.0` для публикации в Redis Stream;
 - `gateway-service` вызывает клиентские RPC, `document-worker` — trusted state RPC;
-- `file-service` предоставляет метаданные входов, `identity-service` — company matching mode, `document-worker` потребляет очередь.
+- `file-service` предоставляет метаданные входов, `identity-service` — company matching mode и реквизиты заказа, `document-worker` потребляет очередь.
 
 ## Конфигурация
 

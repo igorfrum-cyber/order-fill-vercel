@@ -11,19 +11,19 @@ const (
 )
 
 type Policy struct {
-	Key                     string
-	Label                   string
-	Variant                 string
-	Adjustment              Adjustment
-	Multiple                int
-	MinQuantity             int
-	AdjustmentLabel         string
-	AdjustmentComment       string
-	PreserveArticleHyphen   bool
-	ArticlePrefixAliases    []string
-	BlankQuantityHeader     string
-	BlankBoxHeader          string
-	AllowSmallPositiveOrder bool
-	BlankLayout             string
-	RequireUnit             *bool
+	Key                     string     `json:"brand"`
+	Label                   string     `json:"label"`
+	Variant                 string     `json:"variant,omitempty"`
+	Adjustment              Adjustment `json:"adjustment"`
+	Multiple                int        `json:"quantity_multiple"`
+	MinQuantity             int        `json:"min_quantity"`
+	AdjustmentLabel         string     `json:"adjustment_label"`
+	AdjustmentComment       string     `json:"adjustment_comment"`
+	PreserveArticleHyphen   bool       `json:"preserve_hyphen"`
+	ArticlePrefixAliases    []string   `json:"prefix_aliases"`
+	BlankQuantityHeader     string     `json:"blank_quantity_header"`
+	BlankBoxHeader          string     `json:"blank_box_header"`
+	AllowSmallPositiveOrder bool       `json:"allow_small_positive_order"`
+	BlankLayout             string     `json:"blank_layout"`
+	RequireUnit             *bool      `json:"require_unit,omitempty"`
 }

@@ -38,6 +38,13 @@ func TestValidateRejectsInsecureOutsideLocal(t *testing.T) {
 	}
 }
 
+func TestValidateRequiresDatabaseOutsideLocal(t *testing.T) {
+	t.Setenv("GRPC_TLS_MODE", "mtls")
+	if err := (Config{Environment: "production"}).Validate(); err == nil {
+		t.Fatal("expected database fail-fast")
+	}
+}
+
 func TestHealthHandler(t *testing.T) {
 	t.Parallel()
 	rec := httptest.NewRecorder()

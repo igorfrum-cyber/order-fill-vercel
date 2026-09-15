@@ -40,10 +40,13 @@ func (f tenantFiles) Describe(ctx context.Context, actor domain.Actor, ids []str
 	return f.files.Describe(ctx, actor, ids)
 }
 
-type fakeCompanies struct{ mode domain.MatchingMode }
+type fakeCompanies struct {
+	mode    domain.MatchingMode
+	profile domain.OrderProfile
+}
 
-func (f fakeCompanies) MatchingMode(context.Context, domain.Actor) (domain.MatchingMode, error) {
-	return f.mode, nil
+func (f fakeCompanies) Config(context.Context, domain.Actor) (domain.CompanyConfig, error) {
+	return domain.CompanyConfig{MatchingMode: f.mode, OrderProfile: f.profile}, nil
 }
 
 func orderFillFiles() fakeFiles {
@@ -57,7 +60,12 @@ func TestCreatePublishesOneVersionedMessage(t *testing.T) {
 	t.Parallel()
 	now := time.Date(2026, 9, 5, 12, 0, 0, 0, time.UTC)
 	pub := queue.NewRedis()
-	svc := jobs.New(memory.NewStore(), orderFillFiles(), fakeCompanies{mode: domain.MatchingModeSmart}, pub, func() time.Time { return now })
+	svc := jobs.New(memory.NewStore(), orderFillFiles(), fakeCompanies{
+		mode: domain.MatchingModeSmart,
+		profile: domain.OrderProfile{LegalName: "ООО Тест", BrandTerms: []domain.BrandTerms{{
+			Brand: "angiopharm", DiscountBasisPoints: 3_500, DiscountSet: true,
+		}}},
+	}, pub, func() time.Time { return now })
 	actor := domain.Actor{UserID: "u1", CompanyID: "co", Role: domain.RolePurchaser}
 	job, err := svc.Create(t.Context(), actor, domain.TypeOrderFill, []string{"src", "blank"}, "angiopharm")
 	if err != nil {
@@ -69,6 +77,9 @@ func TestCreatePublishesOneVersionedMessage(t *testing.T) {
 	msgs := pub.Messages()
 	if len(msgs) != 1 || msgs[0].Version != queue.Version || msgs[0].JobID != job.ID || msgs[0].Brand != "angiopharm" || msgs[0].CompanyID != "co" {
 		t.Fatalf("messages=%v", msgs)
+	}
+	if msgs[0].OrderProfile.LegalName != "ООО Тест" || len(msgs[0].OrderProfile.BrandTerms) != 1 || !msgs[0].OrderProfile.BrandTerms[0].DiscountSet {
+		t.Fatalf("order profile=%+v", msgs[0].OrderProfile)
 	}
 }
 

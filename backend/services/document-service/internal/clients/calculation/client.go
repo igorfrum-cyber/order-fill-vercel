@@ -20,10 +20,13 @@ type TyumenStock struct {
 }
 
 type NorthRow struct {
-	Article, Name, Comment              string
-	TyumenQty, TransferQty, SupplierQty float64
-	WarehouseStock, WarehouseTransit    float64
-	HasWarehouseStock                   bool
+	Article, Name, Variant, Comment          string
+	TyumenQty, TransferQty, SupplierQty      float64
+	TyumenStock, TyumenTransit, TyumenTarget float64
+	UnitSize, NovacutanMin, BoxSize          float64
+	HasBoxSize                               bool
+	WarehouseStock, WarehouseTransit         float64
+	HasWarehouseStock                        bool
 }
 
 type Client interface {

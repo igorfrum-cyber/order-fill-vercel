@@ -47,6 +47,10 @@ test("North uploads office and delivery warehouse as distinct inputs", async ({ 
           supplierNeed: 0,
           actualSupplierOrder: 0,
           northNeed: 10,
+          hasBudgetData: true,
+          budgetCategory: "A",
+          budgetDemand: 100,
+          budgetPrice: 100,
           hasTyumenSource: true,
           warehouseStock: 10,
           warehouseTransit: 0,
@@ -95,7 +99,20 @@ test("North uploads office and delivery warehouse as distinct inputs", async ({ 
 
   await page.getByRole("spinbutton", { name: "Сургут", exact: true }).fill("15");
   await expect(page.getByRole("spinbutton", { name: "Фактический заказ у поставщика для Крем" })).toHaveValue("5");
+  await page.getByRole("button", { name: "Заказ до суммы" }).click();
+  await page.getByLabel("Целевая сумма, ₽").fill("700");
+  await page.getByRole("button", { name: "Рассчитать" }).click();
+  await expect(page.getByLabel("Предпросмотр бюджета")).toContainText("5 → 7");
+  await page.getByRole("button", { name: "Применить" }).click();
+  await expect(page.getByRole("spinbutton", { name: "Фактический заказ у поставщика для Крем" })).toHaveValue("7");
+  await expect(page.getByText("Добавилось 2 шт. Для закупа до суммы.")).toBeVisible();
   await page.getByRole("button", { name: "Скачать файлы" }).click();
   await expect(page.getByRole("link", { name: "Скачать общий бланк" })).toBeVisible();
-  expect(submittedEdits).toEqual({ edits: [{ key: "A1", value: "5", comment: "" }] });
+  expect(submittedEdits.edits[0].key).toBe("A1");
+  expect(submittedEdits.edits[0].value).toBe("7");
+  expect(JSON.parse(submittedEdits.edits[0].comment)).toEqual({
+    cities: { surgut: 15 },
+    discount: 0,
+    budgetComment: "Добавилось 2 шт. Для закупа до суммы.",
+  });
 });

@@ -19,6 +19,20 @@ func TestValidateUploadsRejectsMoreThanTwoOrderFillBlanks(t *testing.T) {
 	}
 }
 
+func TestNorthAcceptsChristinaVariantRoles(t *testing.T) {
+	t.Parallel()
+	err := ValidateUploads(TypeNorthMerge, []UploadMeta{
+		{Role: RoleBlankHome, Name: "surgut-home.xlsx"},
+		{Role: RoleBlankProff, Name: "surgut-proff.xlsx"},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := ValidateUploads(TypeOrderFill, []UploadMeta{{Role: RoleSource, Name: "source.xlsx"}, {Role: RoleBlankHome, Name: "home.xlsx"}}); err == nil {
+		t.Fatal("order fill must reject north-only variant role")
+	}
+}
+
 func TestNewJobRequiresOwner(t *testing.T) {
 	t.Parallel()
 	_, err := NewJob("j1", TypeOrderFill, "", "co", MatchingModeStandard, time.Now(), []FileRef{{ID: "f"}})

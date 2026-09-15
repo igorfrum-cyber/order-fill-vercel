@@ -1,6 +1,6 @@
 # brand-service
 
-Внутренний stateless gRPC-сервис, который хранит правила обработки поддерживаемых брендов и определяет бренд по группе номенклатуры из выгрузки 1С. Сервис не читает Excel-файлы, не рассчитывает заказ и не хранит данные во внешней БД.
+Внутренний gRPC-сервис, который хранит правила обработки поддерживаемых брендов и определяет бренд по группе номенклатуры из выгрузки 1С. Сервис не читает Excel-файлы и не рассчитывает заказ.
 
 ## Быстрый старт
 
@@ -17,15 +17,16 @@ curl http://127.0.0.1:8089/healthz
 curl http://127.0.0.1:8089/readyz
 ```
 
-Оба запроса сейчас возвращают `200` и `{"status":"ok"}`.
+`/readyz` дополнительно проверяет PostgreSQL, когда задан `DATABASE_URL`.
 
 ## Возможности и границы ответственности
 
 - Возвращает правила бренда: тип корректировки количества, кратность, подписи колонок, алиасы префиксов артикула и особенности бланка.
 - Перечисляет поддерживаемые ключи брендов.
 - Определяет бренд по русскому или латинскому названию группы номенклатуры; для `christina` дополнительно определяет вариант `HOME` или `PROFF` по имени файла.
-- Хранит правила статически в коде; миграций, БД и внешнего кеша нет.
+- Использует статический каталог как безопасные defaults и хранит изменённые политики в PostgreSQL.
 - Не проверяет корректность содержимого книги и не выбирает группу номенклатуры из Excel — это делает `document-service`.
+- Gateway читает и изменяет политики через gRPC на странице `/brand-rules`; изменение разрешено только `platform_admin`.
 
 Поддерживаются ключи `angiopharm`, `christina`, `klapp`, `levissime`, `novacutan`, `skin_synergy`, `sothys`.
 
@@ -48,6 +49,9 @@ internal/bootstrap                запуск gRPC и HTTP health-сервер�
 internal/transport/grpcapi        преобразование protobuf <-> domain
 internal/service/brands           определение бренда и выдача правил
 internal/storage/static           статический каталог политик
+internal/storage/memory           временные overrides для local-запуска без БД
+internal/storage/postgres         постоянные overrides политик
+internal/migrate                  встроенная миграция таблицы overrides
 internal/domain                   модель политики бренда
 ```
 
@@ -64,6 +68,7 @@ internal/domain                   модель политики бренда
 | `GetBrandPolicy` | `/orderfill.brand.v1.BrandService/GetBrandPolicy` | Возвращает `BrandPolicy` по полям `brand` и `variant`. Переданный вариант копируется в ответ. |
 | `ListBrands` | `/orderfill.brand.v1.BrandService/ListBrands` | Возвращает упорядоченный список поддерживаемых ключей. |
 | `DetectBrand` | `/orderfill.brand.v1.BrandService/DetectBrand` | Определяет ключ по `nomenclature_group`; для Christina анализирует `file_name`. При неизвестном бренде возвращает пустые `brand` и `variant` без gRPC-ошибки. |
+| `UpdateBrandPolicy` | `/orderfill.brand.v1.BrandService/UpdateBrandPolicy` | Проверяет и сохраняет политику. Требует роль `platform_admin` в `x-actor-role` и actor ID в `RequestMeta`. |
 <!-- /docs-sync:rpc -->
 
 REST/HTTP бизнес-API у сервиса нет. HTTP используется только для health endpoints.
@@ -72,7 +77,7 @@ REST/HTTP бизнес-API у сервиса нет. HTTP используетс
 
 ## Взаимодействия
 
-`document-api` вызывает `DetectBrand` при предварительном анализе входных файлов. `document-worker` вызывает `DetectBrand` и `GetBrandPolicy`, затем передает полученные правила в обработку книги и в `calculation-service`/`matching-service`. У самого `brand-service` нет исходящих сетевых зависимостей.
+`document-api` вызывает `DetectBrand` при предварительном анализе входных файлов. `document-worker` вызывает `DetectBrand` и `GetBrandPolicy`, затем передает полученные правила в обработку книги и в `calculation-service`/`matching-service`. PostgreSQL используется только для overrides политик.
 
 ## Конфигурация
 
@@ -84,6 +89,7 @@ REST/HTTP бизнес-API у сервиса нет. HTTP используетс
 | `BRAND_HEALTH_ADDR` | `:8089` | Адрес HTTP listener для `/healthz` и `/readyz`. |
 | `BRAND_ENV` | `APP_ENV`, затем `local` | Вне local `Validate` требует `GRPC_TLS_MODE=mtls`. |
 | `APP_ENV` | `local` | Общий fallback окружения; пустое значение и `local` включают local-режим. |
+| `DATABASE_URL` | пусто | PostgreSQL для постоянных изменений; вне local обязателен, в local без него используется memory store. |
 | `GRPC_TLS_MODE` | `insecure` | Общий режим gRPC: `insecure`/`disabled`/`off`, `tls` или `mtls`. |
 | `GRPC_TLS_CERT_FILE` | пусто | PEM-сертификат сервера; вместе с ключом обязателен для `tls` и `mtls`. |
 | `GRPC_TLS_KEY_FILE` | пусто | PEM-ключ сервера; хранить как секрет и не добавлять в репозиторий. |
@@ -128,8 +134,8 @@ make test
 
 ## Эксплуатационные заметки и ограничения
 
-- `/healthz` и `/readyz` не проверяют внешние зависимости; для stateless-сервиса обе проверки эквивалентны.
+- `/healthz` проверяет процесс, `/readyz` при наличии PostgreSQL проверяет соединение с ним.
 - Логи пишутся в stdout в JSON на уровне `info`.
 - Сервер завершает работу по `SIGINT`/`SIGTERM`; graceful timeout gRPC/HTTP — 10 секунд.
-- Политики изменяются только выпуском новой версии сервиса.
+- Изменённые политики сохраняются как overrides; исходные defaults остаются в коде и используются до первого изменения.
 - В проекте нет server reflection и отдельной OpenAPI-спецификации для этого сервиса; источником истины служит protobuf-контракт.
