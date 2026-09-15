@@ -107,6 +107,30 @@ services:
       - ./secrets/grpc/audit-service/tls.crt:/run/secrets/tls.crt:ro
       - ./secrets/grpc/audit-service/tls.key:/run/secrets/tls.key:ro
 
+  inbound-service:
+    environment:
+      <<: *mtls-env
+      INBOUND_S3_USE_SSL: "true"
+    volumes:
+      - ./secrets/grpc/ca.crt:/run/secrets/ca.crt:ro
+      - ./secrets/grpc/inbound-service/tls.crt:/run/secrets/tls.crt:ro
+      - ./secrets/grpc/inbound-service/tls.key:/run/secrets/tls.key:ro
+
+  inbound-postgres:
+    ports: !override []
+    volumes:
+      - ./secrets/grpc/inbound-postgres/tls.crt:/tls/tls.crt:ro
+      - ./secrets/grpc/inbound-postgres/tls.key:/tls/tls.key:ro
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        cp /tls/tls.crt /tmp/server.crt
+        cp /tls/tls.key /tmp/server.key
+        chown postgres:postgres /tmp/server.crt /tmp/server.key
+        chmod 644 /tmp/server.crt
+        chmod 600 /tmp/server.key
+        exec docker-entrypoint.sh postgres -c ssl=on -c ssl_cert_file=/tmp/server.crt -c ssl_key_file=/tmp/server.key
+
   postgres:
     ports: !override []
     volumes:

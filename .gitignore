@@ -1,4 +1,5 @@
 .env
+.env.production
 deploy/certs/
 deploy/secrets/
 deploy/Caddyfile.lan
@@ -43,4 +44,5 @@ blob-report/
 .cursorignore
 .agents/
 .codex/
-.shared/
+.shared/agent_config.txt
+opencode.json

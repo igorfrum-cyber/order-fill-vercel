@@ -21,6 +21,8 @@ names=(
   brand-service
   calculation-service
   audit-service
+  inbound-service
+  inbound-postgres
   postgres
   minio
 )
