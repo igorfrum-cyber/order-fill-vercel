@@ -32,6 +32,8 @@ func TestCookieSecureDefaultsOnOutsideLocal(t *testing.T) {
 	t.Setenv("GRPC_TLS_CERT_FILE", "cert.pem")
 	t.Setenv("GRPC_TLS_KEY_FILE", "key.pem")
 	t.Setenv("GRPC_TLS_CA_FILE", "ca.pem")
+	t.Setenv("INBOUND_WEBHOOK_TOKEN", "production-inbound-webhook-token")
+	t.Setenv("WORKER_TOKEN", "production-worker-token-123456")
 	cfg := Load()
 	if !cfg.CookieSecure {
 		t.Fatalf("%+v", cfg)
@@ -59,6 +61,26 @@ func TestValidateRejectsProductionInsecureCookie(t *testing.T) {
 	cfg := Config{Environment: "production", AllowedOrigins: "https://orderfill.example.com", CookieSecure: false}
 	if err := cfg.Validate(); err == nil {
 		t.Fatal("expected insecure cookie error")
+	}
+}
+
+func TestValidateRejectsDefaultInboundWebhookToken(t *testing.T) {
+	cfg := Config{
+		Environment: "production", AllowedOrigins: "https://orderfill.example.com", CookieSecure: true,
+		InboundWebhook: "local-dev-inbound-webhook-token", WorkerToken: "production-worker-token-123456",
+	}
+	if err := cfg.Validate(); err == nil {
+		t.Fatal("expected inbound webhook token error")
+	}
+}
+
+func TestValidateRejectsShortWorkerToken(t *testing.T) {
+	cfg := Config{
+		Environment: "production", AllowedOrigins: "https://orderfill.example.com", CookieSecure: true,
+		InboundWebhook: "production-inbound-webhook-token", WorkerToken: "short",
+	}
+	if err := cfg.Validate(); err == nil {
+		t.Fatal("expected worker token error")
 	}
 }
 

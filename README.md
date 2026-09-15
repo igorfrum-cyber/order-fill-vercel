@@ -164,6 +164,7 @@ HTTP-запрос открытым: `job-service` публикует сообщ�
 | [`brand-service`](./backend/services/brand-service/README.md) | Каталог брендов, правила и определение бренда | gRPC `:9098`; health `:8089` | Статические правила |
 | [`calculation-service`](./backend/services/calculation-service/README.md) | Расчёт заказа, округления, ручные правки и план «Север» | gRPC `:9099`; health `:8090` | Stateless |
 | [`audit-service`](./backend/services/audit-service/README.md) | Запись и выборка audit-событий | gRPC `:9100`; health `:8091` | PostgreSQL |
+| [`inbound-service`](./backend/services/inbound-service/README.md) | Приём входящей почты 1С и изолированный контур хранения вложений | gRPC `:9101`; health `:8093` | PostgreSQL + S3 (отдельные инстансы) |
 
 Порты внутренних сервисов опубликованы только внутри Compose-сети. На host по
 умолчанию доступны лишь frontend, gateway, PostgreSQL, Redis и MinIO.

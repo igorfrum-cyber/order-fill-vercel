@@ -19,6 +19,7 @@ tags:
   - name: audit
   - name: status
   - name: brands
+  - name: inbound
 paths:
   /readyz:
     get:
@@ -1315,12 +1316,236 @@ paths:
           $ref: "#/components/responses/Unauthorized"
         "404":
           $ref: "#/components/responses/NotFound"
+  /api/v1/inbound/webhook:
+    post:
+      operationId: inboundWebhook
+      tags: [inbound]
+      summary: Accept a CloudMailin inbound mail delivery
+      description: Server-to-server webhook protected by a shared bearer token. Returns 2xx only after durable storage; non-2xx causes CloudMailin to retry.
+      security:
+        - inboundWebhookToken: []
+      requestBody:
+        required: true
+        content:
+          application/octet-stream:
+            schema:
+              type: string
+              format: binary
+      responses:
+        "200":
+          description: Delivery durably stored or already known (idempotent).
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [ok]
+                properties:
+                  ok:
+                    type: boolean
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "413":
+          description: Payload larger than the allowed limit.
+  /api/v1/inbound/settings:
+    get:
+      operationId: inboundSettings
+      tags: [inbound]
+      summary: Platform inbound settings and delivery counters (platform admin)
+      security:
+        - sessionCookie: []
+      responses:
+        "200":
+          description: Settings and counters.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/InboundSettings"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    post:
+      operationId: updateInboundSettings
+      tags: [inbound]
+      summary: Toggle inbound mail reception (platform admin)
+      security:
+        - sessionCookie: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [enabled]
+              properties:
+                enabled:
+                  type: boolean
+      responses:
+        "200":
+          description: Updated settings and counters.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/InboundSettings"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /api/v1/inbound/companies/{company_id}:
+    get:
+      operationId: inboundCompany
+      tags: [inbound]
+      summary: Company inbound receive address (owner/admin)
+      security:
+        - sessionCookie: []
+      parameters:
+        - $ref: "#/components/parameters/CompanyId"
+      responses:
+        "200":
+          description: Company inbound configuration.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/InboundCompany"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    post:
+      operationId: updateInboundCompany
+      tags: [inbound]
+      summary: Configure company receive address and sender whitelist (owner)
+      security:
+        - sessionCookie: []
+      parameters:
+        - $ref: "#/components/parameters/CompanyId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [receive_address]
+              properties:
+                receive_address:
+                  type: string
+                  format: email
+                allowed_from:
+                  type: array
+                  items:
+                    type: string
+                    format: email
+                enabled:
+                  type: boolean
+      responses:
+        "200":
+          description: Updated company inbound configuration.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/InboundCompany"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /api/v1/inbound/companies/{company_id}/messages:
+    get:
+      operationId: inboundMessages
+      tags: [inbound]
+      summary: Recent inbound message metadata for a company (owner/admin)
+      security:
+        - sessionCookie: []
+      parameters:
+        - $ref: "#/components/parameters/CompanyId"
+      responses:
+        "200":
+          description: Message metadata without file content.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [messages]
+                properties:
+                  messages:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/InboundMessageSummary"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /api/v1/inbound/companies/{company_id}/messages/{message_id}/files/{attachment_id}:
+    get:
+      operationId: inboundMessageFile
+      tags: [inbound]
+      summary: Download one inbound attachment (owner/admin)
+      security:
+        - sessionCookie: []
+      parameters:
+        - $ref: "#/components/parameters/CompanyId"
+        - name: message_id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: attachment_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Raw attachment bytes.
+          content:
+            application/octet-stream:
+              schema:
+                type: string
+                format: binary
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /api/v1/inbound/deliveries:
+    get:
+      operationId: inboundDeliveries
+      tags: [inbound]
+      summary: Delivery status feed without message content (platform admin)
+      security:
+        - sessionCookie: []
+      responses:
+        "200":
+          description: Delivery statuses in reverse chronological order.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [deliveries]
+                properties:
+                  deliveries:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/InboundMessageSummary"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
 components:
   securitySchemes:
     sessionCookie:
       type: apiKey
       in: cookie
       name: order_fill_session
+    inboundWebhookToken:
+      type: apiKey
+      in: header
+      name: Authorization
+      description: Bearer token shared with CloudMailin.
   parameters:
     JobId:
       name: job_id
@@ -1590,9 +1815,66 @@ components:
       properties:
         id:
           type: string
-          enum: [api, worker, postgres, queue, files]
+          enum: [api, worker, postgres, queue, files, inbound]
         ok:
           type: boolean
+    InboundSettings:
+      type: object
+      required: [enabled, webhook_count, error_count]
+      properties:
+        enabled:
+          type: boolean
+        last_webhook_at:
+          type: string
+          format: date-time
+        webhook_count:
+          type: integer
+          format: int64
+        error_count:
+          type: integer
+          format: int64
+    InboundCompany:
+      type: object
+      required: [company_id, receive_address, allowed_from, enabled]
+      properties:
+        company_id:
+          type: string
+        receive_address:
+          type: string
+          format: email
+        allowed_from:
+          type: array
+          items:
+            type: string
+        enabled:
+          type: boolean
+    InboundMessageSummary:
+      type: object
+      required: [id, received_at, status]
+      properties:
+        id:
+          type: string
+        provider_message_id:
+          type: string
+        envelope_from:
+          type: string
+        envelope_to:
+          type: string
+        received_at:
+          type: string
+          format: date-time
+        company_id:
+          type: string
+        status:
+          type: string
+          enum: [received, processed, error:unknown_address, error:mismatch_from, error:no_attachments, error:too_large]
+        error_code:
+          type: string
+        attachment_count:
+          type: integer
+        total_bytes:
+          type: integer
+          format: int64
     Job:
       type: object
       required: [id, type, status, created_at, updated_at, input_files, output_files]

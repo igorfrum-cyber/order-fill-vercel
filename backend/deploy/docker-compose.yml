@@ -45,6 +45,8 @@ services:
       FILE_GRPC_ADDR: file-service:9095
       AUDIT_GRPC_ADDR: audit-service:9100
       BRAND_GRPC_ADDR: brand-service:9098
+      INBOUND_GRPC_ADDR: inbound-service:9101
+      INBOUND_WEBHOOK_TOKEN: ${INBOUND_WEBHOOK_TOKEN:-local-dev-inbound-webhook-token}
       WORKER_HEALTH_URL: http://document-worker:8092/healthz
       FILE_HEALTH_URL: http://file-service:8086/healthz
       POSTGRES_ADDR: postgres:5432
@@ -68,6 +70,8 @@ services:
       audit-service:
         condition: service_healthy
       document-worker:
+        condition: service_healthy
+      inbound-service:
         condition: service_healthy
       postgres:
         condition: service_healthy
@@ -371,6 +375,52 @@ services:
       timeout: 3s
       retries: 10
 
+  inbound-service:
+    build:
+      context: ..
+      dockerfile: services/inbound-service/Dockerfile
+    restart: unless-stopped
+    environment:
+      <<: [*app-env, *grpc-tls-env, *worker-token-env]
+      INBOUND_GRPC_ADDR: ":9101"
+      INBOUND_HEALTH_ADDR: ":8093"
+      INBOUND_DATABASE_URL: ${INBOUND_DATABASE_URL:-postgres://order_fill_inbound:order_fill_inbound@inbound-postgres:5432/order_fill_inbound?sslmode=disable}
+      INBOUND_S3_ENDPOINT: ${INBOUND_S3_ENDPOINT:-minio:9000}
+      INBOUND_S3_ACCESS_KEY: ${INBOUND_S3_ACCESS_KEY:-minioadmin}
+      INBOUND_S3_SECRET_KEY: ${INBOUND_S3_SECRET_KEY:-minioadmin}
+      INBOUND_S3_BUCKET: ${INBOUND_S3_BUCKET:-order-fill-inbound}
+      INBOUND_S3_USE_SSL: ${INBOUND_S3_USE_SSL:-false}
+    expose:
+      - "9101"
+      - "8093"
+    depends_on:
+      inbound-postgres:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8093/healthz"]
+      interval: 10s
+      timeout: 3s
+      retries: 10
+
+  inbound-postgres:
+    image: mirror.gcr.io/library/postgres:18-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: order_fill_inbound
+      POSTGRES_USER: order_fill_inbound
+      POSTGRES_PASSWORD: ${INBOUND_POSTGRES_PASSWORD:-order_fill_inbound}
+    ports:
+      - "127.0.0.1:5433:5432"
+    volumes:
+      - inbound-postgres-data:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U order_fill_inbound -d order_fill_inbound"]
+      interval: 10s
+      timeout: 3s
+      retries: 10
+
   postgres:
     image: mirror.gcr.io/library/postgres:18-alpine
     restart: unless-stopped
@@ -433,3 +483,4 @@ volumes:
   postgres-data:
   redis-data:
   minio-data:
+  inbound-postgres-data:

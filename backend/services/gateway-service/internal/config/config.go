@@ -19,6 +19,9 @@ type Config struct {
 	FileGRPC       string
 	AuditGRPC      string
 	BrandGRPC      string
+	InboundGRPC    string
+	InboundWebhook string
+	WorkerToken    string
 	WorkerHealth   string
 	FileHealth     string
 	PostgresAddr   string
@@ -40,6 +43,9 @@ func Load() Config {
 		FileGRPC:       getenv("FILE_GRPC_ADDR", "127.0.0.1:9095"),
 		AuditGRPC:      getenv("AUDIT_GRPC_ADDR", "127.0.0.1:9100"),
 		BrandGRPC:      getenv("BRAND_GRPC_ADDR", "127.0.0.1:9098"),
+		InboundGRPC:    getenv("INBOUND_GRPC_ADDR", "127.0.0.1:9101"),
+		InboundWebhook: getenv("INBOUND_WEBHOOK_TOKEN", "local-dev-inbound-webhook-token"),
+		WorkerToken:    getenv("WORKER_TOKEN", "local-dev-worker-token"),
 		WorkerHealth:   getenv("WORKER_HEALTH_URL", "http://127.0.0.1:8092/healthz"),
 		FileHealth:     getenv("FILE_HEALTH_URL", "http://127.0.0.1:8086/healthz"),
 		PostgresAddr:   getenv("POSTGRES_ADDR", "127.0.0.1:5432"),
@@ -53,6 +59,9 @@ func Load() Config {
 func (c Config) Validate() error {
 	if localEnv(c.Environment) {
 		return nil
+	}
+	if err := c.ValidateInboundTokens(); err != nil {
+		return err
 	}
 	if !c.CookieSecure {
 		return fmt.Errorf("SESSION_COOKIE_SECURE must be true outside local environment")
@@ -73,6 +82,19 @@ func (c Config) Validate() error {
 		}
 	}
 	return grpcutil.CheckTLSMode(c.Environment)
+}
+
+func (c Config) ValidateInboundTokens() error {
+	if localEnv(c.Environment) {
+		return nil
+	}
+	if c.InboundWebhook == "" || c.InboundWebhook == "local-dev-inbound-webhook-token" || len(c.InboundWebhook) < 16 {
+		return fmt.Errorf("INBOUND_WEBHOOK_TOKEN must be a non-default secret of at least 16 bytes outside local environment")
+	}
+	if c.WorkerToken == "" || c.WorkerToken == grpcutil.DefaultWorkerToken || len(c.WorkerToken) < 16 {
+		return fmt.Errorf("WORKER_TOKEN must be a non-default secret of at least 16 bytes outside local environment")
+	}
+	return nil
 }
 
 func cookieSecure(env string) bool {

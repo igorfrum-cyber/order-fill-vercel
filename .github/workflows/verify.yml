@@ -112,6 +112,7 @@ jobs:
           - backend/services/file-service
           - backend/services/gateway-service
           - backend/services/identity-service
+          - backend/services/inbound-service
           - backend/services/job-service
           - backend/services/matching-service
           - backend/services/passkey-service

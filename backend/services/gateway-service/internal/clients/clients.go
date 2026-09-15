@@ -8,6 +8,7 @@ import (
 	brandv1 "order-fill/backend/proto/gen/go/orderfill/brand/v1"
 	filesv1 "order-fill/backend/proto/gen/go/orderfill/files/v1"
 	identityv1 "order-fill/backend/proto/gen/go/orderfill/identity/v1"
+	inboundv1 "order-fill/backend/proto/gen/go/orderfill/inbound/v1"
 	jobsv1 "order-fill/backend/proto/gen/go/orderfill/jobs/v1"
 	passkeyv1 "order-fill/backend/proto/gen/go/orderfill/passkey/v1"
 	twofav1 "order-fill/backend/proto/gen/go/orderfill/twofa/v1"
@@ -22,6 +23,7 @@ type Clients struct {
 	Files    filesv1.FileServiceClient
 	Audit    auditv1.AuditServiceClient
 	Brand    brandv1.BrandServiceClient
+	Inbound  inboundv1.InboundServiceClient
 }
 
 func Dial(ctx context.Context, cfg config.Config) (Clients, error) {
@@ -53,6 +55,10 @@ func Dial(ctx context.Context, cfg config.Config) (Clients, error) {
 	if err != nil {
 		return Clients{}, err
 	}
+	inboundConn, err := grpcutil.Dial(ctx, cfg.InboundGRPC)
+	if err != nil {
+		return Clients{}, err
+	}
 	return Clients{
 		Identity: identityv1.NewIdentityServiceClient(identityConn),
 		TwoFA:    twofav1.NewTwoFAServiceClient(twoFAConn),
@@ -61,5 +67,6 @@ func Dial(ctx context.Context, cfg config.Config) (Clients, error) {
 		Files:    filesv1.NewFileServiceClient(fileConn),
 		Audit:    auditv1.NewAuditServiceClient(auditConn),
 		Brand:    brandv1.NewBrandServiceClient(brandConn),
+		Inbound:  inboundv1.NewInboundServiceClient(inboundConn),
 	}, nil
 }

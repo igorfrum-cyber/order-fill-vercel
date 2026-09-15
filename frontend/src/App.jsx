@@ -7,7 +7,7 @@ import { companyLoginURL, companySlugFromHost, companySlugFromPath, homeScreen, 
 import { shouldAutoStartTour, tourSceneForView } from "./features/help/firstRun.js";
 import { headerContext, roleLabel, securitySetupLabel, twoFactorRequiredHint } from "./features/help/copy.js";
 import { initialEditState } from "./features/order/reviewEdits.js";
-import { BrandRulesScreen, CompaniesScreen, CompanyScreen, JobHistory, OverviewScreen, QueueScreen, UsersScreen } from "./ui/admin/AdminScreens.jsx";
+import { BrandRulesScreen, CompaniesScreen, CompanyScreen, InboundScreen, JobHistory, OverviewScreen, QueueScreen, UsersScreen } from "./ui/admin/AdminScreens.jsx";
 import { AccountScreen, InviteScreen, LoginScreen } from "./ui/auth/AuthScreens.jsx";
 import { HelpButton, ProfileMenu } from "./ui/chrome.jsx";
 import { HelpDrawer } from "./ui/help/HelpDrawer.jsx";
@@ -341,6 +341,7 @@ export default function App() {
             ) : null}
             {screen === "companies" ? <CompaniesScreen selectedId={companyId} onSelect={selectCompany} /> : null}
             {screen === "brand-rules" ? <BrandRulesScreen /> : null}
+            {screen === "inbound" ? <InboundScreen me={me} companyId={companyId} /> : null}
             {screen === "company" ? (
               <CompanyScreen
                 me={me}

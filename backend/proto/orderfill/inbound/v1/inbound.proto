@@ -1,0 +1,152 @@
+syntax = "proto3";
+
+package orderfill.inbound.v1;
+
+option go_package = "order-fill/backend/proto/gen/go/orderfill/inbound/v1;inboundv1";
+
+import "orderfill/common/v1/common.proto";
+
+// InboundService stores inbound mail delivered by CloudMailin into an isolated
+// storage contour and exposes management surfaces to the platform UI.
+//
+// The webhook path accepts one payload from the gateway, durably stores it,
+// and only then reports success. Business services are never involved.
+service InboundService {
+  // IngestWebhook accepts the raw CloudMailin JSON body (worker-only RPC).
+  rpc IngestWebhook(IngestWebhookRequest) returns (IngestWebhookResponse);
+  // GetSettings returns platform-wide inbound settings (platform_admin).
+  rpc GetSettings(GetSettingsRequest) returns (GetSettingsResponse);
+  // UpdateSettings toggles inbound reception (platform_admin).
+  rpc UpdateSettings(UpdateSettingsRequest) returns (UpdateSettingsResponse);
+  // GetCompanyInbound returns the company's receive address (owner/admin).
+  rpc GetCompanyInbound(GetCompanyInboundRequest) returns (GetCompanyInboundResponse);
+  // UpdateCompanyInbound configures the company receive address (owner).
+  rpc UpdateCompanyInbound(UpdateCompanyInboundRequest) returns (UpdateCompanyInboundResponse);
+  // ListMessages lists message metadata for one company (owner/admin).
+  rpc ListMessages(ListMessagesRequest) returns (ListMessagesResponse);
+  // GetMessageFile returns one saved attachment for the owning company.
+  rpc GetMessageFile(GetMessageFileRequest) returns (GetMessageFileResponse);
+  // ListDeliveries returns the delivery status feed without message content
+  // or attachments (platform_admin).
+  rpc ListDeliveries(ListDeliveriesRequest) returns (ListDeliveriesResponse);
+}
+
+// InboundMessageStatus is the delivery lifecycle of one inbound message.
+enum InboundMessageStatus {
+  INBOUND_MESSAGE_STATUS_UNSPECIFIED = 0;
+  INBOUND_MESSAGE_STATUS_RECEIVED = 1;
+  INBOUND_MESSAGE_STATUS_PROCESSED = 2;
+  INBOUND_MESSAGE_STATUS_ERROR_UNKNOWN_ADDRESS = 3;
+  INBOUND_MESSAGE_STATUS_ERROR_MISMATCH_FROM = 4;
+  INBOUND_MESSAGE_STATUS_ERROR_NO_ATTACHMENTS = 5;
+  INBOUND_MESSAGE_STATUS_ERROR_TOO_LARGE = 6;
+}
+
+message InboundSettings {
+  bool enabled = 1;
+  string last_webhook_at = 2;
+  int64 webhook_count = 3;
+  int64 error_count = 4;
+}
+
+message CompanyInbound {
+  string company_id = 1;
+  string receive_address = 2;
+  repeated string allowed_from = 3;
+  bool enabled = 4;
+}
+
+message InboundAttachment {
+  string id = 1;
+  string name = 2;
+  string content_type = 3;
+  int64 size = 4;
+}
+
+message InboundMessageSummary {
+  string id = 1;
+  string provider_message_id = 2;
+  string envelope_from = 3;
+  string envelope_to = 4;
+  string received_at = 5;
+  string company_id = 6;
+  InboundMessageStatus status = 7;
+  string error_code = 8;
+  int32 attachment_count = 9;
+  int64 total_bytes = 10;
+  repeated InboundAttachment attachments = 11;
+}
+
+message IngestWebhookRequest {
+  orderfill.common.v1.RequestMeta meta = 1;
+  bytes raw_payload = 2;
+}
+
+message IngestWebhookResponse {}
+
+message GetSettingsRequest {}
+
+message GetSettingsResponse {
+  InboundSettings settings = 1;
+}
+
+message UpdateSettingsRequest {
+  orderfill.common.v1.RequestMeta meta = 1;
+  bool enabled = 2;
+}
+
+message UpdateSettingsResponse {
+  InboundSettings settings = 1;
+}
+
+message GetCompanyInboundRequest {
+  orderfill.common.v1.RequestMeta meta = 1;
+  string company_id = 2;
+}
+
+message GetCompanyInboundResponse {
+  CompanyInbound company_inbound = 1;
+}
+
+message UpdateCompanyInboundRequest {
+  orderfill.common.v1.RequestMeta meta = 1;
+  string company_id = 2;
+  string receive_address = 3;
+  repeated string allowed_from = 4;
+  bool enabled = 5;
+}
+
+message UpdateCompanyInboundResponse {
+  CompanyInbound company_inbound = 1;
+}
+
+message ListMessagesRequest {
+  orderfill.common.v1.RequestMeta meta = 1;
+  string company_id = 2;
+  int32 limit = 3;
+}
+
+message ListMessagesResponse {
+  repeated InboundMessageSummary messages = 1;
+}
+
+message GetMessageFileRequest {
+  orderfill.common.v1.RequestMeta meta = 1;
+  string message_id = 2;
+  string attachment_id = 3;
+}
+
+message GetMessageFileResponse {
+  InboundAttachment attachment = 1;
+  string company_id = 2;
+  bytes body = 3;
+}
+
+message ListDeliveriesRequest {
+  orderfill.common.v1.RequestMeta meta = 1;
+  int32 limit = 2;
+}
+
+message ListDeliveriesResponse {
+  repeated InboundMessageSummary deliveries = 1;
+}

@@ -56,6 +56,7 @@ export function navItemsForRole(role) {
       { id: "companies", path: "/companies", label: "Компании" },
       { id: "brand-rules", path: "/brand-rules", label: "Правила брендов" },
       { id: "users", path: "/users", label: "Пользователи" },
+      { id: "inbound", path: "/inbound", label: "Интеграция 1С" },
     ];
   }
   if (role === "purchaser") {
@@ -68,6 +69,7 @@ export function navItemsForRole(role) {
     { id: "queue", path: "/queue", label: "Очередь" },
     { id: "users", path: "/users", label: "Люди" },
     { id: "company", path: "/company", label: "Компания" },
+    { id: "inbound", path: "/inbound", label: "Интеграция 1С" },
     { id: "history", path: "/jobs", label: "Файлы" },
   ];
 }
