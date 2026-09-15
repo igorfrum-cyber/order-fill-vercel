@@ -81,7 +81,7 @@ func (a *API) inboundSettings(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusNotFound, "not_found", "not found")
 		return
 	}
-	resp, err := a.Clients.Inbound.GetSettings(r.Context(), &inboundv1.GetSettingsRequest{})
+	resp, err := a.Clients.Inbound.GetSettings(a.jobCtx(r, user), &inboundv1.GetSettingsRequest{})
 	if err != nil {
 		writeGRPCError(w, "inbound_settings_failed", err)
 		return

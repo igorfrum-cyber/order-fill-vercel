@@ -118,7 +118,9 @@ function CompanyPanel({ companyId }) {
         setMessages(payload.messages || []);
       })
       .catch((err) => {
-        if (!cancelled) setError(userFacingError(err, "Не удалось загрузить настройки интеграции."));
+        if (cancelled) return;
+        if (err?.status === 404) return;
+        setError(userFacingError(err, "Не удалось загрузить настройки интеграции."));
       })
       .finally(() => {
         if (!cancelled) setLoading(false);
@@ -161,12 +163,12 @@ function CompanyPanel({ companyId }) {
             <h2 className="text-[17px] font-semibold">Почтовый адрес для 1С</h2>
             <p className="mt-1 text-[13px] text-[var(--color-ink-faint)]">Письма с этого адреса обрабатываются, а файлы попадают в компанию.</p>
           </div>
-          <GhostButton onClick={() => setDraft({ receive_address: state.receive_address || "", allowed_from: [...(state.allowed_from || [])], enabled: Boolean(state.enabled) })}>Настроить</GhostButton>
+          <GhostButton onClick={() => setDraft({ receive_address: company.receive_address || "", allowed_from: [...(company.allowed_from || [])], enabled: Boolean(company.enabled) })}>Настроить</GhostButton>
         </div>
         <dl className="mt-4 grid grid-cols-2 gap-4 text-[13px]">
-          <Stat label="Адрес" value={state.receive_address ? state.receive_address : "не задан"} mono />
-          <Stat label="Приём" value={state.enabled ? "включён" : "остановлен"} />
-          <Stat label="Допустимые отправители" value={(state.allowed_from || []).length ? state.allowed_from.join(", ") : "любой отправитель"} mono />
+          <Stat label="Адрес" value={company.receive_address ? company.receive_address : "не задан"} mono />
+          <Stat label="Приём" value={company.enabled ? "включён" : "остановлен"} />
+          <Stat label="Допустимые отправители" value={(company.allowed_from || []).length ? company.allowed_from.join(", ") : "любой отправитель"} mono />
           <Stat label="Писем получено" value={messages.length} />
         </dl>
       </article>

@@ -8,13 +8,25 @@ import (
 	"testing"
 
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/metadata"
 
+	"order-fill/backend/pkg/grpcutil"
 	inboundv1 "order-fill/backend/proto/gen/go/orderfill/inbound/v1"
 	"order-fill/backend/services/gateway-service/internal/clients"
 	"order-fill/backend/services/gateway-service/internal/config"
 )
 
 type inboundClient struct{ inboundv1.InboundServiceClient }
+
+type inboundSettingsCapture struct {
+	inboundv1.InboundServiceClient
+	gotCtx context.Context
+}
+
+func (c *inboundSettingsCapture) GetSettings(ctx context.Context, _ *inboundv1.GetSettingsRequest, _ ...grpc.CallOption) (*inboundv1.GetSettingsResponse, error) {
+	c.gotCtx = ctx
+	return &inboundv1.GetSettingsResponse{Settings: &inboundv1.InboundSettings{Enabled: true, WebhookCount: 3, ErrorCount: 1}}, nil
+}
 
 func (inboundClient) IngestWebhook(context.Context, *inboundv1.IngestWebhookRequest, ...grpc.CallOption) (*inboundv1.IngestWebhookResponse, error) {
 	return &inboundv1.IngestWebhookResponse{}, nil
@@ -118,13 +130,19 @@ func TestInboundSettingsRequiresAdmin(t *testing.T) {
 
 func TestInboundSettingsReturnsStats(t *testing.T) {
 	t.Parallel()
-	api := &API{Clients: clients.Clients{Inbound: inboundClient{}}}
+	capture := &inboundSettingsCapture{}
+	api := &API{Clients: clients.Clients{Inbound: capture}}
 	req := httptest.NewRequest(http.MethodGet, "/api/v1/inbound/settings", nil)
 	req = req.WithContext(withUser(t.Context(), User{ID: "admin", Role: "platform_admin"}))
 	rec := httptest.NewRecorder()
 	api.inboundSettings(rec, req)
 	if rec.Code != http.StatusOK || !strings.Contains(rec.Body.String(), `"webhook_count":3`) {
 		t.Fatalf("status=%d body=%s", rec.Code, rec.Body.String())
+	}
+	md, _ := metadata.FromOutgoingContext(capture.gotCtx)
+	roles := md.Get(grpcutil.ActorRoleMetadataKey)
+	if len(roles) != 1 || roles[0] != "platform_admin" {
+		t.Fatalf("inbound settings RPC must carry x-actor-role, got %v", roles)
 	}
 }
 
