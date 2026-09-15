@@ -14,6 +14,7 @@ type Store interface {
 	CreateUser(ctx context.Context, user domain.User) error
 	ListUsers(ctx context.Context, companyID string) ([]domain.User, error)
 	DisableUser(ctx context.Context, id string, at time.Time) error
+	EnableUser(ctx context.Context, id string) error
 	ClearPasswordHash(ctx context.Context, userID string) error
 	DeleteSessionsForUser(ctx context.Context, userID string) error
 	DeleteInvitesForUser(ctx context.Context, userID string) error

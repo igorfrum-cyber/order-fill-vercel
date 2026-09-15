@@ -302,6 +302,17 @@ func (a *API) disableUser(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNoContent)
 }
 
+func (a *API) enableUser(w http.ResponseWriter, r *http.Request) {
+	user, _ := userFrom(r)
+	_, err := a.Clients.Identity.EnableUser(r.Context(), &identityv1.EnableUserRequest{Meta: a.meta(user), UserId: r.PathValue("user_id")})
+	if err != nil {
+		writeGRPCError(w, "enable_user_failed", err)
+		return
+	}
+	a.recordAudit(r.Context(), user, "user_enabled", user.CompanyID, user.CompanyName)
+	w.WriteHeader(http.StatusNoContent)
+}
+
 func (a *API) resetUser(w http.ResponseWriter, r *http.Request) {
 	user, _ := userFrom(r)
 	resp, err := a.Clients.Identity.ResetUserAccess(r.Context(), &identityv1.ResetUserAccessRequest{Meta: a.meta(user), UserId: r.PathValue("user_id")})

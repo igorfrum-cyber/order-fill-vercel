@@ -857,6 +857,20 @@ paths:
           $ref: "#/components/responses/Unauthorized"
         "404":
           $ref: "#/components/responses/NotFound"
+  /api/v1/users/{user_id}/enable:
+    post:
+      operationId: enableUser
+      tags: [users]
+      summary: Enable a disabled user without restoring old sessions
+      parameters:
+        - $ref: "#/components/parameters/UserId"
+      responses:
+        "204":
+          description: Enabled.
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
   /api/v1/users/{user_id}/reset:
     post:
       operationId: resetUserAccess

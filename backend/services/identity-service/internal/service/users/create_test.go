@@ -76,3 +76,45 @@ func TestCreateInviteListDisableFollowRoles(t *testing.T) {
 		t.Fatal(err)
 	}
 }
+
+func TestDisableRevokesSessionsAndEnableRestoresAccount(t *testing.T) {
+	t.Parallel()
+	now := time.Date(2026, 9, 5, 12, 0, 0, 0, time.UTC)
+	store := memory.NewStore()
+	svc := users.New(store, func() time.Time { return now })
+	if err := store.CreateCompany(t.Context(), domain.Company{ID: "co", Name: "Acme", LoginSlug: "acme", CreatedAt: now}); err != nil {
+		t.Fatal(err)
+	}
+	owner := domain.User{ID: "owner", Role: domain.RoleCompanyOwner, CompanyID: "co", Login: "owner"}
+	buyer := domain.User{ID: "buyer", Role: domain.RolePurchaser, CompanyID: "co", Login: "buyer", PasswordHash: "set"}
+	for _, user := range []domain.User{owner, buyer} {
+		if err := store.CreateUser(t.Context(), user); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := store.CreateSession(t.Context(), domain.LoginSession{
+		ID: "session", TokenHash: "token", UserID: buyer.ID, CreatedAt: now, ExpiresAt: now.Add(time.Hour),
+	}); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := svc.Disable(t.Context(), owner, buyer.ID); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := store.GetSessionUser(t.Context(), "token", now); !errors.Is(err, domain.ErrNotFound) {
+		t.Fatalf("disabled session error = %v, want not found", err)
+	}
+	if err := svc.Enable(t.Context(), owner, buyer.ID); err != nil {
+		t.Fatal(err)
+	}
+	restored, err := store.GetUserByID(t.Context(), buyer.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if restored.DisabledAt != nil {
+		t.Fatalf("enabled user disabled_at = %v", restored.DisabledAt)
+	}
+	if _, err := store.GetSessionUser(t.Context(), "token", now); !errors.Is(err, domain.ErrNotFound) {
+		t.Fatalf("old session restored after enable: %v", err)
+	}
+}

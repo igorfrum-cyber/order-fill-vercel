@@ -27,6 +27,7 @@ service IdentityService {
   rpc CreateUser(CreateUserRequest) returns (CreateUserResponse);
   rpc ListUsers(ListUsersRequest) returns (ListUsersResponse);
   rpc DisableUser(DisableUserRequest) returns (DisableUserResponse);
+  rpc EnableUser(EnableUserRequest) returns (EnableUserResponse);
   rpc ResetUserAccess(ResetUserAccessRequest) returns (ResetUserAccessResponse);
 }
 
@@ -276,6 +277,13 @@ message DisableUserRequest {
 }
 
 message DisableUserResponse {}
+
+message EnableUserRequest {
+  orderfill.common.v1.RequestMeta meta = 1;
+  string user_id = 2;
+}
+
+message EnableUserResponse {}
 
 message ResetUserAccessRequest {
   orderfill.common.v1.RequestMeta meta = 1;

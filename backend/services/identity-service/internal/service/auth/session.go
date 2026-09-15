@@ -17,7 +17,8 @@ func (a *Auth) issueSession(ctx context.Context, user domain.User) (Session, err
 	if err != nil {
 		return Session{}, err
 	}
-	expires := a.now().Add(sessionTTL)
+	now := a.now().UTC()
+	expires := now.Add(sessionTTL)
 	client := domain.ClientFrom(ctx)
 	if err := a.store.CreateSession(ctx, domain.LoginSession{
 		ID:        id,
@@ -25,11 +26,12 @@ func (a *Auth) issueSession(ctx context.Context, user domain.User) (Session, err
 		UserID:    user.ID,
 		UserAgent: client.UserAgent,
 		IP:        client.IP,
-		CreatedAt: a.now().UTC(),
+		CreatedAt: now,
 		ExpiresAt: expires,
 	}); err != nil {
 		return Session{}, fmt.Errorf("create session: %w", err)
 	}
+	user.LastSeenAt = new(now)
 	return Session{ID: id, RawToken: raw, User: user, ExpiresAt: expires}, nil
 }
 

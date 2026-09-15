@@ -2586,6 +2586,94 @@ func (*DisableUserResponse) Descriptor() ([]byte, []int) {
 	return file_orderfill_identity_v1_identity_proto_rawDescGZIP(), []int{44}
 }
 
+type EnableUserRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Meta          *v1.RequestMeta        `protobuf:"bytes,1,opt,name=meta,proto3" json:"meta,omitempty"`
+	UserId        string                 `protobuf:"bytes,2,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *EnableUserRequest) Reset() {
+	*x = EnableUserRequest{}
+	mi := &file_orderfill_identity_v1_identity_proto_msgTypes[45]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *EnableUserRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*EnableUserRequest) ProtoMessage() {}
+
+func (x *EnableUserRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_orderfill_identity_v1_identity_proto_msgTypes[45]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use EnableUserRequest.ProtoReflect.Descriptor instead.
+func (*EnableUserRequest) Descriptor() ([]byte, []int) {
+	return file_orderfill_identity_v1_identity_proto_rawDescGZIP(), []int{45}
+}
+
+func (x *EnableUserRequest) GetMeta() *v1.RequestMeta {
+	if x != nil {
+		return x.Meta
+	}
+	return nil
+}
+
+func (x *EnableUserRequest) GetUserId() string {
+	if x != nil {
+		return x.UserId
+	}
+	return ""
+}
+
+type EnableUserResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *EnableUserResponse) Reset() {
+	*x = EnableUserResponse{}
+	mi := &file_orderfill_identity_v1_identity_proto_msgTypes[46]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *EnableUserResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*EnableUserResponse) ProtoMessage() {}
+
+func (x *EnableUserResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_orderfill_identity_v1_identity_proto_msgTypes[46]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use EnableUserResponse.ProtoReflect.Descriptor instead.
+func (*EnableUserResponse) Descriptor() ([]byte, []int) {
+	return file_orderfill_identity_v1_identity_proto_rawDescGZIP(), []int{46}
+}
+
 type ResetUserAccessRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Meta          *v1.RequestMeta        `protobuf:"bytes,1,opt,name=meta,proto3" json:"meta,omitempty"`
@@ -2596,7 +2684,7 @@ type ResetUserAccessRequest struct {
 
 func (x *ResetUserAccessRequest) Reset() {
 	*x = ResetUserAccessRequest{}
-	mi := &file_orderfill_identity_v1_identity_proto_msgTypes[45]
+	mi := &file_orderfill_identity_v1_identity_proto_msgTypes[47]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2608,7 +2696,7 @@ func (x *ResetUserAccessRequest) String() string {
 func (*ResetUserAccessRequest) ProtoMessage() {}
 
 func (x *ResetUserAccessRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_orderfill_identity_v1_identity_proto_msgTypes[45]
+	mi := &file_orderfill_identity_v1_identity_proto_msgTypes[47]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2621,7 +2709,7 @@ func (x *ResetUserAccessRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ResetUserAccessRequest.ProtoReflect.Descriptor instead.
 func (*ResetUserAccessRequest) Descriptor() ([]byte, []int) {
-	return file_orderfill_identity_v1_identity_proto_rawDescGZIP(), []int{45}
+	return file_orderfill_identity_v1_identity_proto_rawDescGZIP(), []int{47}
 }
 
 func (x *ResetUserAccessRequest) GetMeta() *v1.RequestMeta {
@@ -2647,7 +2735,7 @@ type ResetUserAccessResponse struct {
 
 func (x *ResetUserAccessResponse) Reset() {
 	*x = ResetUserAccessResponse{}
-	mi := &file_orderfill_identity_v1_identity_proto_msgTypes[46]
+	mi := &file_orderfill_identity_v1_identity_proto_msgTypes[48]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2659,7 +2747,7 @@ func (x *ResetUserAccessResponse) String() string {
 func (*ResetUserAccessResponse) ProtoMessage() {}
 
 func (x *ResetUserAccessResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_orderfill_identity_v1_identity_proto_msgTypes[46]
+	mi := &file_orderfill_identity_v1_identity_proto_msgTypes[48]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2672,7 +2760,7 @@ func (x *ResetUserAccessResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ResetUserAccessResponse.ProtoReflect.Descriptor instead.
 func (*ResetUserAccessResponse) Descriptor() ([]byte, []int) {
-	return file_orderfill_identity_v1_identity_proto_rawDescGZIP(), []int{46}
+	return file_orderfill_identity_v1_identity_proto_rawDescGZIP(), []int{48}
 }
 
 func (x *ResetUserAccessResponse) GetInviteToken() string {
@@ -2878,12 +2966,16 @@ const file_orderfill_identity_v1_identity_proto_rawDesc = "" +
 	"\x12DisableUserRequest\x124\n" +
 	"\x04meta\x18\x01 \x01(\v2 .orderfill.common.v1.RequestMetaR\x04meta\x12\x17\n" +
 	"\auser_id\x18\x02 \x01(\tR\x06userId\"\x15\n" +
-	"\x13DisableUserResponse\"g\n" +
+	"\x13DisableUserResponse\"b\n" +
+	"\x11EnableUserRequest\x124\n" +
+	"\x04meta\x18\x01 \x01(\v2 .orderfill.common.v1.RequestMetaR\x04meta\x12\x17\n" +
+	"\auser_id\x18\x02 \x01(\tR\x06userId\"\x14\n" +
+	"\x12EnableUserResponse\"g\n" +
 	"\x16ResetUserAccessRequest\x124\n" +
 	"\x04meta\x18\x01 \x01(\v2 .orderfill.common.v1.RequestMetaR\x04meta\x12\x17\n" +
 	"\auser_id\x18\x02 \x01(\tR\x06userId\"<\n" +
 	"\x17ResetUserAccessResponse\x12!\n" +
-	"\finvite_token\x18\x01 \x01(\tR\vinviteToken2\xf2\x11\n" +
+	"\finvite_token\x18\x01 \x01(\tR\vinviteToken2\xd5\x12\n" +
 	"\x0fIdentityService\x12R\n" +
 	"\x05Login\x12#.orderfill.identity.v1.LoginRequest\x1a$.orderfill.identity.v1.LoginResponse\x12\x85\x01\n" +
 	"\x16CompleteTwoFactorLogin\x124.orderfill.identity.v1.CompleteTwoFactorLoginRequest\x1a5.orderfill.identity.v1.CompleteTwoFactorLoginResponse\x12U\n" +
@@ -2905,7 +2997,9 @@ const file_orderfill_identity_v1_identity_proto_rawDesc = "" +
 	"\n" +
 	"CreateUser\x12(.orderfill.identity.v1.CreateUserRequest\x1a).orderfill.identity.v1.CreateUserResponse\x12^\n" +
 	"\tListUsers\x12'.orderfill.identity.v1.ListUsersRequest\x1a(.orderfill.identity.v1.ListUsersResponse\x12d\n" +
-	"\vDisableUser\x12).orderfill.identity.v1.DisableUserRequest\x1a*.orderfill.identity.v1.DisableUserResponse\x12p\n" +
+	"\vDisableUser\x12).orderfill.identity.v1.DisableUserRequest\x1a*.orderfill.identity.v1.DisableUserResponse\x12a\n" +
+	"\n" +
+	"EnableUser\x12(.orderfill.identity.v1.EnableUserRequest\x1a).orderfill.identity.v1.EnableUserResponse\x12p\n" +
 	"\x0fResetUserAccess\x12-.orderfill.identity.v1.ResetUserAccessRequest\x1a..orderfill.identity.v1.ResetUserAccessResponseBBZ@order-fill/backend/proto/gen/go/orderfill/identity/v1;identityv1b\x06proto3"
 
 var (
@@ -2920,7 +3014,7 @@ func file_orderfill_identity_v1_identity_proto_rawDescGZIP() []byte {
 	return file_orderfill_identity_v1_identity_proto_rawDescData
 }
 
-var file_orderfill_identity_v1_identity_proto_msgTypes = make([]protoimpl.MessageInfo, 47)
+var file_orderfill_identity_v1_identity_proto_msgTypes = make([]protoimpl.MessageInfo, 49)
 var file_orderfill_identity_v1_identity_proto_goTypes = []any{
 	(*User)(nil),                              // 0: orderfill.identity.v1.User
 	(*Company)(nil),                           // 1: orderfill.identity.v1.Company
@@ -2967,13 +3061,15 @@ var file_orderfill_identity_v1_identity_proto_goTypes = []any{
 	(*ListUsersResponse)(nil),                 // 42: orderfill.identity.v1.ListUsersResponse
 	(*DisableUserRequest)(nil),                // 43: orderfill.identity.v1.DisableUserRequest
 	(*DisableUserResponse)(nil),               // 44: orderfill.identity.v1.DisableUserResponse
-	(*ResetUserAccessRequest)(nil),            // 45: orderfill.identity.v1.ResetUserAccessRequest
-	(*ResetUserAccessResponse)(nil),           // 46: orderfill.identity.v1.ResetUserAccessResponse
-	(v1.MatchingMode)(0),                      // 47: orderfill.common.v1.MatchingMode
-	(*v1.RequestMeta)(nil),                    // 48: orderfill.common.v1.RequestMeta
+	(*EnableUserRequest)(nil),                 // 45: orderfill.identity.v1.EnableUserRequest
+	(*EnableUserResponse)(nil),                // 46: orderfill.identity.v1.EnableUserResponse
+	(*ResetUserAccessRequest)(nil),            // 47: orderfill.identity.v1.ResetUserAccessRequest
+	(*ResetUserAccessResponse)(nil),           // 48: orderfill.identity.v1.ResetUserAccessResponse
+	(v1.MatchingMode)(0),                      // 49: orderfill.common.v1.MatchingMode
+	(*v1.RequestMeta)(nil),                    // 50: orderfill.common.v1.RequestMeta
 }
 var file_orderfill_identity_v1_identity_proto_depIdxs = []int32{
-	47, // 0: orderfill.identity.v1.Company.matching_mode:type_name -> orderfill.common.v1.MatchingMode
+	49, // 0: orderfill.identity.v1.Company.matching_mode:type_name -> orderfill.common.v1.MatchingMode
 	3,  // 1: orderfill.identity.v1.Company.order_profile:type_name -> orderfill.identity.v1.CompanyOrderProfile
 	2,  // 2: orderfill.identity.v1.CompanyOrderProfile.brand_terms:type_name -> orderfill.identity.v1.CompanyBrandTerms
 	0,  // 3: orderfill.identity.v1.LoginResponse.user:type_name -> orderfill.identity.v1.User
@@ -2983,78 +3079,81 @@ var file_orderfill_identity_v1_identity_proto_depIdxs = []int32{
 	4,  // 7: orderfill.identity.v1.ListSessionsResponse.sessions:type_name -> orderfill.identity.v1.Session
 	0,  // 8: orderfill.identity.v1.ValidateSessionResponse.user:type_name -> orderfill.identity.v1.User
 	4,  // 9: orderfill.identity.v1.ValidateSessionResponse.session:type_name -> orderfill.identity.v1.Session
-	48, // 10: orderfill.identity.v1.GetMeRequest.meta:type_name -> orderfill.common.v1.RequestMeta
+	50, // 10: orderfill.identity.v1.GetMeRequest.meta:type_name -> orderfill.common.v1.RequestMeta
 	0,  // 11: orderfill.identity.v1.GetMeResponse.user:type_name -> orderfill.identity.v1.User
 	0,  // 12: orderfill.identity.v1.AcceptInviteResponse.user:type_name -> orderfill.identity.v1.User
 	4,  // 13: orderfill.identity.v1.AcceptInviteResponse.session:type_name -> orderfill.identity.v1.Session
 	0,  // 14: orderfill.identity.v1.FinishPasskeyLoginResponse.user:type_name -> orderfill.identity.v1.User
 	4,  // 15: orderfill.identity.v1.FinishPasskeyLoginResponse.session:type_name -> orderfill.identity.v1.Session
 	1,  // 16: orderfill.identity.v1.PublicCompanyResponse.company:type_name -> orderfill.identity.v1.Company
-	48, // 17: orderfill.identity.v1.CreateCompanyRequest.meta:type_name -> orderfill.common.v1.RequestMeta
-	47, // 18: orderfill.identity.v1.CreateCompanyRequest.matching_mode:type_name -> orderfill.common.v1.MatchingMode
+	50, // 17: orderfill.identity.v1.CreateCompanyRequest.meta:type_name -> orderfill.common.v1.RequestMeta
+	49, // 18: orderfill.identity.v1.CreateCompanyRequest.matching_mode:type_name -> orderfill.common.v1.MatchingMode
 	1,  // 19: orderfill.identity.v1.CreateCompanyResponse.company:type_name -> orderfill.identity.v1.Company
-	48, // 20: orderfill.identity.v1.ListCompaniesRequest.meta:type_name -> orderfill.common.v1.RequestMeta
+	50, // 20: orderfill.identity.v1.ListCompaniesRequest.meta:type_name -> orderfill.common.v1.RequestMeta
 	1,  // 21: orderfill.identity.v1.ListCompaniesResponse.companies:type_name -> orderfill.identity.v1.Company
-	48, // 22: orderfill.identity.v1.UpdateCompanyRequest.meta:type_name -> orderfill.common.v1.RequestMeta
-	47, // 23: orderfill.identity.v1.UpdateCompanyRequest.matching_mode:type_name -> orderfill.common.v1.MatchingMode
+	50, // 22: orderfill.identity.v1.UpdateCompanyRequest.meta:type_name -> orderfill.common.v1.RequestMeta
+	49, // 23: orderfill.identity.v1.UpdateCompanyRequest.matching_mode:type_name -> orderfill.common.v1.MatchingMode
 	1,  // 24: orderfill.identity.v1.UpdateCompanyResponse.company:type_name -> orderfill.identity.v1.Company
-	48, // 25: orderfill.identity.v1.UpdateCompanyOrderProfileRequest.meta:type_name -> orderfill.common.v1.RequestMeta
+	50, // 25: orderfill.identity.v1.UpdateCompanyOrderProfileRequest.meta:type_name -> orderfill.common.v1.RequestMeta
 	3,  // 26: orderfill.identity.v1.UpdateCompanyOrderProfileRequest.order_profile:type_name -> orderfill.identity.v1.CompanyOrderProfile
 	1,  // 27: orderfill.identity.v1.UpdateCompanyOrderProfileResponse.company:type_name -> orderfill.identity.v1.Company
-	48, // 28: orderfill.identity.v1.DisableCompanyRequest.meta:type_name -> orderfill.common.v1.RequestMeta
-	48, // 29: orderfill.identity.v1.CreateUserRequest.meta:type_name -> orderfill.common.v1.RequestMeta
+	50, // 28: orderfill.identity.v1.DisableCompanyRequest.meta:type_name -> orderfill.common.v1.RequestMeta
+	50, // 29: orderfill.identity.v1.CreateUserRequest.meta:type_name -> orderfill.common.v1.RequestMeta
 	0,  // 30: orderfill.identity.v1.CreateUserResponse.user:type_name -> orderfill.identity.v1.User
-	48, // 31: orderfill.identity.v1.ListUsersRequest.meta:type_name -> orderfill.common.v1.RequestMeta
+	50, // 31: orderfill.identity.v1.ListUsersRequest.meta:type_name -> orderfill.common.v1.RequestMeta
 	0,  // 32: orderfill.identity.v1.ListUsersResponse.users:type_name -> orderfill.identity.v1.User
-	48, // 33: orderfill.identity.v1.DisableUserRequest.meta:type_name -> orderfill.common.v1.RequestMeta
-	48, // 34: orderfill.identity.v1.ResetUserAccessRequest.meta:type_name -> orderfill.common.v1.RequestMeta
-	5,  // 35: orderfill.identity.v1.IdentityService.Login:input_type -> orderfill.identity.v1.LoginRequest
-	7,  // 36: orderfill.identity.v1.IdentityService.CompleteTwoFactorLogin:input_type -> orderfill.identity.v1.CompleteTwoFactorLoginRequest
-	9,  // 37: orderfill.identity.v1.IdentityService.Logout:input_type -> orderfill.identity.v1.LogoutRequest
-	11, // 38: orderfill.identity.v1.IdentityService.LogoutEverywhere:input_type -> orderfill.identity.v1.LogoutEverywhereRequest
-	13, // 39: orderfill.identity.v1.IdentityService.ListSessions:input_type -> orderfill.identity.v1.ListSessionsRequest
-	15, // 40: orderfill.identity.v1.IdentityService.RevokeSession:input_type -> orderfill.identity.v1.RevokeSessionRequest
-	17, // 41: orderfill.identity.v1.IdentityService.ValidateSession:input_type -> orderfill.identity.v1.ValidateSessionRequest
-	19, // 42: orderfill.identity.v1.IdentityService.GetMe:input_type -> orderfill.identity.v1.GetMeRequest
-	21, // 43: orderfill.identity.v1.IdentityService.AcceptInvite:input_type -> orderfill.identity.v1.AcceptInviteRequest
-	23, // 44: orderfill.identity.v1.IdentityService.FinishPasskeyLogin:input_type -> orderfill.identity.v1.FinishPasskeyLoginRequest
-	25, // 45: orderfill.identity.v1.IdentityService.ChangePassword:input_type -> orderfill.identity.v1.ChangePasswordRequest
-	27, // 46: orderfill.identity.v1.IdentityService.PublicCompany:input_type -> orderfill.identity.v1.PublicCompanyRequest
-	29, // 47: orderfill.identity.v1.IdentityService.CreateCompany:input_type -> orderfill.identity.v1.CreateCompanyRequest
-	31, // 48: orderfill.identity.v1.IdentityService.ListCompanies:input_type -> orderfill.identity.v1.ListCompaniesRequest
-	33, // 49: orderfill.identity.v1.IdentityService.UpdateCompany:input_type -> orderfill.identity.v1.UpdateCompanyRequest
-	35, // 50: orderfill.identity.v1.IdentityService.UpdateCompanyOrderProfile:input_type -> orderfill.identity.v1.UpdateCompanyOrderProfileRequest
-	37, // 51: orderfill.identity.v1.IdentityService.DisableCompany:input_type -> orderfill.identity.v1.DisableCompanyRequest
-	39, // 52: orderfill.identity.v1.IdentityService.CreateUser:input_type -> orderfill.identity.v1.CreateUserRequest
-	41, // 53: orderfill.identity.v1.IdentityService.ListUsers:input_type -> orderfill.identity.v1.ListUsersRequest
-	43, // 54: orderfill.identity.v1.IdentityService.DisableUser:input_type -> orderfill.identity.v1.DisableUserRequest
-	45, // 55: orderfill.identity.v1.IdentityService.ResetUserAccess:input_type -> orderfill.identity.v1.ResetUserAccessRequest
-	6,  // 56: orderfill.identity.v1.IdentityService.Login:output_type -> orderfill.identity.v1.LoginResponse
-	8,  // 57: orderfill.identity.v1.IdentityService.CompleteTwoFactorLogin:output_type -> orderfill.identity.v1.CompleteTwoFactorLoginResponse
-	10, // 58: orderfill.identity.v1.IdentityService.Logout:output_type -> orderfill.identity.v1.LogoutResponse
-	12, // 59: orderfill.identity.v1.IdentityService.LogoutEverywhere:output_type -> orderfill.identity.v1.LogoutEverywhereResponse
-	14, // 60: orderfill.identity.v1.IdentityService.ListSessions:output_type -> orderfill.identity.v1.ListSessionsResponse
-	16, // 61: orderfill.identity.v1.IdentityService.RevokeSession:output_type -> orderfill.identity.v1.RevokeSessionResponse
-	18, // 62: orderfill.identity.v1.IdentityService.ValidateSession:output_type -> orderfill.identity.v1.ValidateSessionResponse
-	20, // 63: orderfill.identity.v1.IdentityService.GetMe:output_type -> orderfill.identity.v1.GetMeResponse
-	22, // 64: orderfill.identity.v1.IdentityService.AcceptInvite:output_type -> orderfill.identity.v1.AcceptInviteResponse
-	24, // 65: orderfill.identity.v1.IdentityService.FinishPasskeyLogin:output_type -> orderfill.identity.v1.FinishPasskeyLoginResponse
-	26, // 66: orderfill.identity.v1.IdentityService.ChangePassword:output_type -> orderfill.identity.v1.ChangePasswordResponse
-	28, // 67: orderfill.identity.v1.IdentityService.PublicCompany:output_type -> orderfill.identity.v1.PublicCompanyResponse
-	30, // 68: orderfill.identity.v1.IdentityService.CreateCompany:output_type -> orderfill.identity.v1.CreateCompanyResponse
-	32, // 69: orderfill.identity.v1.IdentityService.ListCompanies:output_type -> orderfill.identity.v1.ListCompaniesResponse
-	34, // 70: orderfill.identity.v1.IdentityService.UpdateCompany:output_type -> orderfill.identity.v1.UpdateCompanyResponse
-	36, // 71: orderfill.identity.v1.IdentityService.UpdateCompanyOrderProfile:output_type -> orderfill.identity.v1.UpdateCompanyOrderProfileResponse
-	38, // 72: orderfill.identity.v1.IdentityService.DisableCompany:output_type -> orderfill.identity.v1.DisableCompanyResponse
-	40, // 73: orderfill.identity.v1.IdentityService.CreateUser:output_type -> orderfill.identity.v1.CreateUserResponse
-	42, // 74: orderfill.identity.v1.IdentityService.ListUsers:output_type -> orderfill.identity.v1.ListUsersResponse
-	44, // 75: orderfill.identity.v1.IdentityService.DisableUser:output_type -> orderfill.identity.v1.DisableUserResponse
-	46, // 76: orderfill.identity.v1.IdentityService.ResetUserAccess:output_type -> orderfill.identity.v1.ResetUserAccessResponse
-	56, // [56:77] is the sub-list for method output_type
-	35, // [35:56] is the sub-list for method input_type
-	35, // [35:35] is the sub-list for extension type_name
-	35, // [35:35] is the sub-list for extension extendee
-	0,  // [0:35] is the sub-list for field type_name
+	50, // 33: orderfill.identity.v1.DisableUserRequest.meta:type_name -> orderfill.common.v1.RequestMeta
+	50, // 34: orderfill.identity.v1.EnableUserRequest.meta:type_name -> orderfill.common.v1.RequestMeta
+	50, // 35: orderfill.identity.v1.ResetUserAccessRequest.meta:type_name -> orderfill.common.v1.RequestMeta
+	5,  // 36: orderfill.identity.v1.IdentityService.Login:input_type -> orderfill.identity.v1.LoginRequest
+	7,  // 37: orderfill.identity.v1.IdentityService.CompleteTwoFactorLogin:input_type -> orderfill.identity.v1.CompleteTwoFactorLoginRequest
+	9,  // 38: orderfill.identity.v1.IdentityService.Logout:input_type -> orderfill.identity.v1.LogoutRequest
+	11, // 39: orderfill.identity.v1.IdentityService.LogoutEverywhere:input_type -> orderfill.identity.v1.LogoutEverywhereRequest
+	13, // 40: orderfill.identity.v1.IdentityService.ListSessions:input_type -> orderfill.identity.v1.ListSessionsRequest
+	15, // 41: orderfill.identity.v1.IdentityService.RevokeSession:input_type -> orderfill.identity.v1.RevokeSessionRequest
+	17, // 42: orderfill.identity.v1.IdentityService.ValidateSession:input_type -> orderfill.identity.v1.ValidateSessionRequest
+	19, // 43: orderfill.identity.v1.IdentityService.GetMe:input_type -> orderfill.identity.v1.GetMeRequest
+	21, // 44: orderfill.identity.v1.IdentityService.AcceptInvite:input_type -> orderfill.identity.v1.AcceptInviteRequest
+	23, // 45: orderfill.identity.v1.IdentityService.FinishPasskeyLogin:input_type -> orderfill.identity.v1.FinishPasskeyLoginRequest
+	25, // 46: orderfill.identity.v1.IdentityService.ChangePassword:input_type -> orderfill.identity.v1.ChangePasswordRequest
+	27, // 47: orderfill.identity.v1.IdentityService.PublicCompany:input_type -> orderfill.identity.v1.PublicCompanyRequest
+	29, // 48: orderfill.identity.v1.IdentityService.CreateCompany:input_type -> orderfill.identity.v1.CreateCompanyRequest
+	31, // 49: orderfill.identity.v1.IdentityService.ListCompanies:input_type -> orderfill.identity.v1.ListCompaniesRequest
+	33, // 50: orderfill.identity.v1.IdentityService.UpdateCompany:input_type -> orderfill.identity.v1.UpdateCompanyRequest
+	35, // 51: orderfill.identity.v1.IdentityService.UpdateCompanyOrderProfile:input_type -> orderfill.identity.v1.UpdateCompanyOrderProfileRequest
+	37, // 52: orderfill.identity.v1.IdentityService.DisableCompany:input_type -> orderfill.identity.v1.DisableCompanyRequest
+	39, // 53: orderfill.identity.v1.IdentityService.CreateUser:input_type -> orderfill.identity.v1.CreateUserRequest
+	41, // 54: orderfill.identity.v1.IdentityService.ListUsers:input_type -> orderfill.identity.v1.ListUsersRequest
+	43, // 55: orderfill.identity.v1.IdentityService.DisableUser:input_type -> orderfill.identity.v1.DisableUserRequest
+	45, // 56: orderfill.identity.v1.IdentityService.EnableUser:input_type -> orderfill.identity.v1.EnableUserRequest
+	47, // 57: orderfill.identity.v1.IdentityService.ResetUserAccess:input_type -> orderfill.identity.v1.ResetUserAccessRequest
+	6,  // 58: orderfill.identity.v1.IdentityService.Login:output_type -> orderfill.identity.v1.LoginResponse
+	8,  // 59: orderfill.identity.v1.IdentityService.CompleteTwoFactorLogin:output_type -> orderfill.identity.v1.CompleteTwoFactorLoginResponse
+	10, // 60: orderfill.identity.v1.IdentityService.Logout:output_type -> orderfill.identity.v1.LogoutResponse
+	12, // 61: orderfill.identity.v1.IdentityService.LogoutEverywhere:output_type -> orderfill.identity.v1.LogoutEverywhereResponse
+	14, // 62: orderfill.identity.v1.IdentityService.ListSessions:output_type -> orderfill.identity.v1.ListSessionsResponse
+	16, // 63: orderfill.identity.v1.IdentityService.RevokeSession:output_type -> orderfill.identity.v1.RevokeSessionResponse
+	18, // 64: orderfill.identity.v1.IdentityService.ValidateSession:output_type -> orderfill.identity.v1.ValidateSessionResponse
+	20, // 65: orderfill.identity.v1.IdentityService.GetMe:output_type -> orderfill.identity.v1.GetMeResponse
+	22, // 66: orderfill.identity.v1.IdentityService.AcceptInvite:output_type -> orderfill.identity.v1.AcceptInviteResponse
+	24, // 67: orderfill.identity.v1.IdentityService.FinishPasskeyLogin:output_type -> orderfill.identity.v1.FinishPasskeyLoginResponse
+	26, // 68: orderfill.identity.v1.IdentityService.ChangePassword:output_type -> orderfill.identity.v1.ChangePasswordResponse
+	28, // 69: orderfill.identity.v1.IdentityService.PublicCompany:output_type -> orderfill.identity.v1.PublicCompanyResponse
+	30, // 70: orderfill.identity.v1.IdentityService.CreateCompany:output_type -> orderfill.identity.v1.CreateCompanyResponse
+	32, // 71: orderfill.identity.v1.IdentityService.ListCompanies:output_type -> orderfill.identity.v1.ListCompaniesResponse
+	34, // 72: orderfill.identity.v1.IdentityService.UpdateCompany:output_type -> orderfill.identity.v1.UpdateCompanyResponse
+	36, // 73: orderfill.identity.v1.IdentityService.UpdateCompanyOrderProfile:output_type -> orderfill.identity.v1.UpdateCompanyOrderProfileResponse
+	38, // 74: orderfill.identity.v1.IdentityService.DisableCompany:output_type -> orderfill.identity.v1.DisableCompanyResponse
+	40, // 75: orderfill.identity.v1.IdentityService.CreateUser:output_type -> orderfill.identity.v1.CreateUserResponse
+	42, // 76: orderfill.identity.v1.IdentityService.ListUsers:output_type -> orderfill.identity.v1.ListUsersResponse
+	44, // 77: orderfill.identity.v1.IdentityService.DisableUser:output_type -> orderfill.identity.v1.DisableUserResponse
+	46, // 78: orderfill.identity.v1.IdentityService.EnableUser:output_type -> orderfill.identity.v1.EnableUserResponse
+	48, // 79: orderfill.identity.v1.IdentityService.ResetUserAccess:output_type -> orderfill.identity.v1.ResetUserAccessResponse
+	58, // [58:80] is the sub-list for method output_type
+	36, // [36:58] is the sub-list for method input_type
+	36, // [36:36] is the sub-list for extension type_name
+	36, // [36:36] is the sub-list for extension extendee
+	0,  // [0:36] is the sub-list for field type_name
 }
 
 func init() { file_orderfill_identity_v1_identity_proto_init() }
@@ -3068,7 +3167,7 @@ func file_orderfill_identity_v1_identity_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_orderfill_identity_v1_identity_proto_rawDesc), len(file_orderfill_identity_v1_identity_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   47,
+			NumMessages:   49,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

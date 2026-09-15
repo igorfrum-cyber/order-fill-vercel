@@ -1,5 +1,5 @@
 export function isAccessAudit(action) {
-  return ["password_changed", "invite_created", "access_reset", "user_disabled", "company_disabled"].includes(action);
+  return ["password_changed", "invite_created", "access_reset", "user_disabled", "user_enabled", "company_disabled"].includes(action);
 }
 
 export function auditLine(event = {}) {
@@ -12,6 +12,8 @@ export function auditLine(event = {}) {
       return company ? `${who} сбросил доступ в ${company}` : `${who} сбросил доступ`;
     case "user_disabled":
       return company ? `${who} отключил сотрудника в ${company}` : `${who} отключил сотрудника`;
+    case "user_enabled":
+      return company ? `${who} включил сотрудника в ${company}` : `${who} включил сотрудника`;
     case "company_disabled":
       return company ? `${who} отключил компанию ${company}` : `${who} отключил компанию`;
     case "password_changed":

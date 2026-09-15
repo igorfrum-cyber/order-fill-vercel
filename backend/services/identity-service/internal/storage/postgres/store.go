@@ -16,7 +16,7 @@ import (
 
 const userSelect = `u.id, COALESCE(u.company_id, ''), COALESCE(c.name, ''), COALESCE(c.login_slug, ''),
 	COALESCE(c.logo_content_type, '') <> '', u.login, u.password_hash, u.role, u.created_at, u.disabled_at,
-	c.disabled_at IS NOT NULL, false, false`
+	c.disabled_at IS NOT NULL, false, false, u.last_login_at`
 
 type Store struct {
 	pool *pgxpool.Pool
@@ -190,14 +190,28 @@ func (s *Store) DisableUser(ctx context.Context, id string, at time.Time) error 
 	return nil
 }
 
+func (s *Store) EnableUser(ctx context.Context, id string) error {
+	tag, err := s.pool.Exec(ctx, `UPDATE users SET disabled_at = NULL WHERE id = $1`, id)
+	if err != nil {
+		return fmt.Errorf("enable user: %w", err)
+	}
+	if tag.RowsAffected() == 0 {
+		return domain.ErrNotFound
+	}
+	return nil
+}
+
 func (s *Store) CreateSession(ctx context.Context, session domain.LoginSession) error {
 	created := session.CreatedAt.UTC()
 	if created.IsZero() {
 		created = time.Now().UTC()
 	}
 	_, err := s.pool.Exec(ctx,
-		`INSERT INTO sessions (token_hash, user_id, expires_at, id, created_at, user_agent, ip)
-		 VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+		`WITH touched AS (
+			UPDATE users SET last_login_at = $5 WHERE id = $2 RETURNING id
+		)
+		INSERT INTO sessions (token_hash, user_id, expires_at, id, created_at, user_agent, ip)
+		SELECT $1, touched.id, $3, $4, $5, $6, $7 FROM touched`,
 		session.TokenHash, session.UserID, session.ExpiresAt.UTC(), session.ID, created, session.UserAgent, session.IP)
 	if err != nil {
 		return fmt.Errorf("insert session: %w", err)
@@ -335,7 +349,7 @@ func scanUserRow(row scanner) (domain.User, error) {
 	err := row.Scan(
 		&user.ID, &user.CompanyID, &user.CompanyName, &user.CompanyLoginSlug, &user.CompanyHasLogo,
 		&user.Login, &user.PasswordHash, &role, &user.CreatedAt, &user.DisabledAt,
-		&user.CompanyDisabled, &user.TwoFactorEnabled, &user.HasPasskey,
+		&user.CompanyDisabled, &user.TwoFactorEnabled, &user.HasPasskey, &user.LastSeenAt,
 	)
 	if err != nil {
 		return domain.User{}, err

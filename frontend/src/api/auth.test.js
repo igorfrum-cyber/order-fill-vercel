@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { changePassword, completeTwoFactorLogin, createCompany, disableTwoFactor, enableTwoFactor, getCompanyLogin, getCompanyOrderProfile, listAudit, listSessions, listStatus, login, logoutEverywhere, setCompanyLogo, setCompanyLoginSlug, startTwoFactorSetup, updateCompany, updateCompanyOrderProfile } from "./auth.js";
+import { changePassword, completeTwoFactorLogin, createCompany, disableTwoFactor, enableTwoFactor, enableUser, getCompanyLogin, getCompanyOrderProfile, listAudit, listSessions, listStatus, login, logoutEverywhere, setCompanyLogo, setCompanyLoginSlug, startTwoFactorSetup, updateCompany, updateCompanyOrderProfile } from "./auth.js";
 import { ApiClient, apiClient } from "./client.js";
 
 test("getCompanyLogin requests public company metadata and encodes the slug", async () => {
@@ -128,6 +128,25 @@ test("company order profile uses the protected company endpoint", async () => {
     assert.equal(calls[0].url, "/api/v1/companies/c%2F1/order-profile");
     assert.equal(calls[1].options.method, "POST");
     assert.match(calls[1].options.body, /ООО Тест/);
+  } finally {
+    apiClient.fetcher = originalFetcher;
+    apiClient.baseUrl = originalBase;
+  }
+});
+
+test("enableUser posts to the encoded account endpoint", async () => {
+  const calls = [];
+  const originalFetcher = apiClient.fetcher;
+  const originalBase = apiClient.baseUrl;
+  apiClient.baseUrl = "";
+  apiClient.fetcher = async (url, options) => {
+    calls.push({ url, options });
+    return { ok: true, status: 204, headers: new Map() };
+  };
+  try {
+    await enableUser("user/1");
+    assert.equal(calls[0].url, "/api/v1/users/user%2F1/enable");
+    assert.equal(calls[0].options.method, "POST");
   } finally {
     apiClient.fetcher = originalFetcher;
     apiClient.baseUrl = originalBase;

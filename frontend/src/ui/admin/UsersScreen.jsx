@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { createUser, disableUser, listCompanies, listUsers, resetUser } from "../../api/auth.js";
+import { createUser, disableUser, enableUser, listCompanies, listUsers, resetUser } from "../../api/auth.js";
 import {
   canManageListedUser,
   inviteRoleHint,
@@ -144,6 +144,15 @@ export function UsersScreen({ companyId, actorRole, actorId, onCompany }) {
                           canManage={canManageListedUser(actorRole, user.role)}
                           onReset={() => setResetTarget(user)}
                           onDisable={() => setDisableTarget(user)}
+                          onEnable={async () => {
+                            setError("");
+                            try {
+                              await enableUser(user.id);
+                              reload();
+                            } catch (err) {
+                              setError(userFacingError(err, "Не удалось включить пользователя."));
+                            }
+                          }}
                         />
                       </li>
                     ))}
@@ -196,7 +205,7 @@ export function UsersScreen({ companyId, actorRole, actorId, onCompany }) {
                 }
               }}
             >
-              Человек больше не сможет войти. Включить обратно через этот экран нельзя.
+              Человек больше не сможет войти, а его активные сеансы завершатся. Позже аккаунт можно включить здесь снова.
             </Modal>
           ) : null}
         </>
@@ -205,13 +214,14 @@ export function UsersScreen({ companyId, actorRole, actorId, onCompany }) {
   );
 }
 
-function UserCard({ user, canManage, isSelf, onReset, onDisable }) {
+function UserCard({ user, canManage, isSelf, onReset, onDisable, onEnable }) {
+  const status = user.disabled_at
+    ? { label: "Выключен", className: "text-[var(--color-danger)]" }
+    : user.activated
+      ? { label: "Активен", className: "text-[var(--color-ok)]" }
+      : { label: "Ждёт активации", className: "text-[var(--color-warn)]" };
   return (
-    <article
-      className={`rounded-[10px] border border-[var(--color-line)] bg-[var(--color-surface)] p-4 ${
-        user.disabled_at ? "opacity-55" : ""
-      }`}
-    >
+    <article className="rounded-[10px] border border-[var(--color-line)] bg-[var(--color-surface)] p-4">
       <div className="flex items-start gap-3">
         <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-[var(--color-neutral-soft)] text-[14px] font-semibold text-[var(--color-ink-soft)]">
           {userInitial(user.login)}
@@ -220,13 +230,10 @@ function UserCard({ user, canManage, isSelf, onReset, onDisable }) {
           <div className="truncate text-[15px] font-semibold">{user.login}</div>
           <div className="mt-0.5 text-[13px] text-[var(--color-ink-soft)]">
             {roleLabel(user.role)}
-            {user.disabled_at ? " · выключен" : ""}
             {isSelf ? " · это вы" : ""}
           </div>
           <div className="mt-1 text-[13px] text-[var(--color-ink-faint)]">
-            <span className={user.activated ? "text-[var(--color-ok)]" : "text-[var(--color-warn)]"}>
-              {user.activated ? "Аккаунт активирован" : "Ждёт активации по ссылке"}
-            </span>
+            <span className={status.className}>{status.label}</span>
             {user.activated ? ` · ${isSelf && !user.last_seen_at ? "Сейчас в системе" : lastSeenLabel(user.last_seen_at)}` : ""}
           </div>
         </div>
@@ -234,7 +241,7 @@ function UserCard({ user, canManage, isSelf, onReset, onDisable }) {
       {canManage && !isSelf ? (
         <div className="mt-3 flex flex-wrap gap-2">
           <GhostButton onClick={onReset}>Сброс доступа</GhostButton>
-          {user.disabled_at ? null : <GhostButton onClick={onDisable}>Выключить</GhostButton>}
+          {user.disabled_at ? <GhostButton onClick={onEnable}>Включить</GhostButton> : <GhostButton onClick={onDisable}>Выключить</GhostButton>}
         </div>
       ) : null}
     </article>

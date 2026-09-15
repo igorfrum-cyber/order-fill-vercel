@@ -9,6 +9,10 @@ test("auditLine turns access actions into Russian sentences", () => {
     "анна пригласил человека в «Сияние»",
   );
   assert.equal(auditLine({ action: "password_changed", actor_login: "анна" }), "анна сменил пароль");
+  assert.equal(
+    auditLine({ action: "user_enabled", actor_login: "анна", company_name: "Сияние" }),
+    "анна включил сотрудника в «Сияние»",
+  );
   assert.equal(auditLine({ action: "login_success", actor_login: "анна" }), "");
 });
 

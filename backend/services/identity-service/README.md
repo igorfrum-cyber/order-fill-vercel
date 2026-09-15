@@ -29,7 +29,7 @@ curl http://127.0.0.1:8082/readyz
 - Завершение passkey-login и выпуск сессии после подтверждения пользователя `passkey-service`.
 - Прием одноразовых приглашений, первоначальная установка пароля и сброс доступа.
 - Выпуск, проверка, список и отзыв сессий; logout текущей сессии и logout everywhere.
-- CRUD-операции текущего объема над компаниями и пользователями: создание, список, профиль, отключение, приглашение и reset access.
+- CRUD-операции текущего объема над компаниями и пользователями: создание, список, профиль, отключение, повторное включение, приглашение и reset access.
 - Роли `platform_admin`, `company_owner`, `company_admin`, `purchaser` и ограничения управления своей компанией. Одноранговые роли в компании не управляют друг другом: владелец не отключает другого владельца, администратор — другого администратора. Самого себя отключить и сбросить нельзя.
 - Настройки компании: `matching_mode`, реквизиты для заказов и отдельные условия поставщиков. Реквизиты доступны только внутри защищённого контура и не входят в публичные данные страницы входа.
 - Публичный поиск активной компании по `login_slug`.
@@ -46,7 +46,7 @@ curl http://127.0.0.1:8082/readyz
 | `internal/domain` | Пользователи, компании, роли, slug, сессии и authorization rules. |
 | `internal/service/auth` | Login, invite, session, password, TOTP и passkey orchestration. |
 | `internal/service/companies` | Компания, публичный slug, matching mode и профиль реквизитов заказа. |
-| `internal/service/users` | Приглашение, список, отключение и сброс доступа пользователей. |
+| `internal/service/users` | Приглашение, список, отключение, повторное включение и сброс доступа пользователей. |
 | `internal/storage/memory` | Непостоянное process-local хранилище для local/tests. |
 | `internal/storage/postgres` | PostgreSQL-реализация store. |
 | `internal/migrate` | Встроенная идемпотентная SQL-миграция при старте. |
@@ -79,6 +79,7 @@ curl http://127.0.0.1:8082/readyz
 | `CreateUser` | `/orderfill.identity.v1.IdentityService/CreateUser` | RPC из protobuf-контракта. |
 | `ListUsers` | `/orderfill.identity.v1.IdentityService/ListUsers` | RPC из protobuf-контракта. |
 | `DisableUser` | `/orderfill.identity.v1.IdentityService/DisableUser` | RPC из protobuf-контракта. |
+| `EnableUser` | `/orderfill.identity.v1.IdentityService/EnableUser` | RPC из protobuf-контракта. |
 | `ResetUserAccess` | `/orderfill.identity.v1.IdentityService/ResetUserAccess` | RPC из protobuf-контракта. |
 <!-- /docs-sync:rpc -->
 
@@ -97,9 +98,10 @@ Source of truth — [`../../proto/orderfill/identity/v1/identity.proto`](../../p
 
 - `PublicCompany`.
 - `CreateCompany`, `ListCompanies`, `UpdateCompany`, `DisableCompany`.
-- `CreateUser`, `ListUsers`, `DisableUser`, `ResetUserAccess`.
+- `CreateUser`, `ListUsers`, `DisableUser`, `EnableUser`, `ResetUserAccess`.
 
 `User.activated` показывает, принял ли пользователь текущее приглашение и установил ли пароль. После `ResetUserAccess` значение снова становится ложным до принятия новой ссылки.
+`User.last_seen_at` обновляется при каждом успешном выпуске сессии, включая принятие приглашения. Отключение пользователя отзывает все его сессии; повторное включение сохраняет пароль, но не восстанавливает отозванные сессии.
 
 Сервис принимает actor/user ID в protobuf-запросах и применяет доменные role checks, но на gRPC-слое не проверяет самостоятельную сессию вызывающего. API предназначен только для доверенных внутренних клиентов за сетевой границей; публичным клиентом должен быть gateway.
 

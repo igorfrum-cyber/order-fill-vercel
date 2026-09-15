@@ -65,7 +65,21 @@ func (u *Users) Disable(ctx context.Context, actor domain.User, userID string) e
 	if !domain.CanManageUser(actor, user) {
 		return domain.ErrNotFound
 	}
-	return u.store.DisableUser(ctx, userID, u.now())
+	if err := u.store.DisableUser(ctx, userID, u.now()); err != nil {
+		return err
+	}
+	return u.store.DeleteSessionsForUser(ctx, userID)
+}
+
+func (u *Users) Enable(ctx context.Context, actor domain.User, userID string) error {
+	user, err := u.store.GetUserByID(ctx, userID)
+	if err != nil {
+		return domain.ErrNotFound
+	}
+	if !domain.CanManageUser(actor, user) {
+		return domain.ErrNotFound
+	}
+	return u.store.EnableUser(ctx, userID)
 }
 
 func (u *Users) ResetAccess(ctx context.Context, actor domain.User, userID string) (string, error) {

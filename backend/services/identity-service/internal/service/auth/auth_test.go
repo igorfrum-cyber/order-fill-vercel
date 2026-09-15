@@ -96,6 +96,27 @@ func TestLoginMissingUserAndWrongPasswordMatch(t *testing.T) {
 	}
 }
 
+func TestLoginRecordsLastSeen(t *testing.T) {
+	t.Parallel()
+	store, svc, _, user, _, _ := setup(t)
+
+	result, err := svc.Login(t.Context(), user.Login, testPassword)
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := time.Date(2026, 9, 5, 12, 0, 0, 0, time.UTC)
+	if result.Session.User.LastSeenAt == nil || !result.Session.User.LastSeenAt.Equal(want) {
+		t.Fatalf("login last seen = %v, want %v", result.Session.User.LastSeenAt, want)
+	}
+	stored, err := store.GetUserByID(t.Context(), user.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if stored.LastSeenAt == nil || !stored.LastSeenAt.Equal(want) {
+		t.Fatalf("stored last seen = %v, want %v", stored.LastSeenAt, want)
+	}
+}
+
 func TestLoginLockoutAfterRepeatedFailures(t *testing.T) {
 	t.Parallel()
 	now := time.Date(2026, 9, 5, 12, 0, 0, 0, time.UTC)

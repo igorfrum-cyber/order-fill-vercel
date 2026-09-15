@@ -39,6 +39,7 @@ const (
 	IdentityService_CreateUser_FullMethodName                = "/orderfill.identity.v1.IdentityService/CreateUser"
 	IdentityService_ListUsers_FullMethodName                 = "/orderfill.identity.v1.IdentityService/ListUsers"
 	IdentityService_DisableUser_FullMethodName               = "/orderfill.identity.v1.IdentityService/DisableUser"
+	IdentityService_EnableUser_FullMethodName                = "/orderfill.identity.v1.IdentityService/EnableUser"
 	IdentityService_ResetUserAccess_FullMethodName           = "/orderfill.identity.v1.IdentityService/ResetUserAccess"
 )
 
@@ -66,6 +67,7 @@ type IdentityServiceClient interface {
 	CreateUser(ctx context.Context, in *CreateUserRequest, opts ...grpc.CallOption) (*CreateUserResponse, error)
 	ListUsers(ctx context.Context, in *ListUsersRequest, opts ...grpc.CallOption) (*ListUsersResponse, error)
 	DisableUser(ctx context.Context, in *DisableUserRequest, opts ...grpc.CallOption) (*DisableUserResponse, error)
+	EnableUser(ctx context.Context, in *EnableUserRequest, opts ...grpc.CallOption) (*EnableUserResponse, error)
 	ResetUserAccess(ctx context.Context, in *ResetUserAccessRequest, opts ...grpc.CallOption) (*ResetUserAccessResponse, error)
 }
 
@@ -277,6 +279,16 @@ func (c *identityServiceClient) DisableUser(ctx context.Context, in *DisableUser
 	return out, nil
 }
 
+func (c *identityServiceClient) EnableUser(ctx context.Context, in *EnableUserRequest, opts ...grpc.CallOption) (*EnableUserResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(EnableUserResponse)
+	err := c.cc.Invoke(ctx, IdentityService_EnableUser_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *identityServiceClient) ResetUserAccess(ctx context.Context, in *ResetUserAccessRequest, opts ...grpc.CallOption) (*ResetUserAccessResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(ResetUserAccessResponse)
@@ -311,6 +323,7 @@ type IdentityServiceServer interface {
 	CreateUser(context.Context, *CreateUserRequest) (*CreateUserResponse, error)
 	ListUsers(context.Context, *ListUsersRequest) (*ListUsersResponse, error)
 	DisableUser(context.Context, *DisableUserRequest) (*DisableUserResponse, error)
+	EnableUser(context.Context, *EnableUserRequest) (*EnableUserResponse, error)
 	ResetUserAccess(context.Context, *ResetUserAccessRequest) (*ResetUserAccessResponse, error)
 	mustEmbedUnimplementedIdentityServiceServer()
 }
@@ -381,6 +394,9 @@ func (UnimplementedIdentityServiceServer) ListUsers(context.Context, *ListUsersR
 }
 func (UnimplementedIdentityServiceServer) DisableUser(context.Context, *DisableUserRequest) (*DisableUserResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method DisableUser not implemented")
+}
+func (UnimplementedIdentityServiceServer) EnableUser(context.Context, *EnableUserRequest) (*EnableUserResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method EnableUser not implemented")
 }
 func (UnimplementedIdentityServiceServer) ResetUserAccess(context.Context, *ResetUserAccessRequest) (*ResetUserAccessResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method ResetUserAccess not implemented")
@@ -766,6 +782,24 @@ func _IdentityService_DisableUser_Handler(srv interface{}, ctx context.Context, 
 	return interceptor(ctx, in, info, handler)
 }
 
+func _IdentityService_EnableUser_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(EnableUserRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(IdentityServiceServer).EnableUser(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: IdentityService_EnableUser_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(IdentityServiceServer).EnableUser(ctx, req.(*EnableUserRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _IdentityService_ResetUserAccess_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(ResetUserAccessRequest)
 	if err := dec(in); err != nil {
@@ -870,6 +904,10 @@ var IdentityService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "DisableUser",
 			Handler:    _IdentityService_DisableUser_Handler,
+		},
+		{
+			MethodName: "EnableUser",
+			Handler:    _IdentityService_EnableUser_Handler,
 		},
 		{
 			MethodName: "ResetUserAccess",

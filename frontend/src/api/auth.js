@@ -201,6 +201,13 @@ export function disableUser(userId) {
   });
 }
 
+export function enableUser(userId) {
+  return apiClient.request(`/api/v1/users/${encodeURIComponent(userId)}/enable`, {
+    method: "POST",
+    body: JSON.stringify({}),
+  });
+}
+
 export function resetUser(userId) {
   return apiClient.request(`/api/v1/users/${encodeURIComponent(userId)}/reset`, {
     method: "POST",
