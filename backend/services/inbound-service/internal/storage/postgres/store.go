@@ -42,7 +42,7 @@ func (s *Store) GetSettings(ctx context.Context) (domain.Settings, error) {
 func (s *Store) UpsertSettings(ctx context.Context, enabled bool) (domain.Settings, error) {
 	_, err := s.pool.Exec(ctx, `
 		INSERT INTO inbound_settings (enabled) VALUES ($1)
-		ON CONFLICT () DO UPDATE SET enabled = $1
+		ON CONFLICT (id) DO UPDATE SET enabled = $1
 	`, enabled)
 	if err != nil {
 		return domain.Settings{}, fmt.Errorf("upsert inbound settings: %w", err)
@@ -57,7 +57,7 @@ func (s *Store) IncrWebhookCount(ctx context.Context, isError bool) {
 	}
 	_, _ = s.pool.Exec(ctx, fmt.Sprintf(`
 		INSERT INTO inbound_settings (enabled, %s) VALUES (TRUE, 1)
-		ON CONFLICT () DO UPDATE SET %s = inbound_settings.%s + 1, last_webhook_at = now()
+		ON CONFLICT (id) DO UPDATE SET %s = inbound_settings.%s + 1, last_webhook_at = now()
 	`, col, col, col))
 }
 
