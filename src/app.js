@@ -1,6 +1,7 @@
 import "./styles.css";
 import { openBudgetDialog, budgetChangeComment } from './budgetDialog.js';
 import { createOrderPricing, priceOrderRows, money } from './orderPricing.js';
+import { procurementTotalCents } from './christinaLines.js';
 import { installTableRecalculation } from './recalculateTable.js';
 import {
   applyFinalEdits,
@@ -52,7 +53,7 @@ function refreshBudgetTotals() {
       let section=[...host.children].find(e=>e.dataset.group===g);
       if(!section){section=document.createElement('div');section.dataset.group=g;section.innerHTML='<strong></strong><label>Желаемая сумма, ₽<input type="number" min="0" step="0.01" data-budget-target></label>';host.append(section);}
       const selected=priced.filter(r=>r.group===g);
-      section.querySelector('strong').textContent=`${g==='main'?'Текущая сумма':g.toUpperCase()}: ${selected.some(r=>r.quantity>0&&!r.price)?'Не определена цена':money(selected.reduce((s,r)=>s+Math.round(r.quantity*r.price*100)/100,0))+' ₽'}`;
+      section.querySelector('strong').textContent=`${g==='main'?'Текущая сумма':g.toUpperCase()}: ${selected.some(r=>r.quantity>0&&!r.price)?'Не определена цена':money(procurementTotalCents(selected)/100)+' ₽'}`;
     }
     for(const child of [...host.children])if(!groups.includes(child.dataset.group))child.remove();
   }

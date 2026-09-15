@@ -1336,15 +1336,65 @@ export function budgetOrderRules(brand, name, box) {
   return { unit: 1, step, minimum: rule.adjustment === 'minimum' ? Math.max(1, Number(box) || 1) : step };
 }
 
+const christinaLinesCache = new WeakMap();
+
+/** Read complete membership from the blank, including unmatched/zero-order goods. */
+export function christinaProffLines(workbook, sheet) {
+  if (!christinaLinesCache.has(workbook)) christinaLinesCache.set(workbook, new Map());
+  const cache = christinaLinesCache.get(workbook);
+  if (cache.has(sheet)) return cache.get(sheet);
+  const styles = workbook.files['xl/styles.xml'];
+  const styleDoc = styles ? XML_PARSER.parseFromString(strFromU8(styles), 'application/xml') : null;
+  const xfRoot = styleDoc && firstElement(styleDoc.documentElement, 'cellXfs');
+  const xfs = xfRoot ? elements(xfRoot, 'xf') : [];
+  const fill = cell => Number(xfs[Number(cell?.node?.getAttribute('s') || 0)]?.getAttribute('fillId') || 0);
+  const lines = [], byRow = new Map();
+  let current = null;
+  const lastRow = sheetBounds(sheet).maxRow;
+  for (let row = 1; row <= lastRow; row++) {
+    const article = asText(sheetCellValue(sheet, row, 1)).trim().toUpperCase();
+    const name = asText(sheetCellValue(sheet, row, 2)).trim();
+    if (!article && name && !/профессиональный уход/i.test(name)) {
+      const fills = [1,2,3,4,5,6].map(col => fill(sheet.cells.get(cellKey(row,col))));
+      // Adjacent cells can encode visually identical colors with distinct fill
+      // IDs (theme vs RGB). A continuous filled band need not share one ID.
+      if (fills.every(f => f > 1)) {
+        if (/ОБЩАЯ ЛИНИЯ/i.test(name)) { current = null; continue; }
+        const label = name.split(/\s+[–—-]\s+/)[0].trim();
+        current = { id: label.toUpperCase(), name: label, required: [], members: [] };
+        lines.push(current);
+      }
+    }
+    if (!/^CHR\d+$/i.test(article) || !name) continue;
+    // The approved September PROFF blank has no Nuance heading. Its product
+    // names identify this separate line; never absorb it into preceding MUSE.
+    if (/^Nuance\b/i.test(name) && current?.id !== 'NUANCE') {
+      current = { id: 'NUANCE', name: 'Nuance', required: [], members: [] };
+      lines.push(current);
+    }
+    if (!current || article === 'CHR133') continue;
+    current.required.push(article);
+    current.members.push({ row, article });
+  }
+  for (const line of lines) for (const member of line.members) byRow.set(member.row, {
+    id: line.id, name: line.name, article: member.article, required: [...line.required],
+  });
+  cache.set(sheet, byRow);
+  return byRow;
+}
+
 export function budgetReportRows(result, brand) {
+  const lines = brand === 'christina' && result.blankId === 'proff'
+    ? christinaProffLines(result.blankWorkbook, result.blankDetection.sheet) : new Map();
   return result.reportRows.filter(r => r.editable !== false).map(r => ({
     ...r.budget, ...budgetOrderRules(brand, r.blankName, r.blankBoxSize),
     key: r.key, name: r.blankName, group: result.blankId,
     blankRow: r.blankRow, quantityCol: r.blankQuantityCol,
-    inventoryKey: String(r.sourceRow),
+    inventoryKey: r.sourceRow == null ? `unmatched:${r.key}` : String(r.sourceRow),
     unsafe: Boolean(r.duplicate || r.status.startsWith('warning')),
     stock: parseNumber(r.stock) || 0, transit: parseNumber(r.inTransit) || 0,
     prices: budgetPrices(result.blankDetection, r.blankRow, r.blankQuantityCol),
+    line: lines.get(r.blankRow), preserveBlankPrices: brand === 'christina',
   }));
 }
 
@@ -1387,6 +1437,9 @@ function budgetInvoicePriceColumn(sheet, headerRow, entry) {
 export function applyBudgetWorkbookPricing(workbook, sheetName, headerRow, entries = []) {
   if (!entries.length) return workbook;
   if (entries.some(e=>e.quantity>0 && !(e.price>0 && e.pricing?.column))) throw new Error('Не для всех заказанных позиций определена цена. Проверьте выбранную колонку цены.');
+  // CHRISTINA supplier blanks keep club prices; procurement discounts live
+  // only in the platform calculation, including equal PROFF complete sets.
+  if (entries.every(e => e.preserveBlankPrices)) return workbook;
   const output = loadXlsx(saveXlsx(workbook));
   const sheet = output.sheets.find(s=>s.name===sheetName);
   if (!sheet) throw new Error('Не найден лист бланка для обновления скидки.');
@@ -1860,6 +1913,15 @@ export function fillWorkbook({ sourceWorkbook, sourceFileName = "", blankWorkboo
       filled += 1;
     }
     reportRows.push(makeReportRow(status, rowInfo, selected, score, order, { blankId, blankLabel, adjustmentLabel: rule.adjustmentLabel }));
+  }
+  if (brand === 'christina' && blankId === 'proff') {
+    const lines = christinaProffLines(blankWorkbook, blank.sheet);
+    for (const row of reportRows) if (row.status === 'not_in_source' && lines.has(row.blankRow)) {
+      // No invented sales: only an explicitly allowed first-set completion or
+      // a manager edit may order these unmatched blank positions.
+      row.editable = true;
+      row.budget = { demand: 0, delivery: 0, category: null };
+    }
   }
   return {
     blankId,
@@ -2676,9 +2738,12 @@ function northPositions(workbook, blankId, blankLabel, fileName = "", brand = ""
   const boxMatcher = blankMatchers({ boxHeader: brandRule(brand).blankBoxHeader }).boxSize;
   const boxCol = Array.from({length:sheetBounds(detected.detection.sheet).maxColumn}, (_,i)=>i+1)
     .find(col=>boxMatcher(normalizeHeader(sheetCellValue(detected.detection.sheet,detected.detection.headerRow,col))));
+  const lines = brand === 'christina' ? christinaProffLines(workbook, detected.detection.sheet) : new Map();
   for (const p of positions) {
     p.budgetPrices = budgetPrices(detected.detection, p.row, p.quantityCol);
     p.blankBoxSize = boxCol ? parseNumber(sheetCellValue(detected.detection.sheet,p.row,boxCol)) : null;
+    p.christinaLine = lines.get(p.row);
+    p.preserveBlankPrices = brand === 'christina';
   }
   return { ...detected, positions };
 }
@@ -3072,7 +3137,8 @@ function northPlanRowFromTotal(summary, total, position, tyumen = null, tyumenFa
     blankBoxSize: position.blankBoxSize,
     cities: northTotalCityParts(total),
     northNeed: Number(northNeed.toFixed(2)),
-    budget: { ...tyumen?.budget, prices: position.budgetPrices || [] },
+    budget: { ...tyumen?.budget, prices: position.budgetPrices || [], line: position.christinaLine,
+      preserveBlankPrices: position.preserveBlankPrices },
     tyumenOrder: tyumenUploadedOrder,
     tyumenPlannedOrder: Number(tyumenPlannedOrder.toFixed(2)),
     tyumenStock,
@@ -3279,7 +3345,8 @@ export function buildNorthOrderFiles(blanks, options = {}) {
   if (options.tyumenSourceWorkbook) {
     const available = readNorthTyumenAvailability(options.tyumenSourceWorkbook, summary.kind);
     for (const p of allPositions) {
-      if (totals.has(p.key) || !northAvailabilityForTotal(available, p, summary.kind)) continue;
+      if (totals.has(p.key) || (!northAvailabilityForTotal(available, p, summary.kind)
+        && !(p.variant === 'proff' && p.christinaLine))) continue;
       totals.set(p.key, { ...p, totalQuantity: 0, cities: new Map([['tyumen', 0]]) });
     }
   }

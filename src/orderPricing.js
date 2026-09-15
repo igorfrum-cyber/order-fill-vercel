@@ -21,6 +21,14 @@ export function createOrderPricing(form, files, load, options, changed) {
       }
       if(version!==generation)return;
       panel.innerHTML='<h3>Цена закупки</h3>'+groups.map((g,i)=>`<div data-group="${i}"><strong>${g==='main'?'Бланк':escape(g.toUpperCase())}</strong><label>Колонка цены<select data-column><option value="">Выберите колонку</option>${sets[i].map(p=>`<option value="${escape(p.id)}">${escape(p.label)}${p.price>0?' · '+money(p.price)+' ₽':''}</option>`).join('')}</select></label><label>Скидка<select data-mode><option value="net">Уже учтена в цене</option><option value="gross">Применить нашу скидку</option></select></label><label data-discount-label hidden>Наша скидка, %<input data-discount inputmode="decimal" placeholder="30 или 30%"></label></div>`).join('');
+      for (const [i, g] of groups.entries()) if (['home','proff'].includes(g)) {
+        const el = panel.querySelector(`[data-group="${i}"]`);
+        const club = sets[i].filter(p => /клубн/i.test(p.label));
+        if (club.length === 1) el.querySelector('[data-column]').value = club[0].id;
+        el.querySelector('[data-mode]').value = 'gross';
+        el.querySelector('[data-mode]').disabled = true;
+        el.querySelector('[data-discount-label]').hidden = false;
+      }
       panel.dataset.ready='true';
     } catch(e) {if(version===generation)panel.textContent=e.message;}
   }

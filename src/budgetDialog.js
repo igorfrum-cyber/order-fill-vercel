@@ -1,4 +1,5 @@
 import { planBudget, coverage, discountValue } from './budgetPlanner.js';
+import { procurementTotalCents, christinaLineGroups } from './christinaLines.js';
 
 const escape = value => String(value ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const money = value => Number(value).toLocaleString('ru-RU', { maximumFractionDigits: 2 });
@@ -21,6 +22,7 @@ export function openBudgetDialog({ rows, christina, apply, fixedPricing=false, i
     </section>
     <p data-summary aria-live="polite"></p>
     <p data-warning role="alert"></p>
+    <div data-lines></div>
     <div class="budget-scroll"><table><thead><tr><th>Закрепить</th><th>Позиция</th><th>Категория</th><th>Цена закупки</th><th>Сейчас</th><th>После</th><th>Запас, мес.</th><th>Комментарий</th></tr></thead><tbody></tbody></table></div>
     <footer><button type="button" data-run>Рассчитать</button><button type="button" data-permission hidden>Все равно продолжить</button><button type="button" data-apply disabled>Применить</button><button type="button" data-back>Назад</button></footer>`;
   document.body.append(dialog);
@@ -47,7 +49,9 @@ export function openBudgetDialog({ rows, christina, apply, fixedPricing=false, i
     });
   }
   function draw(data) {
-    $('tbody').innerHTML = data.map(r => `<tr>
+    const lines = christinaLineGroups(data);
+    $('[data-lines]').innerHTML = lines.length ? `<details><summary>PROFF: комплекты и дополнительная скидка</summary><table><thead><tr><th>Линия</th><th>Полных комплектов</th><th>Доп. скидка, ₽</th><th>Закупка, ₽</th></tr></thead><tbody>${lines.map(l=>`<tr><td>${escape(l.name)}</td><td>${l.valid ? l.sets : 'Состав не подтвержден'}</td><td>${money(l.savingCents/100)}</td><td>${money(l.netCents/100)}</td></tr>`).join('')}</tbody></table></details>` : '';
+    $('.budget-scroll tbody').innerHTML = data.map(r => `<tr>
       <td><input type="checkbox" data-lock="${escape(r.key)}" aria-label="Закрепить ${escape(r.name)}" ${locks.has(r.key) ? 'checked' : ''}></td>
       <td>${escape(r.name)}</td><td>${escape(r.category || 'Нет данных')}</td>
       <td>${r.price ? money(r.price) : 'Нет цены'}</td>
@@ -59,7 +63,7 @@ export function openBudgetDialog({ rows, christina, apply, fixedPricing=false, i
   function reset() {
     // A changed price, target or lock invalidates both preview and exceptions.
     preview=null; pending=''; permissions={}; $('[data-apply]').disabled=true; $('[data-permission]').hidden=true; $('[data-warning]').textContent='';
-    try { const data=pricedRows(); draw(data); $('[data-summary]').textContent=`Текущий заказ: ${money(data.reduce((s,r)=>s+r.quantity*r.price,0))} ₽`; } catch(e) { $('[data-warning]').textContent=e.message; }
+    try { const data=pricedRows(); draw(data); $('[data-summary]').textContent=`Текущий заказ: ${money(procurementTotalCents(data)/100)} ₽`; } catch(e) { $('[data-warning]').textContent=e.message; }
   }
   function run() {
     try {
@@ -114,7 +118,7 @@ export function additionComment(quantity, unit) {
 export function budgetChangeComment(row) {
   if (row.before == null) return '';
   const delta = row.quantity - row.before;
-  if (delta > 0) return additionComment(delta, row.unit);
+  if (delta > 0) return additionComment(delta, row.unit) + (row.lineCompletion ? ` Дополнение комплектов ${row.lineCompletion}.` : '');
   if (delta < 0) return `Уменьшено на ${money(-delta)} ${row.unit > 1 ? 'уп.' : 'шт.'} Для снижения заказа до указанной суммы.`;
   return '';
 }
