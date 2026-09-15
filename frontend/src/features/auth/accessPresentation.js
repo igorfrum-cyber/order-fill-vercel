@@ -72,8 +72,11 @@ export function navItemsForRole(role) {
   ];
 }
 
-export function canManageListedUser(actorRole, targetRole) {
-  if (actorRole === "platform_admin") return true;
+export function canManageListedUser(actorRole, targetRole, actorIsPrimaryAdmin = false, targetIsPrimaryAdmin = false) {
+  if (actorRole === "platform_admin") {
+    if (targetRole === "platform_admin") return actorIsPrimaryAdmin && !targetIsPrimaryAdmin;
+    return true;
+  }
   if (actorRole === targetRole) return false;
   if (actorRole === "company_owner") {
     return targetRole === "company_admin" || targetRole === "purchaser";

@@ -355,7 +355,7 @@ export default function App() {
               />
             ) : null}
             {screen === "users" ? (
-              <UsersScreen actorId={me.id} actorRole={me.role} companyId={resolveUsersCompanyId(me.role, companyId, me.company_id)} onCompany={selectCompany} />
+              <UsersScreen actorId={me.id} actorRole={me.role} actorIsPrimaryAdmin={me.is_primary_admin} companyId={resolveUsersCompanyId(me.role, companyId, me.company_id)} onCompany={selectCompany} />
             ) : null}
             {screen === "account" ? (
               <AccountScreen

@@ -1,8 +1,35 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { changePassword, completeTwoFactorLogin, createCompany, disableTwoFactor, enableTwoFactor, enableUser, getCompanyLogin, getCompanyOrderProfile, listAudit, listSessions, listStatus, login, logoutEverywhere, setCompanyLogo, setCompanyLoginSlug, startTwoFactorSetup, updateCompany, updateCompanyOrderProfile } from "./auth.js";
+import { changePassword, completeTwoFactorLogin, createCompany, createPlatformAdmin, disableTwoFactor, enableTwoFactor, enableUser, getCompanyLogin, getCompanyOrderProfile, listAudit, listPlatformAdmins, listSessions, listStatus, login, logoutEverywhere, setCompanyLogo, setCompanyLoginSlug, startTwoFactorSetup, updateCompany, updateCompanyOrderProfile } from "./auth.js";
 import { ApiClient, apiClient } from "./client.js";
+
+test("platform admin API lists admins and posts a new login", async () => {
+  const calls = [];
+  const originalFetcher = apiClient.fetcher;
+  const originalBase = apiClient.baseUrl;
+  apiClient.baseUrl = "";
+  apiClient.fetcher = async (url, options) => {
+    calls.push({ url, options });
+    return {
+      ok: true,
+      status: options?.method === "POST" ? 201 : 200,
+      headers: new Map([["Content-Type", "application/json"]]),
+      json: async () => ({ users: [] }),
+    };
+  };
+  try {
+    await listPlatformAdmins();
+    await createPlatformAdmin("ops-admin");
+    assert.equal(calls[0].url, "/api/v1/platform-admins");
+    assert.equal(calls[1].url, "/api/v1/platform-admins");
+    assert.equal(calls[1].options.method, "POST");
+    assert.equal(JSON.parse(calls[1].options.body).login, "ops-admin");
+  } finally {
+    apiClient.fetcher = originalFetcher;
+    apiClient.baseUrl = originalBase;
+  }
+});
 
 test("getCompanyLogin requests public company metadata and encodes the slug", async () => {
   const calls = [];

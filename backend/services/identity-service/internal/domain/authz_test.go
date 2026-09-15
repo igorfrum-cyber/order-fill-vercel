@@ -5,26 +5,29 @@ import "testing"
 func TestCanInviteRole(t *testing.T) {
 	t.Parallel()
 	cases := []struct {
-		actor Role
-		want  Role
-		ok    bool
+		name    string
+		actor   Role
+		primary bool
+		want    Role
+		ok      bool
 	}{
-		{RolePlatformAdmin, RoleCompanyOwner, true},
-		{RolePlatformAdmin, RoleCompanyAdmin, true},
-		{RolePlatformAdmin, RolePurchaser, true},
-		{RolePlatformAdmin, RolePlatformAdmin, false},
-		{RoleCompanyOwner, RoleCompanyAdmin, true},
-		{RoleCompanyOwner, RolePurchaser, true},
-		{RoleCompanyOwner, RoleCompanyOwner, false},
-		{RoleCompanyAdmin, RolePurchaser, true},
-		{RoleCompanyAdmin, RoleCompanyAdmin, false},
-		{RoleCompanyAdmin, RoleCompanyOwner, false},
-		{RolePurchaser, RolePurchaser, false},
+		{"primary_platform_admin_invites_platform_admin", RolePlatformAdmin, true, RolePlatformAdmin, true},
+		{"secondary_platform_admin_cannot_invite_platform_admin", RolePlatformAdmin, false, RolePlatformAdmin, false},
+		{"platform_admin_invites_company_owner", RolePlatformAdmin, false, RoleCompanyOwner, true},
+		{"platform_admin_invites_company_admin", RolePlatformAdmin, false, RoleCompanyAdmin, true},
+		{"platform_admin_invites_purchaser", RolePlatformAdmin, false, RolePurchaser, true},
+		{"company_owner_invites_company_admin", RoleCompanyOwner, false, RoleCompanyAdmin, true},
+		{"company_owner_invites_purchaser", RoleCompanyOwner, false, RolePurchaser, true},
+		{"company_owner_cannot_invite_owner", RoleCompanyOwner, false, RoleCompanyOwner, false},
+		{"company_admin_invites_purchaser", RoleCompanyAdmin, false, RolePurchaser, true},
+		{"company_admin_cannot_invite_admin", RoleCompanyAdmin, false, RoleCompanyAdmin, false},
+		{"company_admin_cannot_invite_owner", RoleCompanyAdmin, false, RoleCompanyOwner, false},
+		{"purchaser_cannot_invite_purchaser", RolePurchaser, false, RolePurchaser, false},
 	}
 	for _, tc := range cases {
-		t.Run(string(tc.actor)+"/"+string(tc.want), func(t *testing.T) {
+		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
-			got := CanInviteRole(User{Role: tc.actor, CompanyID: "co"}, tc.want)
+			got := CanInviteRole(User{Role: tc.actor, CompanyID: "co", IsPrimaryAdmin: tc.primary}, tc.want)
 			if got != tc.ok {
 				t.Fatalf("got %v want %v", got, tc.ok)
 			}
@@ -41,6 +44,8 @@ func TestCanManageUser(t *testing.T) {
 	buyer := User{ID: "b1", Role: RolePurchaser, CompanyID: "co"}
 	other := User{ID: "b2", Role: RolePurchaser, CompanyID: "other"}
 	platform := User{ID: "p1", Role: RolePlatformAdmin}
+	primary := User{ID: "root", Role: RolePlatformAdmin, IsPrimaryAdmin: true}
+	peerPlatform := User{ID: "p2", Role: RolePlatformAdmin}
 	if !CanManageUser(platform, owner) || !CanManageUser(owner, admin) || !CanManageUser(owner, buyer) {
 		t.Fatal("owner/platform should manage company staff")
 	}
@@ -58,6 +63,12 @@ func TestCanManageUser(t *testing.T) {
 	}
 	if CanManageUser(owner, peerOwner) || CanManageUser(admin, peerAdmin) {
 		t.Fatal("same-role peers must not manage each other")
+	}
+	if !CanManageUser(primary, peerPlatform) {
+		t.Fatal("primary platform admin should manage secondary platform admins")
+	}
+	if CanManageUser(platform, primary) || CanManageUser(platform, peerPlatform) {
+		t.Fatal("secondary platform admin must not manage platform admins")
 	}
 }
 

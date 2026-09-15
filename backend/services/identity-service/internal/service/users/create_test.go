@@ -118,3 +118,38 @@ func TestDisableRevokesSessionsAndEnableRestoresAccount(t *testing.T) {
 		t.Fatalf("old session restored after enable: %v", err)
 	}
 }
+
+func TestPrimaryPlatformAdminInvitesAndManagesSecondaryAdmin(t *testing.T) {
+	t.Parallel()
+	now := time.Date(2026, 9, 15, 12, 0, 0, 0, time.UTC)
+	store := memory.NewStore()
+	svc := users.New(store, func() time.Time { return now })
+	primary := domain.User{ID: "primary", Login: "root", Role: domain.RolePlatformAdmin, IsPrimaryAdmin: true}
+	secondary := domain.User{ID: "secondary", Login: "ops", Role: domain.RolePlatformAdmin}
+	for _, user := range []domain.User{primary, secondary} {
+		if err := store.CreateUser(t.Context(), user); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	created, token, err := svc.Create(t.Context(), primary, "", "second-ops", domain.RolePlatformAdmin)
+	if err != nil || token == "" || created.CompanyID != "" || created.Role != domain.RolePlatformAdmin || created.IsPrimaryAdmin {
+		t.Fatalf("primary invite: user=%+v token=%q err=%v", created, token, err)
+	}
+	if _, _, err := svc.Create(t.Context(), secondary, "", "third-ops", domain.RolePlatformAdmin); !errors.Is(err, domain.ErrInvalid) {
+		t.Fatalf("secondary invite platform admin: %v", err)
+	}
+	if err := svc.Disable(t.Context(), secondary, primary.ID); !errors.Is(err, domain.ErrNotFound) {
+		t.Fatalf("secondary disable primary: %v", err)
+	}
+	if err := svc.Disable(t.Context(), secondary, created.ID); !errors.Is(err, domain.ErrNotFound) {
+		t.Fatalf("secondary disable peer: %v", err)
+	}
+	if err := svc.Disable(t.Context(), primary, created.ID); err != nil {
+		t.Fatalf("primary disable secondary: %v", err)
+	}
+	items, err := svc.List(t.Context(), secondary, "")
+	if err != nil || len(items) != 3 {
+		t.Fatalf("list platform admins: len=%d err=%v", len(items), err)
+	}
+}

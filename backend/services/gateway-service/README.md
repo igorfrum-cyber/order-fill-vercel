@@ -32,6 +32,7 @@ curl http://127.0.0.1:8080/readyz
 - Скачивание отдельных файлов и ZIP-архива, а также выдача метаданных и окон табличного preview без распаковки всей книги в gateway.
 - Публичные метаданные и логотип страницы входа компании по `login_slug`.
 - Аудит отдельных административных действий и агрегированный статус инфраструктуры для `platform_admin`.
+- Список администраторов платформы доступен всем `platform_admin`; приглашение и управление дополнительными администраторами доступны только защищённому главному администратору.
 - Просмотр и изменение действующих правил брендов администратором платформы.
 - Просмотр и изменение реквизитов заказа своей компании; скидка хранится отдельно по бренду и валидируется как процент от 0 до 100.
 - CORS, CSRF-проверка POST-запросов (включая public login/invite/passkey), security headers (`Cache-Control: private, no-store`, `Cross-Origin-Opener-Policy`/`Cross-Origin-Resource-Policy: same-origin`) и HTTP-only cookie `order_fill_session`.
@@ -109,6 +110,8 @@ Gateway не владеет постоянным хранилищем. `POSTGRES
 - `POST /api/v1/companies/{company_id}/logo/clear`
 - `GET /api/v1/companies/{company_id}/users`
 - `POST /api/v1/companies/{company_id}/users`
+- `GET /api/v1/platform-admins`
+- `POST /api/v1/platform-admins`
 - `POST /api/v1/users/{user_id}/disable`
 - `POST /api/v1/users/{user_id}/enable`
 - `POST /api/v1/users/{user_id}/reset`

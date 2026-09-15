@@ -44,6 +44,7 @@ message User {
   string last_seen_at = 10;
   string disabled_at = 11;
   bool activated = 12;
+  bool is_primary_admin = 13;
 }
 
 message Company {

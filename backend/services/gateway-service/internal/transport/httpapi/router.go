@@ -83,6 +83,8 @@ func New(cfg config.Config, c clients.Clients) http.Handler {
 	mux.HandleFunc("POST /api/v1/companies/{company_id}/logo/clear", api.clearCompanyLogo)
 	mux.HandleFunc("GET /api/v1/companies/{company_id}/users", api.listUsers)
 	mux.HandleFunc("POST /api/v1/companies/{company_id}/users", api.createUser)
+	mux.HandleFunc("GET /api/v1/platform-admins", api.listPlatformAdmins)
+	mux.HandleFunc("POST /api/v1/platform-admins", api.createPlatformAdmin)
 	mux.HandleFunc("POST /api/v1/users/{user_id}/disable", api.disableUser)
 	mux.HandleFunc("POST /api/v1/users/{user_id}/enable", api.enableUser)
 	mux.HandleFunc("POST /api/v1/users/{user_id}/reset", api.resetUser)

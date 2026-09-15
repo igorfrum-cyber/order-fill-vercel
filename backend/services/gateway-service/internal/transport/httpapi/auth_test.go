@@ -10,11 +10,15 @@ import (
 func TestPresentUserIncludesDisabledAndLastSeen(t *testing.T) {
 	t.Parallel()
 	got := presentUser(User{
-		ID: "u1", Login: "buyer", Role: "purchaser", CompanyID: "co",
+		ID: "u1", Login: "root", Role: "platform_admin",
 		DisabledAt: "2026-09-01T12:00:00Z", LastSeenAt: "2026-09-11T08:00:00Z",
+		IsPrimaryAdmin: true,
 	})
 	if got["disabled_at"] != "2026-09-01T12:00:00Z" || got["last_seen_at"] != "2026-09-11T08:00:00Z" {
 		t.Fatalf("got %#v", got)
+	}
+	if got["is_primary_admin"] != true {
+		t.Fatalf("primary admin flag = %#v", got["is_primary_admin"])
 	}
 	active := presentUser(User{ID: "u2", Login: "keeper", Role: "company_admin"})
 	if activated, ok := active["activated"].(bool); !ok || activated {

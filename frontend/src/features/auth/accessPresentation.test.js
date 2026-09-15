@@ -61,6 +61,12 @@ test("canInviteRole follows inviteRoleOptions", () => {
   assert.equal(canInviteRole("purchaser", "purchaser"), false);
 });
 
+test("only primary platform admin manages other platform admins", () => {
+  assert.equal(canManageListedUser("platform_admin", "platform_admin", true, false), true);
+  assert.equal(canManageListedUser("platform_admin", "platform_admin", false, false), false);
+  assert.equal(canManageListedUser("platform_admin", "platform_admin", true, true), false);
+});
+
 test("company admin cannot disable or reset the company owner", () => {
   assert.equal(canManageListedUser("platform_admin", "company_owner"), true);
   assert.equal(canManageListedUser("company_owner", "company_admin"), true);

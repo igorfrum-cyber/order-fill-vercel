@@ -22,7 +22,7 @@ func TestBootstrapCreatesAdminOnce(t *testing.T) {
 		t.Fatalf("second created=%v token=%q err=%v", created, again, err)
 	}
 	user, err := store.GetUserByLogin(t.Context(), "admin")
-	if err != nil || user.Role != domain.RolePlatformAdmin {
+	if err != nil || user.Role != domain.RolePlatformAdmin || !user.IsPrimaryAdmin {
 		t.Fatalf("user=%+v err=%v", user, err)
 	}
 }

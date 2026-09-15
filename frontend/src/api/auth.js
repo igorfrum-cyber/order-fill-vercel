@@ -194,6 +194,17 @@ export function createUser(companyId, login, role) {
   });
 }
 
+export function listPlatformAdmins() {
+  return apiClient.request("/api/v1/platform-admins");
+}
+
+export function createPlatformAdmin(login) {
+  return apiClient.request("/api/v1/platform-admins", {
+    method: "POST",
+    body: JSON.stringify({ login }),
+  });
+}
+
 export function disableUser(userId) {
   return apiClient.request(`/api/v1/users/${encodeURIComponent(userId)}/disable`, {
     method: "POST",

@@ -17,6 +17,12 @@ func (u *Users) Create(ctx context.Context, actor domain.User, companyID, login 
 	if domain.BoundToOwnCompany(actor) {
 		companyID = actor.CompanyID
 	}
+	if role == domain.RolePlatformAdmin {
+		if companyID != "" || !domain.CanInviteRole(actor, role) {
+			return domain.User{}, "", fmt.Errorf("%w: unsupported role", domain.ErrInvalid)
+		}
+		return u.create(ctx, "", login, role)
+	}
 	if !domain.CanManageCompany(actor, companyID) || companyID == "" {
 		return domain.User{}, "", domain.ErrNotFound
 	}
@@ -26,6 +32,10 @@ func (u *Users) Create(ctx context.Context, actor domain.User, companyID, login 
 	if _, err := u.store.GetCompany(ctx, companyID); err != nil {
 		return domain.User{}, "", domain.ErrNotFound
 	}
+	return u.create(ctx, companyID, login, role)
+}
+
+func (u *Users) create(ctx context.Context, companyID, login string, role domain.Role) (domain.User, string, error) {
 	id, err := secret.NewSecret()
 	if err != nil {
 		return domain.User{}, "", err

@@ -291,6 +291,51 @@ func (a *API) createUser(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+func (a *API) listPlatformAdmins(w http.ResponseWriter, r *http.Request) {
+	user, _ := userFrom(r)
+	if user.Role != "platform_admin" {
+		writeError(w, http.StatusNotFound, "not_found", "not found")
+		return
+	}
+	resp, err := a.Clients.Identity.ListUsers(r.Context(), &identityv1.ListUsersRequest{Meta: a.meta(user)})
+	if err != nil {
+		writeGRPCError(w, "list_platform_admins_failed", err)
+		return
+	}
+	items := make([]map[string]any, 0, len(resp.GetUsers()))
+	for _, item := range resp.GetUsers() {
+		items = append(items, a.presentUser(r.Context(), userFromProto(item)))
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"users": items})
+}
+
+func (a *API) createPlatformAdmin(w http.ResponseWriter, r *http.Request) {
+	user, _ := userFrom(r)
+	if user.Role != "platform_admin" || !user.IsPrimaryAdmin {
+		writeError(w, http.StatusNotFound, "not_found", "not found")
+		return
+	}
+	var payload struct {
+		Login string `json:"login"`
+	}
+	if !decodeJSON(w, r, &payload, authJSONLimit) {
+		return
+	}
+	resp, err := a.Clients.Identity.CreateUser(r.Context(), &identityv1.CreateUserRequest{
+		Meta: a.meta(user), Login: payload.Login, Role: "platform_admin",
+	})
+	if err != nil {
+		writeGRPCError(w, "create_platform_admin_failed", err)
+		return
+	}
+	a.recordAudit(r.Context(), user, "platform_admin_invited", "", "")
+	writeJSON(w, http.StatusCreated, map[string]any{
+		"user":         a.presentUser(r.Context(), userFromProto(resp.GetUser())),
+		"invite_token": resp.GetInviteToken(),
+		"invite_url":   "/invite/" + resp.GetInviteToken(),
+	})
+}
+
 func (a *API) disableUser(w http.ResponseWriter, r *http.Request) {
 	user, _ := userFrom(r)
 	_, err := a.Clients.Identity.DisableUser(r.Context(), &identityv1.DisableUserRequest{Meta: a.meta(user), UserId: r.PathValue("user_id")})

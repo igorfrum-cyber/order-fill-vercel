@@ -16,7 +16,7 @@ import (
 
 const userSelect = `u.id, COALESCE(u.company_id, ''), COALESCE(c.name, ''), COALESCE(c.login_slug, ''),
 	COALESCE(c.logo_content_type, '') <> '', u.login, u.password_hash, u.role, u.created_at, u.disabled_at,
-	c.disabled_at IS NOT NULL, false, false, u.last_login_at`
+	c.disabled_at IS NOT NULL, false, false, u.last_login_at, u.is_primary_admin`
 
 type Store struct {
 	pool *pgxpool.Pool
@@ -126,9 +126,9 @@ func (s *Store) CreateUser(ctx context.Context, user domain.User) error {
 		created = time.Now().UTC()
 	}
 	_, err := s.pool.Exec(ctx,
-		`INSERT INTO users (id, company_id, login, password_hash, role, created_at)
-		 VALUES ($1, $2, $3, $4, $5, $6)`,
-		user.ID, nullIfEmpty(user.CompanyID), user.Login, user.PasswordHash, string(user.Role), created)
+		`INSERT INTO users (id, company_id, login, password_hash, role, created_at, is_primary_admin)
+		 VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+		user.ID, nullIfEmpty(user.CompanyID), user.Login, user.PasswordHash, string(user.Role), created, user.IsPrimaryAdmin)
 	if err != nil {
 		return mapConflict(err)
 	}
@@ -350,6 +350,7 @@ func scanUserRow(row scanner) (domain.User, error) {
 		&user.ID, &user.CompanyID, &user.CompanyName, &user.CompanyLoginSlug, &user.CompanyHasLogo,
 		&user.Login, &user.PasswordHash, &role, &user.CreatedAt, &user.DisabledAt,
 		&user.CompanyDisabled, &user.TwoFactorEnabled, &user.HasPasskey, &user.LastSeenAt,
+		&user.IsPrimaryAdmin,
 	)
 	if err != nil {
 		return domain.User{}, err

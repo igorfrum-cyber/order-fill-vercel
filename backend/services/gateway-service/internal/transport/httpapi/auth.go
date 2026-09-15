@@ -29,7 +29,8 @@ func presentUser(user User) map[string]any {
 		"id": user.ID, "login": user.Login, "role": user.Role,
 		"company_id": user.CompanyID, "company_name": user.CompanyName, "login_slug": user.LoginSlug,
 		"has_logo": user.HasLogo, "two_factor_enabled": user.TwoFactor, "has_passkey": user.HasPasskey,
-		"activated": user.Activated,
+		"activated":        user.Activated,
+		"is_primary_admin": user.IsPrimaryAdmin,
 	}
 	if user.LastSeenAt != "" {
 		out["last_seen_at"] = user.LastSeenAt

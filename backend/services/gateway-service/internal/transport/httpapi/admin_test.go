@@ -125,3 +125,24 @@ func TestListStatusRequiresPlatformAdmin(t *testing.T) {
 		t.Fatalf("status=%d", rec.Code)
 	}
 }
+
+func TestPlatformAdminManagementRequiresPlatformRoleAndPrimaryForCreate(t *testing.T) {
+	t.Parallel()
+	api := &API{}
+
+	listReq := httptest.NewRequest(http.MethodGet, "/api/v1/platform-admins", nil)
+	listReq = listReq.WithContext(withUser(listReq.Context(), User{Role: "company_owner", CompanyID: "co-1"}))
+	listRec := httptest.NewRecorder()
+	api.listPlatformAdmins(listRec, listReq)
+	if listRec.Code != http.StatusNotFound {
+		t.Fatalf("company owner list status=%d", listRec.Code)
+	}
+
+	createReq := httptest.NewRequest(http.MethodPost, "/api/v1/platform-admins", nil)
+	createReq = createReq.WithContext(withUser(createReq.Context(), User{Role: "platform_admin"}))
+	createRec := httptest.NewRecorder()
+	api.createPlatformAdmin(createRec, createReq)
+	if createRec.Code != http.StatusNotFound {
+		t.Fatalf("secondary admin create status=%d", createRec.Code)
+	}
+}

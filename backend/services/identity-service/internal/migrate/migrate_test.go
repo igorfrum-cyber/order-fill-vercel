@@ -22,3 +22,17 @@ func TestInitSQLAddsCompanyColumnsOnLegacyTable(t *testing.T) {
 		}
 	}
 }
+
+func TestPrimaryAdminMigrationProtectsExactlyOneBootstrapAdmin(t *testing.T) {
+	t.Parallel()
+	body, err := files.ReadFile("migrations/00004_primary_platform_admin.sql")
+	if err != nil {
+		t.Fatal(err)
+	}
+	sql := string(body)
+	for _, needle := range []string{"is_primary_admin", "role = 'platform_admin'", "CREATE UNIQUE INDEX"} {
+		if !strings.Contains(sql, needle) {
+			t.Fatalf("primary admin migration needs %q", needle)
+		}
+	}
+}

@@ -24,7 +24,8 @@ CREATE TABLE IF NOT EXISTS users (
 	role TEXT NOT NULL,
 	created_at TIMESTAMPTZ NOT NULL,
 	disabled_at TIMESTAMPTZ,
-	last_login_at TIMESTAMPTZ
+	last_login_at TIMESTAMPTZ,
+	is_primary_admin BOOLEAN NOT NULL DEFAULT FALSE
 );
 
 CREATE TABLE IF NOT EXISTS sessions (

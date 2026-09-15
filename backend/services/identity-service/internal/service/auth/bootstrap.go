@@ -25,10 +25,11 @@ func (a *Auth) Bootstrap(ctx context.Context, login string) (string, bool, error
 		return "", false, err
 	}
 	user := domain.User{
-		ID:        id,
-		Login:     login,
-		Role:      domain.RolePlatformAdmin,
-		CreatedAt: a.now(),
+		ID:             id,
+		Login:          login,
+		Role:           domain.RolePlatformAdmin,
+		CreatedAt:      a.now(),
+		IsPrimaryAdmin: true,
 	}
 	if err := a.store.CreateUser(ctx, user); err != nil {
 		return "", false, err

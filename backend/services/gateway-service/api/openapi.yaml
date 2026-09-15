@@ -857,6 +857,61 @@ paths:
           $ref: "#/components/responses/Unauthorized"
         "404":
           $ref: "#/components/responses/NotFound"
+  /api/v1/platform-admins:
+    get:
+      operationId: listPlatformAdmins
+      tags: [users]
+      summary: List platform administrators
+      responses:
+        "200":
+          description: Platform administrators.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [users]
+                properties:
+                  users:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/User"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    post:
+      operationId: createPlatformAdmin
+      tags: [users]
+      summary: Invite a secondary platform administrator (primary admin only)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [login]
+              properties:
+                login:
+                  type: string
+      responses:
+        "201":
+          description: Platform administrator created with a one-time invite URL.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [user, invite_url]
+                properties:
+                  user:
+                    $ref: "#/components/schemas/User"
+                  invite_url:
+                    type: string
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
   /api/v1/users/{user_id}/enable:
     post:
       operationId: enableUser
@@ -1321,7 +1376,7 @@ components:
   schemas:
     User:
       type: object
-      required: [id, login, role, activated]
+      required: [id, login, role, activated, is_primary_admin]
       properties:
         id:
           type: string
@@ -1345,6 +1400,9 @@ components:
         activated:
           type: boolean
           description: The invite was accepted and the account currently has a password.
+        is_primary_admin:
+          type: boolean
+          description: True only for the protected bootstrap platform administrator.
         last_seen_at:
           type: string
           format: date-time
