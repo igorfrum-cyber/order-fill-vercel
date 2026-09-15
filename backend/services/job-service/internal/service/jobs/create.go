@@ -24,12 +24,14 @@ func (s *Service) Create(ctx context.Context, actor domain.Actor, jobType domain
 		return domain.Job{}, err
 	}
 	mode := domain.MatchingModeStandard
+	profile := domain.OrderProfile{}
 	if s.companies != nil {
-		got, err := s.companies.MatchingMode(ctx, actor)
+		config, err := s.companies.Config(ctx, actor)
 		if err != nil {
 			return domain.Job{}, err
 		}
-		mode = got
+		mode = config.MatchingMode
+		profile = config.OrderProfile
 	}
 	id, err := newID()
 	if err != nil {
@@ -53,6 +55,7 @@ func (s *Service) Create(ctx context.Context, actor domain.Actor, jobType domain
 		MatchingMode: string(job.MatchingMode),
 		CompanyID:    job.CompanyID,
 		Brand:        brand,
+		OrderProfile: queueOrderProfile(profile),
 		Inputs:       queueInputs(files),
 	}); err != nil {
 		job.Status = domain.StatusFailed
@@ -62,6 +65,23 @@ func (s *Service) Create(ctx context.Context, actor domain.Actor, jobType domain
 		return domain.Job{}, fmt.Errorf("enqueue job: %w", err)
 	}
 	return job, nil
+}
+
+func queueOrderProfile(profile domain.OrderProfile) queue.OrderProfile {
+	out := queue.OrderProfile{
+		LegalName: profile.LegalName, Consignee: profile.Consignee, Address: profile.Address,
+		ContactName: profile.ContactName, ContactPhone: profile.ContactPhone, Carrier: profile.Carrier,
+		DeliveryPayer: profile.DeliveryPayer, DeliveryDestination: profile.DeliveryDestination,
+	}
+	for _, item := range profile.BrandTerms {
+		out.BrandTerms = append(out.BrandTerms, queue.BrandTerms{
+			Brand: item.Brand, DealerName: item.DealerName, PaymentMethod: item.PaymentMethod,
+			PaymentControl: item.PaymentControl, CustomerType: item.CustomerType,
+			DiscountBasisPoints: item.DiscountBasisPoints,
+			DiscountSet:         item.DiscountSet,
+		})
+	}
+	return out
 }
 
 func (s *Service) Get(ctx context.Context, actor domain.Actor, id string) (domain.Job, error) {

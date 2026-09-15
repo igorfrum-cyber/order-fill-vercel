@@ -10,6 +10,9 @@ const sourceFile = path.join(dataRoot, "таблицы продаж/Ангио �
 const blankFile = path.join(dataRoot, "Бланки/2026 08 25 Бланк заказа ANGIOPHARM.xlsx");
 const login = process.env.REAL_E2E_LOGIN;
 const password = process.env.REAL_E2E_PASSWORD;
+const ownerLogin = process.env.REAL_E2E_OWNER_LOGIN;
+const ownerPassword = process.env.REAL_E2E_OWNER_PASSWORD;
+const profileLegalName = "ООО Сквозной E2E";
 const realPairs = [
   {
     name: "Skin Synergy",
@@ -34,6 +37,7 @@ test("real ANGIOPHARM files pass budget calculation, preview and download", asyn
   expect(fs.existsSync(sourceFile), `Missing real source workbook: ${sourceFile}`).toBe(true);
   expect(fs.existsSync(blankFile), `Missing real supplier workbook: ${blankFile}`).toBe(true);
 
+  await configureOrderProfile(page, testInfo);
   await authenticatePurchaser(page, testInfo);
 
   await page.goto("/");
@@ -89,6 +93,8 @@ test("real ANGIOPHARM files pass budget calculation, preview and download", asyn
   await expect(page.getByRole("button", { name: "Бланк" })).toBeVisible();
   await expect(page.getByRole("textbox", { name: "Найти артикул" })).toBeVisible();
   await expect(page.getByText(/строк · до/)).toBeVisible();
+  await page.getByRole("button", { name: "Бланк" }).click();
+  await expect(page.getByText(profileLegalName, { exact: true })).toBeVisible({ timeout: 30_000 });
 
   const downloads = [];
   page.on("download", (download) => downloads.push(download));
@@ -133,6 +139,42 @@ async function authenticatePurchaser(page, testInfo) {
   const body = await auth.text();
   expect(auth.ok(), `Login failed: ${auth.status()} ${body}`).toBe(true);
   expect(JSON.parse(body).role).toBe("purchaser");
+}
+
+async function configureOrderProfile(page, testInfo) {
+  expect(ownerLogin, "Set REAL_E2E_OWNER_LOGIN for the purchaser company owner").toBeTruthy();
+  expect(ownerPassword, "Set REAL_E2E_OWNER_PASSWORD for that owner").toBeTruthy();
+  const origin = new URL(testInfo.project.use.baseURL).origin;
+  const headers = { Origin: origin, "X-Requested-With": "fetch" };
+  const auth = await page.request.post("/api/v1/auth/login", {
+    data: { login: ownerLogin, password: ownerPassword },
+    headers,
+  });
+  const body = await auth.text();
+  expect(auth.ok(), `Owner login failed: ${auth.status()} ${body}`).toBe(true);
+  const owner = JSON.parse(body);
+  expect(owner.role).toBe("company_owner");
+
+  const saved = await page.request.post(`/api/v1/companies/${owner.company_id}/order-profile`, {
+    data: {
+      legal_name: profileLegalName,
+      consignee: "ООО Сквозной E2E",
+      address: "Тюмень, ул. Тестовая, 1",
+      contact_name: "Иван Иванов",
+      contact_phone: "+7 912 345-67-89",
+      carrier: "Деловые линии",
+      delivery_payer: "Получатель",
+      delivery_destination: "До терминала",
+      brand_terms: [
+        { brand: "angiopharm", discount_set: true, discount_basis_points: 2750 },
+        { brand: "skin_synergy", discount_set: true, discount_basis_points: 3000 },
+        { brand: "klapp", discount_set: true, discount_basis_points: 2500 },
+      ],
+    },
+    headers,
+  });
+  expect(saved.ok(), `Saving company order profile failed: ${saved.status()} ${await saved.text()}`).toBe(true);
+  await page.request.post("/api/v1/auth/logout", { headers });
 }
 
 function moneyFromText(value) {

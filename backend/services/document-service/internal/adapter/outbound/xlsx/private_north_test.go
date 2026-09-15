@@ -6,10 +6,12 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"order-fill/backend/services/document-service/internal/adapter/outbound/xlsx"
 	"order-fill/backend/services/document-service/internal/domain/brand"
 	"order-fill/backend/services/document-service/internal/domain/north"
+	"order-fill/backend/services/document-service/internal/domain/orderfill"
 	"order-fill/backend/services/document-service/internal/domain/spreadsheet"
 )
 
@@ -99,6 +101,62 @@ func TestPrivateNorthWorkbooks(t *testing.T) {
 	}
 	checkDir("Бланки", false)
 	checkDir("таблицы продаж", true)
+}
+
+func TestPrivateCompanyProfileTargetsRealBlankCells(t *testing.T) {
+	root := os.Getenv("ORDER_FILL_PRIVATE_TESTDATA")
+	if root == "" {
+		root = filepath.Clean(filepath.Join("..", "..", "..", "..", "..", "..", "testdata", "private"))
+	}
+	cases := []struct {
+		name, brand, sheet string
+		want               map[[2]int]string
+	}{
+		{"2026 08 25 Бланк заказа ANGIOPHARM.xlsx", "angiopharm", "Бланк", map[[2]int]string{{1, 3}: "ООО Тест", {2, 3}: "14.09.2026", {17, 3}: "32.5"}},
+		{"_Бланк заказа Skin Synergy от 26.08.2026.xlsx", "skin_synergy", "Бланк заказа", map[[2]int]string{{5, 7}: "Дилер Тест", {6, 7}: "0.325"}},
+		{"Бланк Заказа KLAPP август 2026 (1).xlsx", "klapp", "БЛАНК ЗАКАЗА", map[[2]int]string{{5, 4}: "Заказ от (просьба указать юр. лицо): ООО Тест", {2, 10}: "0.325"}},
+	}
+	codec := xlsx.NewCodec()
+	for _, tc := range cases {
+		t.Run(tc.brand, func(t *testing.T) {
+			content, err := os.ReadFile(filepath.Join(root, "Бланки", tc.name))
+			if err != nil {
+				t.Skip("private blank is not available")
+			}
+			workbook, err := codec.Load(content)
+			if err != nil {
+				t.Fatal(err)
+			}
+			orderfill.ApplyCompanyOrderProfile(workbook, tc.brand, orderfill.CompanyOrderProfile{
+				LegalName: "ООО Тест", BrandTerms: []orderfill.CompanyBrandTerms{{
+					Brand: tc.brand, DealerName: "Дилер Тест", DiscountBasisPoints: 3_250, DiscountSet: true,
+				}},
+			}, time.Date(2026, 9, 14, 0, 0, 0, 0, time.UTC))
+			sheet, ok := workbook.Sheet(tc.sheet)
+			if !ok {
+				t.Fatalf("sheet %q not found", tc.sheet)
+			}
+			for cell, want := range tc.want {
+				if got := sheet.Value(cell[0], cell[1]); got != want {
+					t.Fatalf("cell %v = %q, want %q", cell, got, want)
+				}
+			}
+			saved, err := workbook.Save()
+			if err != nil {
+				t.Fatal(err)
+			}
+			reloaded, err := codec.Load(saved)
+			if err != nil {
+				t.Fatal(err)
+			}
+			sheet, _ = reloaded.Sheet(tc.sheet)
+			for cell, want := range tc.want {
+				if got := sheet.Value(cell[0], cell[1]); got != want {
+					t.Fatalf("saved cell %v = %q, want %q", cell, got, want)
+				}
+			}
+		})
+	}
 }
 
 func TestPrivateNorthBudgetPairs(t *testing.T) {

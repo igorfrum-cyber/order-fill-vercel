@@ -77,6 +77,8 @@ func New(cfg config.Config, c clients.Clients) http.Handler {
 	mux.HandleFunc("POST /api/v1/companies/{company_id}/disable", api.disableCompany)
 	mux.HandleFunc("POST /api/v1/companies/{company_id}/login-slug", api.updateCompany)
 	mux.HandleFunc("POST /api/v1/companies/{company_id}/profile", api.updateCompany)
+	mux.HandleFunc("GET /api/v1/companies/{company_id}/order-profile", api.getCompanyOrderProfile)
+	mux.HandleFunc("POST /api/v1/companies/{company_id}/order-profile", api.updateCompanyOrderProfile)
 	mux.HandleFunc("POST /api/v1/companies/{company_id}/logo", api.setCompanyLogo)
 	mux.HandleFunc("POST /api/v1/companies/{company_id}/logo/clear", api.clearCompanyLogo)
 	mux.HandleFunc("GET /api/v1/companies/{company_id}/users", api.listUsers)

@@ -19,26 +19,27 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	IdentityService_Login_FullMethodName                  = "/orderfill.identity.v1.IdentityService/Login"
-	IdentityService_CompleteTwoFactorLogin_FullMethodName = "/orderfill.identity.v1.IdentityService/CompleteTwoFactorLogin"
-	IdentityService_Logout_FullMethodName                 = "/orderfill.identity.v1.IdentityService/Logout"
-	IdentityService_LogoutEverywhere_FullMethodName       = "/orderfill.identity.v1.IdentityService/LogoutEverywhere"
-	IdentityService_ListSessions_FullMethodName           = "/orderfill.identity.v1.IdentityService/ListSessions"
-	IdentityService_RevokeSession_FullMethodName          = "/orderfill.identity.v1.IdentityService/RevokeSession"
-	IdentityService_ValidateSession_FullMethodName        = "/orderfill.identity.v1.IdentityService/ValidateSession"
-	IdentityService_GetMe_FullMethodName                  = "/orderfill.identity.v1.IdentityService/GetMe"
-	IdentityService_AcceptInvite_FullMethodName           = "/orderfill.identity.v1.IdentityService/AcceptInvite"
-	IdentityService_FinishPasskeyLogin_FullMethodName     = "/orderfill.identity.v1.IdentityService/FinishPasskeyLogin"
-	IdentityService_ChangePassword_FullMethodName         = "/orderfill.identity.v1.IdentityService/ChangePassword"
-	IdentityService_PublicCompany_FullMethodName          = "/orderfill.identity.v1.IdentityService/PublicCompany"
-	IdentityService_CreateCompany_FullMethodName          = "/orderfill.identity.v1.IdentityService/CreateCompany"
-	IdentityService_ListCompanies_FullMethodName          = "/orderfill.identity.v1.IdentityService/ListCompanies"
-	IdentityService_UpdateCompany_FullMethodName          = "/orderfill.identity.v1.IdentityService/UpdateCompany"
-	IdentityService_DisableCompany_FullMethodName         = "/orderfill.identity.v1.IdentityService/DisableCompany"
-	IdentityService_CreateUser_FullMethodName             = "/orderfill.identity.v1.IdentityService/CreateUser"
-	IdentityService_ListUsers_FullMethodName              = "/orderfill.identity.v1.IdentityService/ListUsers"
-	IdentityService_DisableUser_FullMethodName            = "/orderfill.identity.v1.IdentityService/DisableUser"
-	IdentityService_ResetUserAccess_FullMethodName        = "/orderfill.identity.v1.IdentityService/ResetUserAccess"
+	IdentityService_Login_FullMethodName                     = "/orderfill.identity.v1.IdentityService/Login"
+	IdentityService_CompleteTwoFactorLogin_FullMethodName    = "/orderfill.identity.v1.IdentityService/CompleteTwoFactorLogin"
+	IdentityService_Logout_FullMethodName                    = "/orderfill.identity.v1.IdentityService/Logout"
+	IdentityService_LogoutEverywhere_FullMethodName          = "/orderfill.identity.v1.IdentityService/LogoutEverywhere"
+	IdentityService_ListSessions_FullMethodName              = "/orderfill.identity.v1.IdentityService/ListSessions"
+	IdentityService_RevokeSession_FullMethodName             = "/orderfill.identity.v1.IdentityService/RevokeSession"
+	IdentityService_ValidateSession_FullMethodName           = "/orderfill.identity.v1.IdentityService/ValidateSession"
+	IdentityService_GetMe_FullMethodName                     = "/orderfill.identity.v1.IdentityService/GetMe"
+	IdentityService_AcceptInvite_FullMethodName              = "/orderfill.identity.v1.IdentityService/AcceptInvite"
+	IdentityService_FinishPasskeyLogin_FullMethodName        = "/orderfill.identity.v1.IdentityService/FinishPasskeyLogin"
+	IdentityService_ChangePassword_FullMethodName            = "/orderfill.identity.v1.IdentityService/ChangePassword"
+	IdentityService_PublicCompany_FullMethodName             = "/orderfill.identity.v1.IdentityService/PublicCompany"
+	IdentityService_CreateCompany_FullMethodName             = "/orderfill.identity.v1.IdentityService/CreateCompany"
+	IdentityService_ListCompanies_FullMethodName             = "/orderfill.identity.v1.IdentityService/ListCompanies"
+	IdentityService_UpdateCompany_FullMethodName             = "/orderfill.identity.v1.IdentityService/UpdateCompany"
+	IdentityService_UpdateCompanyOrderProfile_FullMethodName = "/orderfill.identity.v1.IdentityService/UpdateCompanyOrderProfile"
+	IdentityService_DisableCompany_FullMethodName            = "/orderfill.identity.v1.IdentityService/DisableCompany"
+	IdentityService_CreateUser_FullMethodName                = "/orderfill.identity.v1.IdentityService/CreateUser"
+	IdentityService_ListUsers_FullMethodName                 = "/orderfill.identity.v1.IdentityService/ListUsers"
+	IdentityService_DisableUser_FullMethodName               = "/orderfill.identity.v1.IdentityService/DisableUser"
+	IdentityService_ResetUserAccess_FullMethodName           = "/orderfill.identity.v1.IdentityService/ResetUserAccess"
 )
 
 // IdentityServiceClient is the client API for IdentityService service.
@@ -60,6 +61,7 @@ type IdentityServiceClient interface {
 	CreateCompany(ctx context.Context, in *CreateCompanyRequest, opts ...grpc.CallOption) (*CreateCompanyResponse, error)
 	ListCompanies(ctx context.Context, in *ListCompaniesRequest, opts ...grpc.CallOption) (*ListCompaniesResponse, error)
 	UpdateCompany(ctx context.Context, in *UpdateCompanyRequest, opts ...grpc.CallOption) (*UpdateCompanyResponse, error)
+	UpdateCompanyOrderProfile(ctx context.Context, in *UpdateCompanyOrderProfileRequest, opts ...grpc.CallOption) (*UpdateCompanyOrderProfileResponse, error)
 	DisableCompany(ctx context.Context, in *DisableCompanyRequest, opts ...grpc.CallOption) (*DisableCompanyResponse, error)
 	CreateUser(ctx context.Context, in *CreateUserRequest, opts ...grpc.CallOption) (*CreateUserResponse, error)
 	ListUsers(ctx context.Context, in *ListUsersRequest, opts ...grpc.CallOption) (*ListUsersResponse, error)
@@ -225,6 +227,16 @@ func (c *identityServiceClient) UpdateCompany(ctx context.Context, in *UpdateCom
 	return out, nil
 }
 
+func (c *identityServiceClient) UpdateCompanyOrderProfile(ctx context.Context, in *UpdateCompanyOrderProfileRequest, opts ...grpc.CallOption) (*UpdateCompanyOrderProfileResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(UpdateCompanyOrderProfileResponse)
+	err := c.cc.Invoke(ctx, IdentityService_UpdateCompanyOrderProfile_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *identityServiceClient) DisableCompany(ctx context.Context, in *DisableCompanyRequest, opts ...grpc.CallOption) (*DisableCompanyResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(DisableCompanyResponse)
@@ -294,6 +306,7 @@ type IdentityServiceServer interface {
 	CreateCompany(context.Context, *CreateCompanyRequest) (*CreateCompanyResponse, error)
 	ListCompanies(context.Context, *ListCompaniesRequest) (*ListCompaniesResponse, error)
 	UpdateCompany(context.Context, *UpdateCompanyRequest) (*UpdateCompanyResponse, error)
+	UpdateCompanyOrderProfile(context.Context, *UpdateCompanyOrderProfileRequest) (*UpdateCompanyOrderProfileResponse, error)
 	DisableCompany(context.Context, *DisableCompanyRequest) (*DisableCompanyResponse, error)
 	CreateUser(context.Context, *CreateUserRequest) (*CreateUserResponse, error)
 	ListUsers(context.Context, *ListUsersRequest) (*ListUsersResponse, error)
@@ -353,6 +366,9 @@ func (UnimplementedIdentityServiceServer) ListCompanies(context.Context, *ListCo
 }
 func (UnimplementedIdentityServiceServer) UpdateCompany(context.Context, *UpdateCompanyRequest) (*UpdateCompanyResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method UpdateCompany not implemented")
+}
+func (UnimplementedIdentityServiceServer) UpdateCompanyOrderProfile(context.Context, *UpdateCompanyOrderProfileRequest) (*UpdateCompanyOrderProfileResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method UpdateCompanyOrderProfile not implemented")
 }
 func (UnimplementedIdentityServiceServer) DisableCompany(context.Context, *DisableCompanyRequest) (*DisableCompanyResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method DisableCompany not implemented")
@@ -660,6 +676,24 @@ func _IdentityService_UpdateCompany_Handler(srv interface{}, ctx context.Context
 	return interceptor(ctx, in, info, handler)
 }
 
+func _IdentityService_UpdateCompanyOrderProfile_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(UpdateCompanyOrderProfileRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(IdentityServiceServer).UpdateCompanyOrderProfile(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: IdentityService_UpdateCompanyOrderProfile_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(IdentityServiceServer).UpdateCompanyOrderProfile(ctx, req.(*UpdateCompanyOrderProfileRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _IdentityService_DisableCompany_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(DisableCompanyRequest)
 	if err := dec(in); err != nil {
@@ -816,6 +850,10 @@ var IdentityService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "UpdateCompany",
 			Handler:    _IdentityService_UpdateCompany_Handler,
+		},
+		{
+			MethodName: "UpdateCompanyOrderProfile",
+			Handler:    _IdentityService_UpdateCompanyOrderProfile_Handler,
 		},
 		{
 			MethodName: "DisableCompany",

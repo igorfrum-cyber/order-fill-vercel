@@ -149,6 +149,17 @@ export function updateCompany(companyId, name, loginSlug, matchingMode) {
   });
 }
 
+export function getCompanyOrderProfile(companyId) {
+  return apiClient.request(`/api/v1/companies/${encodeURIComponent(companyId)}/order-profile`);
+}
+
+export function updateCompanyOrderProfile(companyId, profile) {
+  return apiClient.request(`/api/v1/companies/${encodeURIComponent(companyId)}/order-profile`, {
+    method: "POST",
+    body: JSON.stringify(profile),
+  });
+}
+
 export function setCompanyLogo(companyId, file) {
   const body = new FormData();
   body.append("logo", file);

@@ -104,6 +104,18 @@ func (s *Store) SetCompanyProfile(_ context.Context, id, name, slug string, mode
 	return nil
 }
 
+func (s *Store) SetCompanyOrderProfile(_ context.Context, id string, profile domain.OrderProfile) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	c, ok := s.companies[id]
+	if !ok {
+		return domain.ErrNotFound
+	}
+	c.OrderProfile = profile
+	s.companies[id] = c
+	return nil
+}
+
 func (s *Store) DisableCompany(_ context.Context, id string, at time.Time) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()

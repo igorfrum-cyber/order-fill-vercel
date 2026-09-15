@@ -33,6 +33,7 @@ curl http://127.0.0.1:8080/readyz
 - Публичные метаданные и логотип страницы входа компании по `login_slug`.
 - Аудит отдельных административных действий и агрегированный статус инфраструктуры для `platform_admin`.
 - Просмотр и изменение действующих правил брендов администратором платформы.
+- Просмотр и изменение реквизитов заказа своей компании; скидка хранится отдельно по бренду и валидируется как процент от 0 до 100.
 - CORS, CSRF-проверка POST-запросов (включая public login/invite/passkey), security headers (`Cache-Control: private, no-store`, `Cross-Origin-Opener-Policy`/`Cross-Origin-Resource-Policy: same-origin`) и HTTP-only cookie `order_fill_session`.
 
 Gateway не владеет постоянным хранилищем. `POSTGRES_ADDR` и `REDIS_ADDR` используются только диагностическим `/api/v1/status`.
@@ -102,6 +103,8 @@ Gateway не владеет постоянным хранилищем. `POSTGRES
 - `POST /api/v1/companies/{company_id}/disable`
 - `POST /api/v1/companies/{company_id}/login-slug`
 - `POST /api/v1/companies/{company_id}/profile`
+- `GET /api/v1/companies/{company_id}/order-profile`
+- `POST /api/v1/companies/{company_id}/order-profile`
 - `POST /api/v1/companies/{company_id}/logo`
 - `POST /api/v1/companies/{company_id}/logo/clear`
 - `GET /api/v1/companies/{company_id}/users`
@@ -116,7 +119,7 @@ Gateway не владеет постоянным хранилищем. `POSTGRES
 
 Без cookie доступны health/readiness, login, завершение 2FA-login, прием invite, начало/завершение passkey-login и публичные маршруты компании. Остальные маршруты проходят через `ValidateSession`. POST-запросы дополнительно требуют `X-Requested-With: fetch`; если указан `Origin`, он должен входить в разрешенный список.
 
-Сессионная cookie имеет `HttpOnly`, `SameSite=Lax`, TTL 8 часов и получает `Secure`/`Domain` из конфигурации. JSON для auth/admin ограничен 8 KiB, JSON задания — 1 MiB, все multipart-тело задания — 64 MiB. MIME загружаемой книги берётся из расширения (`.xlsx`/`.xlsm`), клиентский `Content-Type` игнорируется. Логотип ограничен 512 KiB и форматами PNG, JPEG или WebP.
+Сессионная cookie имеет `HttpOnly`, `SameSite=Lax`, TTL 8 часов и получает `Secure`/`Domain` из конфигурации. JSON для auth/admin ограничен 8 KiB, профиль реквизитов компании — 32 KiB, JSON задания — 1 MiB, все multipart-тело задания — 64 MiB. MIME загружаемой книги берётся из расширения (`.xlsx`/`.xlsm`), клиентский `Content-Type` игнорируется. Логотип ограничен 512 KiB и форматами PNG, JPEG или WebP.
 
 ## Внутренние зависимости
 

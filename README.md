@@ -287,7 +287,9 @@ npm run dev --prefix frontend
 учётной записи закупщика:
 
 ```bash
-REAL_E2E_LOGIN=<login> REAL_E2E_PASSWORD=<password> npm run test:e2e:real --prefix frontend
+REAL_E2E_OWNER_LOGIN=<owner-login> REAL_E2E_OWNER_PASSWORD=<owner-password> \
+REAL_E2E_LOGIN=<purchaser-login> REAL_E2E_PASSWORD=<purchaser-password> \
+npm run test:e2e:real --prefix frontend
 ```
 
 По умолчанию тест использует `http://127.0.0.1:3200`. Другой стенд и каталог

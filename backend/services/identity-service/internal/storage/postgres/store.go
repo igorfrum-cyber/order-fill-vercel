@@ -2,6 +2,7 @@ package postgres
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"time"
@@ -46,17 +47,17 @@ func (s *Store) CreateCompany(ctx context.Context, company domain.Company) error
 
 func (s *Store) GetCompany(ctx context.Context, id string) (domain.Company, error) {
 	return s.scanCompany(s.pool.QueryRow(ctx,
-		`SELECT id, name, login_slug, logo_content_type, matching_mode, created_at, disabled_at FROM companies WHERE id = $1`, id))
+		`SELECT id, name, login_slug, logo_content_type, matching_mode, created_at, disabled_at, order_profile FROM companies WHERE id = $1`, id))
 }
 
 func (s *Store) GetCompanyByLoginSlug(ctx context.Context, slug string) (domain.Company, error) {
 	return s.scanCompany(s.pool.QueryRow(ctx,
-		`SELECT id, name, login_slug, logo_content_type, matching_mode, created_at, disabled_at FROM companies WHERE login_slug = $1`, slug))
+		`SELECT id, name, login_slug, logo_content_type, matching_mode, created_at, disabled_at, order_profile FROM companies WHERE login_slug = $1`, slug))
 }
 
 func (s *Store) ListCompanies(ctx context.Context) ([]domain.Company, error) {
 	rows, err := s.pool.Query(ctx,
-		`SELECT id, name, login_slug, logo_content_type, matching_mode, created_at, disabled_at FROM companies ORDER BY created_at`)
+		`SELECT id, name, login_slug, logo_content_type, matching_mode, created_at, disabled_at, order_profile FROM companies ORDER BY created_at`)
 	if err != nil {
 		return nil, fmt.Errorf("list companies: %w", err)
 	}
@@ -70,6 +71,21 @@ func (s *Store) ListCompanies(ctx context.Context) ([]domain.Company, error) {
 		out = append(out, c)
 	}
 	return out, rows.Err()
+}
+
+func (s *Store) SetCompanyOrderProfile(ctx context.Context, id string, profile domain.OrderProfile) error {
+	payload, err := json.Marshal(profile)
+	if err != nil {
+		return fmt.Errorf("marshal company order profile: %w", err)
+	}
+	tag, err := s.pool.Exec(ctx, `UPDATE companies SET order_profile = $2 WHERE id = $1`, id, payload)
+	if err != nil {
+		return fmt.Errorf("set company order profile: %w", err)
+	}
+	if tag.RowsAffected() == 0 {
+		return domain.ErrNotFound
+	}
+	return nil
 }
 
 func (s *Store) SetCompanyProfile(ctx context.Context, id, name, slug string, mode domain.MatchingMode) error {
@@ -332,8 +348,14 @@ func scanUserRow(row scanner) (domain.User, error) {
 func scanCompanyRow(row scanner) (domain.Company, error) {
 	var c domain.Company
 	var mode string
-	if err := row.Scan(&c.ID, &c.Name, &c.LoginSlug, &c.LogoContentType, &mode, &c.CreatedAt, &c.DisabledAt); err != nil {
+	var profile []byte
+	if err := row.Scan(&c.ID, &c.Name, &c.LoginSlug, &c.LogoContentType, &mode, &c.CreatedAt, &c.DisabledAt, &profile); err != nil {
 		return domain.Company{}, err
+	}
+	if len(profile) > 0 {
+		if err := json.Unmarshal(profile, &c.OrderProfile); err != nil {
+			return domain.Company{}, fmt.Errorf("decode company order profile: %w", err)
+		}
 	}
 	c.MatchingMode = domain.ParseMatchingMode(mode)
 	c.CreatedAt = c.CreatedAt.UTC()

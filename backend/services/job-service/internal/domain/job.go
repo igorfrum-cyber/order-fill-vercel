@@ -65,6 +65,33 @@ type UploadMeta struct {
 	Name string
 }
 
+type CompanyConfig struct {
+	MatchingMode MatchingMode
+	OrderProfile OrderProfile
+}
+
+type OrderProfile struct {
+	LegalName           string
+	Consignee           string
+	Address             string
+	ContactName         string
+	ContactPhone        string
+	Carrier             string
+	DeliveryPayer       string
+	DeliveryDestination string
+	BrandTerms          []BrandTerms
+}
+
+type BrandTerms struct {
+	Brand               string
+	DealerName          string
+	PaymentMethod       string
+	PaymentControl      string
+	CustomerType        string
+	DiscountBasisPoints int32
+	DiscountSet         bool
+}
+
 func ParseType(raw string) (Type, error) {
 	switch Type(raw) {
 	case TypeOrderFill, TypeNorthMerge:

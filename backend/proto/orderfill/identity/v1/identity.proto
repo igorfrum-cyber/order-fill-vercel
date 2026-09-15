@@ -22,6 +22,7 @@ service IdentityService {
   rpc CreateCompany(CreateCompanyRequest) returns (CreateCompanyResponse);
   rpc ListCompanies(ListCompaniesRequest) returns (ListCompaniesResponse);
   rpc UpdateCompany(UpdateCompanyRequest) returns (UpdateCompanyResponse);
+  rpc UpdateCompanyOrderProfile(UpdateCompanyOrderProfileRequest) returns (UpdateCompanyOrderProfileResponse);
   rpc DisableCompany(DisableCompanyRequest) returns (DisableCompanyResponse);
   rpc CreateUser(CreateUserRequest) returns (CreateUserResponse);
   rpc ListUsers(ListUsersRequest) returns (ListUsersResponse);
@@ -52,6 +53,29 @@ message Company {
   bool has_logo = 5;
   string disabled_at = 6;
   orderfill.common.v1.MatchingMode matching_mode = 7;
+  CompanyOrderProfile order_profile = 8;
+}
+
+message CompanyBrandTerms {
+  string brand = 1;
+  string dealer_name = 2;
+  string payment_method = 3;
+  string payment_control = 4;
+  string customer_type = 5;
+  int32 discount_basis_points = 6;
+  bool discount_set = 7;
+}
+
+message CompanyOrderProfile {
+  string legal_name = 1;
+  string consignee = 2;
+  string address = 3;
+  string contact_name = 4;
+  string contact_phone = 5;
+  string carrier = 6;
+  string delivery_payer = 7;
+  string delivery_destination = 8;
+  repeated CompanyBrandTerms brand_terms = 9;
 }
 
 message Session {
@@ -205,6 +229,16 @@ message UpdateCompanyRequest {
 }
 
 message UpdateCompanyResponse {
+  Company company = 1;
+}
+
+message UpdateCompanyOrderProfileRequest {
+  orderfill.common.v1.RequestMeta meta = 1;
+  string company_id = 2;
+  CompanyOrderProfile order_profile = 3;
+}
+
+message UpdateCompanyOrderProfileResponse {
   Company company = 1;
 }
 

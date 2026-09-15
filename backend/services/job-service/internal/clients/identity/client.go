@@ -39,25 +39,42 @@ func (c *Client) Actor(ctx context.Context, userID string) (domain.Actor, error)
 	}, nil
 }
 
-func (c *Client) MatchingMode(ctx context.Context, actor domain.Actor) (domain.MatchingMode, error) {
+func (c *Client) Config(ctx context.Context, actor domain.Actor) (domain.CompanyConfig, error) {
 	resp, err := c.api.ListCompanies(ctx, &identityv1.ListCompaniesRequest{
 		Meta: &commonv1.RequestMeta{ActorUserId: actor.UserID, CompanyId: actor.CompanyID},
 	})
 	if err != nil {
-		return "", err
+		return domain.CompanyConfig{}, err
 	}
-	return matchingModeOf(resp.GetCompanies(), actor.CompanyID), nil
+	return companyConfigOf(resp.GetCompanies(), actor.CompanyID), nil
 }
 
-func matchingModeOf(companies []*identityv1.Company, companyID string) domain.MatchingMode {
+func companyConfigOf(companies []*identityv1.Company, companyID string) domain.CompanyConfig {
 	for _, company := range companies {
 		if company.GetId() != companyID {
 			continue
 		}
+		config := domain.CompanyConfig{MatchingMode: domain.MatchingModeStandard}
 		if company.GetMatchingMode() == commonv1.MatchingMode_MATCHING_MODE_SMART {
-			return domain.MatchingModeSmart
+			config.MatchingMode = domain.MatchingModeSmart
 		}
-		return domain.MatchingModeStandard
+		profile := company.GetOrderProfile()
+		if profile != nil {
+			config.OrderProfile = domain.OrderProfile{
+				LegalName: profile.GetLegalName(), Consignee: profile.GetConsignee(), Address: profile.GetAddress(),
+				ContactName: profile.GetContactName(), ContactPhone: profile.GetContactPhone(), Carrier: profile.GetCarrier(),
+				DeliveryPayer: profile.GetDeliveryPayer(), DeliveryDestination: profile.GetDeliveryDestination(),
+			}
+			for _, item := range profile.GetBrandTerms() {
+				config.OrderProfile.BrandTerms = append(config.OrderProfile.BrandTerms, domain.BrandTerms{
+					Brand: item.GetBrand(), DealerName: item.GetDealerName(), PaymentMethod: item.GetPaymentMethod(),
+					PaymentControl: item.GetPaymentControl(), CustomerType: item.GetCustomerType(),
+					DiscountBasisPoints: item.GetDiscountBasisPoints(),
+					DiscountSet:         item.GetDiscountSet(),
+				})
+			}
+		}
+		return config
 	}
-	return domain.MatchingModeStandard
+	return domain.CompanyConfig{MatchingMode: domain.MatchingModeStandard}
 }

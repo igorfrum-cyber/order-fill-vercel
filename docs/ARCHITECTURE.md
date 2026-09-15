@@ -109,7 +109,7 @@ S3-compatible storage с непустыми credentials и TLS endpoint.
 "Север", генерацию отчетов, preview sidecar objects и итоговых workbook files.
 Сопоставление товаров не считает сам: передаёт структурированные строки в
 `matching-service` и записывает возвращённые `category` / `match_reasons` в
-`report.json`. Режим сопоставления берёт из snapshot `matching_mode` в Redis
+`report.json`. Режим сопоставления и реквизиты заказа берёт из snapshot `matching_mode`/`order_profile` в Redis
 message, а не из identity-service.
 
 ### brand-service, matching-service, calculation-service
@@ -151,7 +151,7 @@ outputs и архивов.
 5. job-service сохраняет metadata в PostgreSQL и публикует Redis message.
 6. document-worker читает сообщение из consumer group.
 7. document-worker получает input files через file-service/object storage.
-8. document-worker читает Excel, вызывает matching-service с matching_mode из сообщения очереди и сохраняет report.json плюс output artifacts.
+8. document-worker читает Excel, вызывает matching-service с matching_mode из сообщения очереди, подставляет реквизиты компании в поддерживаемые поля бланка и сохраняет report.json плюс output artifacts.
 9. document-worker обновляет job status/report/output metadata через job-service.
 10. frontend читает status/report/preview через gateway-service.
 11. Пользователь отправляет ручные правки.

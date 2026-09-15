@@ -675,6 +675,49 @@ paths:
           $ref: "#/components/responses/NotFound"
         "409":
           $ref: "#/components/responses/Conflict"
+  /api/v1/companies/{company_id}/order-profile:
+    get:
+      operationId: getCompanyOrderProfile
+      tags: [companies]
+      summary: Read company requisites and supplier-specific order terms
+      parameters:
+        - $ref: "#/components/parameters/CompanyId"
+      responses:
+        "200":
+          description: Company order profile.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CompanyOrderProfile"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    post:
+      operationId: updateCompanyOrderProfile
+      tags: [companies]
+      summary: Replace company requisites and supplier-specific order terms
+      parameters:
+        - $ref: "#/components/parameters/CompanyId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CompanyOrderProfile"
+      responses:
+        "200":
+          description: Saved company order profile.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CompanyOrderProfile"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
   /api/v1/companies/{company_id}/logo:
     post:
       operationId: setCompanyLogo
@@ -1361,6 +1404,68 @@ components:
           type: string
           enum: [standard, smart]
           description: Present only for platform admin.
+        order_profile:
+          $ref: "#/components/schemas/CompanyOrderProfile"
+    CompanyOrderProfile:
+      type: object
+      required: [legal_name, consignee, address, contact_name, contact_phone, carrier, delivery_payer, delivery_destination, brand_terms]
+      properties:
+        legal_name:
+          type: string
+          maxLength: 300
+        consignee:
+          type: string
+          maxLength: 300
+        address:
+          type: string
+          maxLength: 300
+        contact_name:
+          type: string
+          maxLength: 300
+        contact_phone:
+          type: string
+          maxLength: 300
+        carrier:
+          type: string
+          maxLength: 300
+        delivery_payer:
+          type: string
+          maxLength: 300
+        delivery_destination:
+          type: string
+          maxLength: 300
+        brand_terms:
+          type: array
+          maxItems: 20
+          items:
+            $ref: "#/components/schemas/CompanyBrandTerms"
+    CompanyBrandTerms:
+      type: object
+      required: [brand, dealer_name, payment_method, payment_control, customer_type, discount_basis_points, discount_set]
+      properties:
+        brand:
+          type: string
+          pattern: "^[a-z][a-z0-9_]{0,49}$"
+        dealer_name:
+          type: string
+          maxLength: 300
+        payment_method:
+          type: string
+          maxLength: 300
+        payment_control:
+          type: string
+          maxLength: 300
+        customer_type:
+          type: string
+          maxLength: 300
+        discount_basis_points:
+          type: integer
+          minimum: 0
+          maximum: 10000
+          description: Hundredths of one percent; 3025 means 30.25%.
+        discount_set:
+          type: boolean
+          description: False preserves the supplier blank's existing discount.
     JobListItem:
       type: object
       required: [id, type, status, created_at]
