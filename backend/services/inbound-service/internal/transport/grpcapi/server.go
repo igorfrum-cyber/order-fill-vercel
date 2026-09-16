@@ -160,10 +160,10 @@ func (s *Server) ListMessages(ctx context.Context, req *inboundv1.ListMessagesRe
 }
 
 func (s *Server) GetMessageFile(ctx context.Context, req *inboundv1.GetMessageFileRequest) (*inboundv1.GetMessageFileResponse, error) {
-	if err := s.requireCompanyRead(ctx, req.GetMeta(), ""); err != nil {
+	companyID := req.GetMeta().GetCompanyId()
+	if err := s.requireCompanyRead(ctx, req.GetMeta(), companyID); err != nil {
 		return nil, err
 	}
-	companyID := req.GetMeta().GetCompanyId()
 	att, data, err := s.svc.GetMessageFile(ctx, companyID, req.GetMessageId(), req.GetAttachmentId())
 	if err != nil {
 		if errors.Is(err, domain.ErrNotFound) {

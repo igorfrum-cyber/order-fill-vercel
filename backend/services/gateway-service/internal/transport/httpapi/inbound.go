@@ -51,14 +51,13 @@ type inboundMessageJSON struct {
 }
 
 func (a *API) inboundWebhookAuthorized(r *http.Request) bool {
-	header := r.Header.Get("Authorization")
-	if !strings.HasPrefix(header, "Bearer ") {
-		return false
-	}
-	provided := strings.TrimSpace(strings.TrimPrefix(header, "Bearer "))
+	provided := strings.TrimSpace(r.Header.Get("Authorization"))
 	expected := a.InboundWebhookToken
 	if expected == "" {
 		return false
+	}
+	if strings.HasPrefix(strings.ToLower(provided), "bearer ") {
+		provided = strings.TrimSpace(provided[len("Bearer "):])
 	}
 	return subtle.ConstantTimeCompare([]byte(provided), []byte(expected)) == 1
 }

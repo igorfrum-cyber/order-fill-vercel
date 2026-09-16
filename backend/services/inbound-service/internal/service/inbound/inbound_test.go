@@ -438,6 +438,25 @@ func TestIngestSubjectHeadersBeatTopLevel(t *testing.T) {
 	}
 }
 
+func TestIngestUsesCloudMailinHeaderMessageIDForDeduplication(t *testing.T) {
+	t.Parallel()
+	store := newFakeStore()
+	svc := New(store, newFakeObjectStore(), "bucket")
+	body := `{"envelope":{"from":"1c@company.ru","to":"7e1432246b724f3bcd6c@cloudmailin.net"},"headers":{"message_id":"<cloudmailin-123@example.com>"},"attachments":[{"file_name":"f.xlsx","content":"` + base64Of("data") + `"}]}`
+	if err := svc.IngestWebhook(t.Context(), []byte(body)); err != nil {
+		t.Fatalf("first ingest: %v", err)
+	}
+	if err := svc.IngestWebhook(t.Context(), []byte(body)); err != nil {
+		t.Fatalf("duplicate ingest: %v", err)
+	}
+	if len(store.saved) != 1 {
+		t.Fatalf("saved=%d, want one message for duplicate provider ID", len(store.saved))
+	}
+	if store.saved[0].ProviderMessageID != "<cloudmailin-123@example.com>" {
+		t.Fatalf("provider_message_id=%q", store.saved[0].ProviderMessageID)
+	}
+}
+
 func TestIngestSubjectOnTooLargeError(t *testing.T) {
 	t.Parallel()
 	store := newFakeStore()

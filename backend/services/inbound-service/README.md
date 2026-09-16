@@ -67,7 +67,16 @@ REST/HTTP бизнес-API у сервиса нет. HTTP используетс
 
 ## Взаимодействия
 
-CloudMailin присылает письмо на webhook gateway (Bearer-токен `INBOUND_WEBHOOK_TOKEN`), gateway передаёт raw-пейлоад сюда через `IngestWebhook` (worker-токен). Сервис в одной транзакции записывает сообщение и метаданные вложений в PostgreSQL, а сами тела вложений кладёт в S3-бакет `order-fill-inbound` с отдельными `INBOUND_S3_*` учётными данными MinIO. Управление настройками и чтение писем идёт через те же gRPC-вызовы из gateway по запросу UI.
+CloudMailin присылает письмо на webhook gateway через заголовок `Authorization`.
+В настройках CloudMailin укажите либо точное значение `INBOUND_WEBHOOK_TOKEN`,
+либо добавьте к нему префикс схемы авторизации и пробел; gateway принимает оба варианта и сравнивает
+секрет constant-time. Для HTTPS webhook используйте URL
+`/api/v1/inbound/webhook`. Gateway передаёт raw-пейлоад сюда через
+`IngestWebhook` (worker-токен). Сервис в одной транзакции записывает сообщение и
+метаданные вложений в PostgreSQL, а сами тела вложений кладёт в S3-бакет
+`order-fill-inbound` с отдельными `INBOUND_S3_*` учётными данными MinIO.
+Управление настройками и чтение писем идёт через те же gRPC-вызовы из gateway
+по запросу UI.
 
 ## Конфигурация
 
