@@ -126,23 +126,45 @@ type rawWebhook struct {
 
 const maxAttachmentBytes = 20 << 20
 
-func (s *Service) IngestWebhook(ctx context.Context, rawPayload []byte) error {
+func (s *Service) parseWebhookPayload(rawPayload []byte) (rawWebhook, error) {
 	if len(rawPayload) > 32<<20 {
-		return domain.ErrPayloadTooLarge
+		return rawWebhook{}, domain.ErrPayloadTooLarge
 	}
 
 	var mail rawWebhook
 	if err := json.Unmarshal(rawPayload, &mail); err != nil {
-		return fmt.Errorf("parse inbound webhook: %w", err)
+		return rawWebhook{}, fmt.Errorf("parse inbound webhook: %w", err)
+	}
+	return mail, nil
+}
+
+func (s *Service) resolveProviderMessageID(mail rawWebhook) string {
+	if id := strings.TrimSpace(mail.MessageID); id != "" {
+		return id
+	}
+	if id := messageIDFromHeaders(mail.Headers); strings.TrimSpace(id) != "" {
+		return id
+	}
+	return generateFallbackID()
+}
+
+func (s *Service) resolveMessageSubject(mail rawWebhook) string {
+	if s := subjectFromHeaders(mail.Headers); s != "" {
+		return s
+	}
+	if mail.Subject != "" {
+		return mail.Subject
+	}
+	return ""
+}
+
+func (s *Service) IngestWebhook(ctx context.Context, rawPayload []byte) error {
+	mail, err := s.parseWebhookPayload(rawPayload)
+	if err != nil {
+		return err
 	}
 
-	if strings.TrimSpace(mail.MessageID) == "" {
-		mail.MessageID = messageIDFromHeaders(mail.Headers)
-	}
-	if strings.TrimSpace(mail.MessageID) == "" {
-		mail.MessageID = generateFallbackID()
-	}
-	providerID := strings.TrimSpace(mail.MessageID)
+	providerID := s.resolveProviderMessageID(mail)
 
 	exists, err := s.store.MessageExists(ctx, providerID)
 	if err != nil {
@@ -161,13 +183,7 @@ func (s *Service) IngestWebhook(ctx context.Context, rawPayload []byte) error {
 		return fmt.Errorf("inbound reception is disabled")
 	}
 
-	subject := ""
-	if s := subjectFromHeaders(mail.Headers); s != "" {
-		subject = s
-	}
-	if mail.Subject != "" && subject == "" {
-		subject = mail.Subject
-	}
+	subject := s.resolveMessageSubject(mail)
 
 	inbound, err := s.store.GetCompanyByAllowedSender(ctx, mail.Envelope.From)
 	if err != nil {
@@ -177,40 +193,26 @@ func (s *Service) IngestWebhook(ctx context.Context, rawPayload []byte) error {
 		return err
 	}
 
-	attachments := filterAttachments(mail.Attachments)
-	if len(attachments) == 0 {
-		return s.saveMinimalMessage(ctx, providerID, subject, mail, domain.StatusErrorNoAttachments, "no_attachments")
-	}
-
 	msgID := generateID()
-	var storedAttachments []domain.Attachment
-	var totalBytes int64
-
-	for _, att := range attachments {
-		data, err := base64.StdEncoding.DecodeString(att.Content)
-		if err != nil {
-			continue
-		}
-		if int64(len(data)) > maxAttachmentBytes {
+	storedAttachments, err := s.storeAttachments(ctx, inbound.CompanyID, msgID, mail.Attachments)
+	if err != nil {
+		if errors.Is(err, domain.ErrAttachmentTooLarge) {
 			return s.saveMinimalMessage(ctx, providerID, subject, mail, domain.StatusErrorTooLarge, "too_large")
 		}
-		attID := generateID()
-		objectKey := fmt.Sprintf("inbound/%s/%s/%s", inbound.CompanyID, msgID, attID)
-		if err := s.objects.Put(ctx, objectKey, bytes.NewReader(data), int64(len(data)), att.ContentType); err != nil {
-			return fmt.Errorf("store inbound attachment object: %w", err)
-		}
-		storedAttachments = append(storedAttachments, domain.Attachment{
-			ID:          attID,
-			MessageID:   msgID,
-			Name:        att.FileName,
-			ContentType: contentType(att.FileName, att.ContentType),
-			Size:        int64(len(data)),
-			ObjectKey:   objectKey,
-		})
-		totalBytes += int64(len(data))
+		return err
 	}
+
 	if len(storedAttachments) == 0 {
-		return s.saveMinimalMessage(ctx, providerID, subject, mail, domain.StatusErrorNoAttachments, "invalid_attachments")
+		errorCode := "no_attachments"
+		if len(filterAttachments(mail.Attachments)) > 0 {
+			errorCode = "invalid_attachments"
+		}
+		return s.saveMinimalMessage(ctx, providerID, subject, mail, domain.StatusErrorNoAttachments, errorCode)
+	}
+
+	var totalBytes int64
+	for _, att := range storedAttachments {
+		totalBytes += att.Size
 	}
 
 	msg := domain.MessageSummary{
@@ -230,6 +232,41 @@ func (s *Service) IngestWebhook(ctx context.Context, rawPayload []byte) error {
 	}
 	s.store.IncrWebhookCount(ctx, false)
 	return nil
+}
+
+func (s *Service) storeAttachments(ctx context.Context, companyID string, msgID string, attachments []rawAttachment) ([]domain.Attachment, error) {
+	filtered := filterAttachments(attachments)
+	if len(filtered) == 0 {
+		return nil, nil
+	}
+
+	var stored []domain.Attachment
+	for _, att := range filtered {
+		data, err := base64.StdEncoding.DecodeString(att.Content)
+		if err != nil {
+			continue
+		}
+		if int64(len(data)) > maxAttachmentBytes {
+			return nil, domain.ErrAttachmentTooLarge
+		}
+		attID := generateID()
+		objectKey := fmt.Sprintf("inbound/%s/%s/%s", companyID, msgID, attID)
+		if err := s.objects.Put(ctx, objectKey, bytes.NewReader(data), int64(len(data)), att.ContentType); err != nil {
+			return nil, fmt.Errorf("store inbound attachment object: %w", err)
+		}
+		stored = append(stored, domain.Attachment{
+			ID:          attID,
+			MessageID:   msgID,
+			Name:        att.FileName,
+			ContentType: contentType(att.FileName, att.ContentType),
+			Size:        int64(len(data)),
+			ObjectKey:   objectKey,
+		})
+	}
+	if len(stored) == 0 {
+		return nil, nil
+	}
+	return stored, nil
 }
 
 func (s *Service) saveMinimalMessage(ctx context.Context, providerID, subject string, mail rawWebhook, status domain.InboundStatus, errorCode string) error {
