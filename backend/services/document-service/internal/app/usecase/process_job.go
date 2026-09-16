@@ -8,6 +8,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"strings"
 	"sync"
 	"time"
 
@@ -612,8 +613,13 @@ func mergeSummary(accumulated orderfill.Summary, next orderfill.Summary) orderfi
 func userMessage(err error) string {
 	if errors.Is(err, orderfill.ErrInvalidInput) {
 		message := err.Error()
-		if index := len(orderfill.ErrInvalidInput.Error()) + 2; index < len(message) {
-			return message[index:]
+		sentinel := orderfill.ErrInvalidInput.Error()
+		if idx := strings.Index(message, sentinel); idx >= 0 {
+			rest := message[idx+len(sentinel):]
+			rest = strings.TrimPrefix(rest, ": ")
+			if rest != "" {
+				return rest
+			}
 		}
 		return message
 	}

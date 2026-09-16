@@ -4,12 +4,15 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"log/slog"
 	"strconv"
+	"strings"
 	"sync"
 	"testing"
 	"time"
+	"unicode/utf8"
 
 	"order-fill/backend/services/document-service/internal/app/port"
 	"order-fill/backend/services/document-service/internal/clients/calculation"
@@ -687,5 +690,35 @@ func TestCombineTyumenLocationsKeepsWarehouseAvailabilitySeparate(t *testing.T) 
 	}
 	if !calcRows[1].HasWarehouseStock || calcRows[1].Stock != 8 || calcRows[1].WarehouseStock != 8 {
 		t.Fatalf("warehouse-only row=%+v", calcRows[1])
+	}
+}
+
+func TestUserMessagePreservesValidUTF8(t *testing.T) {
+	sentinel := orderfill.ErrInvalidInput.Error()
+	wrapped := fmt.Errorf("таблица офиса: %w: позиция %q встречается несколько раз", orderfill.ErrInvalidInput, "2505")
+	got := userMessage(wrapped)
+	if !utf8.ValidString(got) {
+		t.Fatalf("userMessage returned invalid UTF-8: %q", got)
+	}
+	if !strings.Contains(got, "позиция") || !strings.Contains(got, "встречается") {
+		t.Fatalf("userMessage lost the user-facing detail: %q", got)
+	}
+	if strings.Contains(got, sentinel) {
+		t.Fatalf("userMessage must strip the sentinel prefix, got: %q", got)
+	}
+}
+
+func TestUserMessageDirectErrInvalidInput(t *testing.T) {
+	got := userMessage(orderfill.ErrInvalidInput)
+	if got != orderfill.ErrInvalidInput.Error() {
+		t.Fatalf("userMessage(direct sentinel) = %q, want %q", got, orderfill.ErrInvalidInput.Error())
+	}
+}
+
+func TestUserMessageNonInvalidError(t *testing.T) {
+	got := userMessage(errors.New("network timeout"))
+	const generic = "Не удалось обработать файлы. Попробуйте еще раз или обратитесь в поддержку."
+	if got != generic {
+		t.Fatalf("userMessage(non-invalid) = %q, want %q", got, generic)
 	}
 }

@@ -98,7 +98,7 @@ func (s *Server) UpdateSettings(ctx context.Context, req *inboundv1.UpdateSettin
 	if err := s.requireAdmin(ctx); err != nil {
 		return nil, err
 	}
-	st, err := s.svc.UpdateSettings(ctx, req.GetEnabled(), req.GetMeta().GetActorUserId())
+	st, err := s.svc.UpdateSettings(ctx, req.GetEnabled(), req.GetReceiveAddress(), req.GetMeta().GetActorUserId())
 	if err != nil {
 		return nil, status.Error(codes.Internal, "failed to update settings")
 	}
@@ -126,7 +126,7 @@ func (s *Server) UpdateCompanyInbound(ctx context.Context, req *inboundv1.Update
 	if grpcutil.ActorRole(ctx) != "company_owner" && grpcutil.ActorRole(ctx) != "platform_admin" {
 		return nil, status.Error(codes.PermissionDenied, "owner role required")
 	}
-	ci, err := s.svc.UpdateCompanyInbound(ctx, req.GetCompanyId(), req.GetReceiveAddress(), req.GetAllowedFrom(), req.GetEnabled())
+	ci, err := s.svc.UpdateCompanyInbound(ctx, req.GetCompanyId(), req.GetReceiveAddress(), req.GetSenderEmail(), req.GetEnabled())
 	if err != nil {
 		if errors.Is(err, domain.ErrInvalid) {
 			return nil, status.Error(codes.InvalidArgument, err.Error())
@@ -146,7 +146,15 @@ func (s *Server) ListMessages(ctx context.Context, req *inboundv1.ListMessagesRe
 	}
 	out := make([]*inboundv1.InboundMessageSummary, len(msgs))
 	for i, m := range msgs {
-		out[i] = protoMessageSummary(m)
+		pm := protoMessageSummary(m)
+		atts, err := s.svc.GetMessageAttachments(ctx, m.ID)
+		if err == nil && len(atts) > 0 {
+			pm.Attachments = make([]*inboundv1.InboundAttachment, len(atts))
+			for j, a := range atts {
+				pm.Attachments[j] = protoAttachment(a)
+			}
+		}
+		out[i] = pm
 	}
 	return &inboundv1.ListMessagesResponse{Messages: out}, nil
 }
@@ -190,10 +198,11 @@ func (s *Server) ListDeliveries(ctx context.Context, req *inboundv1.ListDeliveri
 
 func protoSettings(st domain.Settings) *inboundv1.InboundSettings {
 	return &inboundv1.InboundSettings{
-		Enabled:       st.Enabled,
-		LastWebhookAt: st.LastWebhookAt.Format(time.RFC3339),
-		WebhookCount:  st.WebhookCount,
-		ErrorCount:    st.ErrorCount,
+		Enabled:        st.Enabled,
+		ReceiveAddress: st.ReceiveAddress,
+		LastWebhookAt:  st.LastWebhookAt.Format(time.RFC3339),
+		WebhookCount:   st.WebhookCount,
+		ErrorCount:     st.ErrorCount,
 	}
 }
 
@@ -202,6 +211,7 @@ func protoCompanyInbound(ci domain.CompanyInbound) *inboundv1.CompanyInbound {
 		CompanyId:      ci.CompanyID,
 		ReceiveAddress: ci.ReceiveAddress,
 		AllowedFrom:    ci.AllowedFrom,
+		SenderEmail:    ci.SenderEmail,
 		Enabled:        ci.Enabled,
 	}
 }
@@ -210,6 +220,7 @@ func protoMessageSummary(m domain.MessageSummary) *inboundv1.InboundMessageSumma
 	return &inboundv1.InboundMessageSummary{
 		Id:                m.ID,
 		ProviderMessageId: m.ProviderMessageID,
+		Subject:           m.Subject,
 		EnvelopeFrom:      m.EnvelopeFrom,
 		EnvelopeTo:        m.EnvelopeTo,
 		ReceivedAt:        m.ReceivedAt.Format(time.RFC3339),

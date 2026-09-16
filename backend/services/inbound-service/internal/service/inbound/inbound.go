@@ -3,10 +3,7 @@ package inbound
 import (
 	"bytes"
 	"context"
-	"crypto/rand"
-	"crypto/subtle"
 	"encoding/base64"
-	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -16,16 +13,18 @@ import (
 	"strings"
 	"time"
 
+	"github.com/google/uuid"
+
 	"order-fill/backend/services/inbound-service/internal/domain"
 )
 
 type Store interface {
 	GetSettings(ctx context.Context) (domain.Settings, error)
-	UpsertSettings(ctx context.Context, enabled bool) (domain.Settings, error)
+	UpsertSettings(ctx context.Context, enabled bool, receiveAddress string) (domain.Settings, error)
 	IncrWebhookCount(ctx context.Context, isError bool)
 	GetCompanyInbound(ctx context.Context, companyID string) (domain.CompanyInbound, error)
-	GetCompanyInboundByAddress(ctx context.Context, address string) (domain.CompanyInbound, error)
-	UpsertCompanyInbound(ctx context.Context, companyID, address string, allowedFrom []string, enabled bool) (domain.CompanyInbound, error)
+	GetCompanyByAllowedSender(ctx context.Context, senderEmail string) (domain.CompanyInbound, error)
+	UpsertCompanyInbound(ctx context.Context, companyID, receiveAddress, senderEmail string, enabled bool) (domain.CompanyInbound, error)
 	MessageExists(ctx context.Context, providerMessageID string) (bool, error)
 	SaveMessage(ctx context.Context, msg domain.MessageSummary, attachments []domain.Attachment) error
 	ListMessages(ctx context.Context, companyID string, limit int) ([]domain.MessageSummary, error)
@@ -54,20 +53,21 @@ func (s *Service) GetSettings(ctx context.Context) (domain.Settings, error) {
 	return s.store.GetSettings(ctx)
 }
 
-func (s *Service) UpdateSettings(ctx context.Context, enabled bool, actorUserID string) (domain.Settings, error) {
-	return s.store.UpsertSettings(ctx, enabled)
+func (s *Service) UpdateSettings(ctx context.Context, enabled bool, receiveAddress string, actorUserID string) (domain.Settings, error) {
+	return s.store.UpsertSettings(ctx, enabled, receiveAddress)
 }
 
 func (s *Service) GetCompanyInbound(ctx context.Context, companyID string) (domain.CompanyInbound, error) {
 	return s.store.GetCompanyInbound(ctx, companyID)
 }
 
-func (s *Service) UpdateCompanyInbound(ctx context.Context, companyID, address string, allowedFrom []string, enabled bool) (domain.CompanyInbound, error) {
-	address = strings.TrimSpace(address)
-	if address == "" {
+func (s *Service) UpdateCompanyInbound(ctx context.Context, companyID, receiveAddress, senderEmail string, enabled bool) (domain.CompanyInbound, error) {
+	receiveAddress = strings.TrimSpace(receiveAddress)
+	senderEmail = strings.TrimSpace(senderEmail)
+	if senderEmail == "" {
 		return domain.CompanyInbound{}, domain.ErrInvalid
 	}
-	return s.store.UpsertCompanyInbound(ctx, companyID, address, allowedFrom, enabled)
+	return s.store.UpsertCompanyInbound(ctx, companyID, receiveAddress, senderEmail, enabled)
 }
 
 func (s *Service) ListMessages(ctx context.Context, companyID string, limit int) ([]domain.MessageSummary, error) {
@@ -137,11 +137,7 @@ func (s *Service) IngestWebhook(ctx context.Context, rawPayload []byte) error {
 	}
 
 	if strings.TrimSpace(mail.MessageID) == "" {
-		if h := subjectFromHeaders(mail.Headers); h != "" {
-			mail.MessageID = generateFallbackID()
-		} else {
-			mail.MessageID = generateFallbackID()
-		}
+		mail.MessageID = generateFallbackID()
 	}
 	providerID := strings.TrimSpace(mail.MessageID)
 
@@ -162,23 +158,26 @@ func (s *Service) IngestWebhook(ctx context.Context, rawPayload []byte) error {
 		return fmt.Errorf("inbound reception is disabled")
 	}
 
-	inbound, err := s.store.GetCompanyInboundByAddress(ctx, mail.Envelope.To)
+	subject := ""
+	if s := subjectFromHeaders(mail.Headers); s != "" {
+		subject = s
+	}
+	if mail.Subject != "" && subject == "" {
+		subject = mail.Subject
+	}
+
+	inbound, err := s.store.GetCompanyByAllowedSender(ctx, mail.Envelope.From)
 	if err != nil {
 		if errors.Is(err, domain.ErrNotFound) {
-			s.saveMinimalMessage(ctx, providerID, mail, domain.StatusErrorUnknownAddress, "unknown_address")
+			s.saveMinimalMessage(ctx, providerID, subject, mail, domain.StatusErrorUnknownAddress, "unknown_address")
 			return nil
 		}
 		return err
 	}
 
-	if len(inbound.AllowedFrom) > 0 && !fromMatchesWhitelist(mail.Envelope.From, inbound.AllowedFrom) {
-		s.saveMinimalMessage(ctx, providerID, mail, domain.StatusErrorMismatchFrom, "mismatch_from")
-		return nil
-	}
-
 	attachments := filterAttachments(mail.Attachments)
 	if len(attachments) == 0 {
-		s.saveMinimalMessage(ctx, providerID, mail, domain.StatusErrorNoAttachments, "no_attachments")
+		s.saveMinimalMessage(ctx, providerID, subject, mail, domain.StatusErrorNoAttachments, "no_attachments")
 		return nil
 	}
 
@@ -192,7 +191,7 @@ func (s *Service) IngestWebhook(ctx context.Context, rawPayload []byte) error {
 			continue
 		}
 		if int64(len(data)) > maxAttachmentBytes {
-			s.saveMinimalMessage(ctx, providerID, mail, domain.StatusErrorTooLarge, "too_large")
+			s.saveMinimalMessage(ctx, providerID, subject, mail, domain.StatusErrorTooLarge, "too_large")
 			return nil
 		}
 		attID := generateID()
@@ -214,6 +213,7 @@ func (s *Service) IngestWebhook(ctx context.Context, rawPayload []byte) error {
 	msg := domain.MessageSummary{
 		ID:                msgID,
 		ProviderMessageID: providerID,
+		Subject:           subject,
 		EnvelopeFrom:      mail.Envelope.From,
 		EnvelopeTo:        mail.Envelope.To,
 		ReceivedAt:        time.Now().UTC(),
@@ -229,10 +229,11 @@ func (s *Service) IngestWebhook(ctx context.Context, rawPayload []byte) error {
 	return nil
 }
 
-func (s *Service) saveMinimalMessage(ctx context.Context, providerID string, mail rawWebhook, status domain.InboundStatus, errorCode string) {
+func (s *Service) saveMinimalMessage(ctx context.Context, providerID, subject string, mail rawWebhook, status domain.InboundStatus, errorCode string) {
 	msg := domain.MessageSummary{
 		ID:                generateID(),
 		ProviderMessageID: providerID,
+		Subject:           subject,
 		EnvelopeFrom:      mail.Envelope.From,
 		EnvelopeTo:        mail.Envelope.To,
 		ReceivedAt:        time.Now().UTC(),
@@ -294,33 +295,12 @@ func contentType(name, declared string) string {
 	return "application/octet-stream"
 }
 
-func fromMatchesWhitelist(from string, allowed []string) bool {
-	from = strings.TrimSpace(strings.ToLower(from))
-	for _, a := range allowed {
-		a = strings.TrimSpace(strings.ToLower(a))
-		if a == "" {
-			continue
-		}
-		if subtle.ConstantTimeCompare([]byte(from), []byte(a)) == 1 {
-			return true
-		}
-		if strings.HasSuffix(from, "@"+a) || strings.HasSuffix(from, "."+a) {
-			return true
-		}
-	}
-	return false
-}
-
 func generateID() string {
-	var b [12]byte
-	_, _ = rand.Read(b[:])
-	return hex.EncodeToString(b[:])
+	return uuid.New().String()
 }
 
 func generateFallbackID() string {
-	var b [8]byte
-	_, _ = rand.Read(b[:])
-	return "msg-" + hex.EncodeToString(b[:])
+	return "msg-" + uuid.New().String()
 }
 
 func count32(n int) int32 {

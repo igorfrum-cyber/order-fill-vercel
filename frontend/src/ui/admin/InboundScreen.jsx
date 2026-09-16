@@ -6,7 +6,7 @@ import { Field, GhostButton, PrimaryButton } from "../widgets.jsx";
 const statusLabels = {
   received: "Принято",
   processed: "Обработано",
-  "error:unknown_address": "Неизвестный адрес",
+  "error:unknown_address": "Неизвестный отправитель",
   "error:mismatch_from": "Отправитель не в списке",
   "error:no_attachments": "Нет вложений",
   "error:too_large": "Вложение слишком большое",
@@ -30,12 +30,14 @@ function PlatformPanel() {
   const [deliveries, setDeliveries] = useState([]);
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
+  const [draftAddress, setDraftAddress] = useState("");
 
   const refresh = () => {
     Promise.all([getInboundSettings(), getInboundDeliveries()])
       .then(([s, d]) => {
         setSettings(s);
         setDeliveries(d.deliveries || d.messages || []);
+        if (draftAddress === "") setDraftAddress(s.receive_address || "");
       })
       .catch((err) => setError(userFacingError(err, "Не удалось загрузить статус интеграции.")));
   };
@@ -50,10 +52,23 @@ function PlatformPanel() {
     setSaving(true);
     setError("");
     try {
-      const updated = await updateInboundSettings({ enabled: !settings.enabled });
+      const updated = await updateInboundSettings({ enabled: !settings.enabled, receive_address: draftAddress || settings.receive_address });
       setSettings(updated);
     } catch (err) {
       setError(userFacingError(err, "Не удалось изменить статус приёма."));
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function saveAddress() {
+    setSaving(true);
+    setError("");
+    try {
+      const updated = await updateInboundSettings({ enabled: settings.enabled, receive_address: draftAddress });
+      setSettings(updated);
+    } catch (err) {
+      setError(userFacingError(err, "Не удалось сохранить адрес."));
     } finally {
       setSaving(false);
     }
@@ -84,6 +99,14 @@ function PlatformPanel() {
             </dl>
           </article>
           <article className="rounded-xl border border-[var(--color-line)] bg-[var(--color-surface)] p-5">
+            <h2 className="text-[17px] font-semibold">Адрес приёма</h2>
+            <p className="mt-1 text-[13px] text-[var(--color-ink-faint)]">Единый адрес CloudMailin для всей платформы. Компании настраивают 1С на отправку на этот адрес.</p>
+            <div className="mt-4 flex gap-2">
+              <Field label="Адрес"><input className="input w-full font-mono" type="email" value={draftAddress} onChange={(e) => setDraftAddress(e.target.value.trim())} placeholder="7e1432246b724f3bcd6c@cloudmailin.net" /></Field>
+              <div className="flex items-end"><PrimaryButton onClick={saveAddress} disabled={saving || !draftAddress}>Сохранить</PrimaryButton></div>
+            </div>
+          </article>
+          <article className="rounded-xl border border-[var(--color-line)] bg-[var(--color-surface)] p-5">
             <h2 className="text-[17px] font-semibold">Поступления</h2>
             <p className="mt-1 text-[13px] text-[var(--color-ink-faint)]">Только статусы — содержимое писем доступно компаниям-получателям.</p>
             <DeliveriesTable rows={deliveries} />
@@ -96,6 +119,7 @@ function PlatformPanel() {
 
 function CompanyPanel({ companyId }) {
   const [state, setState] = useState(null);
+  const [settings, setSettings] = useState(null);
   const [messages, setMessages] = useState([]);
   const [draft, setDraft] = useState(null);
   const [error, setError] = useState("");
@@ -111,16 +135,20 @@ function CompanyPanel({ companyId }) {
   useEffect(() => {
     let cancelled = false;
     setLoading(true);
-    Promise.all([getInboundCompany(companyId), getInboundMessages(companyId)])
-      .then(([company, payload]) => {
+    Promise.allSettled([getInboundCompany(companyId), getInboundMessages(companyId), getInboundSettings()])
+      .then(([companyResult, messagesResult, settingsResult]) => {
         if (cancelled) return;
-        setState(company);
-        setMessages(payload.messages || []);
-      })
-      .catch((err) => {
-        if (cancelled) return;
-        if (err?.status === 404) return;
-        setError(userFacingError(err, "Не удалось загрузить настройки интеграции."));
+        if (companyResult.status === "fulfilled") {
+          setState(companyResult.value);
+        } else if (companyResult.reason?.status !== 404) {
+          setError(userFacingError(companyResult.reason, "Не удалось загрузить настройки интеграции."));
+        }
+        if (messagesResult.status === "fulfilled") {
+          setMessages(messagesResult.value.messages || []);
+        }
+        if (settingsResult.status === "fulfilled") {
+          setSettings(settingsResult.value);
+        }
       })
       .finally(() => {
         if (!cancelled) setLoading(false);
@@ -152,7 +180,8 @@ function CompanyPanel({ companyId }) {
     );
   }
 
-  const company = draft || state || { receive_address: "", allowed_from: [], enabled: true };
+  const company = draft || state || { receive_address: "", sender_email: "", enabled: true };
+  const platformAddress = settings?.receive_address || "";
 
   return (
     <>
@@ -160,15 +189,15 @@ function CompanyPanel({ companyId }) {
       <article className="rounded-xl border border-[var(--color-line)] bg-[var(--color-surface)] p-5">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
-            <h2 className="text-[17px] font-semibold">Почтовый адрес для 1С</h2>
-            <p className="mt-1 text-[13px] text-[var(--color-ink-faint)]">Письма с этого адреса обрабатываются, а файлы попадают в компанию.</p>
+            <h2 className="text-[17px] font-semibold">Настройка приёма</h2>
+            <p className="mt-1 text-[13px] text-[var(--color-ink-faint)]">Укажите email, с которого 1С отправляет письма, и включите приём.</p>
           </div>
-          <GhostButton onClick={() => setDraft({ receive_address: company.receive_address || "", allowed_from: [...(company.allowed_from || [])], enabled: Boolean(company.enabled) })}>Настроить</GhostButton>
+          <GhostButton onClick={() => setDraft({ receive_address: company.receive_address || platformAddress, sender_email: company.sender_email || "", enabled: Boolean(company.enabled) })}>Настроить</GhostButton>
         </div>
         <dl className="mt-4 grid grid-cols-2 gap-4 text-[13px]">
-          <Stat label="Адрес" value={company.receive_address ? company.receive_address : "не задан"} mono />
+          <Stat label="Адрес для 1С" value={platformAddress || "не задан"} mono />
           <Stat label="Приём" value={company.enabled ? "включён" : "остановлен"} />
-          <Stat label="Допустимые отправители" value={(company.allowed_from || []).length ? company.allowed_from.join(", ") : "любой отправитель"} mono />
+          <Stat label="Отправитель (email 1С)" value={company.sender_email || "не задан"} mono />
           <Stat label="Писем получено" value={messages.length} />
         </dl>
       </article>
@@ -176,15 +205,18 @@ function CompanyPanel({ companyId }) {
         <article className="rounded-xl border border-[var(--color-line)] bg-[var(--color-surface)] p-5">
           <h2 className="text-[17px] font-semibold">Настройка приёма</h2>
           <div className="mt-4 grid gap-4 sm:grid-cols-2">
-            <Field label="Адрес приёма"><input className="input w-full" type="email" value={company.receive_address} onChange={(e) => setDraft({ ...company, receive_address: e.target.value.trim() })} placeholder="zakaz@example.com" /></Field>
-            <Field label="Допустимые отправители"><input className="input w-full" value={company.allowed_from.join(", ")} onChange={(e) => setDraft({ ...company, allowed_from: e.target.value.split(",").map((value) => value.trim()).filter(Boolean) })} placeholder="1с@example.com" /></Field>
+            <div>
+              <label className="text-[13px] text-[var(--color-ink-faint)]">Адрес для 1С</label>
+              <p className="mt-1 font-mono text-[14px] text-[var(--color-ink-soft)]">{platformAddress || "не задан"}</p>
+            </div>
+            <Field label="Отправитель (email 1С)"><input className="input w-full font-mono" type="email" value={draft.sender_email} onChange={(e) => setDraft({ ...draft, sender_email: e.target.value.trim() })} placeholder="1c@company.ru" /></Field>
             <label className="flex items-center gap-3 rounded-control border border-[var(--color-line)] px-4 py-3 text-[14px]">
-              <input type="checkbox" checked={company.enabled} onChange={(e) => setDraft({ ...company, enabled: e.target.checked })} />
+              <input type="checkbox" checked={draft.enabled} onChange={(e) => setDraft({ ...draft, enabled: e.target.checked })} />
               Принимать письма от 1С
             </label>
           </div>
           <div className="mt-5 flex gap-2">
-            <PrimaryButton onClick={save} disabled={!company.receive_address}>Сохранить</PrimaryButton>
+            <PrimaryButton onClick={save} disabled={!draft.sender_email}>Сохранить</PrimaryButton>
             <GhostButton onClick={() => setDraft(null)}>Отмена</GhostButton>
           </div>
         </article>
@@ -218,7 +250,9 @@ function DeliveriesTable({ rows }) {
         <thead>
           <tr className="border-b border-[var(--color-line)] text-[var(--color-ink-faint)]">
             <th className="py-2 pr-4 font-medium">Время</th>
+            <th className="py-2 pr-4 font-medium">Тема</th>
             <th className="py-2 pr-4 font-medium">Компания</th>
+            <th className="py-2 pr-4 font-medium">Отправитель</th>
             <th className="py-2 pr-4 font-medium">Статус</th>
           </tr>
         </thead>
@@ -226,7 +260,9 @@ function DeliveriesTable({ rows }) {
           {rows.map((row) => (
             <tr key={row.id} className="border-b border-[var(--color-line-soft)] last:border-0">
               <td className="py-2 pr-4 text-[var(--color-ink-soft)]">{shortDateTime(row.received_at)}</td>
+              <td className="py-2 pr-4">{row.subject || "—"}</td>
               <td className="py-2 pr-4">{row.company_id || "—"}</td>
+              <td className="py-2 pr-4">{row.envelope_from || "—"}</td>
               <td className="py-2 pr-4"><StatusPill status={row.status} /></td>
             </tr>
           ))}
@@ -246,6 +282,7 @@ function MessagesTable({ rows, onDownload }) {
         <thead>
           <tr className="border-b border-[var(--color-line)] text-[var(--color-ink-faint)]">
             <th className="py-2 pr-4 font-medium">Время</th>
+            <th className="py-2 pr-4 font-medium">Тема</th>
             <th className="py-2 pr-4 font-medium">Отправитель</th>
             <th className="py-2 pr-4 font-medium">Вложения</th>
             <th className="py-2 pr-4 font-medium">Статус</th>
@@ -255,13 +292,17 @@ function MessagesTable({ rows, onDownload }) {
           {rows.map((row) => (
             <tr key={row.id} className="border-b border-[var(--color-line-soft)] last:border-0">
               <td className="py-2 pr-4 text-[var(--color-ink-soft)]">{shortDateTime(row.received_at)}</td>
+              <td className="py-2 pr-4">{row.subject || "—"}</td>
               <td className="py-2 pr-4">{row.envelope_from || "—"}</td>
               <td className="py-2 pr-4">
                 {(row.attachments || []).map((attachment) => (
                   <button key={attachment.id} type="button" className="mr-2 inline-flex items-center gap-1 font-medium text-[var(--color-brand)] hover:underline" onClick={() => onDownload(row.id, attachment.id)}>
-                    {attachment.filename || "файл"} <span className="text-[var(--color-ink-faint)]">{formatBytes(attachment.size)}</span>
+                    {attachment.name || "файл"} <span className="text-[var(--color-ink-faint)]">{formatBytes(attachment.size)}</span>
                   </button>
                 ))}
+                {(!row.attachments || row.attachments.length === 0) && row.attachment_count > 0 && (
+                  <span className="text-[var(--color-ink-faint)]">{row.attachment_count} файл(ов)</span>
+                )}
               </td>
               <td className="py-2 pr-4"><StatusPill status={row.status} /></td>
             </tr>

@@ -13,8 +13,8 @@ import (
 
 type fakeStore struct {
 	settings         domain.Settings
-	companyByAddress domain.CompanyInbound
-	addressErr       error
+	companyBySender  domain.CompanyInbound
+	senderErr        error
 	exists           map[string]bool
 	saved            []domain.MessageSummary
 	savedAttachments map[string][]domain.Attachment
@@ -24,16 +24,17 @@ type fakeStore struct {
 
 func newFakeStore() *fakeStore {
 	return &fakeStore{
-		settings:         domain.Settings{Enabled: true},
-		companyByAddress: domain.CompanyInbound{CompanyID: "c1", ReceiveAddress: "sales@orderfill.local", AllowedFrom: []string{"1c@company.ru"}},
+		settings:         domain.Settings{Enabled: true, ReceiveAddress: "7e1432246b724f3bcd6c@cloudmailin.net"},
+		companyBySender:  domain.CompanyInbound{CompanyID: "c1", ReceiveAddress: "7e1432246b724f3bcd6c@cloudmailin.net", SenderEmail: "1c@company.ru", Enabled: true},
 		exists:           map[string]bool{},
 		savedAttachments: map[string][]domain.Attachment{},
 	}
 }
 
 func (f *fakeStore) GetSettings(context.Context) (domain.Settings, error) { return f.settings, nil }
-func (f *fakeStore) UpsertSettings(_ context.Context, enabled bool) (domain.Settings, error) {
+func (f *fakeStore) UpsertSettings(_ context.Context, enabled bool, receiveAddress string) (domain.Settings, error) {
 	f.settings.Enabled = enabled
+	f.settings.ReceiveAddress = receiveAddress
 	return f.settings, nil
 }
 func (f *fakeStore) IncrWebhookCount(_ context.Context, isError bool) {
@@ -44,22 +45,22 @@ func (f *fakeStore) IncrWebhookCount(_ context.Context, isError bool) {
 	}
 }
 func (f *fakeStore) GetCompanyInbound(_ context.Context, companyID string) (domain.CompanyInbound, error) {
-	out := f.companyByAddress
+	out := f.companyBySender
 	out.CompanyID = companyID
 	return out, nil
 }
-func (f *fakeStore) GetCompanyInboundByAddress(_ context.Context, address string) (domain.CompanyInbound, error) {
-	if f.addressErr != nil {
-		return domain.CompanyInbound{}, f.addressErr
+func (f *fakeStore) GetCompanyByAllowedSender(_ context.Context, senderEmail string) (domain.CompanyInbound, error) {
+	if f.senderErr != nil {
+		return domain.CompanyInbound{}, f.senderErr
 	}
-	if strings.EqualFold(address, f.companyByAddress.ReceiveAddress) {
-		return f.companyByAddress, nil
+	if strings.EqualFold(senderEmail, f.companyBySender.SenderEmail) {
+		return f.companyBySender, nil
 	}
 	return domain.CompanyInbound{}, domain.ErrNotFound
 }
-func (f *fakeStore) UpsertCompanyInbound(_ context.Context, companyID, address string, allowed []string, enabled bool) (domain.CompanyInbound, error) {
-	f.companyByAddress = domain.CompanyInbound{CompanyID: companyID, ReceiveAddress: address, AllowedFrom: allowed, Enabled: enabled}
-	return f.companyByAddress, nil
+func (f *fakeStore) UpsertCompanyInbound(_ context.Context, companyID, receiveAddress, senderEmail string, enabled bool) (domain.CompanyInbound, error) {
+	f.companyBySender = domain.CompanyInbound{CompanyID: companyID, ReceiveAddress: receiveAddress, SenderEmail: senderEmail, Enabled: enabled}
+	return f.companyBySender, nil
 }
 func (f *fakeStore) MessageExists(_ context.Context, providerMessageID string) (bool, error) {
 	_, ok := f.exists[providerMessageID]
@@ -81,7 +82,7 @@ func (f *fakeStore) GetAttachment(context.Context, string) (domain.Attachment, e
 	return domain.Attachment{}, nil
 }
 func (f *fakeStore) GetMessageCompany(context.Context, string) (string, error) {
-	return f.companyByAddress.CompanyID, nil
+	return f.companyBySender.CompanyID, nil
 }
 func (f *fakeStore) ListDeliveries(context.Context, int) ([]domain.MessageSummary, error) {
 	return f.saved, nil
@@ -113,7 +114,11 @@ func webhookEnvelope(from, to, messageID string) string {
 }
 
 func webhookWithAttachments(messageID string, attachments []rawAttachment) string {
-	return `{"message_id":"` + messageID + `","envelope":{"from":"1c@company.ru","to":"sales@orderfill.local"},"attachments":` + encodeRaw(attachments) + `}`
+	return `{"message_id":"` + messageID + `","envelope":{"from":"1c@company.ru","to":"7e1432246b724f3bcd6c@cloudmailin.net"},"attachments":` + encodeRaw(attachments) + `}`
+}
+
+func webhookWithSubject(messageID, subject string) string {
+	return `{"message_id":"` + messageID + `","envelope":{"from":"1c@company.ru","to":"7e1432246b724f3bcd6c@cloudmailin.net"},"subject":"` + subject + `","attachments":[]}`
 }
 
 func encodeRaw(in []rawAttachment) string {
@@ -141,11 +146,33 @@ func strconvQuote(s string) string {
 
 func base64Of(s string) string { return base64.StdEncoding.EncodeToString([]byte(s)) }
 
-func TestIngestUnknownAddressSavesMinimal(t *testing.T) {
+func TestIngestSenderMatch(t *testing.T) {
 	t.Parallel()
 	store := newFakeStore()
-	svc := New(store, newFakeObjectStore(), "order-fill-inbound")
-	body := webhookEnvelope("any@x.io", "none@other.io", "msg-1")
+	svc := New(store, newFakeObjectStore(), "bucket")
+	body := webhookWithAttachments("msg-sender-1", []rawAttachment{
+		{FileName: "report.xlsx", ContentType: "application/vnd.ms-excel", Content: base64Of("xlsx-bytes")},
+	})
+	if err := svc.IngestWebhook(t.Context(), []byte(body)); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(store.saved) != 1 {
+		t.Fatalf("saved=%d", len(store.saved))
+	}
+	msg := store.saved[0]
+	if msg.Status != domain.StatusReceived {
+		t.Fatalf("status=%s, want received", msg.Status)
+	}
+	if msg.CompanyID != "c1" {
+		t.Fatalf("company_id=%s, want c1", msg.CompanyID)
+	}
+}
+
+func TestIngestUnknownSenderSavesMinimal(t *testing.T) {
+	t.Parallel()
+	store := newFakeStore()
+	svc := New(store, newFakeObjectStore(), "bucket")
+	body := webhookEnvelope("unknown@x.io", "7e1432246b724f3bcd6c@cloudmailin.net", "msg-sender-2")
 	if err := svc.IngestWebhook(t.Context(), []byte(body)); err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -153,7 +180,7 @@ func TestIngestUnknownAddressSavesMinimal(t *testing.T) {
 		t.Fatalf("saved=%d", len(store.saved))
 	}
 	if store.saved[0].Status != domain.StatusErrorUnknownAddress {
-		t.Fatalf("status=%s", store.saved[0].Status)
+		t.Fatalf("status=%s, want error:unknown_address", store.saved[0].Status)
 	}
 	if store.saved[0].ErrorCode != "unknown_address" {
 		t.Fatalf("error_code=%s", store.saved[0].ErrorCode)
@@ -163,11 +190,80 @@ func TestIngestUnknownAddressSavesMinimal(t *testing.T) {
 	}
 }
 
+func TestIngestSubjectSaved(t *testing.T) {
+	t.Parallel()
+	store := newFakeStore()
+	svc := New(store, newFakeObjectStore(), "bucket")
+	body := webhookWithSubject("msg-subject-1", "Заказ №12345")
+	if err := svc.IngestWebhook(t.Context(), []byte(body)); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(store.saved) != 1 {
+		t.Fatalf("saved=%d", len(store.saved))
+	}
+	if store.saved[0].Subject != "Заказ №12345" {
+		t.Fatalf("subject=%q, want %q", store.saved[0].Subject, "Заказ №12345")
+	}
+}
+
+func TestIngestSubjectFromHeaders(t *testing.T) {
+	t.Parallel()
+	store := newFakeStore()
+	svc := New(store, newFakeObjectStore(), "bucket")
+	body := `{"message_id":"msg-subject-2","envelope":{"from":"1c@company.ru","to":"7e1432246b724f3bcd6c@cloudmailin.net"},"headers":{"Subject":["Тема из заголовков"]},"attachments":[]}`
+	if err := svc.IngestWebhook(t.Context(), []byte(body)); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(store.saved) != 1 {
+		t.Fatalf("saved=%d", len(store.saved))
+	}
+	if store.saved[0].Subject != "Тема из заголовков" {
+		t.Fatalf("subject=%q, want %q", store.saved[0].Subject, "Тема из заголовков")
+	}
+}
+
+func TestIngestSubjectSavedOnMinimalMessage(t *testing.T) {
+	t.Parallel()
+	store := newFakeStore()
+	svc := New(store, newFakeObjectStore(), "bucket")
+	body := webhookWithSubject("msg-subject-3", "Ошибка доставки")
+	if err := svc.IngestWebhook(t.Context(), []byte(body)); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(store.saved) != 1 {
+		t.Fatalf("saved=%d", len(store.saved))
+	}
+	if store.saved[0].Subject != "Ошибка доставки" {
+		t.Fatalf("subject=%q on minimal message", store.saved[0].Subject)
+	}
+}
+
+func TestIngestUUIDv7Format(t *testing.T) {
+	t.Parallel()
+	store := newFakeStore()
+	svc := New(store, newFakeObjectStore(), "bucket")
+	body := webhookWithAttachments("msg-uuid-1", []rawAttachment{
+		{FileName: "data.xlsx", Content: base64Of("bytes")},
+	})
+	if err := svc.IngestWebhook(t.Context(), []byte(body)); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(store.saved) != 1 {
+		t.Fatalf("saved=%d", len(store.saved))
+	}
+	id := store.saved[0].ID
+	if len(id) != 36 || id[8] != '-' || id[13] != '-' || id[18] != '-' || id[23] != '-' {
+		t.Fatalf("id=%q, want UUID format (xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx)", id)
+	}
+}
+
 func TestIngestDedupesByProviderMessageID(t *testing.T) {
 	t.Parallel()
 	store := newFakeStore()
 	svc := New(store, newFakeObjectStore(), "bucket")
-	body := webhookEnvelope("1c@company.ru", "sales@orderfill.local", "dup-1")
+	body := webhookWithAttachments("dup-sender-1", []rawAttachment{
+		{FileName: "a.xlsx", Content: base64Of("data")},
+	})
 	if err := svc.IngestWebhook(t.Context(), []byte(body)); err != nil {
 		t.Fatalf("first ingest: %v", err)
 	}
@@ -185,7 +281,7 @@ func TestIngestDisabledRejects(t *testing.T) {
 	store := newFakeStore()
 	store.settings.Enabled = false
 	svc := New(store, newFakeObjectStore(), "bucket")
-	body := webhookEnvelope("1c@company.ru", "sales@orderfill.local", "msg-2")
+	body := webhookEnvelope("1c@company.ru", "7e1432246b724f3bcd6c@cloudmailin.net", "msg-disabled-1")
 	if err := svc.IngestWebhook(t.Context(), []byte(body)); err == nil {
 		t.Fatal("expected error when disabled")
 	}
@@ -194,24 +290,11 @@ func TestIngestDisabledRejects(t *testing.T) {
 	}
 }
 
-func TestIngestMismatchFrom(t *testing.T) {
-	t.Parallel()
-	store := newFakeStore()
-	svc := New(store, newFakeObjectStore(), "bucket")
-	body := webhookEnvelope("evil@x.io", "sales@orderfill.local", "msg-3")
-	if err := svc.IngestWebhook(t.Context(), []byte(body)); err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-	if len(store.saved) != 1 || store.saved[0].Status != domain.StatusErrorMismatchFrom {
-		t.Fatalf("status=%v", store.saved[0].Status)
-	}
-}
-
 func TestIngestNoAttachments(t *testing.T) {
 	t.Parallel()
 	store := newFakeStore()
 	svc := New(store, newFakeObjectStore(), "bucket")
-	body := webhookEnvelope("1c@company.ru", "sales@orderfill.local", "msg-4")
+	body := webhookEnvelope("1c@company.ru", "7e1432246b724f3bcd6c@cloudmailin.net", "msg-noatt-1")
 	if err := svc.IngestWebhook(t.Context(), []byte(body)); err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -225,7 +308,7 @@ func TestIngestStoresAttachmentAndObject(t *testing.T) {
 	store := newFakeStore()
 	objects := newFakeObjectStore()
 	svc := New(store, objects, "bucket")
-	body := webhookWithAttachments("msg-5", []rawAttachment{
+	body := webhookWithAttachments("msg-store-1", []rawAttachment{
 		{FileName: "report.xlsx", ContentType: "application/vnd.ms-excel", Content: base64Of("xlsx-bytes")},
 	})
 	if err := svc.IngestWebhook(t.Context(), []byte(body)); err != nil {
@@ -254,7 +337,7 @@ func TestIngestSkipsInvalidBase64(t *testing.T) {
 	t.Parallel()
 	store := newFakeStore()
 	svc := New(store, newFakeObjectStore(), "bucket")
-	body := webhookWithAttachments("msg-6", []rawAttachment{
+	body := webhookWithAttachments("msg-b64-1", []rawAttachment{
 		{FileName: "bad.bin", Content: "not-base64!!"},
 		{FileName: "ok.txt", Content: base64Of("hello")},
 	})
@@ -270,7 +353,7 @@ func TestIngestTooLargeAttachmentRejected(t *testing.T) {
 	t.Parallel()
 	store := newFakeStore()
 	svc := New(store, newFakeObjectStore(), "bucket")
-	body := webhookWithAttachments("msg-7", []rawAttachment{
+	body := webhookWithAttachments("msg-large-1", []rawAttachment{
 		{FileName: "big.bin", Content: base64Of(strings.Repeat("a", 21<<20))},
 	})
 	if err := svc.IngestWebhook(t.Context(), []byte(body)); err != nil {
@@ -292,26 +375,6 @@ func TestFilterAttachmentsIgnoresURLOnly(t *testing.T) {
 	}
 }
 
-func TestFromMatchesWhitelist(t *testing.T) {
-	t.Parallel()
-	allowed := []string{"1c@company.ru", "support"}
-	if !fromMatchesWhitelist("1c@company.ru", allowed) {
-		t.Fatal("exact match must pass")
-	}
-	if !fromMatchesWhitelist("1C@COMPANY.RU", allowed) {
-		t.Fatal("case-insensitive match must pass")
-	}
-	if fromMatchesWhitelist("evil@x.io", allowed) {
-		t.Fatal("unlisted sender must be rejected")
-	}
-	if fromMatchesWhitelist("sales@company.ru", allowed) {
-		t.Fatal("suffix against bare word whitelist must fail")
-	}
-	if fromMatchesWhitelist("", allowed) {
-		t.Fatal("empty from must be rejected")
-	}
-}
-
 func TestContentTypeFallback(t *testing.T) {
 	t.Parallel()
 	if got := contentType("report.xlsx", ""); got == "application/octet-stream" || got == "" {
@@ -322,13 +385,74 @@ func TestContentTypeFallback(t *testing.T) {
 	}
 }
 
-func TestIngestUnknownAddressOnStoreError(t *testing.T) {
+func TestIngestSenderMatchOnStoreError(t *testing.T) {
 	t.Parallel()
 	store := newFakeStore()
-	store.addressErr = errors.New("db down")
+	store.senderErr = errors.New("db down")
 	svc := New(store, newFakeObjectStore(), "bucket")
-	body := webhookEnvelope("any@x.io", "unknown@x.io", "msg-8")
+	body := webhookEnvelope("1c@company.ru", "7e1432246b724f3bcd6c@cloudmailin.net", "msg-dberr-1")
 	if err := svc.IngestWebhook(t.Context(), []byte(body)); err == nil {
 		t.Fatal("expected error when store fails")
+	}
+}
+
+func TestUpdateCompanyInboundEmptySenderRejected(t *testing.T) {
+	t.Parallel()
+	store := newFakeStore()
+	svc := New(store, newFakeObjectStore(), "bucket")
+	_, err := svc.UpdateCompanyInbound(t.Context(), "c1", "addr@test.com", "", true)
+	if !errors.Is(err, domain.ErrInvalid) {
+		t.Fatalf("expected ErrInvalid for empty senderEmail, got: %v", err)
+	}
+}
+
+func TestUpdateSettingsPassesReceiveAddress(t *testing.T) {
+	t.Parallel()
+	store := newFakeStore()
+	svc := New(store, newFakeObjectStore(), "bucket")
+	got, err := svc.UpdateSettings(t.Context(), true, "new@cloudmailin.net", "admin-id")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if got.ReceiveAddress != "new@cloudmailin.net" {
+		t.Fatalf("receive_address=%q, want new@cloudmailin.net", got.ReceiveAddress)
+	}
+	if store.settings.ReceiveAddress != "new@cloudmailin.net" {
+		t.Fatalf("store not updated: receive_address=%q", store.settings.ReceiveAddress)
+	}
+}
+
+func TestIngestSubjectHeadersBeatTopLevel(t *testing.T) {
+	t.Parallel()
+	store := newFakeStore()
+	svc := New(store, newFakeObjectStore(), "bucket")
+	body := `{"message_id":"msg-hdr-1","envelope":{"from":"1c@company.ru","to":"7e1432246b724f3bcd6c@cloudmailin.net"},"subject":"top-level","headers":{"Subject":["from-header"]},"attachments":[{"file_name":"f.xlsx","content":"` + base64Of("data") + `"}]}`
+	if err := svc.IngestWebhook(t.Context(), []byte(body)); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(store.saved) != 1 {
+		t.Fatalf("saved=%d", len(store.saved))
+	}
+	if store.saved[0].Subject != "from-header" {
+		t.Fatalf("subject=%q, want headers Subject to win over top-level", store.saved[0].Subject)
+	}
+}
+
+func TestIngestSubjectOnTooLargeError(t *testing.T) {
+	t.Parallel()
+	store := newFakeStore()
+	svc := New(store, newFakeObjectStore(), "bucket")
+	body := `{"message_id":"msg-lg-subj","envelope":{"from":"1c@company.ru","to":"7e1432246b724f3bcd6c@cloudmailin.net"},"subject":"Огромный файл","attachments":[{"file_name":"big.bin","content":"` + base64Of(strings.Repeat("x", 21<<20)) + `"}]}`
+	if err := svc.IngestWebhook(t.Context(), []byte(body)); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(store.saved) != 1 {
+		t.Fatalf("saved=%d", len(store.saved))
+	}
+	if store.saved[0].Subject != "Огромный файл" {
+		t.Fatalf("subject=%q on too_large message", store.saved[0].Subject)
+	}
+	if store.saved[0].Status != domain.StatusErrorTooLarge {
+		t.Fatalf("status=%s, want too_large", store.saved[0].Status)
 	}
 }

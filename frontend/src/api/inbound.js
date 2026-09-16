@@ -4,10 +4,10 @@ export function getInboundSettings() {
   return apiClient.request("/api/v1/inbound/settings");
 }
 
-export function updateInboundSettings({ enabled }) {
+export function updateInboundSettings({ enabled, receive_address: receiveAddress }) {
   return apiClient.request("/api/v1/inbound/settings", {
     method: "POST",
-    body: JSON.stringify({ enabled }),
+    body: JSON.stringify({ enabled, receive_address: receiveAddress || "" }),
   });
 }
 
@@ -15,12 +15,12 @@ export function getInboundCompany(companyId) {
   return apiClient.request(`/api/v1/inbound/companies/${encodeURIComponent(companyId)}`);
 }
 
-export function updateInboundCompany(companyId, { receive_address: receiveAddress, allowed_from: allowedFrom, enabled }) {
+export function updateInboundCompany(companyId, { receive_address: receiveAddress, sender_email: senderEmail, enabled }) {
   return apiClient.request(`/api/v1/inbound/companies/${encodeURIComponent(companyId)}`, {
     method: "POST",
     body: JSON.stringify({
       receive_address: receiveAddress || "",
-      allowed_from: allowedFrom || [],
+      sender_email: senderEmail || "",
       enabled: Boolean(enabled),
     }),
   });

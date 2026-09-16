@@ -14,30 +14,40 @@ import (
 const inboundWebhookLimit = 32 << 20
 
 type inboundSettingsJSON struct {
-	Enabled       bool   `json:"enabled"`
-	LastWebhookAt string `json:"last_webhook_at"`
-	WebhookCount  int64  `json:"webhook_count"`
-	ErrorCount    int64  `json:"error_count"`
+	Enabled        bool   `json:"enabled"`
+	ReceiveAddress string `json:"receive_address"`
+	LastWebhookAt  string `json:"last_webhook_at"`
+	WebhookCount   int64  `json:"webhook_count"`
+	ErrorCount     int64  `json:"error_count"`
 }
 
 type inboundCompanyJSON struct {
-	CompanyID      string   `json:"company_id"`
-	ReceiveAddress string   `json:"receive_address"`
-	AllowedFrom    []string `json:"allowed_from"`
-	Enabled        bool     `json:"enabled"`
+	CompanyID      string `json:"company_id"`
+	ReceiveAddress string `json:"receive_address"`
+	SenderEmail    string `json:"sender_email"`
+	Enabled        bool   `json:"enabled"`
+}
+
+type inboundAttachmentJSON struct {
+	ID          string `json:"id"`
+	Name        string `json:"name"`
+	ContentType string `json:"content_type"`
+	Size        int64  `json:"size"`
 }
 
 type inboundMessageJSON struct {
-	ID                string `json:"id"`
-	ProviderMessageID string `json:"provider_message_id"`
-	EnvelopeFrom      string `json:"envelope_from"`
-	EnvelopeTo        string `json:"envelope_to"`
-	ReceivedAt        string `json:"received_at"`
-	CompanyID         string `json:"company_id"`
-	Status            string `json:"status"`
-	ErrorCode         string `json:"error_code"`
-	AttachmentCount   int32  `json:"attachment_count"`
-	TotalBytes        int64  `json:"total_bytes"`
+	ID                string                  `json:"id"`
+	ProviderMessageID string                  `json:"provider_message_id"`
+	Subject           string                  `json:"subject"`
+	EnvelopeFrom      string                  `json:"envelope_from"`
+	EnvelopeTo        string                  `json:"envelope_to"`
+	ReceivedAt        string                  `json:"received_at"`
+	CompanyID         string                  `json:"company_id"`
+	Status            string                  `json:"status"`
+	ErrorCode         string                  `json:"error_code"`
+	AttachmentCount   int32                   `json:"attachment_count"`
+	TotalBytes        int64                   `json:"total_bytes"`
+	Attachments       []inboundAttachmentJSON `json:"attachments"`
 }
 
 func (a *API) inboundWebhookAuthorized(r *http.Request) bool {
@@ -96,13 +106,14 @@ func (a *API) updateInboundSettings(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var payload struct {
-		Enabled bool `json:"enabled"`
+		Enabled        bool   `json:"enabled"`
+		ReceiveAddress string `json:"receive_address"`
 	}
 	if !decodeJSON(w, r, &payload, authJSONLimit) {
 		return
 	}
 	resp, err := a.Clients.Inbound.UpdateSettings(a.jobCtx(r, user), &inboundv1.UpdateSettingsRequest{
-		Meta: a.meta(user), Enabled: payload.Enabled,
+		Meta: a.meta(user), Enabled: payload.Enabled, ReceiveAddress: payload.ReceiveAddress,
 	})
 	if err != nil {
 		writeGRPCError(w, "inbound_settings_update_failed", err)
@@ -136,9 +147,9 @@ func (a *API) updateInboundCompany(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var payload struct {
-		ReceiveAddress string   `json:"receive_address"`
-		AllowedFrom    []string `json:"allowed_from"`
-		Enabled        *bool    `json:"enabled"`
+		ReceiveAddress string `json:"receive_address"`
+		SenderEmail    string `json:"sender_email"`
+		Enabled        *bool  `json:"enabled"`
 	}
 	if !decodeJSON(w, r, &payload, authJSONLimit) {
 		return
@@ -149,7 +160,7 @@ func (a *API) updateInboundCompany(w http.ResponseWriter, r *http.Request) {
 	}
 	resp, err := a.Clients.Inbound.UpdateCompanyInbound(a.jobCtx(r, user), &inboundv1.UpdateCompanyInboundRequest{
 		Meta: a.meta(user), CompanyId: companyID,
-		ReceiveAddress: payload.ReceiveAddress, AllowedFrom: payload.AllowedFrom, Enabled: enabled,
+		ReceiveAddress: payload.ReceiveAddress, SenderEmail: payload.SenderEmail, Enabled: enabled,
 	})
 	if err != nil {
 		writeGRPCError(w, "inbound_company_update_failed", err)
@@ -241,10 +252,11 @@ func presentInboundSettings(in *inboundv1.InboundSettings) inboundSettingsJSON {
 		return inboundSettingsJSON{}
 	}
 	return inboundSettingsJSON{
-		Enabled:       in.GetEnabled(),
-		LastWebhookAt: in.GetLastWebhookAt(),
-		WebhookCount:  in.GetWebhookCount(),
-		ErrorCount:    in.GetErrorCount(),
+		Enabled:        in.GetEnabled(),
+		ReceiveAddress: in.GetReceiveAddress(),
+		LastWebhookAt:  in.GetLastWebhookAt(),
+		WebhookCount:   in.GetWebhookCount(),
+		ErrorCount:     in.GetErrorCount(),
 	}
 }
 
@@ -255,7 +267,7 @@ func presentInboundCompany(in *inboundv1.CompanyInbound) inboundCompanyJSON {
 	return inboundCompanyJSON{
 		CompanyID:      in.GetCompanyId(),
 		ReceiveAddress: in.GetReceiveAddress(),
-		AllowedFrom:    in.GetAllowedFrom(),
+		SenderEmail:    in.GetSenderEmail(),
 		Enabled:        in.GetEnabled(),
 	}
 }
@@ -264,9 +276,10 @@ func presentInboundMessage(in *inboundv1.InboundMessageSummary) inboundMessageJS
 	if in == nil {
 		return inboundMessageJSON{}
 	}
-	return inboundMessageJSON{
+	out := inboundMessageJSON{
 		ID:                in.GetId(),
 		ProviderMessageID: in.GetProviderMessageId(),
+		Subject:           in.GetSubject(),
 		EnvelopeFrom:      in.GetEnvelopeFrom(),
 		EnvelopeTo:        in.GetEnvelopeTo(),
 		ReceivedAt:        in.GetReceivedAt(),
@@ -276,6 +289,18 @@ func presentInboundMessage(in *inboundv1.InboundMessageSummary) inboundMessageJS
 		AttachmentCount:   in.GetAttachmentCount(),
 		TotalBytes:        in.GetTotalBytes(),
 	}
+	if atts := in.GetAttachments(); len(atts) > 0 {
+		out.Attachments = make([]inboundAttachmentJSON, len(atts))
+		for i, a := range atts {
+			out.Attachments[i] = inboundAttachmentJSON{
+				ID:          a.GetId(),
+				Name:        a.GetName(),
+				ContentType: a.GetContentType(),
+				Size:        a.GetSize(),
+			}
+		}
+	}
+	return out
 }
 
 func inboundStatusString(st inboundv1.InboundMessageStatus) string {

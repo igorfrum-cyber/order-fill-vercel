@@ -25,7 +25,7 @@ type inboundSettingsCapture struct {
 
 func (c *inboundSettingsCapture) GetSettings(ctx context.Context, _ *inboundv1.GetSettingsRequest, _ ...grpc.CallOption) (*inboundv1.GetSettingsResponse, error) {
 	c.gotCtx = ctx
-	return &inboundv1.GetSettingsResponse{Settings: &inboundv1.InboundSettings{Enabled: true, WebhookCount: 3, ErrorCount: 1}}, nil
+	return &inboundv1.GetSettingsResponse{Settings: &inboundv1.InboundSettings{Enabled: true, ReceiveAddress: "7e1432246b724f3bcd6c@cloudmailin.net", WebhookCount: 3, ErrorCount: 1}}, nil
 }
 
 func (inboundClient) IngestWebhook(context.Context, *inboundv1.IngestWebhookRequest, ...grpc.CallOption) (*inboundv1.IngestWebhookResponse, error) {
@@ -33,30 +33,34 @@ func (inboundClient) IngestWebhook(context.Context, *inboundv1.IngestWebhookRequ
 }
 
 func (inboundClient) GetSettings(context.Context, *inboundv1.GetSettingsRequest, ...grpc.CallOption) (*inboundv1.GetSettingsResponse, error) {
-	return &inboundv1.GetSettingsResponse{Settings: &inboundv1.InboundSettings{Enabled: true, WebhookCount: 3, ErrorCount: 1}}, nil
+	return &inboundv1.GetSettingsResponse{Settings: &inboundv1.InboundSettings{Enabled: true, ReceiveAddress: "7e1432246b724f3bcd6c@cloudmailin.net", WebhookCount: 3, ErrorCount: 1}}, nil
 }
 
 func (inboundClient) UpdateSettings(_ context.Context, req *inboundv1.UpdateSettingsRequest, _ ...grpc.CallOption) (*inboundv1.UpdateSettingsResponse, error) {
-	return &inboundv1.UpdateSettingsResponse{Settings: &inboundv1.InboundSettings{Enabled: req.GetEnabled()}}, nil
+	return &inboundv1.UpdateSettingsResponse{Settings: &inboundv1.InboundSettings{Enabled: req.GetEnabled(), ReceiveAddress: req.GetReceiveAddress()}}, nil
 }
 
 func (inboundClient) GetCompanyInbound(context.Context, *inboundv1.GetCompanyInboundRequest, ...grpc.CallOption) (*inboundv1.GetCompanyInboundResponse, error) {
 	return &inboundv1.GetCompanyInboundResponse{CompanyInbound: &inboundv1.CompanyInbound{
-		CompanyId: "c1", ReceiveAddress: "sales@orderfill.local", AllowedFrom: []string{"1c@company.ru"}, Enabled: true,
+		CompanyId: "c1", ReceiveAddress: "7e1432246b724f3bcd6c@cloudmailin.net", SenderEmail: "1c@company.ru", Enabled: true,
 	}}, nil
 }
 
 func (inboundClient) UpdateCompanyInbound(_ context.Context, req *inboundv1.UpdateCompanyInboundRequest, _ ...grpc.CallOption) (*inboundv1.UpdateCompanyInboundResponse, error) {
 	return &inboundv1.UpdateCompanyInboundResponse{CompanyInbound: &inboundv1.CompanyInbound{
-		CompanyId: req.GetCompanyId(), ReceiveAddress: req.GetReceiveAddress(), AllowedFrom: req.GetAllowedFrom(), Enabled: req.GetEnabled(),
+		CompanyId: req.GetCompanyId(), ReceiveAddress: req.GetReceiveAddress(), SenderEmail: req.GetSenderEmail(), Enabled: req.GetEnabled(),
 	}}, nil
 }
 
 func (inboundClient) ListMessages(context.Context, *inboundv1.ListMessagesRequest, ...grpc.CallOption) (*inboundv1.ListMessagesResponse, error) {
 	return &inboundv1.ListMessagesResponse{Messages: []*inboundv1.InboundMessageSummary{
-		{Id: "m1", ProviderMessageId: "abc", EnvelopeFrom: "1c@company.ru", EnvelopeTo: "sales@orderfill.local",
+		{Id: "m1", ProviderMessageId: "abc", Subject: "Заказ №123", EnvelopeFrom: "1c@company.ru", EnvelopeTo: "7e1432246b724f3bcd6c@cloudmailin.net",
 			ReceivedAt: "2026-09-15T10:00:00Z", CompanyId: "c1", Status: inboundv1.InboundMessageStatus_INBOUND_MESSAGE_STATUS_RECEIVED,
-			AttachmentCount: 1, TotalBytes: 1024},
+			AttachmentCount: 1, TotalBytes: 1024,
+			Attachments: []*inboundv1.InboundAttachment{
+				{Id: "a1", Name: "report.xlsx", ContentType: "application/vnd.ms-excel", Size: 1024},
+			},
+		},
 	}}, nil
 }
 
@@ -68,7 +72,7 @@ func (inboundClient) GetMessageFile(context.Context, *inboundv1.GetMessageFileRe
 
 func (inboundClient) ListDeliveries(context.Context, *inboundv1.ListDeliveriesRequest, ...grpc.CallOption) (*inboundv1.ListDeliveriesResponse, error) {
 	return &inboundv1.ListDeliveriesResponse{Deliveries: []*inboundv1.InboundMessageSummary{
-		{Id: "d1", ProviderMessageId: "abc", EnvelopeFrom: "1c@company.ru", EnvelopeTo: "sales@orderfill.local",
+		{Id: "d1", ProviderMessageId: "abc", Subject: "Заказ №456", EnvelopeFrom: "1c@company.ru", EnvelopeTo: "7e1432246b724f3bcd6c@cloudmailin.net",
 			ReceivedAt: "2026-09-15T10:00:00Z", CompanyId: "c1", Status: inboundv1.InboundMessageStatus_INBOUND_MESSAGE_STATUS_RECEIVED,
 			AttachmentCount: 1, TotalBytes: 1024},
 	}}, nil
@@ -136,8 +140,9 @@ func TestInboundSettingsReturnsStats(t *testing.T) {
 	req = req.WithContext(withUser(t.Context(), User{ID: "admin", Role: "platform_admin"}))
 	rec := httptest.NewRecorder()
 	api.inboundSettings(rec, req)
-	if rec.Code != http.StatusOK || !strings.Contains(rec.Body.String(), `"webhook_count":3`) {
-		t.Fatalf("status=%d body=%s", rec.Code, rec.Body.String())
+	body := rec.Body.String()
+	if rec.Code != http.StatusOK || !strings.Contains(body, `"webhook_count":3`) || !strings.Contains(body, `"receive_address":"7e1432246b724f3bcd6c@cloudmailin.net"`) {
+		t.Fatalf("status=%d body=%s", rec.Code, body)
 	}
 	md, _ := metadata.FromOutgoingContext(capture.gotCtx)
 	roles := md.Get(grpcutil.ActorRoleMetadataKey)
@@ -149,7 +154,7 @@ func TestInboundSettingsReturnsStats(t *testing.T) {
 func TestInboundUpdateSettingsAdmin(t *testing.T) {
 	t.Parallel()
 	api := &API{Clients: clients.Clients{Inbound: inboundClient{}}}
-	req := httptest.NewRequest(http.MethodPost, "/api/v1/inbound/settings", strings.NewReader(`{"enabled":false}`))
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/inbound/settings", strings.NewReader(`{"enabled":false,"receive_address":"new@cloudmailin.net"}`))
 	req = req.WithContext(withUser(t.Context(), User{ID: "admin", Role: "platform_admin"}))
 	rec := httptest.NewRecorder()
 	api.updateInboundSettings(rec, req)
@@ -192,15 +197,16 @@ func TestInboundCompanyOwnerReadsOwn(t *testing.T) {
 	req = req.WithContext(withUser(t.Context(), User{ID: "u1", Role: "company_owner", CompanyID: "c1"}))
 	rec := httptest.NewRecorder()
 	api.inboundCompany(rec, req)
-	if rec.Code != http.StatusOK || !strings.Contains(rec.Body.String(), `"receive_address":"sales@orderfill.local"`) {
-		t.Fatalf("status=%d body=%s", rec.Code, rec.Body.String())
+	body := rec.Body.String()
+	if rec.Code != http.StatusOK || !strings.Contains(body, `"sender_email":"1c@company.ru"`) {
+		t.Fatalf("status=%d body=%s", rec.Code, body)
 	}
 }
 
 func TestInboundCompanyUpdateRequiresOwner(t *testing.T) {
 	t.Parallel()
 	api := &API{}
-	req := httptest.NewRequest(http.MethodPost, "/api/v1/inbound/companies/c1", strings.NewReader(`{"receive_address":"s@x.io"}`))
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/inbound/companies/c1", strings.NewReader(`{"sender_email":"s@x.io"}`))
 	req.SetPathValue("company_id", "c1")
 	req = req.WithContext(withUser(t.Context(), User{ID: "u1", Role: "company_admin", CompanyID: "c1"}))
 	rec := httptest.NewRecorder()
@@ -213,13 +219,14 @@ func TestInboundCompanyUpdateRequiresOwner(t *testing.T) {
 func TestInboundCompanyUpdateOwner(t *testing.T) {
 	t.Parallel()
 	api := &API{Clients: clients.Clients{Inbound: inboundClient{}}}
-	req := httptest.NewRequest(http.MethodPost, "/api/v1/inbound/companies/c1", strings.NewReader(`{"receive_address":"s@x.io","allowed_from":["1c@x.ru"],"enabled":true}`))
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/inbound/companies/c1", strings.NewReader(`{"receive_address":"7e1432246b724f3bcd6c@cloudmailin.net","sender_email":"1c@x.ru","enabled":true}`))
 	req.SetPathValue("company_id", "c1")
 	req = req.WithContext(withUser(t.Context(), User{ID: "u1", Role: "company_owner", CompanyID: "c1"}))
 	rec := httptest.NewRecorder()
 	api.updateInboundCompany(rec, req)
-	if rec.Code != http.StatusOK || !strings.Contains(rec.Body.String(), `"receive_address":"s@x.io"`) {
-		t.Fatalf("status=%d body=%s", rec.Code, rec.Body.String())
+	body := rec.Body.String()
+	if rec.Code != http.StatusOK || !strings.Contains(body, `"sender_email":"1c@x.ru"`) {
+		t.Fatalf("status=%d body=%s", rec.Code, body)
 	}
 }
 
@@ -231,8 +238,9 @@ func TestInboundMessagesOwner(t *testing.T) {
 	req = req.WithContext(withUser(t.Context(), User{ID: "u1", Role: "company_owner", CompanyID: "c1"}))
 	rec := httptest.NewRecorder()
 	api.inboundMessages(rec, req)
-	if rec.Code != http.StatusOK || !strings.Contains(rec.Body.String(), `"status":"received"`) {
-		t.Fatalf("status=%d body=%s", rec.Code, rec.Body.String())
+	body := rec.Body.String()
+	if rec.Code != http.StatusOK || !strings.Contains(body, `"status":"received"`) || !strings.Contains(body, `"subject":"Заказ №123"`) || !strings.Contains(body, `"name":"report.xlsx"`) {
+		t.Fatalf("status=%d body=%s", rec.Code, body)
 	}
 }
 
@@ -278,6 +286,57 @@ func TestInboundDeliveriesRequiresAdmin(t *testing.T) {
 	api.inboundDeliveries(rec, req)
 	if rec.Code != http.StatusNotFound {
 		t.Fatalf("status=%d", rec.Code)
+	}
+}
+
+func TestPresentInboundSettingsNil(t *testing.T) {
+	t.Parallel()
+	got := presentInboundSettings(nil)
+	if got.Enabled || got.ReceiveAddress != "" || got.WebhookCount != 0 {
+		t.Fatalf("expected zero value for nil input, got %+v", got)
+	}
+}
+
+func TestPresentInboundCompanyNil(t *testing.T) {
+	t.Parallel()
+	got := presentInboundCompany(nil)
+	if got.CompanyID != "" || got.ReceiveAddress != "" || got.SenderEmail != "" {
+		t.Fatalf("expected zero value for nil input, got %+v", got)
+	}
+}
+
+func TestPresentInboundMessageNil(t *testing.T) {
+	t.Parallel()
+	got := presentInboundMessage(nil)
+	if got.ID != "" || got.Subject != "" || got.Attachments != nil {
+		t.Fatalf("expected zero value for nil input, got %+v", got)
+	}
+}
+
+func TestInboundDeliveriesShowsSubject(t *testing.T) {
+	t.Parallel()
+	api := &API{Clients: clients.Clients{Inbound: inboundClient{}}}
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/inbound/deliveries", nil)
+	req = req.WithContext(withUser(t.Context(), User{ID: "admin", Role: "platform_admin"}))
+	rec := httptest.NewRecorder()
+	api.inboundDeliveries(rec, req)
+	body := rec.Body.String()
+	if rec.Code != http.StatusOK || !strings.Contains(body, `"subject":"Заказ №456"`) {
+		t.Fatalf("status=%d body=%s", rec.Code, body)
+	}
+}
+
+func TestInboundUpdateCompanyForwardsSenderEmail(t *testing.T) {
+	t.Parallel()
+	api := &API{Clients: clients.Clients{Inbound: inboundClient{}}}
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/inbound/companies/c1", strings.NewReader(`{"sender_email":"new@x.ru","enabled":true}`))
+	req.SetPathValue("company_id", "c1")
+	req = req.WithContext(withUser(t.Context(), User{ID: "u1", Role: "company_owner", CompanyID: "c1"}))
+	rec := httptest.NewRecorder()
+	api.updateInboundCompany(rec, req)
+	body := rec.Body.String()
+	if rec.Code != http.StatusOK || !strings.Contains(body, `"sender_email":"new@x.ru"`) {
+		t.Fatalf("status=%d body=%s", rec.Code, body)
 	}
 }
 

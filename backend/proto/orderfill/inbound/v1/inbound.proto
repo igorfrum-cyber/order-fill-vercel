@@ -47,6 +47,7 @@ message InboundSettings {
   string last_webhook_at = 2;
   int64 webhook_count = 3;
   int64 error_count = 4;
+  string receive_address = 5;
 }
 
 message CompanyInbound {
@@ -54,6 +55,7 @@ message CompanyInbound {
   string receive_address = 2;
   repeated string allowed_from = 3;
   bool enabled = 4;
+  string sender_email = 5;
 }
 
 message InboundAttachment {
@@ -75,6 +77,7 @@ message InboundMessageSummary {
   int32 attachment_count = 9;
   int64 total_bytes = 10;
   repeated InboundAttachment attachments = 11;
+  string subject = 12;
 }
 
 message IngestWebhookRequest {
@@ -93,6 +96,7 @@ message GetSettingsResponse {
 message UpdateSettingsRequest {
   orderfill.common.v1.RequestMeta meta = 1;
   bool enabled = 2;
+  string receive_address = 3;
 }
 
 message UpdateSettingsResponse {
@@ -114,6 +118,7 @@ message UpdateCompanyInboundRequest {
   string receive_address = 3;
   repeated string allowed_from = 4;
   bool enabled = 5;
+  string sender_email = 6;
 }
 
 message UpdateCompanyInboundResponse {

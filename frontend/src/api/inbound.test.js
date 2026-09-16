@@ -42,14 +42,14 @@ test("inbound API fetches settings and posts the enabled flag", async () => {
 });
 
 test("inbound API reads and updates a company address", async () => {
-  const stub = stubClient(() => ({ company_id: "c1", receive_address: "zakaz@example.com" }));
+  const stub = stubClient(() => ({ company_id: "c1", receive_address: "zakaz@example.com", sender_email: "1c@example.com" }));
   try {
     await getInboundCompany("c/1");
-    await updateInboundCompany("c/1", { receive_address: "new@example.com", allowed_from: ["1c@example.com"], enabled: true });
+    await updateInboundCompany("c/1", { receive_address: "new@example.com", sender_email: "1c@example.com", enabled: true });
     assert.equal(stub.calls[0].url, "/api/v1/inbound/companies/c%2F1");
     assert.equal(stub.calls[1].url, "/api/v1/inbound/companies/c%2F1");
     assert.equal(stub.calls[1].options.method, "POST");
-    assert.deepEqual(JSON.parse(stub.calls[1].options.body), { receive_address: "new@example.com", allowed_from: ["1c@example.com"], enabled: true });
+    assert.deepEqual(JSON.parse(stub.calls[1].options.body), { receive_address: "new@example.com", sender_email: "1c@example.com", enabled: true });
   } finally {
     stub.restore();
   }
@@ -94,5 +94,17 @@ test("inbound API downloads an attachment with credentials", async () => {
   } finally {
     apiClient.fetcher = originalFetcher;
     apiClient.baseUrl = originalBase;
+  }
+});
+
+test("inbound settings API sends receive_address in POST body", async () => {
+  const stub = stubClient(() => ({ enabled: true, receive_address: "7e1432246b724f3bcd6c@cloudmailin.net" }));
+  try {
+    await updateInboundSettings({ enabled: true, receive_address: "new@cloudmailin.net" });
+    const body = JSON.parse(stub.calls[0].options.body);
+    assert.equal(body.receive_address, "new@cloudmailin.net");
+    assert.equal(body.enabled, true);
+  } finally {
+    stub.restore();
   }
 });

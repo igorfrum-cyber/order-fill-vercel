@@ -14,22 +14,25 @@ const (
 )
 
 type Settings struct {
-	Enabled       bool
-	LastWebhookAt time.Time
-	WebhookCount  int64
-	ErrorCount    int64
+	Enabled        bool
+	ReceiveAddress string
+	LastWebhookAt  time.Time
+	WebhookCount   int64
+	ErrorCount     int64
 }
 
 type CompanyInbound struct {
 	CompanyID      string
 	ReceiveAddress string
 	AllowedFrom    []string
+	SenderEmail    string
 	Enabled        bool
 }
 
 type MessageSummary struct {
 	ID                string
 	ProviderMessageID string
+	Subject           string
 	EnvelopeFrom      string
 	EnvelopeTo        string
 	ReceivedAt        time.Time
@@ -38,6 +41,7 @@ type MessageSummary struct {
 	ErrorCode         string
 	AttachmentCount   int32
 	TotalBytes        int64
+	Attachments       []Attachment
 }
 
 type Attachment struct {

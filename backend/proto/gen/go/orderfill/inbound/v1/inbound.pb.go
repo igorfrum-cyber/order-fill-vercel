@@ -85,13 +85,14 @@ func (InboundMessageStatus) EnumDescriptor() ([]byte, []int) {
 }
 
 type InboundSettings struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Enabled       bool                   `protobuf:"varint,1,opt,name=enabled,proto3" json:"enabled,omitempty"`
-	LastWebhookAt string                 `protobuf:"bytes,2,opt,name=last_webhook_at,json=lastWebhookAt,proto3" json:"last_webhook_at,omitempty"`
-	WebhookCount  int64                  `protobuf:"varint,3,opt,name=webhook_count,json=webhookCount,proto3" json:"webhook_count,omitempty"`
-	ErrorCount    int64                  `protobuf:"varint,4,opt,name=error_count,json=errorCount,proto3" json:"error_count,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	state          protoimpl.MessageState `protogen:"open.v1"`
+	Enabled        bool                   `protobuf:"varint,1,opt,name=enabled,proto3" json:"enabled,omitempty"`
+	LastWebhookAt  string                 `protobuf:"bytes,2,opt,name=last_webhook_at,json=lastWebhookAt,proto3" json:"last_webhook_at,omitempty"`
+	WebhookCount   int64                  `protobuf:"varint,3,opt,name=webhook_count,json=webhookCount,proto3" json:"webhook_count,omitempty"`
+	ErrorCount     int64                  `protobuf:"varint,4,opt,name=error_count,json=errorCount,proto3" json:"error_count,omitempty"`
+	ReceiveAddress string                 `protobuf:"bytes,5,opt,name=receive_address,json=receiveAddress,proto3" json:"receive_address,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
 }
 
 func (x *InboundSettings) Reset() {
@@ -152,12 +153,20 @@ func (x *InboundSettings) GetErrorCount() int64 {
 	return 0
 }
 
+func (x *InboundSettings) GetReceiveAddress() string {
+	if x != nil {
+		return x.ReceiveAddress
+	}
+	return ""
+}
+
 type CompanyInbound struct {
 	state          protoimpl.MessageState `protogen:"open.v1"`
 	CompanyId      string                 `protobuf:"bytes,1,opt,name=company_id,json=companyId,proto3" json:"company_id,omitempty"`
 	ReceiveAddress string                 `protobuf:"bytes,2,opt,name=receive_address,json=receiveAddress,proto3" json:"receive_address,omitempty"`
 	AllowedFrom    []string               `protobuf:"bytes,3,rep,name=allowed_from,json=allowedFrom,proto3" json:"allowed_from,omitempty"`
 	Enabled        bool                   `protobuf:"varint,4,opt,name=enabled,proto3" json:"enabled,omitempty"`
+	SenderEmail    string                 `protobuf:"bytes,5,opt,name=sender_email,json=senderEmail,proto3" json:"sender_email,omitempty"`
 	unknownFields  protoimpl.UnknownFields
 	sizeCache      protoimpl.SizeCache
 }
@@ -218,6 +227,13 @@ func (x *CompanyInbound) GetEnabled() bool {
 		return x.Enabled
 	}
 	return false
+}
+
+func (x *CompanyInbound) GetSenderEmail() string {
+	if x != nil {
+		return x.SenderEmail
+	}
+	return ""
 }
 
 type InboundAttachment struct {
@@ -301,6 +317,7 @@ type InboundMessageSummary struct {
 	AttachmentCount   int32                  `protobuf:"varint,9,opt,name=attachment_count,json=attachmentCount,proto3" json:"attachment_count,omitempty"`
 	TotalBytes        int64                  `protobuf:"varint,10,opt,name=total_bytes,json=totalBytes,proto3" json:"total_bytes,omitempty"`
 	Attachments       []*InboundAttachment   `protobuf:"bytes,11,rep,name=attachments,proto3" json:"attachments,omitempty"`
+	Subject           string                 `protobuf:"bytes,12,opt,name=subject,proto3" json:"subject,omitempty"`
 	unknownFields     protoimpl.UnknownFields
 	sizeCache         protoimpl.SizeCache
 }
@@ -410,6 +427,13 @@ func (x *InboundMessageSummary) GetAttachments() []*InboundAttachment {
 		return x.Attachments
 	}
 	return nil
+}
+
+func (x *InboundMessageSummary) GetSubject() string {
+	if x != nil {
+		return x.Subject
+	}
+	return ""
 }
 
 type IngestWebhookRequest struct {
@@ -581,11 +605,12 @@ func (x *GetSettingsResponse) GetSettings() *InboundSettings {
 }
 
 type UpdateSettingsRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Meta          *v1.RequestMeta        `protobuf:"bytes,1,opt,name=meta,proto3" json:"meta,omitempty"`
-	Enabled       bool                   `protobuf:"varint,2,opt,name=enabled,proto3" json:"enabled,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	state          protoimpl.MessageState `protogen:"open.v1"`
+	Meta           *v1.RequestMeta        `protobuf:"bytes,1,opt,name=meta,proto3" json:"meta,omitempty"`
+	Enabled        bool                   `protobuf:"varint,2,opt,name=enabled,proto3" json:"enabled,omitempty"`
+	ReceiveAddress string                 `protobuf:"bytes,3,opt,name=receive_address,json=receiveAddress,proto3" json:"receive_address,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
 }
 
 func (x *UpdateSettingsRequest) Reset() {
@@ -630,6 +655,13 @@ func (x *UpdateSettingsRequest) GetEnabled() bool {
 		return x.Enabled
 	}
 	return false
+}
+
+func (x *UpdateSettingsRequest) GetReceiveAddress() string {
+	if x != nil {
+		return x.ReceiveAddress
+	}
+	return ""
 }
 
 type UpdateSettingsResponse struct {
@@ -779,6 +811,7 @@ type UpdateCompanyInboundRequest struct {
 	ReceiveAddress string                 `protobuf:"bytes,3,opt,name=receive_address,json=receiveAddress,proto3" json:"receive_address,omitempty"`
 	AllowedFrom    []string               `protobuf:"bytes,4,rep,name=allowed_from,json=allowedFrom,proto3" json:"allowed_from,omitempty"`
 	Enabled        bool                   `protobuf:"varint,5,opt,name=enabled,proto3" json:"enabled,omitempty"`
+	SenderEmail    string                 `protobuf:"bytes,6,opt,name=sender_email,json=senderEmail,proto3" json:"sender_email,omitempty"`
 	unknownFields  protoimpl.UnknownFields
 	sizeCache      protoimpl.SizeCache
 }
@@ -846,6 +879,13 @@ func (x *UpdateCompanyInboundRequest) GetEnabled() bool {
 		return x.Enabled
 	}
 	return false
+}
+
+func (x *UpdateCompanyInboundRequest) GetSenderEmail() string {
+	if x != nil {
+		return x.SenderEmail
+	}
+	return ""
 }
 
 type UpdateCompanyInboundResponse struct {
@@ -1216,24 +1256,26 @@ var File_orderfill_inbound_v1_inbound_proto protoreflect.FileDescriptor
 
 const file_orderfill_inbound_v1_inbound_proto_rawDesc = "" +
 	"\n" +
-	"\"orderfill/inbound/v1/inbound.proto\x12\x14orderfill.inbound.v1\x1a orderfill/common/v1/common.proto\"\x99\x01\n" +
+	"\"orderfill/inbound/v1/inbound.proto\x12\x14orderfill.inbound.v1\x1a orderfill/common/v1/common.proto\"\xc2\x01\n" +
 	"\x0fInboundSettings\x12\x18\n" +
 	"\aenabled\x18\x01 \x01(\bR\aenabled\x12&\n" +
 	"\x0flast_webhook_at\x18\x02 \x01(\tR\rlastWebhookAt\x12#\n" +
 	"\rwebhook_count\x18\x03 \x01(\x03R\fwebhookCount\x12\x1f\n" +
 	"\verror_count\x18\x04 \x01(\x03R\n" +
-	"errorCount\"\x95\x01\n" +
+	"errorCount\x12'\n" +
+	"\x0freceive_address\x18\x05 \x01(\tR\x0ereceiveAddress\"\xb8\x01\n" +
 	"\x0eCompanyInbound\x12\x1d\n" +
 	"\n" +
 	"company_id\x18\x01 \x01(\tR\tcompanyId\x12'\n" +
 	"\x0freceive_address\x18\x02 \x01(\tR\x0ereceiveAddress\x12!\n" +
 	"\fallowed_from\x18\x03 \x03(\tR\vallowedFrom\x12\x18\n" +
-	"\aenabled\x18\x04 \x01(\bR\aenabled\"n\n" +
+	"\aenabled\x18\x04 \x01(\bR\aenabled\x12!\n" +
+	"\fsender_email\x18\x05 \x01(\tR\vsenderEmail\"n\n" +
 	"\x11InboundAttachment\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12!\n" +
 	"\fcontent_type\x18\x03 \x01(\tR\vcontentType\x12\x12\n" +
-	"\x04size\x18\x04 \x01(\x03R\x04size\"\xd7\x03\n" +
+	"\x04size\x18\x04 \x01(\x03R\x04size\"\xf1\x03\n" +
 	"\x15InboundMessageSummary\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12.\n" +
 	"\x13provider_message_id\x18\x02 \x01(\tR\x11providerMessageId\x12#\n" +
@@ -1251,7 +1293,8 @@ const file_orderfill_inbound_v1_inbound_proto_rawDesc = "" +
 	"\vtotal_bytes\x18\n" +
 	" \x01(\x03R\n" +
 	"totalBytes\x12I\n" +
-	"\vattachments\x18\v \x03(\v2'.orderfill.inbound.v1.InboundAttachmentR\vattachments\"m\n" +
+	"\vattachments\x18\v \x03(\v2'.orderfill.inbound.v1.InboundAttachmentR\vattachments\x12\x18\n" +
+	"\asubject\x18\f \x01(\tR\asubject\"m\n" +
 	"\x14IngestWebhookRequest\x124\n" +
 	"\x04meta\x18\x01 \x01(\v2 .orderfill.common.v1.RequestMetaR\x04meta\x12\x1f\n" +
 	"\vraw_payload\x18\x02 \x01(\fR\n" +
@@ -1259,10 +1302,11 @@ const file_orderfill_inbound_v1_inbound_proto_rawDesc = "" +
 	"\x15IngestWebhookResponse\"\x14\n" +
 	"\x12GetSettingsRequest\"X\n" +
 	"\x13GetSettingsResponse\x12A\n" +
-	"\bsettings\x18\x01 \x01(\v2%.orderfill.inbound.v1.InboundSettingsR\bsettings\"g\n" +
+	"\bsettings\x18\x01 \x01(\v2%.orderfill.inbound.v1.InboundSettingsR\bsettings\"\x90\x01\n" +
 	"\x15UpdateSettingsRequest\x124\n" +
 	"\x04meta\x18\x01 \x01(\v2 .orderfill.common.v1.RequestMetaR\x04meta\x12\x18\n" +
-	"\aenabled\x18\x02 \x01(\bR\aenabled\"[\n" +
+	"\aenabled\x18\x02 \x01(\bR\aenabled\x12'\n" +
+	"\x0freceive_address\x18\x03 \x01(\tR\x0ereceiveAddress\"[\n" +
 	"\x16UpdateSettingsResponse\x12A\n" +
 	"\bsettings\x18\x01 \x01(\v2%.orderfill.inbound.v1.InboundSettingsR\bsettings\"o\n" +
 	"\x18GetCompanyInboundRequest\x124\n" +
@@ -1270,14 +1314,15 @@ const file_orderfill_inbound_v1_inbound_proto_rawDesc = "" +
 	"\n" +
 	"company_id\x18\x02 \x01(\tR\tcompanyId\"j\n" +
 	"\x19GetCompanyInboundResponse\x12M\n" +
-	"\x0fcompany_inbound\x18\x01 \x01(\v2$.orderfill.inbound.v1.CompanyInboundR\x0ecompanyInbound\"\xd8\x01\n" +
+	"\x0fcompany_inbound\x18\x01 \x01(\v2$.orderfill.inbound.v1.CompanyInboundR\x0ecompanyInbound\"\xfb\x01\n" +
 	"\x1bUpdateCompanyInboundRequest\x124\n" +
 	"\x04meta\x18\x01 \x01(\v2 .orderfill.common.v1.RequestMetaR\x04meta\x12\x1d\n" +
 	"\n" +
 	"company_id\x18\x02 \x01(\tR\tcompanyId\x12'\n" +
 	"\x0freceive_address\x18\x03 \x01(\tR\x0ereceiveAddress\x12!\n" +
 	"\fallowed_from\x18\x04 \x03(\tR\vallowedFrom\x12\x18\n" +
-	"\aenabled\x18\x05 \x01(\bR\aenabled\"m\n" +
+	"\aenabled\x18\x05 \x01(\bR\aenabled\x12!\n" +
+	"\fsender_email\x18\x06 \x01(\tR\vsenderEmail\"m\n" +
 	"\x1cUpdateCompanyInboundResponse\x12M\n" +
 	"\x0fcompany_inbound\x18\x01 \x01(\v2$.orderfill.inbound.v1.CompanyInboundR\x0ecompanyInbound\"\x80\x01\n" +
 	"\x13ListMessagesRequest\x124\n" +
