@@ -1,4 +1,7 @@
 import "./styles.css";
+// Keep Excel export available for the lifetime of an open order, including
+// after a deployment or loss of network connectivity.
+import { read as readSpreadsheet, write as writeSpreadsheet, utils as spreadsheetUtils } from 'xlsx';
 import { openBudgetDialog, budgetChangeComment } from './budgetDialog.js';
 import { createOrderPricing, priceOrderRows, money } from './orderPricing.js';
 import { procurementTotalCents } from './christinaLines.js';
@@ -974,7 +977,6 @@ async function normalizeWorkbookBytes(buffer, fileName, options = {}) {
     throw new Error(`Файл «${fileName}» в старом формате .xls нельзя использовать как бланк: при такой конвертации теряется оформление. Откройте этот бланк в Excel и сохраните как .xlsx, затем загрузите .xlsx.`);
   }
   try {
-    const { read: readSpreadsheet, write: writeSpreadsheet } = await import("xlsx");
     const workbook = readSpreadsheet(buffer, {
       type: "array",
       cellFormula: true,
@@ -1366,8 +1368,8 @@ warehouseDownload.addEventListener("click", async () => {
   finally { warehouseDownload.disabled = false; }
 });
 
-function transferWorkbookBytes(transfer) {
-  return import("xlsx").then(({ utils, write }) => {
+async function transferWorkbookBytes(transfer) {
+    const utils = spreadsheetUtils, write = writeSpreadsheet;
     const rows = [
       ["", "", "", "", "", "", "", ""],
       ["", "", "", "", "", "", "", ""],
@@ -1397,11 +1399,10 @@ function transferWorkbookBytes(transfer) {
     ];
     utils.book_append_sheet(workbook, sheet, "Лист_1");
     return write(workbook, { bookType: "xlsx", type: "array" });
-  });
 }
 
-function northOrderTableBytes(table) {
-  return import("xlsx").then(({ utils, write }) => {
+async function northOrderTableBytes(table) {
+    const utils = spreadsheetUtils, write = writeSpreadsheet;
     const rows = [
       ["Позиция", "Заказано", "Комментарий"],
       ...table.rows.map((item) => [item.name, item.quantity, item.comment]),
@@ -1415,7 +1416,6 @@ function northOrderTableBytes(table) {
     ];
     utils.book_append_sheet(workbook, sheet, "Заказ");
     return write(workbook, { bookType: "xlsx", type: "array" });
-  });
 }
 
 function formatNorthQuantity(value) {
