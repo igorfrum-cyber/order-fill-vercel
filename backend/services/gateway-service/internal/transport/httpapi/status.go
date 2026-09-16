@@ -23,6 +23,7 @@ func (a *API) listStatus(w http.ResponseWriter, r *http.Request) {
 		{"id": "postgres", "ok": a.tcpOK(ctx, a.PostgresAddr)},
 		{"id": "queue", "ok": a.tcpOK(ctx, a.RedisAddr)},
 		{"id": "files", "ok": a.httpOK(ctx, a.FileHealth)},
+		{"id": "inbound", "ok": a.tcpOK(ctx, a.InboundGRPC)},
 	}})
 }
 

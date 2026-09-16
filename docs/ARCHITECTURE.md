@@ -18,6 +18,7 @@ gateway-service  --gRPC--> identity-service
       |          --gRPC--> file-service
       |          --gRPC--> twofa-service
       |          --gRPC--> passkey-service
+      |          --gRPC--> inbound-service
       |
       +-- Redis stream --> document-worker
 
@@ -124,12 +125,18 @@ message, а не из identity-service.
 
 Запись audit-событий пользовательских и системных действий в PostgreSQL.
 
+### inbound-service
+
+Изолированный контур приёма входящей почты 1С: CloudMailin webhook → gateway → `IngestWebhook`. Собственный PostgreSQL и отдельный S3-бакет `order-fill-inbound` с изолированными credentials. Не зависит от Redis, job/file/matching/calculation. Поддерживает глобальные настройки приёма (platform_admin), адрес и whitelist компании, ленту писем и скачивание вложений. Не создаёт заказы и jobs.
+
 ## Хранилища
 
 ### PostgreSQL
 
 Хранит пользователей, компании, сессии, passkeys, 2FA, jobs, статусы, report
-rows, output metadata и audit log.
+rows, output metadata и audit log. Отдельный инстанс PostgreSQL используется
+изолированным контуром `inbound-service` для настроек приёма, адресов компаний
+и метаданных входящих писем.
 
 ### Redis
 
@@ -139,7 +146,9 @@ state и межпроцессной координации там, где нуж
 ### Object Storage
 
 S3-compatible хранилище для входных Excel-файлов, preview chunks, draft/final
-outputs и архивов.
+outputs и архивов. Вложения входящей почты 1С хранятся в отдельном бакете
+`order-fill-inbound` с собственными credentials; доступ к нему имеет только
+`inbound-service`.
 
 ## Поток "Заполнение бланка"
 
@@ -186,6 +195,7 @@ outputs и архивов.
 2 file-service replicas
 2 document-api replicas
 2-5 document-worker replicas
+1+ inbound-service replicas
 1+ PostgreSQL primary/managed cluster
 1+ Redis/managed queue
 1 S3-compatible object storage

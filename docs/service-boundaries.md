@@ -17,6 +17,7 @@ under `backend/`.
 - `backend/services/matching-service/` owns product matching decisions. It accepts structured items and returns canonical `ReportCategory` plus `MatchReasons`; it does not parse Excel.
 - `backend/services/brand-service/` owns the read-only brand catalog and brand-specific rules; gateway may expose their projection to platform admins but does not own or edit them.
 - `backend/services/calculation-service/` owns quantity calculations over normalized inputs.
+- `backend/services/inbound-service/` owns the inbound 1С mail contour: CloudMailin webhook payloads, company receive addresses, message metadata, and attachment objects. It uses its own PostgreSQL instance and a dedicated S3 bucket and does not depend on business services.
 - `backend/proto/` owns internal gRPC contracts.
 
 ## Public Boundary
@@ -47,6 +48,7 @@ Stateful services must use durable dependencies outside local development:
 - file: PostgreSQL metadata plus S3-compatible object storage
 - twofa, passkey: PostgreSQL plus Redis-backed transient state
 - document-worker: Redis queue plus gRPC access to job, file, brand, matching, and calculation
+- inbound: dedicated PostgreSQL instance plus a dedicated S3-compatible bucket (separate credentials); `file-service` is not the boundary for inbound mail attachments
 
 In production, config validation fails at startup instead of falling back to
 in-memory stores.

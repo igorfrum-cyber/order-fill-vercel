@@ -12,6 +12,7 @@ use (
 	./services/file-service
 	./services/gateway-service
 	./services/identity-service
+	./services/inbound-service
 	./services/job-service
 	./services/matching-service
 	./services/passkey-service

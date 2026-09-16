@@ -14,28 +14,34 @@ import (
 )
 
 type API struct {
-	Clients        clients.Clients
-	HTTP           *http.Client
-	WorkerHealth   string
-	FileHealth     string
-	PostgresAddr   string
-	RedisAddr      string
-	AllowedOrigins []string
-	CookieSecure   bool
-	CookieDomain   string
+	Clients             clients.Clients
+	HTTP                *http.Client
+	WorkerHealth        string
+	FileHealth          string
+	PostgresAddr        string
+	RedisAddr           string
+	InboundGRPC         string
+	AllowedOrigins      []string
+	CookieSecure        bool
+	CookieDomain        string
+	WorkerToken         string
+	InboundWebhookToken string
 }
 
 func New(cfg config.Config, c clients.Clients) http.Handler {
 	api := &API{
-		Clients:        c,
-		HTTP:           &http.Client{Timeout: 2 * time.Second},
-		WorkerHealth:   cfg.WorkerHealth,
-		FileHealth:     cfg.FileHealth,
-		PostgresAddr:   cfg.PostgresAddr,
-		RedisAddr:      cfg.RedisAddr,
-		AllowedOrigins: ParseAllowedOrigins(cfg.AllowedOrigins),
-		CookieSecure:   cfg.CookieSecure,
-		CookieDomain:   cfg.CookieDomain,
+		Clients:             c,
+		HTTP:                &http.Client{Timeout: 2 * time.Second},
+		WorkerHealth:        cfg.WorkerHealth,
+		FileHealth:          cfg.FileHealth,
+		PostgresAddr:        cfg.PostgresAddr,
+		RedisAddr:           cfg.RedisAddr,
+		InboundGRPC:         cfg.InboundGRPC,
+		AllowedOrigins:      ParseAllowedOrigins(cfg.AllowedOrigins),
+		CookieSecure:        cfg.CookieSecure,
+		CookieDomain:        cfg.CookieDomain,
+		WorkerToken:         cfg.WorkerToken,
+		InboundWebhookToken: cfg.InboundWebhook,
 	}
 	mux := http.NewServeMux()
 	mux.Handle("GET /healthz", healthz.Live())
@@ -90,6 +96,14 @@ func New(cfg config.Config, c clients.Clients) http.Handler {
 	mux.HandleFunc("POST /api/v1/users/{user_id}/reset", api.resetUser)
 	mux.HandleFunc("GET /api/v1/audit", api.listAudit)
 	mux.HandleFunc("GET /api/v1/status", api.listStatus)
+	mux.HandleFunc("POST /api/v1/inbound/webhook", api.inboundWebhook)
+	mux.HandleFunc("GET /api/v1/inbound/settings", api.inboundSettings)
+	mux.HandleFunc("POST /api/v1/inbound/settings", api.updateInboundSettings)
+	mux.HandleFunc("GET /api/v1/inbound/companies/{company_id}", api.inboundCompany)
+	mux.HandleFunc("POST /api/v1/inbound/companies/{company_id}", api.updateInboundCompany)
+	mux.HandleFunc("GET /api/v1/inbound/companies/{company_id}/messages", api.inboundMessages)
+	mux.HandleFunc("GET /api/v1/inbound/companies/{company_id}/messages/{message_id}/files/{attachment_id}", api.inboundMessageFile)
+	mux.HandleFunc("GET /api/v1/inbound/deliveries", api.inboundDeliveries)
 	mux.HandleFunc("GET /api/v1/public/companies/{slug}/login", api.publicCompanyLogin)
 	mux.HandleFunc("GET /api/v1/public/companies/{slug}/logo", api.publicCompanyLogo)
 	return withCORS(api.gate(mux), api.AllowedOrigins)
@@ -109,6 +123,14 @@ func (a *API) gate(next http.Handler) http.Handler {
 		if publicAuthPath(r.URL.Path) {
 			if r.Method == http.MethodPost && !publicOriginAllowed(r, a.AllowedOrigins) {
 				writeError(w, http.StatusForbidden, "forbidden", "request was rejected")
+				return
+			}
+			next.ServeHTTP(w, r)
+			return
+		}
+		if r.URL.Path == "/api/v1/inbound/webhook" && r.Method == http.MethodPost {
+			if !a.inboundWebhookAuthorized(r) {
+				writeError(w, http.StatusUnauthorized, "unauthorized", "authentication is required")
 				return
 			}
 			next.ServeHTTP(w, r)

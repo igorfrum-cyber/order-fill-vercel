@@ -117,6 +117,14 @@ Gateway не владеет постоянным хранилищем. `POSTGRES
 - `POST /api/v1/users/{user_id}/reset`
 - `GET /api/v1/audit`
 - `GET /api/v1/status`
+- `POST /api/v1/inbound/webhook`
+- `GET /api/v1/inbound/settings`
+- `POST /api/v1/inbound/settings`
+- `GET /api/v1/inbound/companies/{company_id}`
+- `POST /api/v1/inbound/companies/{company_id}`
+- `GET /api/v1/inbound/companies/{company_id}/messages`
+- `GET /api/v1/inbound/companies/{company_id}/messages/{message_id}/files/{attachment_id}`
+- `GET /api/v1/inbound/deliveries`
 - `GET /api/v1/public/companies/{slug}/login`
 - `GET /api/v1/public/companies/{slug}/logo`
 <!-- /docs-sync:http -->
@@ -158,6 +166,9 @@ gRPC-контракты находятся в [`../../proto/orderfill`](../../pr
 | `FILE_GRPC_ADDR` | `127.0.0.1:9095` | Адрес `file-service`. |
 | `AUDIT_GRPC_ADDR` | `127.0.0.1:9100` | Адрес `audit-service`. |
 | `BRAND_GRPC_ADDR` | `127.0.0.1:9098` | Адрес `brand-service` для страницы правил. |
+| `INBOUND_GRPC_ADDR` | `127.0.0.1:9101` | Читается из окружения; назначение см. config.go. |
+| `INBOUND_WEBHOOK_TOKEN` | `local-dev-inbound-webhook-token` | Читается из окружения; назначение см. config.go. |
+| `WORKER_TOKEN` | `local-dev-worker-token` | Читается из окружения; назначение см. config.go. |
 | `WORKER_HEALTH_URL` | `http://127.0.0.1:8092/healthz` | HTTP URL document worker для `/api/v1/status`. |
 | `FILE_HEALTH_URL` | `http://127.0.0.1:8086/healthz` | HTTP URL `file-service` для `/api/v1/status`. |
 | `POSTGRES_ADDR` | `127.0.0.1:5432` | TCP-адрес PostgreSQL для `/api/v1/status`. |

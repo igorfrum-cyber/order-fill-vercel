@@ -136,9 +136,9 @@ test("homeScreen sends purchasers to order and keepers to their desks", () => {
 
 test("navItemsForRole lists only what the role may open", () => {
   assert.deepEqual(navItemsForRole("purchaser").map((item) => item.id), ["order", "history"]);
-  assert.deepEqual(navItemsForRole("company_admin").map((item) => item.id), ["queue", "users", "company", "history"]);
-  assert.deepEqual(navItemsForRole("company_owner").map((item) => item.id), ["queue", "users", "company", "history"]);
-  assert.deepEqual(navItemsForRole("platform_admin").map((item) => item.id), ["overview", "history", "companies", "brand-rules", "users"]);
+  assert.deepEqual(navItemsForRole("company_admin").map((item) => item.id), ["queue", "users", "company", "inbound", "history"]);
+  assert.deepEqual(navItemsForRole("company_owner").map((item) => item.id), ["queue", "users", "company", "inbound", "history"]);
+  assert.deepEqual(navItemsForRole("platform_admin").map((item) => item.id), ["overview", "history", "companies", "brand-rules", "users", "inbound"]);
 });
 
 test("platform admin must pick a company to manage users", () => {
