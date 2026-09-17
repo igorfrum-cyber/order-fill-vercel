@@ -110,6 +110,16 @@ export function mapReportRow(row) {
     duplicateCandidates: (row.duplicate_candidates || []).map(mapDuplicateCandidate),
     editable: row.editable !== false,
     similarity: row.similarity || 0,
+    christinaLine: row.christina_line ? mapChristinaLine(row.christina_line) : null,
+  };
+}
+
+function mapChristinaLine(line) {
+  return {
+    id: line.id || "",
+    name: line.name || "",
+    article: line.article || "",
+    required: Array.isArray(line.required) ? line.required : [],
   };
 }
 

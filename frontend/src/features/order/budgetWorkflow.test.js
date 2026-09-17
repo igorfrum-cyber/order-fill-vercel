@@ -16,6 +16,7 @@ test("budgetRowsFromReport uses the current edit and locks a manual deviation", 
     key: "row-1", name: "Крем", category: "B", quantity: 6, price: 100,
     demand: 10, delivery: 0.25, stock: 2, transit: 1, outbound: 0,
     unit: 1, step: 3, minimum: 3, locked: true, excluded: false, unsafe: false,
+    group: "main", line: null,
   });
 });
 

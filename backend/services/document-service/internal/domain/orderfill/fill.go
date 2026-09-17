@@ -82,6 +82,7 @@ type blankPosition struct {
 	unit                string
 	boxSize             string
 	budgetPrice         float64
+	christinaLine       *ChristinaLine
 	duplicate           bool
 	duplicateCandidates []DuplicateCandidate
 }
@@ -306,6 +307,13 @@ func applyMatch(position blankPosition, result MatchResult, byID map[string]Sour
 func blankPositions(blank Detection, blankID string, rule brand.RuleConfig) []blankPosition {
 	bounds := blank.Sheet.Bounds()
 	priceColumn := budgetPriceColumn(blank)
+
+	// Pre-compute PROFF line membership for Christina blanks.
+	var linesByRow map[int]*ChristinaLine
+	if rule.Key == "christina" {
+		linesByRow = christinaProffLinesByRow(blank.Sheet)
+	}
+
 	positions := make([]blankPosition, 0)
 	for row := blank.HeaderRow + 1; row <= bounds.MaxRow; row++ {
 		articleRaw := normalize.AsText(blank.Sheet.Value(row, blank.Columns[ColumnArticle]))
@@ -329,6 +337,7 @@ func blankPositions(blank Detection, blankID string, rule brand.RuleConfig) []bl
 			unit:                normalize.AsText(blank.Sheet.Value(row, blank.Columns[ColumnUnit])),
 			boxSize:             boxSize,
 			budgetPrice:         budgetPriceAt(blank.Sheet, row, priceColumn),
+			christinaLine:       linesByRow[row],
 		})
 	}
 	return positions
