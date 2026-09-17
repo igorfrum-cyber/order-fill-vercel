@@ -64,6 +64,13 @@ func (inboundClient) ListMessages(context.Context, *inboundv1.ListMessagesReques
 	}}, nil
 }
 
+func (inboundClient) GetMessage(context.Context, *inboundv1.GetMessageRequest, ...grpc.CallOption) (*inboundv1.GetMessageResponse, error) {
+	return &inboundv1.GetMessageResponse{Message: &inboundv1.InboundMessageSummary{
+		Id: "m1", Subject: "Заказ №123", EnvelopeFrom: "1c@company.ru", ReceivedAt: "2026-09-15T10:00:00Z",
+		CompanyId: "c1", BodyText: "plain body", BodyHtml: "<p>formatted body</p>",
+	}}, nil
+}
+
 func (inboundClient) GetMessageFile(context.Context, *inboundv1.GetMessageFileRequest, ...grpc.CallOption) (*inboundv1.GetMessageFileResponse, error) {
 	return &inboundv1.GetMessageFileResponse{Attachment: &inboundv1.InboundAttachment{
 		Id: "a1", Name: "report.xlsx", ContentType: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", Size: 1024,

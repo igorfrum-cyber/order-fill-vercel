@@ -134,6 +134,20 @@ a:focus-visible,
   animation: enter 0.36s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
+.message-viewer-backdrop {
+  background: rgba(15, 23, 42, 0.42);
+  animation: message-backdrop-in 0.24s ease-out both;
+}
+
+@keyframes message-backdrop-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
 @keyframes tour-scrim-in {
   from {
     opacity: 0;
@@ -253,7 +267,8 @@ a:focus-visible,
   .help-backdrop,
   .help-drawer,
   .help-modal-backdrop,
-  .help-modal-card {
+  .help-modal-card,
+  .message-viewer-backdrop {
     animation: none;
   }
 

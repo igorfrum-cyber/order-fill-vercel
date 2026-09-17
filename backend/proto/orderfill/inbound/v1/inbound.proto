@@ -24,6 +24,8 @@ service InboundService {
   rpc UpdateCompanyInbound(UpdateCompanyInboundRequest) returns (UpdateCompanyInboundResponse);
   // ListMessages lists message metadata for one company (owner/admin).
   rpc ListMessages(ListMessagesRequest) returns (ListMessagesResponse);
+  // GetMessage returns one message body for the owning company.
+  rpc GetMessage(GetMessageRequest) returns (GetMessageResponse);
   // GetMessageFile returns one saved attachment for the owning company.
   rpc GetMessageFile(GetMessageFileRequest) returns (GetMessageFileResponse);
   // ListDeliveries returns the delivery status feed without message content
@@ -78,6 +80,8 @@ message InboundMessageSummary {
   int64 total_bytes = 10;
   repeated InboundAttachment attachments = 11;
   string subject = 12;
+  string body_text = 13;
+  string body_html = 14;
 }
 
 message IngestWebhookRequest {
@@ -133,6 +137,16 @@ message ListMessagesRequest {
 
 message ListMessagesResponse {
   repeated InboundMessageSummary messages = 1;
+}
+
+message GetMessageRequest {
+  orderfill.common.v1.RequestMeta meta = 1;
+  string company_id = 2;
+  string message_id = 3;
+}
+
+message GetMessageResponse {
+  InboundMessageSummary message = 1;
 }
 
 message GetMessageFileRequest {

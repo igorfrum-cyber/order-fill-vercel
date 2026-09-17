@@ -46,3 +46,6 @@ blob-report/
 .codex/
 .shared/agent_config.txt
 opencode.json
+.settings/
+.shared
+.shared/*

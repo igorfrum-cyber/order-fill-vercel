@@ -50,6 +50,12 @@ type inboundMessageJSON struct {
 	Attachments       []inboundAttachmentJSON `json:"attachments"`
 }
 
+type inboundMessageBodyJSON struct {
+	inboundMessageJSON
+	BodyText string `json:"body_text"`
+	BodyHTML string `json:"body_html"`
+}
+
 func (a *API) inboundWebhookAuthorized(r *http.Request) bool {
 	provided := strings.TrimSpace(r.Header.Get("Authorization"))
 	expected := a.InboundWebhookToken
@@ -214,6 +220,29 @@ func (a *API) inboundMessageFile(w http.ResponseWriter, r *http.Request) {
 	if _, err := w.Write(resp.GetBody()); err != nil {
 		return
 	}
+}
+
+func (a *API) inboundMessage(w http.ResponseWriter, r *http.Request) {
+	user, _ := userFrom(r)
+	companyID := r.PathValue("company_id")
+	if !a.inboundCompanyReadAllowed(user, companyID) {
+		writeError(w, http.StatusNotFound, "not_found", "not found")
+		return
+	}
+	resp, err := a.Clients.Inbound.GetMessage(a.jobCtx(r, user), &inboundv1.GetMessageRequest{
+		Meta: a.meta(user), CompanyId: companyID, MessageId: r.PathValue("message_id"),
+	})
+	if err != nil {
+		writeGRPCError(w, "inbound_message_failed", err)
+		return
+	}
+	message := resp.GetMessage()
+	out := inboundMessageBodyJSON{
+		inboundMessageJSON: presentInboundMessage(message),
+		BodyText:           message.GetBodyText(),
+		BodyHTML:           message.GetBodyHtml(),
+	}
+	writeJSON(w, http.StatusOK, out)
 }
 
 func (a *API) inboundDeliveries(w http.ResponseWriter, r *http.Request) {

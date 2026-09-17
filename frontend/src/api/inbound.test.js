@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { downloadInboundFile, getInboundCompany, getInboundDeliveries, getInboundMessages, getInboundSettings, updateInboundCompany, updateInboundSettings } from "./inbound.js";
+import { downloadInboundFile, getInboundCompany, getInboundDeliveries, getInboundMessage, getInboundMessages, getInboundSettings, updateInboundCompany, updateInboundSettings } from "./inbound.js";
 import { apiClient } from "./client.js";
 
 function stubClient(jsonFor) {
@@ -63,6 +63,16 @@ test("inbound API lists messages and deliveries", async () => {
     await getInboundDeliveries();
     assert.equal(stub.calls[1].url, "/api/v1/inbound/companies/c1/messages");
     assert.equal(stub.calls[2].url, "/api/v1/inbound/deliveries");
+  } finally {
+    stub.restore();
+  }
+});
+
+test("inbound API reads one formatted message", async () => {
+  const stub = stubClient(() => ({ body_html: "<p>hello</p>", body_text: "hello" }));
+  try {
+    await getInboundMessage("c1", "msg/1");
+    assert.equal(stub.calls[0].url, "/api/v1/inbound/companies/c1/messages/msg%2F1");
   } finally {
     stub.restore();
   }

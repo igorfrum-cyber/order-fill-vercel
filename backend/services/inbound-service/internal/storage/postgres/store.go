@@ -119,9 +119,9 @@ func (s *Store) SaveMessage(ctx context.Context, msg domain.MessageSummary, atta
 
 	now := time.Now().UTC()
 	_, err = tx.Exec(ctx, `
-		INSERT INTO inbound_message (id, provider_message_id, subject, envelope_from, envelope_to, received_at, company_id, status, error_code, attachment_count, total_bytes)
-		VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)
-	`, msg.ID, msg.ProviderMessageID, msg.Subject, msg.EnvelopeFrom, msg.EnvelopeTo, now, msg.CompanyID, string(msg.Status), msg.ErrorCode, msg.AttachmentCount, msg.TotalBytes)
+		INSERT INTO inbound_message (id, provider_message_id, subject, envelope_from, envelope_to, received_at, company_id, status, error_code, attachment_count, total_bytes, body_text, body_html)
+		VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)
+	`, msg.ID, msg.ProviderMessageID, msg.Subject, msg.EnvelopeFrom, msg.EnvelopeTo, now, msg.CompanyID, string(msg.Status), msg.ErrorCode, msg.AttachmentCount, msg.TotalBytes, msg.BodyText, msg.BodyHTML)
 	if err != nil {
 		return fmt.Errorf("insert inbound message: %w", err)
 	}
@@ -164,6 +164,22 @@ func (s *Store) ListMessages(ctx context.Context, companyID string, limit int) (
 		out = append(out, m)
 	}
 	return out, rows.Err()
+}
+
+func (s *Store) GetMessage(ctx context.Context, messageID string) (domain.MessageSummary, error) {
+	row := s.pool.QueryRow(ctx, `
+		SELECT id, provider_message_id, subject, envelope_from, envelope_to, received_at, company_id, status, error_code, attachment_count, total_bytes, body_text, body_html
+		FROM inbound_message WHERE id = $1
+	`, messageID)
+	var m domain.MessageSummary
+	err := row.Scan(&m.ID, &m.ProviderMessageID, &m.Subject, &m.EnvelopeFrom, &m.EnvelopeTo, &m.ReceivedAt, &m.CompanyID, &m.Status, &m.ErrorCode, &m.AttachmentCount, &m.TotalBytes, &m.BodyText, &m.BodyHTML)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return domain.MessageSummary{}, domain.ErrNotFound
+	}
+	if err != nil {
+		return domain.MessageSummary{}, fmt.Errorf("get inbound message: %w", err)
+	}
+	return m, nil
 }
 
 func (s *Store) GetMessageAttachments(ctx context.Context, messageID string) ([]domain.Attachment, error) {

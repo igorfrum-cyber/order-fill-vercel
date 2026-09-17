@@ -3,6 +3,7 @@ import { expect, test, vi } from "vitest";
 
 const mockGetInboundCompany = vi.fn();
 const mockGetInboundMessages = vi.fn();
+const mockGetInboundMessage = vi.fn();
 const mockGetInboundSettings = vi.fn();
 const mockGetInboundDeliveries = vi.fn();
 const mockUpdateInboundCompany = vi.fn();
@@ -12,6 +13,7 @@ const mockDownloadInboundFile = vi.fn();
 vi.mock("../../api/inbound.js", () => ({
   getInboundCompany: (...args) => mockGetInboundCompany(...args),
   getInboundMessages: (...args) => mockGetInboundMessages(...args),
+  getInboundMessage: (...args) => mockGetInboundMessage(...args),
   getInboundSettings: (...args) => mockGetInboundSettings(...args),
   getInboundDeliveries: (...args) => mockGetInboundDeliveries(...args),
   updateInboundCompany: (...args) => mockUpdateInboundCompany(...args),
@@ -81,4 +83,28 @@ test("company panel shows platform address from settings", async () => {
 
   const address = await screen.findByText("7e1432246b724f3bcd6c@cloudmailin.net");
   expect(address).toBeInTheDocument();
+});
+
+test("company owner opens formatted inbound message", async () => {
+  mockGetInboundCompany.mockResolvedValue({ company_id: "c1", sender_email: "1c@testco.ru", enabled: true });
+  mockGetInboundMessages.mockResolvedValue({
+    messages: [{ id: "m1", subject: "Заказ", received_at: "2026-09-15T10:00:00Z", envelope_from: "1c@testco.ru", attachments: [] }],
+  });
+  mockGetInboundSettings.mockResolvedValue({ receive_address: "inbound@example.com" });
+  mockGetInboundMessage.mockResolvedValue({
+    id: "m1",
+    subject: "Заказ",
+    received_at: "2026-09-15T10:00:00Z",
+    envelope_from: "1c@testco.ru",
+    body_html: "<p><strong>Итого</strong></p>",
+    body_text: "Итого",
+  });
+
+  render(<InboundScreen me={companyMe} companyId="c1" />);
+
+  await screen.findByRole("button", { name: "Заказ" });
+  await screen.getByRole("button", { name: "Заказ" }).click();
+
+  expect(await screen.findByTitle("Содержимое письма")).toHaveAttribute("sandbox", "");
+  expect(mockGetInboundMessage).toHaveBeenCalledWith("c1", "m1");
 });

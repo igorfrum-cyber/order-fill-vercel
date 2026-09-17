@@ -102,6 +102,7 @@ func New(cfg config.Config, c clients.Clients) http.Handler {
 	mux.HandleFunc("GET /api/v1/inbound/companies/{company_id}", api.inboundCompany)
 	mux.HandleFunc("POST /api/v1/inbound/companies/{company_id}", api.updateInboundCompany)
 	mux.HandleFunc("GET /api/v1/inbound/companies/{company_id}/messages", api.inboundMessages)
+	mux.HandleFunc("GET /api/v1/inbound/companies/{company_id}/messages/{message_id}", api.inboundMessage)
 	mux.HandleFunc("GET /api/v1/inbound/companies/{company_id}/messages/{message_id}/files/{attachment_id}", api.inboundMessageFile)
 	mux.HandleFunc("GET /api/v1/inbound/deliveries", api.inboundDeliveries)
 	mux.HandleFunc("GET /api/v1/public/companies/{slug}/login", api.publicCompanyLogin)

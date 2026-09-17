@@ -24,6 +24,7 @@ curl http://127.0.0.1:8093/readyz
 - Принимает один webhook-пейлоад CloudMailin, сохраняет его транзакционно и только после этого отвечает успехом.
 - Дубликаты отсекаются по `provider_message_id` — повторный webhook возвращает успех без повторной записи.
 - Вложения принимаются только как inline base64 `content`; URL не открываются (анти-SSRF). Одно вложение ограничено 20 МБ в раскодированном виде, всё тело запроса — 32 МБ.
+- Текстовая и HTML-части письма сохраняются в собственной БД и доступны владельцу/админу компании через просмотр письма. HTML открывается в изолированном iframe без разрешения скриптов.
 - При неизвестном адресе, отправителе вне whitelist, отсутствии вложений или слишком большом вложении сохраняются только минимальные метаданные со статусом `error:*` — содержимое не хранится, ответ 200 (CloudMailin перестаёт ретраить).
 - Отвечает за настройки приёма (platform-wide), адрес и whitelist компании, ленту сообщений и скачивание вложений для владельца компании.
 - Не авторизует пользователей напрямую — роли приходят от gateway в `RequestMeta`, вложения защищены учётными данными собственного S3-инстанса.
@@ -59,6 +60,7 @@ internal/domain                    модель и ошибки контура
 | `GetCompanyInbound` | `/orderfill.inbound.v1.InboundService/GetCompanyInbound` | Возвращает адрес приёма и whitelist компании. Требует роль `company_owner` или `company_admin` этой компании. |
 | `UpdateCompanyInbound` | `/orderfill.inbound.v1.InboundService/UpdateCompanyInbound` | Сохраняет адрес приёма, whitelist и включение. Требует роль `company_owner`. |
 | `ListMessages` | `/orderfill.inbound.v1.InboundService/ListMessages` | Лента писем компании с метаданными вложений. Требует роль владельца/админа компании. |
+| `GetMessage` | `/orderfill.inbound.v1.InboundService/GetMessage` | Просмотр тела одного письма в plain text/HTML. Требует роль владельца/админа компании. |
 | `GetMessageFile` | `/orderfill.inbound.v1.InboundService/GetMessageFile` | Скачивание одного сохранённого вложения. Требует роль владельца/админа компании. |
 | `ListDeliveries` | `/orderfill.inbound.v1.InboundService/ListDeliveries` | Статус-лента поступлений без содержимого и вложений. Требует роль `platform_admin`. |
 <!-- /docs-sync:rpc -->
