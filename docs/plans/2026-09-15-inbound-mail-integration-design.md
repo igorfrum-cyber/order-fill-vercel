@@ -76,7 +76,7 @@ Webhook возвращает `2xx` только после того, как пи
 - `status`: `received` → `processed` | `error:unknown_address` | `error:mismatch_from` | `error:no_attachments` | `error:too_large`;
 - `error_code`, `attachment_count`, `total_bytes`.
 
-Содержимое письма (тело, plain/html) не хранится. Только вложения — в bucket через inbound-контур.
+Тело письма (`plain` и `html`) хранится в inbound PostgreSQL для просмотра владельцем/админом компании. HTML показывается только в sandbox iframe без выполнения скриптов; вложения по-прежнему хранятся в bucket через inbound-контур.
 
 ## Разграничение доступа
 

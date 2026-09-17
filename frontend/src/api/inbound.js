@@ -30,6 +30,10 @@ export function getInboundMessages(companyId) {
   return apiClient.request(`/api/v1/inbound/companies/${encodeURIComponent(companyId)}/messages`);
 }
 
+export function getInboundMessage(companyId, messageId) {
+  return apiClient.request(`/api/v1/inbound/companies/${encodeURIComponent(companyId)}/messages/${encodeURIComponent(messageId)}`);
+}
+
 export function getInboundDeliveries() {
   return apiClient.request("/api/v1/inbound/deliveries");
 }

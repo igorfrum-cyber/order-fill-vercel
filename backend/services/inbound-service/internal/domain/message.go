@@ -42,6 +42,8 @@ type MessageSummary struct {
 	AttachmentCount   int32
 	TotalBytes        int64
 	Attachments       []Attachment
+	BodyText          string
+	BodyHTML          string
 }
 
 type Attachment struct {

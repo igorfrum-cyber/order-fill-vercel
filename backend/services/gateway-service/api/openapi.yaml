@@ -1511,6 +1511,39 @@ paths:
           $ref: "#/components/responses/Unauthorized"
         "404":
           $ref: "#/components/responses/NotFound"
+  /api/v1/inbound/companies/{company_id}/messages/{message_id}:
+    get:
+      operationId: inboundMessage
+      tags: [inbound]
+      summary: Read one inbound message with its formatted body (owner/admin)
+      security:
+        - sessionCookie: []
+      parameters:
+        - $ref: "#/components/parameters/CompanyId"
+        - name: message_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Message metadata and plain/HTML body.
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/InboundMessageSummary"
+                  - type: object
+                    required: [body_text, body_html]
+                    properties:
+                      body_text:
+                        type: string
+                      body_html:
+                        type: string
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
   /api/v1/inbound/deliveries:
     get:
       operationId: inboundDeliveries
@@ -1875,6 +1908,10 @@ components:
         total_bytes:
           type: integer
           format: int64
+        body_text:
+          type: string
+        body_html:
+          type: string
     Job:
       type: object
       required: [id, type, status, created_at, updated_at, input_files, output_files]

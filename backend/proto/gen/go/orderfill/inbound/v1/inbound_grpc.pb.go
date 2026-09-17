@@ -25,6 +25,7 @@ const (
 	InboundService_GetCompanyInbound_FullMethodName    = "/orderfill.inbound.v1.InboundService/GetCompanyInbound"
 	InboundService_UpdateCompanyInbound_FullMethodName = "/orderfill.inbound.v1.InboundService/UpdateCompanyInbound"
 	InboundService_ListMessages_FullMethodName         = "/orderfill.inbound.v1.InboundService/ListMessages"
+	InboundService_GetMessage_FullMethodName           = "/orderfill.inbound.v1.InboundService/GetMessage"
 	InboundService_GetMessageFile_FullMethodName       = "/orderfill.inbound.v1.InboundService/GetMessageFile"
 	InboundService_ListDeliveries_FullMethodName       = "/orderfill.inbound.v1.InboundService/ListDeliveries"
 )
@@ -51,6 +52,8 @@ type InboundServiceClient interface {
 	UpdateCompanyInbound(ctx context.Context, in *UpdateCompanyInboundRequest, opts ...grpc.CallOption) (*UpdateCompanyInboundResponse, error)
 	// ListMessages lists message metadata for one company (owner/admin).
 	ListMessages(ctx context.Context, in *ListMessagesRequest, opts ...grpc.CallOption) (*ListMessagesResponse, error)
+	// GetMessage returns one message body for the owning company.
+	GetMessage(ctx context.Context, in *GetMessageRequest, opts ...grpc.CallOption) (*GetMessageResponse, error)
 	// GetMessageFile returns one saved attachment for the owning company.
 	GetMessageFile(ctx context.Context, in *GetMessageFileRequest, opts ...grpc.CallOption) (*GetMessageFileResponse, error)
 	// ListDeliveries returns the delivery status feed without message content
@@ -126,6 +129,16 @@ func (c *inboundServiceClient) ListMessages(ctx context.Context, in *ListMessage
 	return out, nil
 }
 
+func (c *inboundServiceClient) GetMessage(ctx context.Context, in *GetMessageRequest, opts ...grpc.CallOption) (*GetMessageResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetMessageResponse)
+	err := c.cc.Invoke(ctx, InboundService_GetMessage_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *inboundServiceClient) GetMessageFile(ctx context.Context, in *GetMessageFileRequest, opts ...grpc.CallOption) (*GetMessageFileResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(GetMessageFileResponse)
@@ -168,6 +181,8 @@ type InboundServiceServer interface {
 	UpdateCompanyInbound(context.Context, *UpdateCompanyInboundRequest) (*UpdateCompanyInboundResponse, error)
 	// ListMessages lists message metadata for one company (owner/admin).
 	ListMessages(context.Context, *ListMessagesRequest) (*ListMessagesResponse, error)
+	// GetMessage returns one message body for the owning company.
+	GetMessage(context.Context, *GetMessageRequest) (*GetMessageResponse, error)
 	// GetMessageFile returns one saved attachment for the owning company.
 	GetMessageFile(context.Context, *GetMessageFileRequest) (*GetMessageFileResponse, error)
 	// ListDeliveries returns the delivery status feed without message content
@@ -200,6 +215,9 @@ func (UnimplementedInboundServiceServer) UpdateCompanyInbound(context.Context, *
 }
 func (UnimplementedInboundServiceServer) ListMessages(context.Context, *ListMessagesRequest) (*ListMessagesResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method ListMessages not implemented")
+}
+func (UnimplementedInboundServiceServer) GetMessage(context.Context, *GetMessageRequest) (*GetMessageResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method GetMessage not implemented")
 }
 func (UnimplementedInboundServiceServer) GetMessageFile(context.Context, *GetMessageFileRequest) (*GetMessageFileResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method GetMessageFile not implemented")
@@ -336,6 +354,24 @@ func _InboundService_ListMessages_Handler(srv interface{}, ctx context.Context, 
 	return interceptor(ctx, in, info, handler)
 }
 
+func _InboundService_GetMessage_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetMessageRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(InboundServiceServer).GetMessage(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: InboundService_GetMessage_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(InboundServiceServer).GetMessage(ctx, req.(*GetMessageRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _InboundService_GetMessageFile_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(GetMessageFileRequest)
 	if err := dec(in); err != nil {
@@ -402,6 +438,10 @@ var InboundService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "ListMessages",
 			Handler:    _InboundService_ListMessages_Handler,
+		},
+		{
+			MethodName: "GetMessage",
+			Handler:    _InboundService_GetMessage_Handler,
 		},
 		{
 			MethodName: "GetMessageFile",

@@ -147,6 +147,8 @@ func (s *Server) ListMessages(ctx context.Context, req *inboundv1.ListMessagesRe
 	out := make([]*inboundv1.InboundMessageSummary, len(msgs))
 	for i, m := range msgs {
 		pm := protoMessageSummary(m)
+		pm.BodyText = ""
+		pm.BodyHtml = ""
 		atts, err := s.svc.GetMessageAttachments(ctx, m.ID)
 		if err == nil && len(atts) > 0 {
 			pm.Attachments = make([]*inboundv1.InboundAttachment, len(atts))
@@ -157,6 +159,23 @@ func (s *Server) ListMessages(ctx context.Context, req *inboundv1.ListMessagesRe
 		out[i] = pm
 	}
 	return &inboundv1.ListMessagesResponse{Messages: out}, nil
+}
+
+func (s *Server) GetMessage(ctx context.Context, req *inboundv1.GetMessageRequest) (*inboundv1.GetMessageResponse, error) {
+	if err := s.requireCompanyRead(ctx, req.GetMeta(), req.GetCompanyId()); err != nil {
+		return nil, err
+	}
+	msg, err := s.svc.GetMessage(ctx, req.GetCompanyId(), req.GetMessageId())
+	if err != nil {
+		if errors.Is(err, domain.ErrNotFound) {
+			return nil, status.Error(codes.NotFound, "message not found")
+		}
+		if errors.Is(err, domain.ErrUnauthorized) {
+			return nil, status.Error(codes.PermissionDenied, "not allowed")
+		}
+		return nil, status.Error(codes.Internal, "failed to read message")
+	}
+	return &inboundv1.GetMessageResponse{Message: protoMessageSummary(msg)}, nil
 }
 
 func (s *Server) GetMessageFile(ctx context.Context, req *inboundv1.GetMessageFileRequest) (*inboundv1.GetMessageFileResponse, error) {
@@ -192,6 +211,8 @@ func (s *Server) ListDeliveries(ctx context.Context, req *inboundv1.ListDeliveri
 	out := make([]*inboundv1.InboundMessageSummary, len(msgs))
 	for i, m := range msgs {
 		out[i] = protoMessageSummary(m)
+		out[i].BodyText = ""
+		out[i].BodyHtml = ""
 	}
 	return &inboundv1.ListDeliveriesResponse{Deliveries: out}, nil
 }
@@ -229,6 +250,8 @@ func protoMessageSummary(m domain.MessageSummary) *inboundv1.InboundMessageSumma
 		ErrorCode:         m.ErrorCode,
 		AttachmentCount:   int32(m.AttachmentCount),
 		TotalBytes:        m.TotalBytes,
+		BodyText:          m.BodyText,
+		BodyHtml:          m.BodyHTML,
 	}
 }
 

@@ -123,6 +123,7 @@ Gateway не владеет постоянным хранилищем. `POSTGRES
 - `GET /api/v1/inbound/companies/{company_id}`
 - `POST /api/v1/inbound/companies/{company_id}`
 - `GET /api/v1/inbound/companies/{company_id}/messages`
+- `GET /api/v1/inbound/companies/{company_id}/messages/{message_id}`
 - `GET /api/v1/inbound/companies/{company_id}/messages/{message_id}/files/{attachment_id}`
 - `GET /api/v1/inbound/deliveries`
 - `GET /api/v1/public/companies/{slug}/login`

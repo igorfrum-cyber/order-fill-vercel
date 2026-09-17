@@ -1,7 +1,9 @@
 import { useEffect, useState } from "react";
-import { downloadInboundFile, getInboundCompany, getInboundDeliveries, getInboundMessages, getInboundSettings, updateInboundCompany, updateInboundSettings } from "../../api/inbound.js";
+import { createPortal } from "react-dom";
+import { downloadInboundFile, getInboundCompany, getInboundDeliveries, getInboundMessage, getInboundMessages, getInboundSettings, updateInboundCompany, updateInboundSettings } from "../../api/inbound.js";
 import { userFacingError } from "../../features/help/errors.js";
 import { Field, GhostButton, PrimaryButton } from "../widgets.jsx";
+import { IconFile, IconX } from "../icons.jsx";
 
 const statusLabels = {
   received: "Принято",
@@ -122,6 +124,8 @@ function CompanyPanel({ companyId }) {
   const [settings, setSettings] = useState(null);
   const [messages, setMessages] = useState([]);
   const [draft, setDraft] = useState(null);
+  const [selectedMessage, setSelectedMessage] = useState(null);
+  const [messageLoading, setMessageLoading] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
 
@@ -168,6 +172,19 @@ function CompanyPanel({ companyId }) {
       setDraft(null);
     } catch (err) {
       setError(userFacingError(err, "Не удалось сохранить настройки."));
+    }
+
+  }
+
+  async function openMessage(message) {
+    setMessageLoading(true);
+    setError("");
+    try {
+      setSelectedMessage(await getInboundMessage(companyId, message.id));
+    } catch (err) {
+      setError(userFacingError(err, "Не удалось открыть письмо."));
+    } finally {
+      setMessageLoading(false);
     }
   }
 
@@ -225,6 +242,7 @@ function CompanyPanel({ companyId }) {
         <h2 className="text-[17px] font-semibold">Поступления</h2>
         <MessagesTable
           rows={messages}
+          onOpen={openMessage}
           onDownload={async (messageId, attachmentId) => {
             setError("");
             try {
@@ -236,6 +254,8 @@ function CompanyPanel({ companyId }) {
           }}
         />
       </article>
+      {messageLoading ? <p className="text-[13px] text-[var(--color-ink-faint)]">Открываю письмо…</p> : null}
+      {selectedMessage ? <MessageViewer message={selectedMessage} onClose={() => setSelectedMessage(null)} /> : null}
     </>
   );
 }
@@ -272,7 +292,7 @@ function DeliveriesTable({ rows }) {
   );
 }
 
-function MessagesTable({ rows, onDownload }) {
+function MessagesTable({ rows, onDownload, onOpen }) {
   if (!rows.length) {
     return <p className="mt-4 text-[13px] text-[var(--color-ink-faint)]">Писем от 1С пока не было.</p>;
   }
@@ -292,7 +312,11 @@ function MessagesTable({ rows, onDownload }) {
           {rows.map((row) => (
             <tr key={row.id} className="border-b border-[var(--color-line-soft)] last:border-0">
               <td className="py-2 pr-4 text-[var(--color-ink-soft)]">{shortDateTime(row.received_at)}</td>
-              <td className="py-2 pr-4">{row.subject || "—"}</td>
+              <td className="py-2 pr-4">
+                <button type="button" className="font-medium text-[var(--color-brand)] hover:underline" onClick={() => onOpen(row)}>
+                  {row.subject || "Без темы"}
+                </button>
+              </td>
               <td className="py-2 pr-4">{row.envelope_from || "—"}</td>
               <td className="py-2 pr-4">
                 {(row.attachments || []).map((attachment) => (
@@ -310,6 +334,109 @@ function MessagesTable({ rows, onDownload }) {
         </tbody>
       </table>
     </div>
+  );
+}
+
+function MessageViewer({ message, onClose }) {
+  const html = String(message.body_html || "").trim();
+  const plain = String(message.body_text || "").trim();
+  const attachments = message.attachments || [];
+
+  useEffect(() => {
+    const handleKeyDown = (event) => {
+      if (event.key === "Escape") onClose();
+    };
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, [onClose]);
+
+  return createPortal(
+    (
+    <div
+      className="message-viewer-backdrop fixed inset-0 z-30 flex items-center justify-center p-3 sm:p-6"
+      role="dialog"
+      aria-modal="true"
+      aria-label="Письмо"
+      onMouseDown={(event) => {
+        if (event.target === event.currentTarget) onClose();
+      }}
+    >
+      <article className="animate-enter flex max-h-[92vh] w-full max-w-5xl flex-col overflow-hidden rounded-2xl border border-white/70 bg-[var(--color-surface)] shadow-[0_24px_80px_rgba(15,23,42,0.28)]">
+        <header className="border-b border-[var(--color-line)] bg-gradient-to-b from-white to-slate-50/70 px-5 py-4 sm:px-7 sm:py-5">
+          <div className="flex items-start gap-4">
+            <div className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-[var(--color-brand-soft)] text-[var(--color-brand)]">
+              <IconFile className="h-5 w-5" />
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="mb-1 text-[11px] font-semibold uppercase tracking-[0.12em] text-[var(--color-brand)]">Полученное письмо</p>
+              <h2 className="truncate text-[19px] font-semibold tracking-tight sm:text-[21px]">{message.subject || "Без темы"}</h2>
+              <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-[13px] text-[var(--color-ink-faint)]">
+                <span><strong className="font-medium text-[var(--color-ink-soft)]">От:</strong> {message.envelope_from || "—"}</span>
+                <span><strong className="font-medium text-[var(--color-ink-soft)]">Получено:</strong> {shortDateTime(message.received_at)}</span>
+              </div>
+            </div>
+            <button
+              type="button"
+              className="grid h-9 w-9 shrink-0 place-items-center rounded-lg text-[var(--color-ink-faint)] transition hover:bg-[var(--color-line-soft)] hover:text-[var(--color-ink)] focus:outline-none focus-visible:ring-4 focus-visible:ring-[var(--color-brand-soft)]"
+              onClick={onClose}
+              aria-label="Закрыть письмо"
+              title="Закрыть (Esc)"
+            >
+              <IconX className="h-5 w-5" />
+            </button>
+          </div>
+          {attachments.length ? (
+            <div className="mt-4 flex flex-wrap items-center gap-2 border-t border-[var(--color-line-soft)] pt-3">
+              <span className="text-[12px] font-medium text-[var(--color-ink-faint)]">Вложения:</span>
+              {attachments.map((attachment) => (
+                <span key={attachment.id} className="inline-flex items-center gap-1.5 rounded-lg bg-[var(--color-neutral-soft)] px-2.5 py-1.5 text-[12px] font-medium text-[var(--color-ink-soft)]">
+                  <IconFile className="h-3.5 w-3.5 text-[var(--color-brand)]" />
+                  {attachment.name || "файл"}
+                  {attachment.size ? <span className="font-normal text-[var(--color-ink-faint)]">{formatBytes(attachment.size)}</span> : null}
+                </span>
+              ))}
+            </div>
+          ) : null}
+        </header>
+        <div className="min-h-0 overflow-auto bg-[linear-gradient(180deg,#f8fafc_0%,#f1f5f9_100%)] p-3 sm:p-6">
+          {html ? (
+            <div className="mx-auto max-w-4xl overflow-hidden rounded-xl border border-slate-200 bg-white shadow-[0_8px_30px_rgba(15,23,42,0.07)]">
+              <div className="flex items-center justify-between border-b border-slate-100 bg-white px-4 py-2.5">
+                <span className="text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-400">Содержимое письма</span>
+                <span className="inline-flex items-center gap-1.5 text-[11px] text-slate-400">
+                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+                  Безопасный просмотр
+                </span>
+              </div>
+              <iframe
+                title="Содержимое письма"
+                className="block min-h-[52vh] w-full bg-white sm:min-h-[480px]"
+                sandbox=""
+                referrerPolicy="no-referrer"
+                srcDoc={prepareEmailHTML(html)}
+              />
+            </div>
+          ) : plain ? (
+            <div className="mx-auto max-w-4xl overflow-hidden rounded-xl border border-slate-200 bg-white shadow-[0_8px_30px_rgba(15,23,42,0.07)]">
+              <div className="border-b border-slate-100 px-4 py-2.5 text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-400">Текст письма</div>
+              <pre className="min-h-[52vh] whitespace-pre-wrap p-6 text-[14px] leading-7 text-slate-700 sm:min-h-[480px]">{plain}</pre>
+            </div>
+          ) : (
+            <div className="grid min-h-[260px] place-items-center rounded-xl border border-dashed border-[var(--color-line)] bg-white p-8 text-center shadow-sm">
+              <div>
+                <div className="mx-auto grid h-12 w-12 place-items-center rounded-full bg-[var(--color-neutral-soft)] text-[var(--color-ink-faint)]">
+                  <IconFile className="h-5 w-5" />
+                </div>
+                <p className="mt-3 text-[14px] font-medium text-[var(--color-ink-soft)]">Текст письма отсутствует</p>
+                <p className="mt-1 text-[13px] text-[var(--color-ink-faint)]">В письме есть только заголовки и вложения.</p>
+              </div>
+            </div>
+          )}
+        </div>
+      </article>
+    </div>
+    ),
+    document.body,
   );
 }
 
@@ -354,4 +481,25 @@ function formatBytes(value) {
   if (value < 1024) return `${value} Б`;
   if (value < 1024 * 1024) return `${(value / 1024).toFixed(1)} КБ`;
   return `${(value / (1024 * 1024)).toFixed(1)} МБ`;
+}
+
+function prepareEmailHTML(html) {
+  const baseStyles = `
+    <meta name="color-scheme" content="light">
+    <style>
+      html { background: #ffffff; }
+      body { margin: 0; padding: 24px; color: #172033; font-family: Arial, Helvetica, sans-serif; font-size: 15px; line-height: 1.6; }
+      img { max-width: 100%; height: auto; }
+      table { max-width: 100%; }
+      a { color: #4f46e5; }
+      h1, h2, h3 { line-height: 1.25; }
+    </style>
+  `;
+  if (/<head[\s>]/i.test(html)) {
+    return html.replace(/<head(\s[^>]*)?>/i, (tag) => `${tag}${baseStyles}`);
+  }
+  if (/<html[\s>]/i.test(html)) {
+    return html.replace(/<html(\s[^>]*)?>/i, (tag) => `${tag}<head>${baseStyles}</head>`);
+  }
+  return `<!doctype html><html><head>${baseStyles}</head><body>${html}</body></html>`;
 }

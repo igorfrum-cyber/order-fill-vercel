@@ -75,6 +75,14 @@ func (f *fakeStore) SaveMessage(_ context.Context, msg domain.MessageSummary, at
 func (f *fakeStore) ListMessages(context.Context, string, int) ([]domain.MessageSummary, error) {
 	return f.saved, nil
 }
+func (f *fakeStore) GetMessage(_ context.Context, messageID string) (domain.MessageSummary, error) {
+	for _, msg := range f.saved {
+		if msg.ID == messageID {
+			return msg, nil
+		}
+	}
+	return domain.MessageSummary{}, domain.ErrNotFound
+}
 func (f *fakeStore) GetMessageAttachments(context.Context, string) ([]domain.Attachment, error) {
 	return nil, nil
 }
@@ -203,6 +211,25 @@ func TestIngestSubjectSaved(t *testing.T) {
 	}
 	if store.saved[0].Subject != "Заказ №12345" {
 		t.Fatalf("subject=%q, want %q", store.saved[0].Subject, "Заказ №12345")
+	}
+}
+
+func TestIngestStoresFormattedMessageBody(t *testing.T) {
+	t.Parallel()
+	store := newFakeStore()
+	svc := New(store, newFakeObjectStore(), "bucket")
+	body := `{"message_id":"msg-body-1","envelope":{"from":"1c@company.ru","to":"7e1432246b724f3bcd6c@cloudmailin.net"},"subject":"Заказ","plain":"Текст письма","html":"<p><strong>Текст</strong> письма</p>","attachments":[{"file_name":"report.xlsx","content":"` + base64Of("data") + `"}]}`
+	if err := svc.IngestWebhook(t.Context(), []byte(body)); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(store.saved) != 1 {
+		t.Fatalf("saved=%d", len(store.saved))
+	}
+	if got := store.saved[0].BodyText; got != "Текст письма" {
+		t.Fatalf("body_text=%q", got)
+	}
+	if got := store.saved[0].BodyHTML; got != "<p><strong>Текст</strong> письма</p>" {
+		t.Fatalf("body_html=%q", got)
 	}
 }
 

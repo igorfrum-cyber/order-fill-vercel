@@ -28,6 +28,7 @@ type Store interface {
 	MessageExists(ctx context.Context, providerMessageID string) (bool, error)
 	SaveMessage(ctx context.Context, msg domain.MessageSummary, attachments []domain.Attachment) error
 	ListMessages(ctx context.Context, companyID string, limit int) ([]domain.MessageSummary, error)
+	GetMessage(ctx context.Context, messageID string) (domain.MessageSummary, error)
 	GetMessageAttachments(ctx context.Context, messageID string) ([]domain.Attachment, error)
 	GetAttachment(ctx context.Context, attachmentID string) (domain.Attachment, error)
 	GetMessageCompany(ctx context.Context, messageID string) (string, error)
@@ -72,6 +73,17 @@ func (s *Service) UpdateCompanyInbound(ctx context.Context, companyID, receiveAd
 
 func (s *Service) ListMessages(ctx context.Context, companyID string, limit int) ([]domain.MessageSummary, error) {
 	return s.store.ListMessages(ctx, companyID, limit)
+}
+
+func (s *Service) GetMessage(ctx context.Context, companyID, messageID string) (domain.MessageSummary, error) {
+	msg, err := s.store.GetMessage(ctx, messageID)
+	if err != nil {
+		return domain.MessageSummary{}, err
+	}
+	if msg.CompanyID != companyID {
+		return domain.MessageSummary{}, domain.ErrUnauthorized
+	}
+	return msg, nil
 }
 
 func (s *Service) GetMessageAttachments(ctx context.Context, messageID string) ([]domain.Attachment, error) {
@@ -119,6 +131,8 @@ type rawWebhook struct {
 	} `json:"envelope"`
 	Headers            json.RawMessage `json:"headers"`
 	Subject            string          `json:"subject"`
+	Plain              string          `json:"plain"`
+	HTML               string          `json:"html"`
 	MessageID          string          `json:"message_id"`
 	Attachments        []rawAttachment `json:"attachments"`
 	AttachmentQuantity int             `json:"attachment_quantity"`
@@ -184,11 +198,12 @@ func (s *Service) IngestWebhook(ctx context.Context, rawPayload []byte) error {
 	}
 
 	subject := s.resolveMessageSubject(mail)
+	bodyText, bodyHTML := resolveMessageBody(mail)
 
 	inbound, err := s.store.GetCompanyByAllowedSender(ctx, mail.Envelope.From)
 	if err != nil {
 		if errors.Is(err, domain.ErrNotFound) {
-			return s.saveMinimalMessage(ctx, providerID, subject, mail, domain.StatusErrorUnknownAddress, "unknown_address")
+			return s.saveMinimalMessage(ctx, providerID, subject, bodyText, bodyHTML, mail, domain.StatusErrorUnknownAddress, "unknown_address")
 		}
 		return err
 	}
@@ -197,7 +212,7 @@ func (s *Service) IngestWebhook(ctx context.Context, rawPayload []byte) error {
 	storedAttachments, err := s.storeAttachments(ctx, inbound.CompanyID, msgID, mail.Attachments)
 	if err != nil {
 		if errors.Is(err, domain.ErrAttachmentTooLarge) {
-			return s.saveMinimalMessage(ctx, providerID, subject, mail, domain.StatusErrorTooLarge, "too_large")
+			return s.saveMinimalMessage(ctx, providerID, subject, bodyText, bodyHTML, mail, domain.StatusErrorTooLarge, "too_large")
 		}
 		return err
 	}
@@ -207,7 +222,7 @@ func (s *Service) IngestWebhook(ctx context.Context, rawPayload []byte) error {
 		if len(filterAttachments(mail.Attachments)) > 0 {
 			errorCode = "invalid_attachments"
 		}
-		return s.saveMinimalMessage(ctx, providerID, subject, mail, domain.StatusErrorNoAttachments, errorCode)
+		return s.saveMinimalMessage(ctx, providerID, subject, bodyText, bodyHTML, mail, domain.StatusErrorNoAttachments, errorCode)
 	}
 
 	var totalBytes int64
@@ -226,6 +241,8 @@ func (s *Service) IngestWebhook(ctx context.Context, rawPayload []byte) error {
 		Status:            domain.StatusReceived,
 		AttachmentCount:   count32(len(storedAttachments)),
 		TotalBytes:        totalBytes,
+		BodyText:          bodyText,
+		BodyHTML:          bodyHTML,
 	}
 	if err := s.store.SaveMessage(ctx, msg, storedAttachments); err != nil {
 		return err
@@ -269,7 +286,7 @@ func (s *Service) storeAttachments(ctx context.Context, companyID string, msgID 
 	return stored, nil
 }
 
-func (s *Service) saveMinimalMessage(ctx context.Context, providerID, subject string, mail rawWebhook, status domain.InboundStatus, errorCode string) error {
+func (s *Service) saveMinimalMessage(ctx context.Context, providerID, subject, bodyText, bodyHTML string, mail rawWebhook, status domain.InboundStatus, errorCode string) error {
 	msg := domain.MessageSummary{
 		ID:                generateID(),
 		ProviderMessageID: providerID,
@@ -279,12 +296,42 @@ func (s *Service) saveMinimalMessage(ctx context.Context, providerID, subject st
 		ReceivedAt:        time.Now().UTC(),
 		Status:            status,
 		ErrorCode:         errorCode,
+		BodyText:          bodyText,
+		BodyHTML:          bodyHTML,
 	}
+
 	if err := s.store.SaveMessage(ctx, msg, nil); err != nil {
 		return err
 	}
 	s.store.IncrWebhookCount(ctx, true)
 	return nil
+}
+
+func resolveMessageBody(mail rawWebhook) (string, string) {
+	plain, html := mail.Plain, mail.HTML
+	var fields map[string]any
+	if err := json.Unmarshal(mail.Headers, &fields); err == nil {
+		if plain == "" {
+			plain = headerValue(fields, "plain", "text", "text_plain")
+		}
+		if html == "" {
+			html = headerValue(fields, "html", "text_html")
+		}
+	}
+	return plain, html
+}
+
+func headerValue(fields map[string]any, names ...string) string {
+	for key, value := range fields {
+		for _, name := range names {
+			if strings.EqualFold(key, name) {
+				if text, ok := value.(string); ok {
+					return text
+				}
+			}
+		}
+	}
+	return ""
 }
 
 func messageIDFromHeaders(headers json.RawMessage) string {

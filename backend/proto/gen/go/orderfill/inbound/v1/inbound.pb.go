@@ -318,6 +318,8 @@ type InboundMessageSummary struct {
 	TotalBytes        int64                  `protobuf:"varint,10,opt,name=total_bytes,json=totalBytes,proto3" json:"total_bytes,omitempty"`
 	Attachments       []*InboundAttachment   `protobuf:"bytes,11,rep,name=attachments,proto3" json:"attachments,omitempty"`
 	Subject           string                 `protobuf:"bytes,12,opt,name=subject,proto3" json:"subject,omitempty"`
+	BodyText          string                 `protobuf:"bytes,13,opt,name=body_text,json=bodyText,proto3" json:"body_text,omitempty"`
+	BodyHtml          string                 `protobuf:"bytes,14,opt,name=body_html,json=bodyHtml,proto3" json:"body_html,omitempty"`
 	unknownFields     protoimpl.UnknownFields
 	sizeCache         protoimpl.SizeCache
 }
@@ -432,6 +434,20 @@ func (x *InboundMessageSummary) GetAttachments() []*InboundAttachment {
 func (x *InboundMessageSummary) GetSubject() string {
 	if x != nil {
 		return x.Subject
+	}
+	return ""
+}
+
+func (x *InboundMessageSummary) GetBodyText() string {
+	if x != nil {
+		return x.BodyText
+	}
+	return ""
+}
+
+func (x *InboundMessageSummary) GetBodyHtml() string {
+	if x != nil {
+		return x.BodyHtml
 	}
 	return ""
 }
@@ -1036,6 +1052,110 @@ func (x *ListMessagesResponse) GetMessages() []*InboundMessageSummary {
 	return nil
 }
 
+type GetMessageRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Meta          *v1.RequestMeta        `protobuf:"bytes,1,opt,name=meta,proto3" json:"meta,omitempty"`
+	CompanyId     string                 `protobuf:"bytes,2,opt,name=company_id,json=companyId,proto3" json:"company_id,omitempty"`
+	MessageId     string                 `protobuf:"bytes,3,opt,name=message_id,json=messageId,proto3" json:"message_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetMessageRequest) Reset() {
+	*x = GetMessageRequest{}
+	mi := &file_orderfill_inbound_v1_inbound_proto_msgTypes[16]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetMessageRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetMessageRequest) ProtoMessage() {}
+
+func (x *GetMessageRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_orderfill_inbound_v1_inbound_proto_msgTypes[16]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetMessageRequest.ProtoReflect.Descriptor instead.
+func (*GetMessageRequest) Descriptor() ([]byte, []int) {
+	return file_orderfill_inbound_v1_inbound_proto_rawDescGZIP(), []int{16}
+}
+
+func (x *GetMessageRequest) GetMeta() *v1.RequestMeta {
+	if x != nil {
+		return x.Meta
+	}
+	return nil
+}
+
+func (x *GetMessageRequest) GetCompanyId() string {
+	if x != nil {
+		return x.CompanyId
+	}
+	return ""
+}
+
+func (x *GetMessageRequest) GetMessageId() string {
+	if x != nil {
+		return x.MessageId
+	}
+	return ""
+}
+
+type GetMessageResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Message       *InboundMessageSummary `protobuf:"bytes,1,opt,name=message,proto3" json:"message,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetMessageResponse) Reset() {
+	*x = GetMessageResponse{}
+	mi := &file_orderfill_inbound_v1_inbound_proto_msgTypes[17]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetMessageResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetMessageResponse) ProtoMessage() {}
+
+func (x *GetMessageResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_orderfill_inbound_v1_inbound_proto_msgTypes[17]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetMessageResponse.ProtoReflect.Descriptor instead.
+func (*GetMessageResponse) Descriptor() ([]byte, []int) {
+	return file_orderfill_inbound_v1_inbound_proto_rawDescGZIP(), []int{17}
+}
+
+func (x *GetMessageResponse) GetMessage() *InboundMessageSummary {
+	if x != nil {
+		return x.Message
+	}
+	return nil
+}
+
 type GetMessageFileRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Meta          *v1.RequestMeta        `protobuf:"bytes,1,opt,name=meta,proto3" json:"meta,omitempty"`
@@ -1047,7 +1167,7 @@ type GetMessageFileRequest struct {
 
 func (x *GetMessageFileRequest) Reset() {
 	*x = GetMessageFileRequest{}
-	mi := &file_orderfill_inbound_v1_inbound_proto_msgTypes[16]
+	mi := &file_orderfill_inbound_v1_inbound_proto_msgTypes[18]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1059,7 +1179,7 @@ func (x *GetMessageFileRequest) String() string {
 func (*GetMessageFileRequest) ProtoMessage() {}
 
 func (x *GetMessageFileRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_orderfill_inbound_v1_inbound_proto_msgTypes[16]
+	mi := &file_orderfill_inbound_v1_inbound_proto_msgTypes[18]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1072,7 +1192,7 @@ func (x *GetMessageFileRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetMessageFileRequest.ProtoReflect.Descriptor instead.
 func (*GetMessageFileRequest) Descriptor() ([]byte, []int) {
-	return file_orderfill_inbound_v1_inbound_proto_rawDescGZIP(), []int{16}
+	return file_orderfill_inbound_v1_inbound_proto_rawDescGZIP(), []int{18}
 }
 
 func (x *GetMessageFileRequest) GetMeta() *v1.RequestMeta {
@@ -1107,7 +1227,7 @@ type GetMessageFileResponse struct {
 
 func (x *GetMessageFileResponse) Reset() {
 	*x = GetMessageFileResponse{}
-	mi := &file_orderfill_inbound_v1_inbound_proto_msgTypes[17]
+	mi := &file_orderfill_inbound_v1_inbound_proto_msgTypes[19]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1119,7 +1239,7 @@ func (x *GetMessageFileResponse) String() string {
 func (*GetMessageFileResponse) ProtoMessage() {}
 
 func (x *GetMessageFileResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_orderfill_inbound_v1_inbound_proto_msgTypes[17]
+	mi := &file_orderfill_inbound_v1_inbound_proto_msgTypes[19]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1132,7 +1252,7 @@ func (x *GetMessageFileResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetMessageFileResponse.ProtoReflect.Descriptor instead.
 func (*GetMessageFileResponse) Descriptor() ([]byte, []int) {
-	return file_orderfill_inbound_v1_inbound_proto_rawDescGZIP(), []int{17}
+	return file_orderfill_inbound_v1_inbound_proto_rawDescGZIP(), []int{19}
 }
 
 func (x *GetMessageFileResponse) GetAttachment() *InboundAttachment {
@@ -1166,7 +1286,7 @@ type ListDeliveriesRequest struct {
 
 func (x *ListDeliveriesRequest) Reset() {
 	*x = ListDeliveriesRequest{}
-	mi := &file_orderfill_inbound_v1_inbound_proto_msgTypes[18]
+	mi := &file_orderfill_inbound_v1_inbound_proto_msgTypes[20]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1178,7 +1298,7 @@ func (x *ListDeliveriesRequest) String() string {
 func (*ListDeliveriesRequest) ProtoMessage() {}
 
 func (x *ListDeliveriesRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_orderfill_inbound_v1_inbound_proto_msgTypes[18]
+	mi := &file_orderfill_inbound_v1_inbound_proto_msgTypes[20]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1191,7 +1311,7 @@ func (x *ListDeliveriesRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListDeliveriesRequest.ProtoReflect.Descriptor instead.
 func (*ListDeliveriesRequest) Descriptor() ([]byte, []int) {
-	return file_orderfill_inbound_v1_inbound_proto_rawDescGZIP(), []int{18}
+	return file_orderfill_inbound_v1_inbound_proto_rawDescGZIP(), []int{20}
 }
 
 func (x *ListDeliveriesRequest) GetMeta() *v1.RequestMeta {
@@ -1217,7 +1337,7 @@ type ListDeliveriesResponse struct {
 
 func (x *ListDeliveriesResponse) Reset() {
 	*x = ListDeliveriesResponse{}
-	mi := &file_orderfill_inbound_v1_inbound_proto_msgTypes[19]
+	mi := &file_orderfill_inbound_v1_inbound_proto_msgTypes[21]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1229,7 +1349,7 @@ func (x *ListDeliveriesResponse) String() string {
 func (*ListDeliveriesResponse) ProtoMessage() {}
 
 func (x *ListDeliveriesResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_orderfill_inbound_v1_inbound_proto_msgTypes[19]
+	mi := &file_orderfill_inbound_v1_inbound_proto_msgTypes[21]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1242,7 +1362,7 @@ func (x *ListDeliveriesResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListDeliveriesResponse.ProtoReflect.Descriptor instead.
 func (*ListDeliveriesResponse) Descriptor() ([]byte, []int) {
-	return file_orderfill_inbound_v1_inbound_proto_rawDescGZIP(), []int{19}
+	return file_orderfill_inbound_v1_inbound_proto_rawDescGZIP(), []int{21}
 }
 
 func (x *ListDeliveriesResponse) GetDeliveries() []*InboundMessageSummary {
@@ -1275,7 +1395,7 @@ const file_orderfill_inbound_v1_inbound_proto_rawDesc = "" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12!\n" +
 	"\fcontent_type\x18\x03 \x01(\tR\vcontentType\x12\x12\n" +
-	"\x04size\x18\x04 \x01(\x03R\x04size\"\xf1\x03\n" +
+	"\x04size\x18\x04 \x01(\x03R\x04size\"\xab\x04\n" +
 	"\x15InboundMessageSummary\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12.\n" +
 	"\x13provider_message_id\x18\x02 \x01(\tR\x11providerMessageId\x12#\n" +
@@ -1294,7 +1414,9 @@ const file_orderfill_inbound_v1_inbound_proto_rawDesc = "" +
 	" \x01(\x03R\n" +
 	"totalBytes\x12I\n" +
 	"\vattachments\x18\v \x03(\v2'.orderfill.inbound.v1.InboundAttachmentR\vattachments\x12\x18\n" +
-	"\asubject\x18\f \x01(\tR\asubject\"m\n" +
+	"\asubject\x18\f \x01(\tR\asubject\x12\x1b\n" +
+	"\tbody_text\x18\r \x01(\tR\bbodyText\x12\x1b\n" +
+	"\tbody_html\x18\x0e \x01(\tR\bbodyHtml\"m\n" +
 	"\x14IngestWebhookRequest\x124\n" +
 	"\x04meta\x18\x01 \x01(\v2 .orderfill.common.v1.RequestMetaR\x04meta\x12\x1f\n" +
 	"\vraw_payload\x18\x02 \x01(\fR\n" +
@@ -1331,7 +1453,15 @@ const file_orderfill_inbound_v1_inbound_proto_rawDesc = "" +
 	"company_id\x18\x02 \x01(\tR\tcompanyId\x12\x14\n" +
 	"\x05limit\x18\x03 \x01(\x05R\x05limit\"_\n" +
 	"\x14ListMessagesResponse\x12G\n" +
-	"\bmessages\x18\x01 \x03(\v2+.orderfill.inbound.v1.InboundMessageSummaryR\bmessages\"\x91\x01\n" +
+	"\bmessages\x18\x01 \x03(\v2+.orderfill.inbound.v1.InboundMessageSummaryR\bmessages\"\x87\x01\n" +
+	"\x11GetMessageRequest\x124\n" +
+	"\x04meta\x18\x01 \x01(\v2 .orderfill.common.v1.RequestMetaR\x04meta\x12\x1d\n" +
+	"\n" +
+	"company_id\x18\x02 \x01(\tR\tcompanyId\x12\x1d\n" +
+	"\n" +
+	"message_id\x18\x03 \x01(\tR\tmessageId\"[\n" +
+	"\x12GetMessageResponse\x12E\n" +
+	"\amessage\x18\x01 \x01(\v2+.orderfill.inbound.v1.InboundMessageSummaryR\amessage\"\x91\x01\n" +
 	"\x15GetMessageFileRequest\x124\n" +
 	"\x04meta\x18\x01 \x01(\v2 .orderfill.common.v1.RequestMetaR\x04meta\x12\x1d\n" +
 	"\n" +
@@ -1358,14 +1488,16 @@ const file_orderfill_inbound_v1_inbound_proto_rawDesc = "" +
 	",INBOUND_MESSAGE_STATUS_ERROR_UNKNOWN_ADDRESS\x10\x03\x12.\n" +
 	"*INBOUND_MESSAGE_STATUS_ERROR_MISMATCH_FROM\x10\x04\x12/\n" +
 	"+INBOUND_MESSAGE_STATUS_ERROR_NO_ATTACHMENTS\x10\x05\x12*\n" +
-	"&INBOUND_MESSAGE_STATUS_ERROR_TOO_LARGE\x10\x062\x81\a\n" +
+	"&INBOUND_MESSAGE_STATUS_ERROR_TOO_LARGE\x10\x062\xe2\a\n" +
 	"\x0eInboundService\x12h\n" +
 	"\rIngestWebhook\x12*.orderfill.inbound.v1.IngestWebhookRequest\x1a+.orderfill.inbound.v1.IngestWebhookResponse\x12b\n" +
 	"\vGetSettings\x12(.orderfill.inbound.v1.GetSettingsRequest\x1a).orderfill.inbound.v1.GetSettingsResponse\x12k\n" +
 	"\x0eUpdateSettings\x12+.orderfill.inbound.v1.UpdateSettingsRequest\x1a,.orderfill.inbound.v1.UpdateSettingsResponse\x12t\n" +
 	"\x11GetCompanyInbound\x12..orderfill.inbound.v1.GetCompanyInboundRequest\x1a/.orderfill.inbound.v1.GetCompanyInboundResponse\x12}\n" +
 	"\x14UpdateCompanyInbound\x121.orderfill.inbound.v1.UpdateCompanyInboundRequest\x1a2.orderfill.inbound.v1.UpdateCompanyInboundResponse\x12e\n" +
-	"\fListMessages\x12).orderfill.inbound.v1.ListMessagesRequest\x1a*.orderfill.inbound.v1.ListMessagesResponse\x12k\n" +
+	"\fListMessages\x12).orderfill.inbound.v1.ListMessagesRequest\x1a*.orderfill.inbound.v1.ListMessagesResponse\x12_\n" +
+	"\n" +
+	"GetMessage\x12'.orderfill.inbound.v1.GetMessageRequest\x1a(.orderfill.inbound.v1.GetMessageResponse\x12k\n" +
 	"\x0eGetMessageFile\x12+.orderfill.inbound.v1.GetMessageFileRequest\x1a,.orderfill.inbound.v1.GetMessageFileResponse\x12k\n" +
 	"\x0eListDeliveries\x12+.orderfill.inbound.v1.ListDeliveriesRequest\x1a,.orderfill.inbound.v1.ListDeliveriesResponseB@Z>order-fill/backend/proto/gen/go/orderfill/inbound/v1;inboundv1b\x06proto3"
 
@@ -1382,7 +1514,7 @@ func file_orderfill_inbound_v1_inbound_proto_rawDescGZIP() []byte {
 }
 
 var file_orderfill_inbound_v1_inbound_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
-var file_orderfill_inbound_v1_inbound_proto_msgTypes = make([]protoimpl.MessageInfo, 20)
+var file_orderfill_inbound_v1_inbound_proto_msgTypes = make([]protoimpl.MessageInfo, 22)
 var file_orderfill_inbound_v1_inbound_proto_goTypes = []any{
 	(InboundMessageStatus)(0),            // 0: orderfill.inbound.v1.InboundMessageStatus
 	(*InboundSettings)(nil),              // 1: orderfill.inbound.v1.InboundSettings
@@ -1401,50 +1533,56 @@ var file_orderfill_inbound_v1_inbound_proto_goTypes = []any{
 	(*UpdateCompanyInboundResponse)(nil), // 14: orderfill.inbound.v1.UpdateCompanyInboundResponse
 	(*ListMessagesRequest)(nil),          // 15: orderfill.inbound.v1.ListMessagesRequest
 	(*ListMessagesResponse)(nil),         // 16: orderfill.inbound.v1.ListMessagesResponse
-	(*GetMessageFileRequest)(nil),        // 17: orderfill.inbound.v1.GetMessageFileRequest
-	(*GetMessageFileResponse)(nil),       // 18: orderfill.inbound.v1.GetMessageFileResponse
-	(*ListDeliveriesRequest)(nil),        // 19: orderfill.inbound.v1.ListDeliveriesRequest
-	(*ListDeliveriesResponse)(nil),       // 20: orderfill.inbound.v1.ListDeliveriesResponse
-	(*v1.RequestMeta)(nil),               // 21: orderfill.common.v1.RequestMeta
+	(*GetMessageRequest)(nil),            // 17: orderfill.inbound.v1.GetMessageRequest
+	(*GetMessageResponse)(nil),           // 18: orderfill.inbound.v1.GetMessageResponse
+	(*GetMessageFileRequest)(nil),        // 19: orderfill.inbound.v1.GetMessageFileRequest
+	(*GetMessageFileResponse)(nil),       // 20: orderfill.inbound.v1.GetMessageFileResponse
+	(*ListDeliveriesRequest)(nil),        // 21: orderfill.inbound.v1.ListDeliveriesRequest
+	(*ListDeliveriesResponse)(nil),       // 22: orderfill.inbound.v1.ListDeliveriesResponse
+	(*v1.RequestMeta)(nil),               // 23: orderfill.common.v1.RequestMeta
 }
 var file_orderfill_inbound_v1_inbound_proto_depIdxs = []int32{
 	0,  // 0: orderfill.inbound.v1.InboundMessageSummary.status:type_name -> orderfill.inbound.v1.InboundMessageStatus
 	3,  // 1: orderfill.inbound.v1.InboundMessageSummary.attachments:type_name -> orderfill.inbound.v1.InboundAttachment
-	21, // 2: orderfill.inbound.v1.IngestWebhookRequest.meta:type_name -> orderfill.common.v1.RequestMeta
+	23, // 2: orderfill.inbound.v1.IngestWebhookRequest.meta:type_name -> orderfill.common.v1.RequestMeta
 	1,  // 3: orderfill.inbound.v1.GetSettingsResponse.settings:type_name -> orderfill.inbound.v1.InboundSettings
-	21, // 4: orderfill.inbound.v1.UpdateSettingsRequest.meta:type_name -> orderfill.common.v1.RequestMeta
+	23, // 4: orderfill.inbound.v1.UpdateSettingsRequest.meta:type_name -> orderfill.common.v1.RequestMeta
 	1,  // 5: orderfill.inbound.v1.UpdateSettingsResponse.settings:type_name -> orderfill.inbound.v1.InboundSettings
-	21, // 6: orderfill.inbound.v1.GetCompanyInboundRequest.meta:type_name -> orderfill.common.v1.RequestMeta
+	23, // 6: orderfill.inbound.v1.GetCompanyInboundRequest.meta:type_name -> orderfill.common.v1.RequestMeta
 	2,  // 7: orderfill.inbound.v1.GetCompanyInboundResponse.company_inbound:type_name -> orderfill.inbound.v1.CompanyInbound
-	21, // 8: orderfill.inbound.v1.UpdateCompanyInboundRequest.meta:type_name -> orderfill.common.v1.RequestMeta
+	23, // 8: orderfill.inbound.v1.UpdateCompanyInboundRequest.meta:type_name -> orderfill.common.v1.RequestMeta
 	2,  // 9: orderfill.inbound.v1.UpdateCompanyInboundResponse.company_inbound:type_name -> orderfill.inbound.v1.CompanyInbound
-	21, // 10: orderfill.inbound.v1.ListMessagesRequest.meta:type_name -> orderfill.common.v1.RequestMeta
+	23, // 10: orderfill.inbound.v1.ListMessagesRequest.meta:type_name -> orderfill.common.v1.RequestMeta
 	4,  // 11: orderfill.inbound.v1.ListMessagesResponse.messages:type_name -> orderfill.inbound.v1.InboundMessageSummary
-	21, // 12: orderfill.inbound.v1.GetMessageFileRequest.meta:type_name -> orderfill.common.v1.RequestMeta
-	3,  // 13: orderfill.inbound.v1.GetMessageFileResponse.attachment:type_name -> orderfill.inbound.v1.InboundAttachment
-	21, // 14: orderfill.inbound.v1.ListDeliveriesRequest.meta:type_name -> orderfill.common.v1.RequestMeta
-	4,  // 15: orderfill.inbound.v1.ListDeliveriesResponse.deliveries:type_name -> orderfill.inbound.v1.InboundMessageSummary
-	5,  // 16: orderfill.inbound.v1.InboundService.IngestWebhook:input_type -> orderfill.inbound.v1.IngestWebhookRequest
-	7,  // 17: orderfill.inbound.v1.InboundService.GetSettings:input_type -> orderfill.inbound.v1.GetSettingsRequest
-	9,  // 18: orderfill.inbound.v1.InboundService.UpdateSettings:input_type -> orderfill.inbound.v1.UpdateSettingsRequest
-	11, // 19: orderfill.inbound.v1.InboundService.GetCompanyInbound:input_type -> orderfill.inbound.v1.GetCompanyInboundRequest
-	13, // 20: orderfill.inbound.v1.InboundService.UpdateCompanyInbound:input_type -> orderfill.inbound.v1.UpdateCompanyInboundRequest
-	15, // 21: orderfill.inbound.v1.InboundService.ListMessages:input_type -> orderfill.inbound.v1.ListMessagesRequest
-	17, // 22: orderfill.inbound.v1.InboundService.GetMessageFile:input_type -> orderfill.inbound.v1.GetMessageFileRequest
-	19, // 23: orderfill.inbound.v1.InboundService.ListDeliveries:input_type -> orderfill.inbound.v1.ListDeliveriesRequest
-	6,  // 24: orderfill.inbound.v1.InboundService.IngestWebhook:output_type -> orderfill.inbound.v1.IngestWebhookResponse
-	8,  // 25: orderfill.inbound.v1.InboundService.GetSettings:output_type -> orderfill.inbound.v1.GetSettingsResponse
-	10, // 26: orderfill.inbound.v1.InboundService.UpdateSettings:output_type -> orderfill.inbound.v1.UpdateSettingsResponse
-	12, // 27: orderfill.inbound.v1.InboundService.GetCompanyInbound:output_type -> orderfill.inbound.v1.GetCompanyInboundResponse
-	14, // 28: orderfill.inbound.v1.InboundService.UpdateCompanyInbound:output_type -> orderfill.inbound.v1.UpdateCompanyInboundResponse
-	16, // 29: orderfill.inbound.v1.InboundService.ListMessages:output_type -> orderfill.inbound.v1.ListMessagesResponse
-	18, // 30: orderfill.inbound.v1.InboundService.GetMessageFile:output_type -> orderfill.inbound.v1.GetMessageFileResponse
-	20, // 31: orderfill.inbound.v1.InboundService.ListDeliveries:output_type -> orderfill.inbound.v1.ListDeliveriesResponse
-	24, // [24:32] is the sub-list for method output_type
-	16, // [16:24] is the sub-list for method input_type
-	16, // [16:16] is the sub-list for extension type_name
-	16, // [16:16] is the sub-list for extension extendee
-	0,  // [0:16] is the sub-list for field type_name
+	23, // 12: orderfill.inbound.v1.GetMessageRequest.meta:type_name -> orderfill.common.v1.RequestMeta
+	4,  // 13: orderfill.inbound.v1.GetMessageResponse.message:type_name -> orderfill.inbound.v1.InboundMessageSummary
+	23, // 14: orderfill.inbound.v1.GetMessageFileRequest.meta:type_name -> orderfill.common.v1.RequestMeta
+	3,  // 15: orderfill.inbound.v1.GetMessageFileResponse.attachment:type_name -> orderfill.inbound.v1.InboundAttachment
+	23, // 16: orderfill.inbound.v1.ListDeliveriesRequest.meta:type_name -> orderfill.common.v1.RequestMeta
+	4,  // 17: orderfill.inbound.v1.ListDeliveriesResponse.deliveries:type_name -> orderfill.inbound.v1.InboundMessageSummary
+	5,  // 18: orderfill.inbound.v1.InboundService.IngestWebhook:input_type -> orderfill.inbound.v1.IngestWebhookRequest
+	7,  // 19: orderfill.inbound.v1.InboundService.GetSettings:input_type -> orderfill.inbound.v1.GetSettingsRequest
+	9,  // 20: orderfill.inbound.v1.InboundService.UpdateSettings:input_type -> orderfill.inbound.v1.UpdateSettingsRequest
+	11, // 21: orderfill.inbound.v1.InboundService.GetCompanyInbound:input_type -> orderfill.inbound.v1.GetCompanyInboundRequest
+	13, // 22: orderfill.inbound.v1.InboundService.UpdateCompanyInbound:input_type -> orderfill.inbound.v1.UpdateCompanyInboundRequest
+	15, // 23: orderfill.inbound.v1.InboundService.ListMessages:input_type -> orderfill.inbound.v1.ListMessagesRequest
+	17, // 24: orderfill.inbound.v1.InboundService.GetMessage:input_type -> orderfill.inbound.v1.GetMessageRequest
+	19, // 25: orderfill.inbound.v1.InboundService.GetMessageFile:input_type -> orderfill.inbound.v1.GetMessageFileRequest
+	21, // 26: orderfill.inbound.v1.InboundService.ListDeliveries:input_type -> orderfill.inbound.v1.ListDeliveriesRequest
+	6,  // 27: orderfill.inbound.v1.InboundService.IngestWebhook:output_type -> orderfill.inbound.v1.IngestWebhookResponse
+	8,  // 28: orderfill.inbound.v1.InboundService.GetSettings:output_type -> orderfill.inbound.v1.GetSettingsResponse
+	10, // 29: orderfill.inbound.v1.InboundService.UpdateSettings:output_type -> orderfill.inbound.v1.UpdateSettingsResponse
+	12, // 30: orderfill.inbound.v1.InboundService.GetCompanyInbound:output_type -> orderfill.inbound.v1.GetCompanyInboundResponse
+	14, // 31: orderfill.inbound.v1.InboundService.UpdateCompanyInbound:output_type -> orderfill.inbound.v1.UpdateCompanyInboundResponse
+	16, // 32: orderfill.inbound.v1.InboundService.ListMessages:output_type -> orderfill.inbound.v1.ListMessagesResponse
+	18, // 33: orderfill.inbound.v1.InboundService.GetMessage:output_type -> orderfill.inbound.v1.GetMessageResponse
+	20, // 34: orderfill.inbound.v1.InboundService.GetMessageFile:output_type -> orderfill.inbound.v1.GetMessageFileResponse
+	22, // 35: orderfill.inbound.v1.InboundService.ListDeliveries:output_type -> orderfill.inbound.v1.ListDeliveriesResponse
+	27, // [27:36] is the sub-list for method output_type
+	18, // [18:27] is the sub-list for method input_type
+	18, // [18:18] is the sub-list for extension type_name
+	18, // [18:18] is the sub-list for extension extendee
+	0,  // [0:18] is the sub-list for field type_name
 }
 
 func init() { file_orderfill_inbound_v1_inbound_proto_init() }
@@ -1458,7 +1596,7 @@ func file_orderfill_inbound_v1_inbound_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_orderfill_inbound_v1_inbound_proto_rawDesc), len(file_orderfill_inbound_v1_inbound_proto_rawDesc)),
 			NumEnums:      1,
-			NumMessages:   20,
+			NumMessages:   22,
 			NumExtensions: 0,
 			NumServices:   1,
 		},
