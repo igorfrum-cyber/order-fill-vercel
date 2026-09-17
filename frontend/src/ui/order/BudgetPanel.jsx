@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import { budgetTargetValue, discountValue, planBudget } from "../../features/order/budgetPlanner.js";
+import { christinaLineGroups } from "../../features/order/christinaLines.js";
 import { budgetPatches, budgetRowsFromReport } from "../../features/order/budgetWorkflow.js";
 import { GhostButton, Modal } from "../widgets.jsx";
 
@@ -191,6 +192,68 @@ export function BudgetPanel({ brand, deliveryWeeks, rows, edits, onEdit }) {
                 </div>
                 <span className="text-[13px]">Изменено позиций: {changed.length}</span>
               </div>
+              {plan.lineSteps?.length ? (
+                <details className="mt-2 rounded-xl border border-[var(--color-line)] bg-[var(--color-surface)] px-4 py-3">
+                  <summary className="cursor-pointer font-medium text-[var(--color-ink)]">
+                    PROFF: комплекты и дополнительная скидка
+                  </summary>
+                  <div className="mt-2 overflow-x-auto">
+                    <table className="w-full text-[13px]">
+                      <thead>
+                        <tr className="text-left text-[var(--color-ink-soft)]">
+                          <th className="pb-1 pr-4 font-medium">Линия</th>
+                          <th className="pb-1 pr-4 font-medium">Комплектов</th>
+                          <th className="pb-1 pr-4 font-medium">Доп. скидка, ₽</th>
+                          <th className="pb-1 font-medium">Добавлено, ₽</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {plan.lineSteps.map((step) => (
+                          <tr key={step.id} className="border-t border-[var(--color-line-soft)]">
+                            <td className="py-1 pr-4 text-[var(--color-ink)]">{step.name}</td>
+                            <td className="py-1 pr-4 font-mono">{step.sets}</td>
+                            <td className="py-1 pr-4 font-mono">{money(step.savedCents / 100)}</td>
+                            <td className="py-1 font-mono">{money(step.addedCents / 100)}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </details>
+              ) : null}
+              {(() => {
+                const lines = christinaLineGroups(plan.rows || []);
+                if (!lines.length) return null;
+                return (
+                  <details className="mt-2 rounded-xl border border-[var(--color-line)] bg-[var(--color-surface)] px-4 py-3">
+                    <summary className="cursor-pointer font-medium text-[var(--color-ink)]">
+                      PROFF: состояние линеек
+                    </summary>
+                    <div className="mt-2 overflow-x-auto">
+                      <table className="w-full text-[13px]">
+                        <thead>
+                          <tr className="text-left text-[var(--color-ink-soft)]">
+                            <th className="pb-1 pr-4 font-medium">Линия</th>
+                            <th className="pb-1 pr-4 font-medium">Полных комплектов</th>
+                            <th className="pb-1 pr-4 font-medium">Доп. скидка, ₽</th>
+                            <th className="pb-1 font-medium">Закупка, ₽</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {lines.map((l) => (
+                            <tr key={l.id} className="border-t border-[var(--color-line-soft)]">
+                              <td className="py-1 pr-4 text-[var(--color-ink)]">{l.name}</td>
+                              <td className="py-1 pr-4 font-mono">{l.valid ? l.sets : "Состав не подтверждён"}</td>
+                              <td className="py-1 pr-4 font-mono">{money(l.savingCents / 100)}</td>
+                              <td className="py-1 font-mono">{money(l.netCents / 100)}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </details>
+                );
+              })()}
               {changed.length ? (
                 <div className="mt-2 space-y-1">
                   {changed.map((row) => (

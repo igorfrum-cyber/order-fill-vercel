@@ -76,6 +76,9 @@ type ReportRow struct {
 	DuplicateCandidates []DuplicateCandidate `json:"duplicate_candidates"`
 	Editable            bool                 `json:"editable"`
 	Similarity          float64              `json:"similarity"`
+	// ChristinaLine is set for PROFF blank rows that belong to a named product
+	// line. The frontend uses it to compute set discounts in the budget planner.
+	ChristinaLine *ChristinaLine `json:"christina_line,omitempty"`
 }
 
 func unmatchedRow(position blankPosition, command FillCommand, rule brand.RuleConfig) ReportRow {
@@ -153,6 +156,9 @@ func matchedRow(
 	if selected.HasOrderedFact {
 		fact := selected.OrderedFact
 		row.OrderedFact = &fact
+	}
+	if position.christinaLine != nil {
+		row.ChristinaLine = position.christinaLine
 	}
 	return row
 }
