@@ -31,6 +31,8 @@ export function budgetRowsFromReport(rows, edits, { brand, deliveryWeeks, discou
       locked: quantity !== baseline,
       excluded: false,
       unsafe: false,
+      group: row.blankId || "main",
+      line: row.christinaLine || null,
     };
   });
 }
