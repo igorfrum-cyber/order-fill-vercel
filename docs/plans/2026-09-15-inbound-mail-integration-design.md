@@ -1,6 +1,6 @@
 # Интеграция входящей почты 1С (inbound-mail)
 
-> As-built: matching is by `envelope.from` / `sender_email`, not `envelope.to`. Public HTTP lives under `/api/v1/inbound/...`, not `/inbound-address`.
+> As-built: matching is by `envelope.from` / `sender_email`, not `envelope.to`. Public HTTP lives under `/api/v1/inbound/...`, not `/inbound-address`. Gateway records `inbound_webhook_received` / `inbound_rejected` / `inbound_address_updated` via `audit-service` best-effort (ingest stays 2xx/4xx if audit is down) and rate-limits the webhook with `INBOUND_WEBHOOK_RPS` / `INBOUND_WEBHOOK_BURST`. Auto-create `order_fill` job from an attachment is still not implemented: jobs require supplier `blank_files` and a company actor, which the webhook path does not have.
 
 ## Зачем это нужно
 

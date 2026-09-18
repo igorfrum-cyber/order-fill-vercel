@@ -4,55 +4,60 @@ import (
 	"fmt"
 	"net/url"
 	"os"
+	"strconv"
 	"strings"
 
 	"order-fill/backend/pkg/grpcutil"
 )
 
 type Config struct {
-	Addr           string
-	Environment    string
-	IdentityGRPC   string
-	TwoFAGRPC      string
-	PasskeyGRPC    string
-	JobGRPC        string
-	FileGRPC       string
-	AuditGRPC      string
-	BrandGRPC      string
-	InboundGRPC    string
-	InboundWebhook string
-	WorkerToken    string
-	WorkerHealth   string
-	FileHealth     string
-	PostgresAddr   string
-	RedisAddr      string
-	AllowedOrigins string
-	CookieSecure   bool
-	CookieDomain   string
+	Addr                string
+	Environment         string
+	IdentityGRPC        string
+	TwoFAGRPC           string
+	PasskeyGRPC         string
+	JobGRPC             string
+	FileGRPC            string
+	AuditGRPC           string
+	BrandGRPC           string
+	InboundGRPC         string
+	InboundWebhook      string
+	InboundWebhookRPS   float64
+	InboundWebhookBurst int
+	WorkerToken         string
+	WorkerHealth        string
+	FileHealth          string
+	PostgresAddr        string
+	RedisAddr           string
+	AllowedOrigins      string
+	CookieSecure        bool
+	CookieDomain        string
 }
 
 func Load() Config {
 	env := getenv("GATEWAY_ENV", getenv("APP_ENV", "local"))
 	return Config{
-		Addr:           getenv("GATEWAY_ADDR", ":8080"),
-		Environment:    env,
-		IdentityGRPC:   getenv("IDENTITY_GRPC_ADDR", "127.0.0.1:9091"),
-		TwoFAGRPC:      getenv("TWOFA_GRPC_ADDR", "127.0.0.1:9092"),
-		PasskeyGRPC:    getenv("PASSKEY_GRPC_ADDR", "127.0.0.1:9093"),
-		JobGRPC:        getenv("JOB_GRPC_ADDR", "127.0.0.1:9094"),
-		FileGRPC:       getenv("FILE_GRPC_ADDR", "127.0.0.1:9095"),
-		AuditGRPC:      getenv("AUDIT_GRPC_ADDR", "127.0.0.1:9100"),
-		BrandGRPC:      getenv("BRAND_GRPC_ADDR", "127.0.0.1:9098"),
-		InboundGRPC:    getenv("INBOUND_GRPC_ADDR", "127.0.0.1:9101"),
-		InboundWebhook: getenv("INBOUND_WEBHOOK_TOKEN", "local-dev-inbound-webhook-token"),
-		WorkerToken:    getenv("WORKER_TOKEN", "local-dev-worker-token"),
-		WorkerHealth:   getenv("WORKER_HEALTH_URL", "http://127.0.0.1:8092/healthz"),
-		FileHealth:     getenv("FILE_HEALTH_URL", "http://127.0.0.1:8086/healthz"),
-		PostgresAddr:   getenv("POSTGRES_ADDR", "127.0.0.1:5432"),
-		RedisAddr:      getenv("REDIS_ADDR", "127.0.0.1:6379"),
-		AllowedOrigins: getenv("API_ALLOWED_ORIGINS", defaultAllowedOrigins(env)),
-		CookieSecure:   cookieSecure(env),
-		CookieDomain:   getenv("SESSION_COOKIE_DOMAIN", ""),
+		Addr:                getenv("GATEWAY_ADDR", ":8080"),
+		Environment:         env,
+		IdentityGRPC:        getenv("IDENTITY_GRPC_ADDR", "127.0.0.1:9091"),
+		TwoFAGRPC:           getenv("TWOFA_GRPC_ADDR", "127.0.0.1:9092"),
+		PasskeyGRPC:         getenv("PASSKEY_GRPC_ADDR", "127.0.0.1:9093"),
+		JobGRPC:             getenv("JOB_GRPC_ADDR", "127.0.0.1:9094"),
+		FileGRPC:            getenv("FILE_GRPC_ADDR", "127.0.0.1:9095"),
+		AuditGRPC:           getenv("AUDIT_GRPC_ADDR", "127.0.0.1:9100"),
+		BrandGRPC:           getenv("BRAND_GRPC_ADDR", "127.0.0.1:9098"),
+		InboundGRPC:         getenv("INBOUND_GRPC_ADDR", "127.0.0.1:9101"),
+		InboundWebhook:      getenv("INBOUND_WEBHOOK_TOKEN", "local-dev-inbound-webhook-token"),
+		InboundWebhookRPS:   parseFloat(getenv("INBOUND_WEBHOOK_RPS", "10"), 10),
+		InboundWebhookBurst: parseInt(getenv("INBOUND_WEBHOOK_BURST", "20"), 20),
+		WorkerToken:         getenv("WORKER_TOKEN", "local-dev-worker-token"),
+		WorkerHealth:        getenv("WORKER_HEALTH_URL", "http://127.0.0.1:8092/healthz"),
+		FileHealth:          getenv("FILE_HEALTH_URL", "http://127.0.0.1:8086/healthz"),
+		PostgresAddr:        getenv("POSTGRES_ADDR", "127.0.0.1:5432"),
+		RedisAddr:           getenv("REDIS_ADDR", "127.0.0.1:6379"),
+		AllowedOrigins:      getenv("API_ALLOWED_ORIGINS", defaultAllowedOrigins(env)),
+		CookieSecure:        cookieSecure(env),
+		CookieDomain:        getenv("SESSION_COOKIE_DOMAIN", ""),
 	}
 }
 
@@ -131,4 +136,20 @@ func getenv(key, fallback string) string {
 		return v
 	}
 	return fallback
+}
+
+func parseFloat(raw string, fallback float64) float64 {
+	n, err := strconv.ParseFloat(strings.TrimSpace(raw), 64)
+	if err != nil || n < 0 {
+		return fallback
+	}
+	return n
+}
+
+func parseInt(raw string, fallback int) int {
+	n, err := strconv.Atoi(strings.TrimSpace(raw))
+	if err != nil || n < 0 {
+		return fallback
+	}
+	return n
 }

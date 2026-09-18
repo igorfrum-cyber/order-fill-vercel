@@ -19,6 +19,9 @@ func TestLoadDefaults(t *testing.T) {
 		cfg.AllowedOrigins != "http://127.0.0.1:3200,http://localhost:3200" || cfg.BrandGRPC != "127.0.0.1:9098" {
 		t.Fatalf("%+v", cfg)
 	}
+	if cfg.InboundWebhookRPS != 10 || cfg.InboundWebhookBurst != 20 {
+		t.Fatalf("webhook limiter defaults: rps=%v burst=%d", cfg.InboundWebhookRPS, cfg.InboundWebhookBurst)
+	}
 	if err := cfg.Validate(); err != nil {
 		t.Fatal(err)
 	}
@@ -81,6 +84,15 @@ func TestValidateRejectsShortWorkerToken(t *testing.T) {
 	}
 	if err := cfg.Validate(); err == nil {
 		t.Fatal("expected worker token error")
+	}
+}
+
+func TestLoadWebhookLimiterFromEnv(t *testing.T) {
+	t.Setenv("INBOUND_WEBHOOK_RPS", "5")
+	t.Setenv("INBOUND_WEBHOOK_BURST", "8")
+	cfg := Load()
+	if cfg.InboundWebhookRPS != 5 || cfg.InboundWebhookBurst != 8 {
+		t.Fatalf("rps=%v burst=%d", cfg.InboundWebhookRPS, cfg.InboundWebhookBurst)
 	}
 }
 

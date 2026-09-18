@@ -506,6 +506,9 @@ func (x *IngestWebhookRequest) GetRawPayload() []byte {
 
 type IngestWebhookResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
+	CompanyId     string                 `protobuf:"bytes,1,opt,name=company_id,json=companyId,proto3" json:"company_id,omitempty"`
+	Status        InboundMessageStatus   `protobuf:"varint,2,opt,name=status,proto3,enum=orderfill.inbound.v1.InboundMessageStatus" json:"status,omitempty"`
+	ErrorCode     string                 `protobuf:"bytes,3,opt,name=error_code,json=errorCode,proto3" json:"error_code,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -538,6 +541,27 @@ func (x *IngestWebhookResponse) ProtoReflect() protoreflect.Message {
 // Deprecated: Use IngestWebhookResponse.ProtoReflect.Descriptor instead.
 func (*IngestWebhookResponse) Descriptor() ([]byte, []int) {
 	return file_orderfill_inbound_v1_inbound_proto_rawDescGZIP(), []int{5}
+}
+
+func (x *IngestWebhookResponse) GetCompanyId() string {
+	if x != nil {
+		return x.CompanyId
+	}
+	return ""
+}
+
+func (x *IngestWebhookResponse) GetStatus() InboundMessageStatus {
+	if x != nil {
+		return x.Status
+	}
+	return InboundMessageStatus_INBOUND_MESSAGE_STATUS_UNSPECIFIED
+}
+
+func (x *IngestWebhookResponse) GetErrorCode() string {
+	if x != nil {
+		return x.ErrorCode
+	}
+	return ""
 }
 
 type GetSettingsRequest struct {
@@ -1420,8 +1444,13 @@ const file_orderfill_inbound_v1_inbound_proto_rawDesc = "" +
 	"\x14IngestWebhookRequest\x124\n" +
 	"\x04meta\x18\x01 \x01(\v2 .orderfill.common.v1.RequestMetaR\x04meta\x12\x1f\n" +
 	"\vraw_payload\x18\x02 \x01(\fR\n" +
-	"rawPayload\"\x17\n" +
-	"\x15IngestWebhookResponse\"\x14\n" +
+	"rawPayload\"\x99\x01\n" +
+	"\x15IngestWebhookResponse\x12\x1d\n" +
+	"\n" +
+	"company_id\x18\x01 \x01(\tR\tcompanyId\x12B\n" +
+	"\x06status\x18\x02 \x01(\x0e2*.orderfill.inbound.v1.InboundMessageStatusR\x06status\x12\x1d\n" +
+	"\n" +
+	"error_code\x18\x03 \x01(\tR\terrorCode\"\x14\n" +
 	"\x12GetSettingsRequest\"X\n" +
 	"\x13GetSettingsResponse\x12A\n" +
 	"\bsettings\x18\x01 \x01(\v2%.orderfill.inbound.v1.InboundSettingsR\bsettings\"\x90\x01\n" +
@@ -1545,44 +1574,45 @@ var file_orderfill_inbound_v1_inbound_proto_depIdxs = []int32{
 	0,  // 0: orderfill.inbound.v1.InboundMessageSummary.status:type_name -> orderfill.inbound.v1.InboundMessageStatus
 	3,  // 1: orderfill.inbound.v1.InboundMessageSummary.attachments:type_name -> orderfill.inbound.v1.InboundAttachment
 	23, // 2: orderfill.inbound.v1.IngestWebhookRequest.meta:type_name -> orderfill.common.v1.RequestMeta
-	1,  // 3: orderfill.inbound.v1.GetSettingsResponse.settings:type_name -> orderfill.inbound.v1.InboundSettings
-	23, // 4: orderfill.inbound.v1.UpdateSettingsRequest.meta:type_name -> orderfill.common.v1.RequestMeta
-	1,  // 5: orderfill.inbound.v1.UpdateSettingsResponse.settings:type_name -> orderfill.inbound.v1.InboundSettings
-	23, // 6: orderfill.inbound.v1.GetCompanyInboundRequest.meta:type_name -> orderfill.common.v1.RequestMeta
-	2,  // 7: orderfill.inbound.v1.GetCompanyInboundResponse.company_inbound:type_name -> orderfill.inbound.v1.CompanyInbound
-	23, // 8: orderfill.inbound.v1.UpdateCompanyInboundRequest.meta:type_name -> orderfill.common.v1.RequestMeta
-	2,  // 9: orderfill.inbound.v1.UpdateCompanyInboundResponse.company_inbound:type_name -> orderfill.inbound.v1.CompanyInbound
-	23, // 10: orderfill.inbound.v1.ListMessagesRequest.meta:type_name -> orderfill.common.v1.RequestMeta
-	4,  // 11: orderfill.inbound.v1.ListMessagesResponse.messages:type_name -> orderfill.inbound.v1.InboundMessageSummary
-	23, // 12: orderfill.inbound.v1.GetMessageRequest.meta:type_name -> orderfill.common.v1.RequestMeta
-	4,  // 13: orderfill.inbound.v1.GetMessageResponse.message:type_name -> orderfill.inbound.v1.InboundMessageSummary
-	23, // 14: orderfill.inbound.v1.GetMessageFileRequest.meta:type_name -> orderfill.common.v1.RequestMeta
-	3,  // 15: orderfill.inbound.v1.GetMessageFileResponse.attachment:type_name -> orderfill.inbound.v1.InboundAttachment
-	23, // 16: orderfill.inbound.v1.ListDeliveriesRequest.meta:type_name -> orderfill.common.v1.RequestMeta
-	4,  // 17: orderfill.inbound.v1.ListDeliveriesResponse.deliveries:type_name -> orderfill.inbound.v1.InboundMessageSummary
-	5,  // 18: orderfill.inbound.v1.InboundService.IngestWebhook:input_type -> orderfill.inbound.v1.IngestWebhookRequest
-	7,  // 19: orderfill.inbound.v1.InboundService.GetSettings:input_type -> orderfill.inbound.v1.GetSettingsRequest
-	9,  // 20: orderfill.inbound.v1.InboundService.UpdateSettings:input_type -> orderfill.inbound.v1.UpdateSettingsRequest
-	11, // 21: orderfill.inbound.v1.InboundService.GetCompanyInbound:input_type -> orderfill.inbound.v1.GetCompanyInboundRequest
-	13, // 22: orderfill.inbound.v1.InboundService.UpdateCompanyInbound:input_type -> orderfill.inbound.v1.UpdateCompanyInboundRequest
-	15, // 23: orderfill.inbound.v1.InboundService.ListMessages:input_type -> orderfill.inbound.v1.ListMessagesRequest
-	17, // 24: orderfill.inbound.v1.InboundService.GetMessage:input_type -> orderfill.inbound.v1.GetMessageRequest
-	19, // 25: orderfill.inbound.v1.InboundService.GetMessageFile:input_type -> orderfill.inbound.v1.GetMessageFileRequest
-	21, // 26: orderfill.inbound.v1.InboundService.ListDeliveries:input_type -> orderfill.inbound.v1.ListDeliveriesRequest
-	6,  // 27: orderfill.inbound.v1.InboundService.IngestWebhook:output_type -> orderfill.inbound.v1.IngestWebhookResponse
-	8,  // 28: orderfill.inbound.v1.InboundService.GetSettings:output_type -> orderfill.inbound.v1.GetSettingsResponse
-	10, // 29: orderfill.inbound.v1.InboundService.UpdateSettings:output_type -> orderfill.inbound.v1.UpdateSettingsResponse
-	12, // 30: orderfill.inbound.v1.InboundService.GetCompanyInbound:output_type -> orderfill.inbound.v1.GetCompanyInboundResponse
-	14, // 31: orderfill.inbound.v1.InboundService.UpdateCompanyInbound:output_type -> orderfill.inbound.v1.UpdateCompanyInboundResponse
-	16, // 32: orderfill.inbound.v1.InboundService.ListMessages:output_type -> orderfill.inbound.v1.ListMessagesResponse
-	18, // 33: orderfill.inbound.v1.InboundService.GetMessage:output_type -> orderfill.inbound.v1.GetMessageResponse
-	20, // 34: orderfill.inbound.v1.InboundService.GetMessageFile:output_type -> orderfill.inbound.v1.GetMessageFileResponse
-	22, // 35: orderfill.inbound.v1.InboundService.ListDeliveries:output_type -> orderfill.inbound.v1.ListDeliveriesResponse
-	27, // [27:36] is the sub-list for method output_type
-	18, // [18:27] is the sub-list for method input_type
-	18, // [18:18] is the sub-list for extension type_name
-	18, // [18:18] is the sub-list for extension extendee
-	0,  // [0:18] is the sub-list for field type_name
+	0,  // 3: orderfill.inbound.v1.IngestWebhookResponse.status:type_name -> orderfill.inbound.v1.InboundMessageStatus
+	1,  // 4: orderfill.inbound.v1.GetSettingsResponse.settings:type_name -> orderfill.inbound.v1.InboundSettings
+	23, // 5: orderfill.inbound.v1.UpdateSettingsRequest.meta:type_name -> orderfill.common.v1.RequestMeta
+	1,  // 6: orderfill.inbound.v1.UpdateSettingsResponse.settings:type_name -> orderfill.inbound.v1.InboundSettings
+	23, // 7: orderfill.inbound.v1.GetCompanyInboundRequest.meta:type_name -> orderfill.common.v1.RequestMeta
+	2,  // 8: orderfill.inbound.v1.GetCompanyInboundResponse.company_inbound:type_name -> orderfill.inbound.v1.CompanyInbound
+	23, // 9: orderfill.inbound.v1.UpdateCompanyInboundRequest.meta:type_name -> orderfill.common.v1.RequestMeta
+	2,  // 10: orderfill.inbound.v1.UpdateCompanyInboundResponse.company_inbound:type_name -> orderfill.inbound.v1.CompanyInbound
+	23, // 11: orderfill.inbound.v1.ListMessagesRequest.meta:type_name -> orderfill.common.v1.RequestMeta
+	4,  // 12: orderfill.inbound.v1.ListMessagesResponse.messages:type_name -> orderfill.inbound.v1.InboundMessageSummary
+	23, // 13: orderfill.inbound.v1.GetMessageRequest.meta:type_name -> orderfill.common.v1.RequestMeta
+	4,  // 14: orderfill.inbound.v1.GetMessageResponse.message:type_name -> orderfill.inbound.v1.InboundMessageSummary
+	23, // 15: orderfill.inbound.v1.GetMessageFileRequest.meta:type_name -> orderfill.common.v1.RequestMeta
+	3,  // 16: orderfill.inbound.v1.GetMessageFileResponse.attachment:type_name -> orderfill.inbound.v1.InboundAttachment
+	23, // 17: orderfill.inbound.v1.ListDeliveriesRequest.meta:type_name -> orderfill.common.v1.RequestMeta
+	4,  // 18: orderfill.inbound.v1.ListDeliveriesResponse.deliveries:type_name -> orderfill.inbound.v1.InboundMessageSummary
+	5,  // 19: orderfill.inbound.v1.InboundService.IngestWebhook:input_type -> orderfill.inbound.v1.IngestWebhookRequest
+	7,  // 20: orderfill.inbound.v1.InboundService.GetSettings:input_type -> orderfill.inbound.v1.GetSettingsRequest
+	9,  // 21: orderfill.inbound.v1.InboundService.UpdateSettings:input_type -> orderfill.inbound.v1.UpdateSettingsRequest
+	11, // 22: orderfill.inbound.v1.InboundService.GetCompanyInbound:input_type -> orderfill.inbound.v1.GetCompanyInboundRequest
+	13, // 23: orderfill.inbound.v1.InboundService.UpdateCompanyInbound:input_type -> orderfill.inbound.v1.UpdateCompanyInboundRequest
+	15, // 24: orderfill.inbound.v1.InboundService.ListMessages:input_type -> orderfill.inbound.v1.ListMessagesRequest
+	17, // 25: orderfill.inbound.v1.InboundService.GetMessage:input_type -> orderfill.inbound.v1.GetMessageRequest
+	19, // 26: orderfill.inbound.v1.InboundService.GetMessageFile:input_type -> orderfill.inbound.v1.GetMessageFileRequest
+	21, // 27: orderfill.inbound.v1.InboundService.ListDeliveries:input_type -> orderfill.inbound.v1.ListDeliveriesRequest
+	6,  // 28: orderfill.inbound.v1.InboundService.IngestWebhook:output_type -> orderfill.inbound.v1.IngestWebhookResponse
+	8,  // 29: orderfill.inbound.v1.InboundService.GetSettings:output_type -> orderfill.inbound.v1.GetSettingsResponse
+	10, // 30: orderfill.inbound.v1.InboundService.UpdateSettings:output_type -> orderfill.inbound.v1.UpdateSettingsResponse
+	12, // 31: orderfill.inbound.v1.InboundService.GetCompanyInbound:output_type -> orderfill.inbound.v1.GetCompanyInboundResponse
+	14, // 32: orderfill.inbound.v1.InboundService.UpdateCompanyInbound:output_type -> orderfill.inbound.v1.UpdateCompanyInboundResponse
+	16, // 33: orderfill.inbound.v1.InboundService.ListMessages:output_type -> orderfill.inbound.v1.ListMessagesResponse
+	18, // 34: orderfill.inbound.v1.InboundService.GetMessage:output_type -> orderfill.inbound.v1.GetMessageResponse
+	20, // 35: orderfill.inbound.v1.InboundService.GetMessageFile:output_type -> orderfill.inbound.v1.GetMessageFileResponse
+	22, // 36: orderfill.inbound.v1.InboundService.ListDeliveries:output_type -> orderfill.inbound.v1.ListDeliveriesResponse
+	28, // [28:37] is the sub-list for method output_type
+	19, // [19:28] is the sub-list for method input_type
+	19, // [19:19] is the sub-list for extension type_name
+	19, // [19:19] is the sub-list for extension extendee
+	0,  // [0:19] is the sub-list for field type_name
 }
 
 func init() { file_orderfill_inbound_v1_inbound_proto_init() }

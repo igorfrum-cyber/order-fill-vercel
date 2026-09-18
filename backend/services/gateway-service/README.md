@@ -34,6 +34,7 @@ curl http://127.0.0.1:8080/readyz
 - Аудит отдельных административных действий и агрегированный статус инфраструктуры для `platform_admin`.
 - Список администраторов платформы доступен всем `platform_admin`; приглашение и управление дополнительными администраторами доступны только защищённому главному администратору.
 - Просмотр и изменение действующих правил брендов администратором платформы.
+- Приём CloudMailin на `POST /api/v1/inbound/webhook`: Bearer-токен, лимит тела 32 MiB, token-bucket (`INBOUND_WEBHOOK_RPS` / `INBOUND_WEBHOOK_BURST`, ответ 429), best-effort аудит `inbound_webhook_received` / `inbound_rejected`.
 - Просмотр и изменение реквизитов заказа своей компании; скидка хранится отдельно по бренду и валидируется как процент от 0 до 100.
 - CORS, CSRF-проверка POST-запросов (включая public login/invite/passkey), security headers (`Cache-Control: private, no-store`, `Cross-Origin-Opener-Policy`/`Cross-Origin-Resource-Policy: same-origin`) и HTTP-only cookie `order_fill_session`.
 
@@ -167,8 +168,10 @@ gRPC-контракты находятся в [`../../proto/orderfill`](../../pr
 | `FILE_GRPC_ADDR` | `127.0.0.1:9095` | Адрес `file-service`. |
 | `AUDIT_GRPC_ADDR` | `127.0.0.1:9100` | Адрес `audit-service`. |
 | `BRAND_GRPC_ADDR` | `127.0.0.1:9098` | Адрес `brand-service` для страницы правил. |
-| `INBOUND_GRPC_ADDR` | `127.0.0.1:9101` | Читается из окружения; назначение см. config.go. |
-| `INBOUND_WEBHOOK_TOKEN` | `local-dev-inbound-webhook-token` | Читается из окружения; назначение см. config.go. |
+| `INBOUND_GRPC_ADDR` | `127.0.0.1:9101` | Адрес `inbound-service` для webhook и экрана интеграции 1С. |
+| `INBOUND_WEBHOOK_TOKEN` | `local-dev-inbound-webhook-token` | Bearer-секрет CloudMailin для `POST /api/v1/inbound/webhook`; вне local не-default и ≥16 байт. |
+| `INBOUND_WEBHOOK_RPS` | `10` | Скорость token-bucket на webhook; `0` отключает лимитер. |
+| `INBOUND_WEBHOOK_BURST` | `20` | Ёмкость token-bucket; при исчерпании gateway отвечает 429, не 5xx. |
 | `WORKER_TOKEN` | `local-dev-worker-token` | Читается из окружения; назначение см. config.go. |
 | `WORKER_HEALTH_URL` | `http://127.0.0.1:8092/healthz` | HTTP URL document worker для `/api/v1/status`. |
 | `FILE_HEALTH_URL` | `http://127.0.0.1:8086/healthz` | HTTP URL `file-service` для `/api/v1/status`. |

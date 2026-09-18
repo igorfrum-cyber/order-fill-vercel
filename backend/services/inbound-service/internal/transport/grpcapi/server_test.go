@@ -3,6 +3,7 @@ package grpcapi_test
 import (
 	"context"
 	"io"
+	"strings"
 	"testing"
 
 	"google.golang.org/grpc/codes"
@@ -36,7 +37,12 @@ func (s *stubStore) GetCompanyInbound(_ context.Context, companyID string) (doma
 	}
 	return ci, nil
 }
-func (s *stubStore) GetCompanyByAllowedSender(context.Context, string) (domain.CompanyInbound, error) {
+func (s *stubStore) GetCompanyByAllowedSender(_ context.Context, senderEmail string) (domain.CompanyInbound, error) {
+	for _, ci := range s.companies {
+		if strings.EqualFold(ci.SenderEmail, senderEmail) {
+			return ci, nil
+		}
+	}
 	return domain.CompanyInbound{}, domain.ErrNotFound
 }
 func (s *stubStore) UpsertCompanyInbound(_ context.Context, companyID, receiveAddress, senderEmail string, enabled bool) (domain.CompanyInbound, error) {
@@ -147,6 +153,39 @@ func TestIngestWebhookPayloadTooLargeIsInvalidArgument(t *testing.T) {
 	_, err := srv.IngestWebhook(ctx, &inboundv1.IngestWebhookRequest{RawPayload: make([]byte, 32<<20+1)})
 	if status.Code(err) != codes.InvalidArgument {
 		t.Fatalf("got %v, want InvalidArgument for oversized payload", err)
+	}
+}
+
+func TestIngestWebhookUnknownSenderReturnsRejectedStatus(t *testing.T) {
+	t.Parallel()
+	srv, _ := testServer(t)
+	ctx := incomingWorker(t, "worker-token-16b!")
+	resp, err := srv.IngestWebhook(ctx, &inboundv1.IngestWebhookRequest{
+		RawPayload: []byte(`{"message_id":"m-unknown","envelope":{"from":"nobody@x.io","to":"in@x.io"}}`),
+	})
+	if err != nil {
+		t.Fatalf("unknown sender must still ingest: %v", err)
+	}
+	if resp.GetStatus() != inboundv1.InboundMessageStatus_INBOUND_MESSAGE_STATUS_ERROR_UNKNOWN_ADDRESS {
+		t.Fatalf("status=%v", resp.GetStatus())
+	}
+}
+
+func TestIngestWebhookReceivedReturnsCompany(t *testing.T) {
+	t.Parallel()
+	srv, _ := testServer(t)
+	ctx := incomingWorker(t, "worker-token-16b!")
+	resp, err := srv.IngestWebhook(ctx, &inboundv1.IngestWebhookRequest{
+		RawPayload: []byte(`{"message_id":"m-ok","envelope":{"from":"1c@co1.ru","to":"in@x.io"},"attachments":[{"file_name":"sales.xlsx","content":"ZGF0YQ=="}]}`),
+	})
+	if err != nil {
+		t.Fatalf("ingest: %v", err)
+	}
+	if resp.GetStatus() != inboundv1.InboundMessageStatus_INBOUND_MESSAGE_STATUS_RECEIVED {
+		t.Fatalf("status=%v", resp.GetStatus())
+	}
+	if resp.GetCompanyId() != "co-1" {
+		t.Fatalf("company_id=%q", resp.GetCompanyId())
 	}
 }
 

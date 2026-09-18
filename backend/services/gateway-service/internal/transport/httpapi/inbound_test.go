@@ -2,19 +2,79 @@ package httpapi
 
 import (
 	"context"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"strings"
+	"sync"
 	"testing"
 
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/metadata"
+	"google.golang.org/grpc/status"
 
 	"order-fill/backend/pkg/grpcutil"
+	auditv1 "order-fill/backend/proto/gen/go/orderfill/audit/v1"
 	inboundv1 "order-fill/backend/proto/gen/go/orderfill/inbound/v1"
 	"order-fill/backend/services/gateway-service/internal/clients"
 	"order-fill/backend/services/gateway-service/internal/config"
 )
+
+type recordingAudit struct {
+	auditv1.AuditServiceClient
+	mu       sync.Mutex
+	requests []*auditv1.RecordRequest
+	err      error
+}
+
+func (c *recordingAudit) Record(_ context.Context, req *auditv1.RecordRequest, _ ...grpc.CallOption) (*auditv1.RecordResponse, error) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.requests = append(c.requests, req)
+	if c.err != nil {
+		return nil, c.err
+	}
+	return &auditv1.RecordResponse{Id: "evt-1"}, nil
+}
+
+func (c *recordingAudit) lastType() string {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	if len(c.requests) == 0 {
+		return ""
+	}
+	return c.requests[len(c.requests)-1].GetType()
+}
+
+func (c *recordingAudit) lastCompany() string {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	if len(c.requests) == 0 || c.requests[len(c.requests)-1].GetMeta() == nil {
+		return ""
+	}
+	return c.requests[len(c.requests)-1].GetMeta().GetCompanyId()
+}
+
+func (c *recordingAudit) called() bool {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	return len(c.requests) > 0
+}
+
+type ingestResultClient struct {
+	inboundv1.InboundServiceClient
+	status    inboundv1.InboundMessageStatus
+	companyID string
+	err       error
+}
+
+func (c ingestResultClient) IngestWebhook(context.Context, *inboundv1.IngestWebhookRequest, ...grpc.CallOption) (*inboundv1.IngestWebhookResponse, error) {
+	if c.err != nil {
+		return nil, c.err
+	}
+	return &inboundv1.IngestWebhookResponse{CompanyId: c.companyID, Status: c.status}, nil
+}
 
 type inboundClient struct{ inboundv1.InboundServiceClient }
 
@@ -124,6 +184,29 @@ func TestInboundWebhookGateAcceptsToken(t *testing.T) {
 	h.ServeHTTP(rec, req)
 	if rec.Code != http.StatusOK {
 		t.Fatalf("status=%d body=%s", rec.Code, rec.Body.String())
+	}
+}
+
+func TestInboundWebhookRateLimitReturns429(t *testing.T) {
+	t.Parallel()
+	cfg := configForTest()
+	cfg.InboundWebhookRPS = 1
+	cfg.InboundWebhookBurst = 1
+	h := New(cfg, clients.Clients{Inbound: inboundClient{}})
+	post := func() *httptest.ResponseRecorder {
+		req := httptest.NewRequest(http.MethodPost, "/api/v1/inbound/webhook", strings.NewReader(`{"message_id":"abc"}`))
+		req.Header.Set("Authorization", "Bearer webhook-token")
+		rec := httptest.NewRecorder()
+		h.ServeHTTP(rec, req)
+		return rec
+	}
+	first := post()
+	if first.Code != http.StatusOK {
+		t.Fatalf("first status=%d body=%s", first.Code, first.Body.String())
+	}
+	second := post()
+	if second.Code != http.StatusTooManyRequests {
+		t.Fatalf("second status=%d want 429 body=%s", second.Code, second.Body.String())
 	}
 }
 
@@ -267,6 +350,26 @@ func TestInboundCompanyUpdateOwner(t *testing.T) {
 	}
 }
 
+func TestInboundCompanyUpdateRecordsAudit(t *testing.T) {
+	t.Parallel()
+	audit := &recordingAudit{}
+	api := &API{Clients: clients.Clients{Inbound: inboundClient{}, Audit: audit}}
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/inbound/companies/c1", strings.NewReader(`{"sender_email":"1c@x.ru","enabled":true}`))
+	req.SetPathValue("company_id", "c1")
+	req = req.WithContext(withUser(t.Context(), User{ID: "u1", Login: "owner", Role: "company_owner", CompanyID: "c1"}))
+	rec := httptest.NewRecorder()
+	api.updateInboundCompany(rec, req)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status=%d body=%s", rec.Code, rec.Body.String())
+	}
+	if got := audit.lastType(); got != "inbound_address_updated" {
+		t.Fatalf("audit type=%q", got)
+	}
+	if got := audit.lastCompany(); got != "c1" {
+		t.Fatalf("audit company=%q", got)
+	}
+}
+
 func TestInboundMessagesCompanyAdmin(t *testing.T) {
 	t.Parallel()
 	api := &API{Clients: clients.Clients{Inbound: inboundClient{}}}
@@ -399,4 +502,72 @@ func TestInboundUpdateCompanyForwardsSenderEmail(t *testing.T) {
 
 func configForTest() config.Config {
 	return config.Config{AllowedOrigins: "*", InboundWebhook: "webhook-token"}
+}
+
+func webhookRequest() *http.Request {
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/inbound/webhook", strings.NewReader(`{"message_id":"abc"}`))
+	req.Header.Set("Authorization", "Bearer webhook-token")
+	return req
+}
+
+func TestInboundWebhookRecordsReceivedAudit(t *testing.T) {
+	t.Parallel()
+	audit := &recordingAudit{err: errors.New("audit down")}
+	h := New(configForTest(), clients.Clients{
+		Inbound: ingestResultClient{
+			status:    inboundv1.InboundMessageStatus_INBOUND_MESSAGE_STATUS_RECEIVED,
+			companyID: "c1",
+		},
+		Audit: audit,
+	})
+	rec := httptest.NewRecorder()
+	h.ServeHTTP(rec, webhookRequest())
+	if rec.Code != http.StatusOK {
+		t.Fatalf("ingest must succeed when audit fails, status=%d body=%s", rec.Code, rec.Body.String())
+	}
+	if audit.lastType() != "inbound_webhook_received" {
+		t.Fatalf("audit type=%q", audit.lastType())
+	}
+	if audit.lastCompany() != "c1" {
+		t.Fatalf("audit company=%q", audit.lastCompany())
+	}
+}
+
+func TestInboundWebhookUnknownSenderRecordsRejectedAudit(t *testing.T) {
+	t.Parallel()
+	audit := &recordingAudit{err: errors.New("audit down")}
+	h := New(configForTest(), clients.Clients{
+		Inbound: ingestResultClient{
+			status: inboundv1.InboundMessageStatus_INBOUND_MESSAGE_STATUS_ERROR_UNKNOWN_ADDRESS,
+		},
+		Audit: audit,
+	})
+	rec := httptest.NewRecorder()
+	h.ServeHTTP(rec, webhookRequest())
+	if rec.Code != http.StatusOK {
+		t.Fatalf("unknown sender is still 200, status=%d body=%s", rec.Code, rec.Body.String())
+	}
+	if audit.lastType() != "inbound_rejected" {
+		t.Fatalf("audit type=%q", audit.lastType())
+	}
+}
+
+func TestInboundWebhookInvalidPayloadRecordsRejectedAudit(t *testing.T) {
+	t.Parallel()
+	audit := &recordingAudit{err: errors.New("audit down")}
+	h := New(configForTest(), clients.Clients{
+		Inbound: ingestResultClient{err: status.Error(codes.InvalidArgument, "invalid payload")},
+		Audit:   audit,
+	})
+	rec := httptest.NewRecorder()
+	h.ServeHTTP(rec, webhookRequest())
+	if rec.Code != http.StatusBadRequest {
+		t.Fatalf("status=%d want 400 body=%s", rec.Code, rec.Body.String())
+	}
+	if rec.Code >= 500 {
+		t.Fatalf("audit error must not 5xx poison, status=%d", rec.Code)
+	}
+	if !audit.called() || audit.lastType() != "inbound_rejected" {
+		t.Fatalf("audit type=%q called=%v", audit.lastType(), audit.called())
+	}
 }

@@ -1321,7 +1321,7 @@ paths:
       operationId: inboundWebhook
       tags: [inbound]
       summary: Accept a CloudMailin inbound mail delivery
-      description: Server-to-server webhook protected by a shared bearer token. Returns 2xx only after durable storage; non-2xx causes CloudMailin to retry.
+      description: Server-to-server webhook protected by a shared bearer token. Returns 2xx only after durable storage; non-2xx causes CloudMailin to retry. Excess deliveries are rejected with 429 so retries cannot flood the ingest path.
       security:
         - inboundWebhookToken: []
       requestBody:
@@ -1348,6 +1348,8 @@ paths:
           $ref: "#/components/responses/Unauthorized"
         "413":
           description: Payload larger than the allowed limit.
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
   /api/v1/inbound/settings:
     get:
       operationId: inboundSettings
@@ -1627,6 +1629,12 @@ components:
             $ref: "#/components/schemas/ApiError"
     Conflict:
       description: Resource already exists.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ApiError"
+    TooManyRequests:
+      description: Client sent too many requests.
       content:
         application/json:
           schema:

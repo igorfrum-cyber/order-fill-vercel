@@ -14,34 +14,36 @@ import (
 )
 
 type API struct {
-	Clients             clients.Clients
-	HTTP                *http.Client
-	WorkerHealth        string
-	FileHealth          string
-	PostgresAddr        string
-	RedisAddr           string
-	InboundGRPC         string
-	AllowedOrigins      []string
-	CookieSecure        bool
-	CookieDomain        string
-	WorkerToken         string
-	InboundWebhookToken string
+	Clients               clients.Clients
+	HTTP                  *http.Client
+	WorkerHealth          string
+	FileHealth            string
+	PostgresAddr          string
+	RedisAddr             string
+	InboundGRPC           string
+	AllowedOrigins        []string
+	CookieSecure          bool
+	CookieDomain          string
+	WorkerToken           string
+	InboundWebhookToken   string
+	inboundWebhookLimiter *webhookLimiter
 }
 
 func New(cfg config.Config, c clients.Clients) http.Handler {
 	api := &API{
-		Clients:             c,
-		HTTP:                &http.Client{Timeout: 2 * time.Second},
-		WorkerHealth:        cfg.WorkerHealth,
-		FileHealth:          cfg.FileHealth,
-		PostgresAddr:        cfg.PostgresAddr,
-		RedisAddr:           cfg.RedisAddr,
-		InboundGRPC:         cfg.InboundGRPC,
-		AllowedOrigins:      ParseAllowedOrigins(cfg.AllowedOrigins),
-		CookieSecure:        cfg.CookieSecure,
-		CookieDomain:        cfg.CookieDomain,
-		WorkerToken:         cfg.WorkerToken,
-		InboundWebhookToken: cfg.InboundWebhook,
+		Clients:               c,
+		HTTP:                  &http.Client{Timeout: 2 * time.Second},
+		WorkerHealth:          cfg.WorkerHealth,
+		FileHealth:            cfg.FileHealth,
+		PostgresAddr:          cfg.PostgresAddr,
+		RedisAddr:             cfg.RedisAddr,
+		InboundGRPC:           cfg.InboundGRPC,
+		AllowedOrigins:        ParseAllowedOrigins(cfg.AllowedOrigins),
+		CookieSecure:          cfg.CookieSecure,
+		CookieDomain:          cfg.CookieDomain,
+		WorkerToken:           cfg.WorkerToken,
+		InboundWebhookToken:   cfg.InboundWebhook,
+		inboundWebhookLimiter: newWebhookLimiter(cfg.InboundWebhookRPS, cfg.InboundWebhookBurst),
 	}
 	mux := http.NewServeMux()
 	mux.Handle("GET /healthz", healthz.Live())

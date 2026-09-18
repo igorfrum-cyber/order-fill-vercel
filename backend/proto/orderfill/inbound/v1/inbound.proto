@@ -89,7 +89,14 @@ message IngestWebhookRequest {
   bytes raw_payload = 2;
 }
 
-message IngestWebhookResponse {}
+// IngestWebhookResponse reports durable ingest outcome so gateway can audit
+// without putting audit-service on the inbound hot path. Duplicate deliveries
+// leave status unspecified.
+message IngestWebhookResponse {
+  string company_id = 1;
+  InboundMessageStatus status = 2;
+  string error_code = 3;
+}
 
 message GetSettingsRequest {}
 

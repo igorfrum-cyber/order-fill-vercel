@@ -320,6 +320,8 @@ func publicErrorMessage(code, message string) string {
 		return "Не нашли то, что искали."
 	case "conflict":
 		return "Такая запись уже есть."
+	case "too_many_requests":
+		return "Слишком много запросов."
 	}
 	if message != "" {
 		return message

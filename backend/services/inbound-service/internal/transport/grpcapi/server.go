@@ -77,7 +77,8 @@ func (s *Server) IngestWebhook(ctx context.Context, req *inboundv1.IngestWebhook
 	if len(req.GetRawPayload()) == 0 {
 		return nil, status.Error(codes.InvalidArgument, "raw payload is required")
 	}
-	if err := s.svc.IngestWebhook(ctx, req.GetRawPayload()); err != nil {
+	msg, err := s.svc.IngestWebhook(ctx, req.GetRawPayload())
+	if err != nil {
 		switch {
 		case errors.Is(err, domain.ErrPayloadTooLarge):
 			return nil, status.Error(codes.InvalidArgument, "payload too large")
@@ -87,7 +88,11 @@ func (s *Server) IngestWebhook(ctx context.Context, req *inboundv1.IngestWebhook
 			return nil, status.Error(codes.Internal, "ingest failed")
 		}
 	}
-	return &inboundv1.IngestWebhookResponse{}, nil
+	return &inboundv1.IngestWebhookResponse{
+		CompanyId: msg.CompanyID,
+		Status:    protoStatus(msg.Status),
+		ErrorCode: msg.ErrorCode,
+	}, nil
 }
 
 func (s *Server) GetSettings(ctx context.Context, _ *inboundv1.GetSettingsRequest) (*inboundv1.GetSettingsResponse, error) {

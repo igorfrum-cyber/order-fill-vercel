@@ -11,7 +11,7 @@
 - запускает встроенные SQL-миграции при старте с PostgreSQL;
 - предоставляет отдельные liveness- и readiness-проверки по HTTP.
 
-За формирование и отправку событий отвечает вызывающая сторона. В текущей системе `gateway-service` вызывает `Record`, в частности для административных действий. `ListEvents` проверяет роль через `identity-service`. Сервис не проверяет формат `payload_json` и не изменяет данные других сервисов.
+За формирование и отправку событий отвечает вызывающая сторона. В текущей системе `gateway-service` вызывает `Record` для административных действий и inbound (`inbound_webhook_received`, `inbound_rejected`, `inbound_address_updated`); webhook-аудит best-effort и не меняет ответ CloudMailin. `ListEvents` проверяет роль через `identity-service`. Сервис не проверяет формат `payload_json` и не изменяет данные других сервисов.
 
 ## Архитектура и структура
 

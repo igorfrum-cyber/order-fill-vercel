@@ -5,6 +5,8 @@ import (
 	"io"
 	"net/http"
 	"strings"
+	"sync"
+	"time"
 
 	"order-fill/backend/pkg/grpcutil"
 	commonv1 "order-fill/backend/proto/gen/go/orderfill/common/v1"
@@ -68,7 +70,42 @@ func (a *API) inboundWebhookAuthorized(r *http.Request) bool {
 	return subtle.ConstantTimeCompare([]byte(provided), []byte(expected)) == 1
 }
 
+type webhookLimiter struct {
+	mu     sync.Mutex
+	tokens float64
+	burst  float64
+	rps    float64
+	last   time.Time
+}
+
+func newWebhookLimiter(rps float64, burst int) *webhookLimiter {
+	if rps <= 0 || burst <= 0 {
+		return nil
+	}
+	return &webhookLimiter{tokens: float64(burst), burst: float64(burst), rps: rps, last: time.Now()}
+}
+
+func (l *webhookLimiter) Allow() bool {
+	if l == nil {
+		return true
+	}
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	now := time.Now()
+	l.tokens = min(l.burst, l.tokens+now.Sub(l.last).Seconds()*l.rps)
+	l.last = now
+	if l.tokens < 1 {
+		return false
+	}
+	l.tokens--
+	return true
+}
+
 func (a *API) inboundWebhook(w http.ResponseWriter, r *http.Request) {
+	if !a.inboundWebhookLimiter.Allow() {
+		writeError(w, http.StatusTooManyRequests, "too_many_requests", "too many requests")
+		return
+	}
 	body, err := io.ReadAll(http.MaxBytesReader(w, r.Body, inboundWebhookLimit))
 	if err != nil {
 		writeError(w, http.StatusBadRequest, "bad_request", "invalid body")
@@ -79,14 +116,16 @@ func (a *API) inboundWebhook(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	ctx := grpcutil.WithWorkerToken(r.Context(), a.WorkerToken)
-	_, err = a.Clients.Inbound.IngestWebhook(ctx, &inboundv1.IngestWebhookRequest{
+	resp, err := a.Clients.Inbound.IngestWebhook(ctx, &inboundv1.IngestWebhookRequest{
 		Meta:       &commonv1.RequestMeta{RequestId: grpcutil.NewID()},
 		RawPayload: body,
 	})
 	if err != nil {
+		a.recordAudit(r.Context(), User{}, "inbound_rejected", "", "")
 		writeGRPCError(w, "inbound_ingest_failed", err)
 		return
 	}
+	a.recordInboundWebhookAudit(r, resp)
 	writeJSON(w, http.StatusOK, map[string]bool{"ok": true})
 }
 
@@ -171,6 +210,7 @@ func (a *API) updateInboundCompany(w http.ResponseWriter, r *http.Request) {
 		writeGRPCError(w, "inbound_company_update_failed", err)
 		return
 	}
+	a.recordAudit(r.Context(), user, "inbound_address_updated", companyID, user.CompanyName)
 	writeJSON(w, http.StatusOK, presentInboundCompany(resp.GetCompanyInbound()))
 }
 
@@ -266,6 +306,20 @@ func (a *API) inboundDeliveries(w http.ResponseWriter, r *http.Request) {
 		deliveries = append(deliveries, item)
 	}
 	writeJSON(w, http.StatusOK, map[string]any{"deliveries": deliveries})
+}
+
+func (a *API) recordInboundWebhookAudit(r *http.Request, resp *inboundv1.IngestWebhookResponse) {
+	if resp == nil {
+		return
+	}
+	switch resp.GetStatus() {
+	case inboundv1.InboundMessageStatus_INBOUND_MESSAGE_STATUS_RECEIVED, inboundv1.InboundMessageStatus_INBOUND_MESSAGE_STATUS_PROCESSED:
+		a.recordAudit(r.Context(), User{}, "inbound_webhook_received", resp.GetCompanyId(), "")
+	case inboundv1.InboundMessageStatus_INBOUND_MESSAGE_STATUS_UNSPECIFIED:
+		return
+	default:
+		a.recordAudit(r.Context(), User{}, "inbound_rejected", resp.GetCompanyId(), "")
+	}
 }
 
 func (a *API) inboundCompanyReadAllowed(user User, companyID string) bool {

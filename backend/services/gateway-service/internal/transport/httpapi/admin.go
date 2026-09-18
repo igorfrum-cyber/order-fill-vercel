@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"io"
+	"log/slog"
 	"net/http"
 	"strings"
 	"time"
@@ -476,7 +477,10 @@ func (a *API) recordAudit(ctx context.Context, user User, action, companyID, com
 	if companyID != "" {
 		meta.CompanyId = companyID
 	}
-	_, _ = a.Clients.Audit.Record(ctx, &auditv1.RecordRequest{Meta: meta, Type: action, PayloadJson: string(payload)})
+	_, err := a.Clients.Audit.Record(ctx, &auditv1.RecordRequest{Meta: meta, Type: action, PayloadJson: string(payload)})
+	if err != nil {
+		slog.Warn("audit record failed", "type", action, "err", err)
+	}
 }
 
 func presentAudit(event *auditv1.Event) map[string]any {

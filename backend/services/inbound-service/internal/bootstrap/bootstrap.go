@@ -37,8 +37,6 @@ func Run(ctx context.Context, cfg config.Config, log *slog.Logger) error {
 		return err
 	}
 
-	var store inbound.Store
-	var readyCheck func(context.Context) error
 	pool, err := postgres.OpenPool(ctx, cfg.DatabaseURL)
 	if err != nil {
 		return err
@@ -47,17 +45,11 @@ func Run(ctx context.Context, cfg config.Config, log *slog.Logger) error {
 	if err := migrate.Up(ctx, pool); err != nil {
 		return err
 	}
-	store = postgres.New(pool)
-	readyCheck = pool.Ping
 	log.Info("inbound-service using postgres")
 
-	if store == nil {
-		return fmt.Errorf("inbound store is required")
-	}
-
-	svc := inbound.New(store, objects)
+	svc := inbound.New(postgres.New(pool), objects)
 	health := http.NewServeMux()
 	health.Handle("GET /healthz", healthz.Live())
-	health.Handle("GET /readyz", healthz.Ready(readyCheck))
+	health.Handle("GET /readyz", healthz.Ready(pool.Ping))
 	return grpcutil.Serve(ctx, cfg.GRPCAddr, cfg.HealthAddr, grpcapi.New(grpcapi.NewServer(svc, cfg.WorkerToken)), health)
 }

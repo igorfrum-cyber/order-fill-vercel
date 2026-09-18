@@ -127,7 +127,7 @@ message, а не из identity-service.
 
 ### inbound-service
 
-Изолированный контур приёма входящей почты 1С: CloudMailin webhook → gateway → `IngestWebhook`. gRPC `:9101`, собственный PostgreSQL и отдельный S3-бакет `order-fill-inbound` с изолированными credentials. Не зависит от Redis, job/file/matching/calculation. Сопоставление компании идёт по `envelope.from` / `sender_email` (один ящик 1С на компанию). Не создаёт заказы и jobs.
+Изолированный контур приёма входящей почты 1С: CloudMailin webhook → gateway → `IngestWebhook`. gRPC `:9101`, собственный PostgreSQL и отдельный S3-бакет `order-fill-inbound` с изолированными credentials. Не зависит от Redis, job/file/matching/calculation. Сопоставление компании идёт по `envelope.from` / `sender_email` (один ящик 1С на компанию). Не создаёт заказы и jobs. События аудита пишет gateway после ответа inbound, не сам контур приёма.
 
 ## Хранилища
 
