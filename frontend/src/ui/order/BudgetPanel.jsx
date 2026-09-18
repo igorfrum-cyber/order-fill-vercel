@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
-import { budgetTargetValue, discountValue, planBudget } from "../../features/order/budgetPlanner.js";
-import { christinaLineGroups } from "../../features/order/christinaLines.js";
-import { budgetPatches, budgetRowsFromReport } from "../../features/order/budgetWorkflow.js";
+import { planOrderBudget } from "../../api/budget.js";
+import { budgetTargetValue, discountValue } from "../../features/order/budgetInput.js";
+import { budgetPatches, budgetRequestRows } from "../../features/order/budgetWorkflow.js";
 import { GhostButton, Modal } from "../widgets.jsx";
 
 const money = (value) => Number(value || 0).toLocaleString("ru-RU", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -20,13 +20,11 @@ export function BudgetPanel({ brand, deliveryWeeks, rows, edits, onEdit }) {
   const [undo, setUndo] = useState(null);
   const [allowOverSix, setAllowOverSix] = useState(false);
   const [allowBelowOne, setAllowBelowOne] = useState(false);
-  const input = useMemo(
-    () => budgetRowsFromReport(rows, edits, { brand, deliveryWeeks, discount: appliedDiscount }),
-    [appliedDiscount, brand, deliveryWeeks, edits, rows],
-  );
+  const input = useMemo(() => budgetRequestRows(rows, edits), [edits, rows]);
   if (!input.length) return null;
 
-  const total = input.reduce((sum, row) => sum + row.price * row.quantity, 0);
+  const factor = 1 - (appliedDiscount || 0) / 100;
+  const total = input.reduce((sum, row) => sum + (Math.round(row.base_price * factor * 100) / 100) * row.quantity, 0);
   const changed = plan?.rows.filter((row) => row.quantity !== row.before) || [];
 
   function resetPreview() {
@@ -38,12 +36,19 @@ export function BudgetPanel({ brand, deliveryWeeks, rows, edits, onEdit }) {
     return pricingMode === "gross" ? discountValue(discount) : 0;
   }
 
-  function calculate() {
+  async function calculate() {
     try {
       const value = budgetTargetValue(target);
       const nextDiscount = currentDraftDiscount();
-      const pricedRows = budgetRowsFromReport(rows, edits, { brand, deliveryWeeks, discount: nextDiscount });
-      const next = planBudget(pricedRows, value, { allowOverSix, allowBelowOne });
+      const next = await planOrderBudget({
+        brand,
+        target: value,
+        discount: nextDiscount,
+        delivery_weeks: deliveryWeeks || 0,
+        allow_over_six: allowOverSix,
+        allow_below_one: allowBelowOne,
+        rows: budgetRequestRows(rows, edits),
+      });
       setPlan({ ...next, discount: nextDiscount });
       setError(next.reason ? budgetReason(next.reason) : "");
       setInputError("");
@@ -212,8 +217,8 @@ export function BudgetPanel({ brand, deliveryWeeks, rows, edits, onEdit }) {
                           <tr key={step.id} className="border-t border-[var(--color-line-soft)]">
                             <td className="py-1 pr-4 text-[var(--color-ink)]">{step.name}</td>
                             <td className="py-1 pr-4 font-mono">{step.sets}</td>
-                            <td className="py-1 pr-4 font-mono">{money(step.savedCents / 100)}</td>
-                            <td className="py-1 font-mono">{money(step.addedCents / 100)}</td>
+                            <td className="py-1 pr-4 font-mono">{money(step.saved)}</td>
+                            <td className="py-1 font-mono">{money(step.added)}</td>
                           </tr>
                         ))}
                       </tbody>
@@ -222,7 +227,7 @@ export function BudgetPanel({ brand, deliveryWeeks, rows, edits, onEdit }) {
                 </details>
               ) : null}
               {(() => {
-                const lines = christinaLineGroups(plan.rows || []);
+                const lines = plan.lineGroups || [];
                 if (!lines.length) return null;
                 return (
                   <details className="mt-2 rounded-xl border border-[var(--color-line)] bg-[var(--color-surface)] px-4 py-3">
@@ -244,8 +249,8 @@ export function BudgetPanel({ brand, deliveryWeeks, rows, edits, onEdit }) {
                             <tr key={l.id} className="border-t border-[var(--color-line-soft)]">
                               <td className="py-1 pr-4 text-[var(--color-ink)]">{l.name}</td>
                               <td className="py-1 pr-4 font-mono">{l.valid ? l.sets : "Состав не подтверждён"}</td>
-                              <td className="py-1 pr-4 font-mono">{money(l.savingCents / 100)}</td>
-                              <td className="py-1 font-mono">{money(l.netCents / 100)}</td>
+                              <td className="py-1 pr-4 font-mono">{money(l.saving)}</td>
+                              <td className="py-1 font-mono">{money(l.net)}</td>
                             </tr>
                           ))}
                         </tbody>

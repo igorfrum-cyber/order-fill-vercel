@@ -77,6 +77,7 @@ func New(cfg config.Config, c clients.Clients) http.Handler {
 	mux.HandleFunc("GET /api/v1/jobs/{job_id}/files/{file_id}/preview", api.previewMeta)
 	mux.HandleFunc("GET /api/v1/jobs/{job_id}/files/{file_id}/preview/window", api.previewWindow)
 	mux.HandleFunc("GET /api/v1/jobs/{job_id}/files/{file_id}/preview/find", api.previewFind)
+	mux.HandleFunc("POST /api/v1/order/budget-plan", api.planOrderBudget)
 	mux.HandleFunc("GET /api/v1/jobs", api.listJobs)
 	mux.HandleFunc("GET /api/v1/companies", api.listCompanies)
 	mux.HandleFunc("GET /api/v1/brand-rules", api.listBrandRules)

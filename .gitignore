@@ -27,6 +27,7 @@ __pycache__/
 !.cursor/rules/docs-sync.mdc
 !.cursor/rules/order-fill-workflow.mdc
 !.cursor/rules/ponytail.mdc
+!.cursor/rules/ai-exploratory-qa.mdc
 !.cursor/skills/
 !.cursor/skills/order-fill-docs/
 !.cursor/skills/order-fill-docs/**
@@ -40,6 +41,10 @@ __pycache__/
 playwright-report/
 test-results/
 blob-report/
+qa/screenshots/*
+!qa/screenshots/.gitkeep
+qa/artifacts/**
+!qa/artifacts/.gitkeep
 .cursorrules
 .cursorignore
 .agents/

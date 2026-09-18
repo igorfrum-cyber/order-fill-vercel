@@ -6,7 +6,8 @@ const baseURL = `http://127.0.0.1:${port}`;
 
 export default defineConfig({
   testDir: "./e2e",
-  testIgnore: "**/*.real.spec.js",
+  testMatch: "**/*.spec.js",
+  testIgnore: ["**/*.real.spec.js", "**/*.smoke.spec.js"],
   fullyParallel: ci,
   workers: ci ? undefined : 1,
   forbidOnly: ci,

@@ -22,5 +22,6 @@
 
 - [Техническое задание](./TECHNICAL_SPEC.md)
 - [Историческое поведение frontend до backend v2](./current-behavior.md)
+- [QA и AI exploratory](../qa/README.md)
 
 Локальный рантайм: frontend → `gateway-service` → gRPC-сервисы в `backend/`. Excel считает `document-worker`.

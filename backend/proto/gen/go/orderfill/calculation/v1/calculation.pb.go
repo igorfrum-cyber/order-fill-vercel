@@ -1126,31 +1126,113 @@ func (x *ValidateManualEditsResponse) GetBlockingRowIds() []string {
 	return nil
 }
 
-type BudgetRow struct {
+// ChristinaLine is the PROFF product line a budget row belongs to. required is
+// the full article list from the blank, so the planner can tell whether a line
+// is complete.
+type ChristinaLine struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	Key           string                 `protobuf:"bytes,1,opt,name=key,proto3" json:"key,omitempty"`
+	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
 	Name          string                 `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
-	Category      string                 `protobuf:"bytes,3,opt,name=category,proto3" json:"category,omitempty"`
-	Quantity      float64                `protobuf:"fixed64,4,opt,name=quantity,proto3" json:"quantity,omitempty"`
-	Price         float64                `protobuf:"fixed64,5,opt,name=price,proto3" json:"price,omitempty"`
-	Demand        float64                `protobuf:"fixed64,6,opt,name=demand,proto3" json:"demand,omitempty"`
-	Delivery      float64                `protobuf:"fixed64,7,opt,name=delivery,proto3" json:"delivery,omitempty"`
-	Stock         float64                `protobuf:"fixed64,8,opt,name=stock,proto3" json:"stock,omitempty"`
-	Transit       float64                `protobuf:"fixed64,9,opt,name=transit,proto3" json:"transit,omitempty"`
-	Outbound      float64                `protobuf:"fixed64,10,opt,name=outbound,proto3" json:"outbound,omitempty"`
-	Unit          float64                `protobuf:"fixed64,11,opt,name=unit,proto3" json:"unit,omitempty"`
-	Step          float64                `protobuf:"fixed64,12,opt,name=step,proto3" json:"step,omitempty"`
-	Minimum       float64                `protobuf:"fixed64,13,opt,name=minimum,proto3" json:"minimum,omitempty"`
-	Locked        bool                   `protobuf:"varint,14,opt,name=locked,proto3" json:"locked,omitempty"`
-	Excluded      bool                   `protobuf:"varint,15,opt,name=excluded,proto3" json:"excluded,omitempty"`
-	Unsafe        bool                   `protobuf:"varint,16,opt,name=unsafe,proto3" json:"unsafe,omitempty"`
+	Article       string                 `protobuf:"bytes,3,opt,name=article,proto3" json:"article,omitempty"`
+	Required      []string               `protobuf:"bytes,4,rep,name=required,proto3" json:"required,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ChristinaLine) Reset() {
+	*x = ChristinaLine{}
+	mi := &file_orderfill_calculation_v1_calculation_proto_msgTypes[14]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ChristinaLine) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ChristinaLine) ProtoMessage() {}
+
+func (x *ChristinaLine) ProtoReflect() protoreflect.Message {
+	mi := &file_orderfill_calculation_v1_calculation_proto_msgTypes[14]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ChristinaLine.ProtoReflect.Descriptor instead.
+func (*ChristinaLine) Descriptor() ([]byte, []int) {
+	return file_orderfill_calculation_v1_calculation_proto_rawDescGZIP(), []int{14}
+}
+
+func (x *ChristinaLine) GetId() string {
+	if x != nil {
+		return x.Id
+	}
+	return ""
+}
+
+func (x *ChristinaLine) GetName() string {
+	if x != nil {
+		return x.Name
+	}
+	return ""
+}
+
+func (x *ChristinaLine) GetArticle() string {
+	if x != nil {
+		return x.Article
+	}
+	return ""
+}
+
+func (x *ChristinaLine) GetRequired() []string {
+	if x != nil {
+		return x.Required
+	}
+	return nil
+}
+
+type BudgetRow struct {
+	state    protoimpl.MessageState `protogen:"open.v1"`
+	Key      string                 `protobuf:"bytes,1,opt,name=key,proto3" json:"key,omitempty"`
+	Name     string                 `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
+	Category string                 `protobuf:"bytes,3,opt,name=category,proto3" json:"category,omitempty"`
+	Quantity float64                `protobuf:"fixed64,4,opt,name=quantity,proto3" json:"quantity,omitempty"`
+	Price    float64                `protobuf:"fixed64,5,opt,name=price,proto3" json:"price,omitempty"`
+	Demand   float64                `protobuf:"fixed64,6,opt,name=demand,proto3" json:"demand,omitempty"`
+	Delivery float64                `protobuf:"fixed64,7,opt,name=delivery,proto3" json:"delivery,omitempty"`
+	Stock    float64                `protobuf:"fixed64,8,opt,name=stock,proto3" json:"stock,omitempty"`
+	Transit  float64                `protobuf:"fixed64,9,opt,name=transit,proto3" json:"transit,omitempty"`
+	Outbound float64                `protobuf:"fixed64,10,opt,name=outbound,proto3" json:"outbound,omitempty"`
+	Unit     float64                `protobuf:"fixed64,11,opt,name=unit,proto3" json:"unit,omitempty"`
+	Step     float64                `protobuf:"fixed64,12,opt,name=step,proto3" json:"step,omitempty"`
+	Minimum  float64                `protobuf:"fixed64,13,opt,name=minimum,proto3" json:"minimum,omitempty"`
+	Locked   bool                   `protobuf:"varint,14,opt,name=locked,proto3" json:"locked,omitempty"`
+	Excluded bool                   `protobuf:"varint,15,opt,name=excluded,proto3" json:"excluded,omitempty"`
+	Unsafe   bool                   `protobuf:"varint,16,opt,name=unsafe,proto3" json:"unsafe,omitempty"`
+	// group is the blank type; only "proff" rows earn the CHRISTINA set discount.
+	Group string `protobuf:"bytes,17,opt,name=group,proto3" json:"group,omitempty"`
+	// line is the PROFF line membership; unset for HOME and other brands.
+	Line *ChristinaLine `protobuf:"bytes,18,opt,name=line,proto3" json:"line,omitempty"`
+	// base_price is the blank price BEFORE the main discount. The service applies
+	// PlanBudgetRequest.discount and brand order rules, so the caller sends raw
+	// report numbers. price/unit/step/minimum/delivery are computed server-side
+	// and ignored on input.
+	BasePrice float64 `protobuf:"fixed64,19,opt,name=base_price,json=basePrice,proto3" json:"base_price,omitempty"`
+	// box_size is the blank box/multiple hint for brand order rules.
+	BoxSize       float64 `protobuf:"fixed64,20,opt,name=box_size,json=boxSize,proto3" json:"box_size,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
 func (x *BudgetRow) Reset() {
 	*x = BudgetRow{}
-	mi := &file_orderfill_calculation_v1_calculation_proto_msgTypes[14]
+	mi := &file_orderfill_calculation_v1_calculation_proto_msgTypes[15]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1162,7 +1244,7 @@ func (x *BudgetRow) String() string {
 func (*BudgetRow) ProtoMessage() {}
 
 func (x *BudgetRow) ProtoReflect() protoreflect.Message {
-	mi := &file_orderfill_calculation_v1_calculation_proto_msgTypes[14]
+	mi := &file_orderfill_calculation_v1_calculation_proto_msgTypes[15]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1175,7 +1257,7 @@ func (x *BudgetRow) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use BudgetRow.ProtoReflect.Descriptor instead.
 func (*BudgetRow) Descriptor() ([]byte, []int) {
-	return file_orderfill_calculation_v1_calculation_proto_rawDescGZIP(), []int{14}
+	return file_orderfill_calculation_v1_calculation_proto_rawDescGZIP(), []int{15}
 }
 
 func (x *BudgetRow) GetKey() string {
@@ -1290,19 +1372,53 @@ func (x *BudgetRow) GetUnsafe() bool {
 	return false
 }
 
+func (x *BudgetRow) GetGroup() string {
+	if x != nil {
+		return x.Group
+	}
+	return ""
+}
+
+func (x *BudgetRow) GetLine() *ChristinaLine {
+	if x != nil {
+		return x.Line
+	}
+	return nil
+}
+
+func (x *BudgetRow) GetBasePrice() float64 {
+	if x != nil {
+		return x.BasePrice
+	}
+	return 0
+}
+
+func (x *BudgetRow) GetBoxSize() float64 {
+	if x != nil {
+		return x.BoxSize
+	}
+	return 0
+}
+
 type PlanBudgetRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Rows          []*BudgetRow           `protobuf:"bytes,1,rep,name=rows,proto3" json:"rows,omitempty"`
 	Target        float64                `protobuf:"fixed64,2,opt,name=target,proto3" json:"target,omitempty"`
 	AllowOverSix  bool                   `protobuf:"varint,3,opt,name=allow_over_six,json=allowOverSix,proto3" json:"allow_over_six,omitempty"`
 	AllowBelowOne bool                   `protobuf:"varint,4,opt,name=allow_below_one,json=allowBelowOne,proto3" json:"allow_below_one,omitempty"`
+	// brand selects order-quantity rules (multiples, boxes, novacutan minimums).
+	Brand string `protobuf:"bytes,5,opt,name=brand,proto3" json:"brand,omitempty"`
+	// discount is the main discount percent applied to base_price (0..99.99).
+	Discount float64 `protobuf:"fixed64,6,opt,name=discount,proto3" json:"discount,omitempty"`
+	// delivery_weeks feeds coverage: delivery months = delivery_weeks * 0.25.
+	DeliveryWeeks float64 `protobuf:"fixed64,7,opt,name=delivery_weeks,json=deliveryWeeks,proto3" json:"delivery_weeks,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
 func (x *PlanBudgetRequest) Reset() {
 	*x = PlanBudgetRequest{}
-	mi := &file_orderfill_calculation_v1_calculation_proto_msgTypes[15]
+	mi := &file_orderfill_calculation_v1_calculation_proto_msgTypes[16]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1314,7 +1430,7 @@ func (x *PlanBudgetRequest) String() string {
 func (*PlanBudgetRequest) ProtoMessage() {}
 
 func (x *PlanBudgetRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_orderfill_calculation_v1_calculation_proto_msgTypes[15]
+	mi := &file_orderfill_calculation_v1_calculation_proto_msgTypes[16]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1327,7 +1443,7 @@ func (x *PlanBudgetRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PlanBudgetRequest.ProtoReflect.Descriptor instead.
 func (*PlanBudgetRequest) Descriptor() ([]byte, []int) {
-	return file_orderfill_calculation_v1_calculation_proto_rawDescGZIP(), []int{15}
+	return file_orderfill_calculation_v1_calculation_proto_rawDescGZIP(), []int{16}
 }
 
 func (x *PlanBudgetRequest) GetRows() []*BudgetRow {
@@ -1358,6 +1474,27 @@ func (x *PlanBudgetRequest) GetAllowBelowOne() bool {
 	return false
 }
 
+func (x *PlanBudgetRequest) GetBrand() string {
+	if x != nil {
+		return x.Brand
+	}
+	return ""
+}
+
+func (x *PlanBudgetRequest) GetDiscount() float64 {
+	if x != nil {
+		return x.Discount
+	}
+	return 0
+}
+
+func (x *PlanBudgetRequest) GetDeliveryWeeks() float64 {
+	if x != nil {
+		return x.DeliveryWeeks
+	}
+	return 0
+}
+
 type PlannedBudgetRow struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Key           string                 `protobuf:"bytes,1,opt,name=key,proto3" json:"key,omitempty"`
@@ -1365,13 +1502,14 @@ type PlannedBudgetRow struct {
 	Before        float64                `protobuf:"fixed64,3,opt,name=before,proto3" json:"before,omitempty"`
 	Quantity      float64                `protobuf:"fixed64,4,opt,name=quantity,proto3" json:"quantity,omitempty"`
 	Comment       string                 `protobuf:"bytes,5,opt,name=comment,proto3" json:"comment,omitempty"`
+	Category      string                 `protobuf:"bytes,6,opt,name=category,proto3" json:"category,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
 func (x *PlannedBudgetRow) Reset() {
 	*x = PlannedBudgetRow{}
-	mi := &file_orderfill_calculation_v1_calculation_proto_msgTypes[16]
+	mi := &file_orderfill_calculation_v1_calculation_proto_msgTypes[17]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1383,7 +1521,7 @@ func (x *PlannedBudgetRow) String() string {
 func (*PlannedBudgetRow) ProtoMessage() {}
 
 func (x *PlannedBudgetRow) ProtoReflect() protoreflect.Message {
-	mi := &file_orderfill_calculation_v1_calculation_proto_msgTypes[16]
+	mi := &file_orderfill_calculation_v1_calculation_proto_msgTypes[17]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1396,7 +1534,7 @@ func (x *PlannedBudgetRow) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PlannedBudgetRow.ProtoReflect.Descriptor instead.
 func (*PlannedBudgetRow) Descriptor() ([]byte, []int) {
-	return file_orderfill_calculation_v1_calculation_proto_rawDescGZIP(), []int{16}
+	return file_orderfill_calculation_v1_calculation_proto_rawDescGZIP(), []int{17}
 }
 
 func (x *PlannedBudgetRow) GetKey() string {
@@ -1434,6 +1572,175 @@ func (x *PlannedBudgetRow) GetComment() string {
 	return ""
 }
 
+func (x *PlannedBudgetRow) GetCategory() string {
+	if x != nil {
+		return x.Category
+	}
+	return ""
+}
+
+// PlannedLineStep is one accepted CHRISTINA PROFF set-completion step (rubles).
+type PlannedLineStep struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	Name          string                 `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
+	Sets          int32                  `protobuf:"varint,3,opt,name=sets,proto3" json:"sets,omitempty"`
+	Added         float64                `protobuf:"fixed64,4,opt,name=added,proto3" json:"added,omitempty"`
+	Saved         float64                `protobuf:"fixed64,5,opt,name=saved,proto3" json:"saved,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *PlannedLineStep) Reset() {
+	*x = PlannedLineStep{}
+	mi := &file_orderfill_calculation_v1_calculation_proto_msgTypes[18]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *PlannedLineStep) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*PlannedLineStep) ProtoMessage() {}
+
+func (x *PlannedLineStep) ProtoReflect() protoreflect.Message {
+	mi := &file_orderfill_calculation_v1_calculation_proto_msgTypes[18]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use PlannedLineStep.ProtoReflect.Descriptor instead.
+func (*PlannedLineStep) Descriptor() ([]byte, []int) {
+	return file_orderfill_calculation_v1_calculation_proto_rawDescGZIP(), []int{18}
+}
+
+func (x *PlannedLineStep) GetId() string {
+	if x != nil {
+		return x.Id
+	}
+	return ""
+}
+
+func (x *PlannedLineStep) GetName() string {
+	if x != nil {
+		return x.Name
+	}
+	return ""
+}
+
+func (x *PlannedLineStep) GetSets() int32 {
+	if x != nil {
+		return x.Sets
+	}
+	return 0
+}
+
+func (x *PlannedLineStep) GetAdded() float64 {
+	if x != nil {
+		return x.Added
+	}
+	return 0
+}
+
+func (x *PlannedLineStep) GetSaved() float64 {
+	if x != nil {
+		return x.Saved
+	}
+	return 0
+}
+
+// PlannedLineGroup is the final per-line PROFF state for the preview (rubles).
+type PlannedLineGroup struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	Name          string                 `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
+	Valid         bool                   `protobuf:"varint,3,opt,name=valid,proto3" json:"valid,omitempty"`
+	Sets          int32                  `protobuf:"varint,4,opt,name=sets,proto3" json:"sets,omitempty"`
+	Saving        float64                `protobuf:"fixed64,5,opt,name=saving,proto3" json:"saving,omitempty"`
+	Net           float64                `protobuf:"fixed64,6,opt,name=net,proto3" json:"net,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *PlannedLineGroup) Reset() {
+	*x = PlannedLineGroup{}
+	mi := &file_orderfill_calculation_v1_calculation_proto_msgTypes[19]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *PlannedLineGroup) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*PlannedLineGroup) ProtoMessage() {}
+
+func (x *PlannedLineGroup) ProtoReflect() protoreflect.Message {
+	mi := &file_orderfill_calculation_v1_calculation_proto_msgTypes[19]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use PlannedLineGroup.ProtoReflect.Descriptor instead.
+func (*PlannedLineGroup) Descriptor() ([]byte, []int) {
+	return file_orderfill_calculation_v1_calculation_proto_rawDescGZIP(), []int{19}
+}
+
+func (x *PlannedLineGroup) GetId() string {
+	if x != nil {
+		return x.Id
+	}
+	return ""
+}
+
+func (x *PlannedLineGroup) GetName() string {
+	if x != nil {
+		return x.Name
+	}
+	return ""
+}
+
+func (x *PlannedLineGroup) GetValid() bool {
+	if x != nil {
+		return x.Valid
+	}
+	return false
+}
+
+func (x *PlannedLineGroup) GetSets() int32 {
+	if x != nil {
+		return x.Sets
+	}
+	return 0
+}
+
+func (x *PlannedLineGroup) GetSaving() float64 {
+	if x != nil {
+		return x.Saving
+	}
+	return 0
+}
+
+func (x *PlannedLineGroup) GetNet() float64 {
+	if x != nil {
+		return x.Net
+	}
+	return 0
+}
+
 type PlanBudgetResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Rows          []*PlannedBudgetRow    `protobuf:"bytes,1,rep,name=rows,proto3" json:"rows,omitempty"`
@@ -1442,13 +1749,15 @@ type PlanBudgetResponse struct {
 	Target        float64                `protobuf:"fixed64,4,opt,name=target,proto3" json:"target,omitempty"`
 	Reason        string                 `protobuf:"bytes,5,opt,name=reason,proto3" json:"reason,omitempty"`
 	Complete      bool                   `protobuf:"varint,6,opt,name=complete,proto3" json:"complete,omitempty"`
+	LineSteps     []*PlannedLineStep     `protobuf:"bytes,7,rep,name=line_steps,json=lineSteps,proto3" json:"line_steps,omitempty"`
+	LineGroups    []*PlannedLineGroup    `protobuf:"bytes,8,rep,name=line_groups,json=lineGroups,proto3" json:"line_groups,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
 func (x *PlanBudgetResponse) Reset() {
 	*x = PlanBudgetResponse{}
-	mi := &file_orderfill_calculation_v1_calculation_proto_msgTypes[17]
+	mi := &file_orderfill_calculation_v1_calculation_proto_msgTypes[20]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1460,7 +1769,7 @@ func (x *PlanBudgetResponse) String() string {
 func (*PlanBudgetResponse) ProtoMessage() {}
 
 func (x *PlanBudgetResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_orderfill_calculation_v1_calculation_proto_msgTypes[17]
+	mi := &file_orderfill_calculation_v1_calculation_proto_msgTypes[20]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1473,7 +1782,7 @@ func (x *PlanBudgetResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PlanBudgetResponse.ProtoReflect.Descriptor instead.
 func (*PlanBudgetResponse) Descriptor() ([]byte, []int) {
-	return file_orderfill_calculation_v1_calculation_proto_rawDescGZIP(), []int{17}
+	return file_orderfill_calculation_v1_calculation_proto_rawDescGZIP(), []int{20}
 }
 
 func (x *PlanBudgetResponse) GetRows() []*PlannedBudgetRow {
@@ -1518,6 +1827,20 @@ func (x *PlanBudgetResponse) GetComplete() bool {
 	return false
 }
 
+func (x *PlanBudgetResponse) GetLineSteps() []*PlannedLineStep {
+	if x != nil {
+		return x.LineSteps
+	}
+	return nil
+}
+
+func (x *PlanBudgetResponse) GetLineGroups() []*PlannedLineGroup {
+	if x != nil {
+		return x.LineGroups
+	}
+	return nil
+}
+
 type CalculateWarehouseTransferRequest struct {
 	state          protoimpl.MessageState `protogen:"open.v1"`
 	OfficeStock    float64                `protobuf:"fixed64,1,opt,name=office_stock,json=officeStock,proto3" json:"office_stock,omitempty"`
@@ -1528,7 +1851,7 @@ type CalculateWarehouseTransferRequest struct {
 
 func (x *CalculateWarehouseTransferRequest) Reset() {
 	*x = CalculateWarehouseTransferRequest{}
-	mi := &file_orderfill_calculation_v1_calculation_proto_msgTypes[18]
+	mi := &file_orderfill_calculation_v1_calculation_proto_msgTypes[21]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1540,7 +1863,7 @@ func (x *CalculateWarehouseTransferRequest) String() string {
 func (*CalculateWarehouseTransferRequest) ProtoMessage() {}
 
 func (x *CalculateWarehouseTransferRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_orderfill_calculation_v1_calculation_proto_msgTypes[18]
+	mi := &file_orderfill_calculation_v1_calculation_proto_msgTypes[21]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1553,7 +1876,7 @@ func (x *CalculateWarehouseTransferRequest) ProtoReflect() protoreflect.Message 
 
 // Deprecated: Use CalculateWarehouseTransferRequest.ProtoReflect.Descriptor instead.
 func (*CalculateWarehouseTransferRequest) Descriptor() ([]byte, []int) {
-	return file_orderfill_calculation_v1_calculation_proto_rawDescGZIP(), []int{18}
+	return file_orderfill_calculation_v1_calculation_proto_rawDescGZIP(), []int{21}
 }
 
 func (x *CalculateWarehouseTransferRequest) GetOfficeStock() float64 {
@@ -1580,7 +1903,7 @@ type CalculateWarehouseTransferResponse struct {
 
 func (x *CalculateWarehouseTransferResponse) Reset() {
 	*x = CalculateWarehouseTransferResponse{}
-	mi := &file_orderfill_calculation_v1_calculation_proto_msgTypes[19]
+	mi := &file_orderfill_calculation_v1_calculation_proto_msgTypes[22]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1592,7 +1915,7 @@ func (x *CalculateWarehouseTransferResponse) String() string {
 func (*CalculateWarehouseTransferResponse) ProtoMessage() {}
 
 func (x *CalculateWarehouseTransferResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_orderfill_calculation_v1_calculation_proto_msgTypes[19]
+	mi := &file_orderfill_calculation_v1_calculation_proto_msgTypes[22]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1605,7 +1928,7 @@ func (x *CalculateWarehouseTransferResponse) ProtoReflect() protoreflect.Message
 
 // Deprecated: Use CalculateWarehouseTransferResponse.ProtoReflect.Descriptor instead.
 func (*CalculateWarehouseTransferResponse) Descriptor() ([]byte, []int) {
-	return file_orderfill_calculation_v1_calculation_proto_rawDescGZIP(), []int{19}
+	return file_orderfill_calculation_v1_calculation_proto_rawDescGZIP(), []int{22}
 }
 
 func (x *CalculateWarehouseTransferResponse) GetQuantity() float64 {
@@ -1725,7 +2048,12 @@ const file_orderfill_calculation_v1_calculation_proto_rawDesc = "" +
 	"\x04rows\x18\x02 \x03(\v2\".orderfill.calculation.v1.OrderRowR\x04rows\"W\n" +
 	"\x1bValidateManualEditsResponse\x12\x0e\n" +
 	"\x02ok\x18\x01 \x01(\bR\x02ok\x12(\n" +
-	"\x10blocking_row_ids\x18\x02 \x03(\tR\x0eblockingRowIds\"\x8d\x03\n" +
+	"\x10blocking_row_ids\x18\x02 \x03(\tR\x0eblockingRowIds\"i\n" +
+	"\rChristinaLine\x12\x0e\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\x12\x12\n" +
+	"\x04name\x18\x02 \x01(\tR\x04name\x12\x18\n" +
+	"\aarticle\x18\x03 \x01(\tR\aarticle\x12\x1a\n" +
+	"\brequired\x18\x04 \x03(\tR\brequired\"\x9a\x04\n" +
 	"\tBudgetRow\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12\x1a\n" +
@@ -1743,25 +2071,51 @@ const file_orderfill_calculation_v1_calculation_proto_rawDesc = "" +
 	"\aminimum\x18\r \x01(\x01R\aminimum\x12\x16\n" +
 	"\x06locked\x18\x0e \x01(\bR\x06locked\x12\x1a\n" +
 	"\bexcluded\x18\x0f \x01(\bR\bexcluded\x12\x16\n" +
-	"\x06unsafe\x18\x10 \x01(\bR\x06unsafe\"\xb2\x01\n" +
+	"\x06unsafe\x18\x10 \x01(\bR\x06unsafe\x12\x14\n" +
+	"\x05group\x18\x11 \x01(\tR\x05group\x12;\n" +
+	"\x04line\x18\x12 \x01(\v2'.orderfill.calculation.v1.ChristinaLineR\x04line\x12\x1d\n" +
+	"\n" +
+	"base_price\x18\x13 \x01(\x01R\tbasePrice\x12\x19\n" +
+	"\bbox_size\x18\x14 \x01(\x01R\aboxSize\"\x8b\x02\n" +
 	"\x11PlanBudgetRequest\x127\n" +
 	"\x04rows\x18\x01 \x03(\v2#.orderfill.calculation.v1.BudgetRowR\x04rows\x12\x16\n" +
 	"\x06target\x18\x02 \x01(\x01R\x06target\x12$\n" +
 	"\x0eallow_over_six\x18\x03 \x01(\bR\fallowOverSix\x12&\n" +
-	"\x0fallow_below_one\x18\x04 \x01(\bR\rallowBelowOne\"\x86\x01\n" +
+	"\x0fallow_below_one\x18\x04 \x01(\bR\rallowBelowOne\x12\x14\n" +
+	"\x05brand\x18\x05 \x01(\tR\x05brand\x12\x1a\n" +
+	"\bdiscount\x18\x06 \x01(\x01R\bdiscount\x12%\n" +
+	"\x0edelivery_weeks\x18\a \x01(\x01R\rdeliveryWeeks\"\xa2\x01\n" +
 	"\x10PlannedBudgetRow\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12\x16\n" +
 	"\x06before\x18\x03 \x01(\x01R\x06before\x12\x1a\n" +
 	"\bquantity\x18\x04 \x01(\x01R\bquantity\x12\x18\n" +
-	"\acomment\x18\x05 \x01(\tR\acomment\"\xce\x01\n" +
+	"\acomment\x18\x05 \x01(\tR\acomment\x12\x1a\n" +
+	"\bcategory\x18\x06 \x01(\tR\bcategory\"u\n" +
+	"\x0fPlannedLineStep\x12\x0e\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\x12\x12\n" +
+	"\x04name\x18\x02 \x01(\tR\x04name\x12\x12\n" +
+	"\x04sets\x18\x03 \x01(\x05R\x04sets\x12\x14\n" +
+	"\x05added\x18\x04 \x01(\x01R\x05added\x12\x14\n" +
+	"\x05saved\x18\x05 \x01(\x01R\x05saved\"\x8a\x01\n" +
+	"\x10PlannedLineGroup\x12\x0e\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\x12\x12\n" +
+	"\x04name\x18\x02 \x01(\tR\x04name\x12\x14\n" +
+	"\x05valid\x18\x03 \x01(\bR\x05valid\x12\x12\n" +
+	"\x04sets\x18\x04 \x01(\x05R\x04sets\x12\x16\n" +
+	"\x06saving\x18\x05 \x01(\x01R\x06saving\x12\x10\n" +
+	"\x03net\x18\x06 \x01(\x01R\x03net\"\xe5\x02\n" +
 	"\x12PlanBudgetResponse\x12>\n" +
 	"\x04rows\x18\x01 \x03(\v2*.orderfill.calculation.v1.PlannedBudgetRowR\x04rows\x12\x16\n" +
 	"\x06before\x18\x02 \x01(\x01R\x06before\x12\x14\n" +
 	"\x05total\x18\x03 \x01(\x01R\x05total\x12\x16\n" +
 	"\x06target\x18\x04 \x01(\x01R\x06target\x12\x16\n" +
 	"\x06reason\x18\x05 \x01(\tR\x06reason\x12\x1a\n" +
-	"\bcomplete\x18\x06 \x01(\bR\bcomplete\"o\n" +
+	"\bcomplete\x18\x06 \x01(\bR\bcomplete\x12H\n" +
+	"\n" +
+	"line_steps\x18\a \x03(\v2).orderfill.calculation.v1.PlannedLineStepR\tlineSteps\x12K\n" +
+	"\vline_groups\x18\b \x03(\v2*.orderfill.calculation.v1.PlannedLineGroupR\n" +
+	"lineGroups\"o\n" +
 	"!CalculateWarehouseTransferRequest\x12!\n" +
 	"\foffice_stock\x18\x01 \x01(\x01R\vofficeStock\x12'\n" +
 	"\x0fwarehouse_stock\x18\x02 \x01(\x01R\x0ewarehouseStock\"X\n" +
@@ -1790,7 +2144,7 @@ func file_orderfill_calculation_v1_calculation_proto_rawDescGZIP() []byte {
 	return file_orderfill_calculation_v1_calculation_proto_rawDescData
 }
 
-var file_orderfill_calculation_v1_calculation_proto_msgTypes = make([]protoimpl.MessageInfo, 20)
+var file_orderfill_calculation_v1_calculation_proto_msgTypes = make([]protoimpl.MessageInfo, 23)
 var file_orderfill_calculation_v1_calculation_proto_goTypes = []any{
 	(*OrderRow)(nil), // 0: orderfill.calculation.v1.OrderRow
 	(*CalculateOrderRecommendationsRequest)(nil),  // 1: orderfill.calculation.v1.CalculateOrderRecommendationsRequest
@@ -1806,19 +2160,22 @@ var file_orderfill_calculation_v1_calculation_proto_goTypes = []any{
 	(*ManualEdit)(nil),                            // 11: orderfill.calculation.v1.ManualEdit
 	(*ValidateManualEditsRequest)(nil),            // 12: orderfill.calculation.v1.ValidateManualEditsRequest
 	(*ValidateManualEditsResponse)(nil),           // 13: orderfill.calculation.v1.ValidateManualEditsResponse
-	(*BudgetRow)(nil),                             // 14: orderfill.calculation.v1.BudgetRow
-	(*PlanBudgetRequest)(nil),                     // 15: orderfill.calculation.v1.PlanBudgetRequest
-	(*PlannedBudgetRow)(nil),                      // 16: orderfill.calculation.v1.PlannedBudgetRow
-	(*PlanBudgetResponse)(nil),                    // 17: orderfill.calculation.v1.PlanBudgetResponse
-	(*CalculateWarehouseTransferRequest)(nil),     // 18: orderfill.calculation.v1.CalculateWarehouseTransferRequest
-	(*CalculateWarehouseTransferResponse)(nil),    // 19: orderfill.calculation.v1.CalculateWarehouseTransferResponse
-	(*v1.RequestMeta)(nil),                        // 20: orderfill.common.v1.RequestMeta
+	(*ChristinaLine)(nil),                         // 14: orderfill.calculation.v1.ChristinaLine
+	(*BudgetRow)(nil),                             // 15: orderfill.calculation.v1.BudgetRow
+	(*PlanBudgetRequest)(nil),                     // 16: orderfill.calculation.v1.PlanBudgetRequest
+	(*PlannedBudgetRow)(nil),                      // 17: orderfill.calculation.v1.PlannedBudgetRow
+	(*PlannedLineStep)(nil),                       // 18: orderfill.calculation.v1.PlannedLineStep
+	(*PlannedLineGroup)(nil),                      // 19: orderfill.calculation.v1.PlannedLineGroup
+	(*PlanBudgetResponse)(nil),                    // 20: orderfill.calculation.v1.PlanBudgetResponse
+	(*CalculateWarehouseTransferRequest)(nil),     // 21: orderfill.calculation.v1.CalculateWarehouseTransferRequest
+	(*CalculateWarehouseTransferResponse)(nil),    // 22: orderfill.calculation.v1.CalculateWarehouseTransferResponse
+	(*v1.RequestMeta)(nil),                        // 23: orderfill.common.v1.RequestMeta
 }
 var file_orderfill_calculation_v1_calculation_proto_depIdxs = []int32{
-	20, // 0: orderfill.calculation.v1.CalculateOrderRecommendationsRequest.meta:type_name -> orderfill.common.v1.RequestMeta
+	23, // 0: orderfill.calculation.v1.CalculateOrderRecommendationsRequest.meta:type_name -> orderfill.common.v1.RequestMeta
 	0,  // 1: orderfill.calculation.v1.CalculateOrderRecommendationsRequest.rows:type_name -> orderfill.calculation.v1.OrderRow
 	0,  // 2: orderfill.calculation.v1.CalculateOrderRecommendationsResponse.rows:type_name -> orderfill.calculation.v1.OrderRow
-	20, // 3: orderfill.calculation.v1.CalculateNorthPlanRequest.meta:type_name -> orderfill.common.v1.RequestMeta
+	23, // 3: orderfill.calculation.v1.CalculateNorthPlanRequest.meta:type_name -> orderfill.common.v1.RequestMeta
 	5,  // 4: orderfill.calculation.v1.CalculateNorthPlanRequest.needs:type_name -> orderfill.calculation.v1.NorthCityNeed
 	0,  // 5: orderfill.calculation.v1.CalculateNorthPlanRequest.tyumen_stock:type_name -> orderfill.calculation.v1.OrderRow
 	6,  // 6: orderfill.calculation.v1.CalculateNorthPlanResponse.rows:type_name -> orderfill.calculation.v1.NorthPlanRow
@@ -1826,27 +2183,30 @@ var file_orderfill_calculation_v1_calculation_proto_depIdxs = []int32{
 	6,  // 8: orderfill.calculation.v1.RecalculateNorthRowResponse.row:type_name -> orderfill.calculation.v1.NorthPlanRow
 	11, // 9: orderfill.calculation.v1.ValidateManualEditsRequest.edits:type_name -> orderfill.calculation.v1.ManualEdit
 	0,  // 10: orderfill.calculation.v1.ValidateManualEditsRequest.rows:type_name -> orderfill.calculation.v1.OrderRow
-	14, // 11: orderfill.calculation.v1.PlanBudgetRequest.rows:type_name -> orderfill.calculation.v1.BudgetRow
-	16, // 12: orderfill.calculation.v1.PlanBudgetResponse.rows:type_name -> orderfill.calculation.v1.PlannedBudgetRow
-	1,  // 13: orderfill.calculation.v1.CalculationService.CalculateOrderRecommendations:input_type -> orderfill.calculation.v1.CalculateOrderRecommendationsRequest
-	3,  // 14: orderfill.calculation.v1.CalculationService.CalculateAdjustedQuantity:input_type -> orderfill.calculation.v1.CalculateAdjustedQuantityRequest
-	7,  // 15: orderfill.calculation.v1.CalculationService.CalculateNorthPlan:input_type -> orderfill.calculation.v1.CalculateNorthPlanRequest
-	9,  // 16: orderfill.calculation.v1.CalculationService.RecalculateNorthRow:input_type -> orderfill.calculation.v1.RecalculateNorthRowRequest
-	12, // 17: orderfill.calculation.v1.CalculationService.ValidateManualEdits:input_type -> orderfill.calculation.v1.ValidateManualEditsRequest
-	15, // 18: orderfill.calculation.v1.CalculationService.PlanBudget:input_type -> orderfill.calculation.v1.PlanBudgetRequest
-	18, // 19: orderfill.calculation.v1.CalculationService.CalculateWarehouseTransfer:input_type -> orderfill.calculation.v1.CalculateWarehouseTransferRequest
-	2,  // 20: orderfill.calculation.v1.CalculationService.CalculateOrderRecommendations:output_type -> orderfill.calculation.v1.CalculateOrderRecommendationsResponse
-	4,  // 21: orderfill.calculation.v1.CalculationService.CalculateAdjustedQuantity:output_type -> orderfill.calculation.v1.CalculateAdjustedQuantityResponse
-	8,  // 22: orderfill.calculation.v1.CalculationService.CalculateNorthPlan:output_type -> orderfill.calculation.v1.CalculateNorthPlanResponse
-	10, // 23: orderfill.calculation.v1.CalculationService.RecalculateNorthRow:output_type -> orderfill.calculation.v1.RecalculateNorthRowResponse
-	13, // 24: orderfill.calculation.v1.CalculationService.ValidateManualEdits:output_type -> orderfill.calculation.v1.ValidateManualEditsResponse
-	17, // 25: orderfill.calculation.v1.CalculationService.PlanBudget:output_type -> orderfill.calculation.v1.PlanBudgetResponse
-	19, // 26: orderfill.calculation.v1.CalculationService.CalculateWarehouseTransfer:output_type -> orderfill.calculation.v1.CalculateWarehouseTransferResponse
-	20, // [20:27] is the sub-list for method output_type
-	13, // [13:20] is the sub-list for method input_type
-	13, // [13:13] is the sub-list for extension type_name
-	13, // [13:13] is the sub-list for extension extendee
-	0,  // [0:13] is the sub-list for field type_name
+	14, // 11: orderfill.calculation.v1.BudgetRow.line:type_name -> orderfill.calculation.v1.ChristinaLine
+	15, // 12: orderfill.calculation.v1.PlanBudgetRequest.rows:type_name -> orderfill.calculation.v1.BudgetRow
+	17, // 13: orderfill.calculation.v1.PlanBudgetResponse.rows:type_name -> orderfill.calculation.v1.PlannedBudgetRow
+	18, // 14: orderfill.calculation.v1.PlanBudgetResponse.line_steps:type_name -> orderfill.calculation.v1.PlannedLineStep
+	19, // 15: orderfill.calculation.v1.PlanBudgetResponse.line_groups:type_name -> orderfill.calculation.v1.PlannedLineGroup
+	1,  // 16: orderfill.calculation.v1.CalculationService.CalculateOrderRecommendations:input_type -> orderfill.calculation.v1.CalculateOrderRecommendationsRequest
+	3,  // 17: orderfill.calculation.v1.CalculationService.CalculateAdjustedQuantity:input_type -> orderfill.calculation.v1.CalculateAdjustedQuantityRequest
+	7,  // 18: orderfill.calculation.v1.CalculationService.CalculateNorthPlan:input_type -> orderfill.calculation.v1.CalculateNorthPlanRequest
+	9,  // 19: orderfill.calculation.v1.CalculationService.RecalculateNorthRow:input_type -> orderfill.calculation.v1.RecalculateNorthRowRequest
+	12, // 20: orderfill.calculation.v1.CalculationService.ValidateManualEdits:input_type -> orderfill.calculation.v1.ValidateManualEditsRequest
+	16, // 21: orderfill.calculation.v1.CalculationService.PlanBudget:input_type -> orderfill.calculation.v1.PlanBudgetRequest
+	21, // 22: orderfill.calculation.v1.CalculationService.CalculateWarehouseTransfer:input_type -> orderfill.calculation.v1.CalculateWarehouseTransferRequest
+	2,  // 23: orderfill.calculation.v1.CalculationService.CalculateOrderRecommendations:output_type -> orderfill.calculation.v1.CalculateOrderRecommendationsResponse
+	4,  // 24: orderfill.calculation.v1.CalculationService.CalculateAdjustedQuantity:output_type -> orderfill.calculation.v1.CalculateAdjustedQuantityResponse
+	8,  // 25: orderfill.calculation.v1.CalculationService.CalculateNorthPlan:output_type -> orderfill.calculation.v1.CalculateNorthPlanResponse
+	10, // 26: orderfill.calculation.v1.CalculationService.RecalculateNorthRow:output_type -> orderfill.calculation.v1.RecalculateNorthRowResponse
+	13, // 27: orderfill.calculation.v1.CalculationService.ValidateManualEdits:output_type -> orderfill.calculation.v1.ValidateManualEditsResponse
+	20, // 28: orderfill.calculation.v1.CalculationService.PlanBudget:output_type -> orderfill.calculation.v1.PlanBudgetResponse
+	22, // 29: orderfill.calculation.v1.CalculationService.CalculateWarehouseTransfer:output_type -> orderfill.calculation.v1.CalculateWarehouseTransferResponse
+	23, // [23:30] is the sub-list for method output_type
+	16, // [16:23] is the sub-list for method input_type
+	16, // [16:16] is the sub-list for extension type_name
+	16, // [16:16] is the sub-list for extension extendee
+	0,  // [0:16] is the sub-list for field type_name
 }
 
 func init() { file_orderfill_calculation_v1_calculation_proto_init() }
@@ -1860,7 +2220,7 @@ func file_orderfill_calculation_v1_calculation_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_orderfill_calculation_v1_calculation_proto_rawDesc), len(file_orderfill_calculation_v1_calculation_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   20,
+			NumMessages:   23,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

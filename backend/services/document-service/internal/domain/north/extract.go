@@ -81,6 +81,9 @@ func Label(key string) string {
 type Need struct {
 	City, Article, BaseArticle, ArticleRaw, Name, Variant string
 	Qty, Price                                            float64
+	// Line is the CHRISTINA PROFF line this blank row belongs to (nil otherwise),
+	// so the budget planner can apply the set discount on the North flow too.
+	Line *orderfill.ChristinaLine
 }
 
 type Stock struct {
@@ -102,6 +105,12 @@ func NeedsFromBlank(workbook spreadsheet.Workbook, rule brand.RuleConfig, city s
 	priceCol := northPriceColumn(detection)
 	articleCol := detection.Columns[orderfill.ColumnArticle]
 	nameCol := detection.Columns[orderfill.ColumnName]
+	// Attach CHRISTINA PROFF line membership so PROFF rows earn the set discount
+	// in the budget planner, mirroring the Tyumen flow and origin/main north.
+	var linesByRow map[int]*orderfill.ChristinaLine
+	if rule.Key == "christina" {
+		linesByRow = orderfill.ChristinaProffLinesByRow(detection.Sheet)
+	}
 	bounds := detection.Sheet.Bounds()
 	out := make([]Need, 0)
 	for row := detection.HeaderRow + 1; row <= bounds.MaxRow; row++ {
@@ -140,7 +149,7 @@ func NeedsFromBlank(workbook spreadsheet.Workbook, rule brand.RuleConfig, city s
 		if priceCol > 0 {
 			price, _ = normalize.ParseNumber(detection.Sheet.Value(row, priceCol))
 		}
-		out = append(out, Need{City: city, Article: key, BaseArticle: base, ArticleRaw: articleRaw, Name: name, Variant: variant, Qty: qty, Price: price})
+		out = append(out, Need{City: city, Article: key, BaseArticle: base, ArticleRaw: articleRaw, Name: name, Variant: variant, Qty: qty, Price: price, Line: linesByRow[row]})
 	}
 	return out, nil
 }

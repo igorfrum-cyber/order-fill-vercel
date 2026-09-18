@@ -18,9 +18,10 @@ type ChristinaLine struct {
 	Required []string `json:"required"`
 }
 
-// christinaProffLinesByRow returns a map from blank row number to the
+// ChristinaProffLinesByRow returns a map from blank row number to the
 // ChristinaLine it belongs to. Only rows inside a PROFF line group are mapped;
-// HOME rows and everything else return nothing.
+// HOME rows and everything else return nothing. It is exported so the North
+// pipeline can attach the same line metadata to its rows.
 //
 // The algorithm mirrors origin/main christinaProffLines: coloured header rows
 // introduce a new line group, and CHR-article rows are members of the current
@@ -29,7 +30,7 @@ type ChristinaLine struct {
 // Colour detection uses the Styled type-assertion available on xlsx sheets.
 // When the sheet is not Styled (e.g. in unit tests with a plain stub), the
 // function falls back to detecting groups solely by article pattern.
-func christinaProffLinesByRow(sheet spreadsheet.Sheet) map[int]*ChristinaLine {
+func ChristinaProffLinesByRow(sheet spreadsheet.Sheet) map[int]*ChristinaLine {
 	styled, hasStyles := sheet.(spreadsheet.Styled)
 
 	// Collect all articles per prospective line so Required is populated once

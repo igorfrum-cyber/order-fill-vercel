@@ -169,26 +169,38 @@ func (s *Server) ValidateManualEdits(_ context.Context, req *calculationv1.Valid
 	return &calculationv1.ValidateManualEditsResponse{Ok: ok, BlockingRowIds: blocking}, nil
 }
 
-func protoBudgetRow(row *calculationv1.BudgetRow) domain.BudgetRow {
+func protoBudgetInputRow(row *calculationv1.BudgetRow) domain.BudgetInputRow {
 	if row == nil {
-		return domain.BudgetRow{}
+		return domain.BudgetInputRow{}
 	}
-	return domain.BudgetRow{
+	return domain.BudgetInputRow{
 		Key: row.GetKey(), Name: row.GetName(), Category: row.GetCategory(),
-		Quantity: row.GetQuantity(), Price: row.GetPrice(), Demand: row.GetDemand(),
-		Delivery: row.GetDelivery(), Stock: row.GetStock(), Transit: row.GetTransit(),
-		Outbound: row.GetOutbound(), Unit: row.GetUnit(), Step: row.GetStep(), Minimum: row.GetMinimum(),
+		Quantity: row.GetQuantity(), BasePrice: row.GetBasePrice(), Demand: row.GetDemand(),
+		Stock: row.GetStock(), Transit: row.GetTransit(), Outbound: row.GetOutbound(),
+		BoxSize: row.GetBoxSize(), Group: row.GetGroup(), Line: protoChristinaLine(row.GetLine()),
 		Locked: row.GetLocked(), Excluded: row.GetExcluded(), Unsafe: row.GetUnsafe(),
 	}
 }
 
-func (s *Server) PlanBudget(_ context.Context, req *calculationv1.PlanBudgetRequest) (*calculationv1.PlanBudgetResponse, error) {
-	in := make([]domain.BudgetRow, 0, len(req.GetRows()))
-	for _, row := range req.GetRows() {
-		in = append(in, protoBudgetRow(row))
+func protoChristinaLine(line *calculationv1.ChristinaLine) *domain.ChristinaLine {
+	if line == nil {
+		return nil
 	}
-	plan, err := calculation.PlanBudget(in, req.GetTarget(), domain.BudgetOptions{
-		AllowOverSix: req.GetAllowOverSix(), AllowBelowOne: req.GetAllowBelowOne(),
+	return &domain.ChristinaLine{
+		ID: line.GetId(), Name: line.GetName(), Article: line.GetArticle(),
+		Required: line.GetRequired(),
+	}
+}
+
+func (s *Server) PlanBudget(_ context.Context, req *calculationv1.PlanBudgetRequest) (*calculationv1.PlanBudgetResponse, error) {
+	rows := make([]domain.BudgetInputRow, 0, len(req.GetRows()))
+	for _, row := range req.GetRows() {
+		rows = append(rows, protoBudgetInputRow(row))
+	}
+	plan, err := calculation.PlanReportBudget(domain.BudgetRequest{
+		Brand: req.GetBrand(), Discount: req.GetDiscount(), DeliveryWeeks: req.GetDeliveryWeeks(),
+		Target: req.GetTarget(), Rows: rows,
+		Options: domain.BudgetOptions{AllowOverSix: req.GetAllowOverSix(), AllowBelowOne: req.GetAllowBelowOne()},
 	})
 	if err != nil {
 		return nil, status.Error(codes.InvalidArgument, err.Error())
@@ -197,12 +209,26 @@ func (s *Server) PlanBudget(_ context.Context, req *calculationv1.PlanBudgetRequ
 	for _, row := range plan.Rows {
 		out = append(out, &calculationv1.PlannedBudgetRow{
 			Key: row.Key, Name: row.Name, Before: row.Before, Quantity: row.Quantity,
-			Comment: calculation.BudgetChangeComment(row),
+			Comment: calculation.BudgetChangeComment(row), Category: row.Category,
+		})
+	}
+	steps := make([]*calculationv1.PlannedLineStep, 0, len(plan.LineSteps))
+	for _, st := range plan.LineSteps {
+		steps = append(steps, &calculationv1.PlannedLineStep{
+			Id: st.ID, Name: st.Name, Sets: int32Clamp(st.Sets),
+			Added: float64(st.AddedCents) / 100, Saved: float64(st.SavedCents) / 100,
+		})
+	}
+	groups := make([]*calculationv1.PlannedLineGroup, 0)
+	for _, g := range calculation.ChristinaLineGroups(plan.Rows) {
+		groups = append(groups, &calculationv1.PlannedLineGroup{
+			Id: g.ID, Name: g.Name, Valid: g.Valid, Sets: int32Clamp(g.Sets),
+			Saving: float64(g.SavingCents) / 100, Net: float64(g.NetCents) / 100,
 		})
 	}
 	return &calculationv1.PlanBudgetResponse{
 		Rows: out, Before: plan.Before, Total: plan.Total, Target: plan.Target,
-		Reason: plan.Reason, Complete: plan.Complete,
+		Reason: plan.Reason, Complete: plan.Complete, LineSteps: steps, LineGroups: groups,
 	}, nil
 }
 

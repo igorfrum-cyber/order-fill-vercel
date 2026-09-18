@@ -98,6 +98,14 @@ test("order upload, budget recalculation and both workbook previews stay editabl
       });
       return;
     }
+    if (path === "/api/v1/order/budget-plan") {
+      await route.fulfill({ json: {
+        before: 270, total: 540, target: 540, reason: "", complete: true,
+        rows: [{ key: "blank-1:2", name: "Крем", category: "B", before: 3, quantity: 6, comment: "Добавилось 3 шт. Для закупа до суммы." }],
+        line_steps: [], line_groups: [],
+      } });
+      return;
+    }
     await route.fulfill({ status: 404, json: { message: `Unexpected ${request.method()} ${path}` } });
   });
 

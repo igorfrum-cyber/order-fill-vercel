@@ -59,6 +59,7 @@ Web UI: `http://127.0.0.1:3200`. Gateway health: `http://127.0.0.1:8080/healthz`
   - `npm run test --prefix frontend` — unit tests via `node --test`
   - `npm run test:component --prefix frontend` — Vitest + Testing Library
   - `npm run test:e2e --prefix frontend` — Playwright (install Chromium first: `npm run test:e2e:install --prefix frontend`)
+  - `npm run qa:test --prefix frontend` — QA infra smoke; exploratory AI mode is documented in `qa/README.md`
   - `npm run test:ui --prefix frontend` — unit + component + Playwright. **Run after any UI change in the same agent session.** Playwright opens Chromium on screen locally.
   - `npm run test:e2e:real --prefix frontend` — Playwright against live stack with real Excel from `testdata/private`. Requires `REAL_E2E_OWNER_LOGIN` and `REAL_E2E_OWNER_PASSWORD` env vars.
 - `npm run verify --prefix frontend` = lint + test + component test + build.

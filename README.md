@@ -162,7 +162,7 @@ HTTP-запрос открытым: `job-service` публикует сообщ�
 | [`document-service`](./backend/services/document-service/README.md) | Excel-анализ, preview и асинхронная обработка документов | gRPC API `:9096`; health `:8087`/`:8092` | Redis consumer; файлы через file-service |
 | [`matching-service`](./backend/services/matching-service/README.md) | Нормализация и решение о соответствии товарных строк | gRPC `:9097`; health `:8088` | Stateless |
 | [`brand-service`](./backend/services/brand-service/README.md) | Каталог брендов, правила и определение бренда | gRPC `:9098`; health `:8089` | Статические правила |
-| [`calculation-service`](./backend/services/calculation-service/README.md) | Расчёт заказа, округления, ручные правки и план «Север» | gRPC `:9099`; health `:8090` | Stateless |
+| [`calculation-service`](./backend/services/calculation-service/README.md) | Расчёт заказа, округления, ручные правки, план «Север» и заказ до суммы | gRPC `:9099`; health `:8090` | Stateless |
 | [`audit-service`](./backend/services/audit-service/README.md) | Запись и выборка audit-событий | gRPC `:9100`; health `:8091` | PostgreSQL |
 | [`inbound-service`](./backend/services/inbound-service/README.md) | Приём входящей почты 1С и изолированный контур хранения вложений | gRPC `:9101`; health `:8093` | PostgreSQL + S3 (отдельные инстансы) |
 
@@ -284,8 +284,9 @@ npm run dev --prefix frontend
 ### Playwright на реальных Excel
 
 Полный браузерный сценарий с настоящими файлами из `testdata/private` запускается
-отдельно от быстрой mock-регрессии и требует поднятого локального стенда и
-учётной записи закупщика:
+отдельно от быстрой mock-регрессии (`npm run test:e2e` / `test:ui` её не трогают:
+`*.real.spec.js` в `testIgnore`). Нужны поднятый стенд, закупщик и владелец
+компании:
 
 ```bash
 REAL_E2E_OWNER_LOGIN=<owner-login> REAL_E2E_OWNER_PASSWORD=<owner-password> \
@@ -293,8 +294,11 @@ REAL_E2E_LOGIN=<purchaser-login> REAL_E2E_PASSWORD=<purchaser-password> \
 npm run test:e2e:real --prefix frontend
 ```
 
-По умолчанию тест использует `http://127.0.0.1:3200`. Другой стенд и каталог
-fixtures задаются через `REAL_E2E_BASE_URL` и `ORDER_FILL_PRIVATE_TESTDATA`.
+Бланк скрещивается только с таблицей продаж того же бренда (matched pairs по
+basename, не декартово `Бланки/` × `таблицы продаж/`). Нет каталогов или нет
+`REAL_E2E_*` — suite skip, не красный CI. Коммерческие xlsx и абсолютные ₽ в git
+не кладут. По умолчанию `http://127.0.0.1:3200`; другой стенд и каталог —
+`REAL_E2E_BASE_URL` и `ORDER_FILL_PRIVATE_TESTDATA`.
 
 Vite слушает `127.0.0.1:3200`. Для работы UI с API gateway должен быть доступен
 по адресу, заданному в frontend-конфигурации; production Docker использует
@@ -328,6 +332,7 @@ make -C backend check
 | `npm run test:component --prefix frontend` | Vitest + Testing Library: поведение компонентов |
 | `npm run test:e2e --prefix frontend` | Playwright: UI и действия пользователя в браузере |
 | `npm run test:e2e:real --prefix frontend` | Playwright против поднятого стенда и реальных Excel из `testdata/private` |
+| `make qa-test` / `npm run qa:test` | Smoke инфры QA (браузер + экран входа); не заменяет `test:e2e` |
 | `make lint` | Проверяет toolchain, frontend lint и Go lint/security/tidy |
 | `make docs` | Проверяет обязательные README и локальные Markdown-ссылки |
 | `make docs-sync` | Обновляет таблицы env/RPC/HTTP в README сервисов из config.go, proto и router |
@@ -370,7 +375,8 @@ GitHub Actions выполняет те же слои параллельно и �
 Первый запуск может скачать Go toolchain, линтеры и зависимости. Тестовые
 workbook-файлы и правила работы с приватными данными описаны в
 [`testdata/README.md`](./testdata/README.md), нагрузочные сценарии — в
-[`docs/load-testing.md`](./docs/load-testing.md).
+[`docs/load-testing.md`](./docs/load-testing.md). Автономный AI exploratory QA
+и отдельный smoke инфры — в [`qa/README.md`](./qa/README.md).
 
 ## Развёртывание
 

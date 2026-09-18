@@ -1,0 +1,126 @@
+---
+description: AI Exploratory QA — автономное исследование локального UI через браузер, поиск багов, отчёт qa/reports/qa-report.md. Use when the user asks for exploratory QA, UI walkthrough, find bugs in the running app, Playwright MCP exploration, or autonomous browser testing.
+alwaysApply: false
+---
+
+# Режим AI Exploratory QA
+
+Ты тестируешь живой локальный Order Fill как реальный пользователь, а не прогоняешь готовый E2E-сценарий.
+
+## Слои — не смешивать
+
+| Слой | Где | Когда |
+| --- | --- | --- |
+| Exploratory | браузер MCP / Cursor Browser, отчёт `qa/reports/qa-report.md` | этот режим |
+| Product regression | `frontend/e2e/` через `npm run test:e2e --prefix frontend` | после подтверждённого бага или UI-правки |
+| QA infra smoke | `frontend/e2e/qa-infra.smoke.spec.js` через `npm run qa:test` | проверка, что браузер и логин-экран живы |
+
+Не используй существующие Playwright-спеки как единственный маршрут. Их можно прочитать как карту экранов, но последовательность действий выбирай сам.
+
+Регресс не подменяй кликами MCP. MCP — разведка; регресс — `test:e2e` / `test:ui`.
+
+## Стенд
+
+- UI: `http://127.0.0.1:3200`
+- Gateway: `http://127.0.0.1:8080/healthz`
+- Vite `npm run dev --prefix frontend` проксирует `/api` на `:8080`. Полный стенд: `make up`.
+- Гостевой контур (логин, `/c/<slug>`, редирект с `/overview` без сессии) доступен без учётки.
+- Сессия: одноразовый bootstrap-invite из логов `identity-service` (`bootstrap admin invite`, путь `/invite/...`). Для живого закупщика — только уже существующие `REAL_E2E_*` из окружения оператора, не из git.
+- Не коммить `.env`, пароли, cookie, TOTP, содержимое `testdata/private/`.
+
+## Как исследовать
+
+1. Проверь, что UI отвечает. Если нет — зафиксируй в отчёте и остановись или исследуй то, что доступно.
+2. Открой приложение как пользователь. Кликай, печатай, ходи по URL из `frontend/src/features/app/routes.js`.
+3. Карта областей: `qa/exploratory/map.md`. Это чеклист покрытия, не скрипт.
+4. Смотри функциональность, края, состояние, UX/UI.
+5. После навигации читай console и network. Скрин ключевых экранов клади в `qa/screenshots/` (файлы gitignored).
+
+Выбирай пути сам: пустые поля, короткий пароль, неизвестный URL, назад/вперёд, обновление, глубокая ссылка без сессии, смена роли если есть учётка, повторная отправка формы.
+
+## Дефект только после проверки
+
+Пока все шаги не сделаны, это не баг, а гипотеза:
+
+1. Воспроизведи ещё раз.
+2. Console.
+3. Network.
+4. Это ожидаемо? (валидация, 401 без сессии, invite один раз.)
+5. Если можно — посмотри соответствующий код. Не выдумывай root cause.
+6. Только тогда `BUG-NNN`.
+
+Не чини продуктовую логику, расчёты, API, БД, чужие данные в этом режиме, если пользователь не просил фикс. Зафиксируй.
+
+Unknown причина: `Root cause: unknown`.
+
+## Формат бага
+
+```md
+### BUG-001
+
+Title:
+краткое название
+
+Severity:
+Critical / High / Medium / Low
+
+Area:
+название модуля
+
+URL:
+...
+
+Environment:
+...
+
+Steps to reproduce:
+
+1.
+2.
+3.
+
+Expected:
+
+...
+
+Actual:
+
+...
+
+Reproducibility:
+например `3/3`
+
+Console:
+
+...
+
+Network:
+
+...
+
+Screenshot:
+путь к screenshot
+
+Probable root cause:
+если удалось доказательно определить; иначе `Root cause: unknown`
+
+Relevant source code:
+файл и строки, если удалось определить
+
+Regression test:
+Created / Not created / Not appropriate
+```
+
+## Отчёт
+
+Пиши `qa/reports/qa-report.md` по шаблону `qa/reports/qa-report.template.md`.
+
+Шапка: дата, URL, env, браузер, области, число подтверждённых дефектов.
+
+Дальше блоки **раздельно**: подтверждённые баги; UX-наблюдения; предупреждения; потенциальные проблемы; что не тестировали.
+
+Не смешивай баги с предположениями.
+
+## Регресс после бага
+
+Подходит, если проблема воспроизводится, однозначна и автоматизация не хрупкая. Тогда маленький Playwright-тест в `frontend/e2e/` (продукт) или `qa/regression/` (инфра). Не превращай разведку в огромный заранее написанный E2E suite.

@@ -20,6 +20,7 @@ type Config struct {
 	FileGRPC            string
 	AuditGRPC           string
 	BrandGRPC           string
+	CalculationGRPC     string
 	InboundGRPC         string
 	InboundWebhook      string
 	InboundWebhookRPS   float64
@@ -46,6 +47,7 @@ func Load() Config {
 		FileGRPC:            getenv("FILE_GRPC_ADDR", "127.0.0.1:9095"),
 		AuditGRPC:           getenv("AUDIT_GRPC_ADDR", "127.0.0.1:9100"),
 		BrandGRPC:           getenv("BRAND_GRPC_ADDR", "127.0.0.1:9098"),
+		CalculationGRPC:     getenv("CALCULATION_GRPC_ADDR", "127.0.0.1:9099"),
 		InboundGRPC:         getenv("INBOUND_GRPC_ADDR", "127.0.0.1:9101"),
 		InboundWebhook:      getenv("INBOUND_WEBHOOK_TOKEN", "local-dev-inbound-webhook-token"),
 		InboundWebhookRPS:   parseFloat(getenv("INBOUND_WEBHOOK_RPS", "10"), 10),

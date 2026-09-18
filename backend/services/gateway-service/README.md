@@ -36,6 +36,7 @@ curl http://127.0.0.1:8080/readyz
 - Просмотр и изменение действующих правил брендов администратором платформы.
 - Приём CloudMailin на `POST /api/v1/inbound/webhook`: Bearer-токен, лимит тела 32 MiB, token-bucket (`INBOUND_WEBHOOK_RPS` / `INBOUND_WEBHOOK_BURST`, ответ 429), best-effort аудит `inbound_webhook_received` / `inbound_rejected`.
 - Просмотр и изменение реквизитов заказа своей компании; скидка хранится отдельно по бренду и валидируется как процент от 0 до 100.
+- Планирование заказа до суммы (`POST /api/v1/order/budget-plan`): gateway пересылает сырые строки отчёта в `calculation-service`, который применяет скидку, брендовые кратности и комплектную скидку CHRISTINA PROFF. Браузер и gateway бизнес-логику не считают; gateway лишь проверяет диапазон скидки и маппит ответ.
 - CORS, CSRF-проверка POST-запросов (включая public login/invite/passkey), security headers (`Cache-Control: private, no-store`, `Cross-Origin-Opener-Policy`/`Cross-Origin-Resource-Policy: same-origin`) и HTTP-only cookie `order_fill_session`.
 
 Gateway не владеет постоянным хранилищем. `POSTGRES_ADDR` и `REDIS_ADDR` используются только диагностическим `/api/v1/status`.
@@ -47,7 +48,7 @@ Gateway не владеет постоянным хранилищем. `POSTGRES
 | `cmd/gateway` | Точка входа, обработка `SIGINT`/`SIGTERM`. |
 | `internal/config` | Загрузка и проверка runtime-конфигурации. |
 | `internal/bootstrap` | Создание gRPC-клиентов и HTTP-сервера. |
-| `internal/clients` | Клиенты Identity, TwoFA, Passkey, Job, File и Audit API. |
+| `internal/clients` | Клиенты Identity, TwoFA, Passkey, Job, File, Audit и Calculation API. |
 | `internal/transport/httpapi` | Маршрутизация, auth gate, обработчики, CORS/CSRF и HTTP-представления. |
 | `internal/preview` | Чтение gzip-метаданных и чанков preview из object storage через `file-service`. |
 | `api/openapi.yaml` | Публичный OpenAPI 3.1 контракт. |
@@ -97,6 +98,7 @@ Gateway не владеет постоянным хранилищем. `POSTGRES
 - `GET /api/v1/jobs/{job_id}/files/{file_id}/preview`
 - `GET /api/v1/jobs/{job_id}/files/{file_id}/preview/window`
 - `GET /api/v1/jobs/{job_id}/files/{file_id}/preview/find`
+- `POST /api/v1/order/budget-plan`
 - `GET /api/v1/jobs`
 - `GET /api/v1/companies`
 - `GET /api/v1/brand-rules`
@@ -133,7 +135,7 @@ Gateway не владеет постоянным хранилищем. `POSTGRES
 
 Без cookie доступны health/readiness, login, завершение 2FA-login, прием invite, начало/завершение passkey-login и публичные маршруты компании. Остальные маршруты проходят через `ValidateSession`. POST-запросы дополнительно требуют `X-Requested-With: fetch`; если указан `Origin`, он должен входить в разрешенный список.
 
-Сессионная cookie имеет `HttpOnly`, `SameSite=Lax`, TTL 8 часов и получает `Secure`/`Domain` из конфигурации. JSON для auth/admin ограничен 8 KiB, профиль реквизитов компании — 32 KiB, JSON задания — 1 MiB, все multipart-тело задания — 64 MiB. MIME загружаемой книги берётся из расширения (`.xlsx`/`.xlsm`), клиентский `Content-Type` игнорируется. Логотип ограничен 512 KiB и форматами PNG, JPEG или WebP.
+Сессионная cookie имеет `HttpOnly`, `SameSite=Lax`, TTL 8 часов и получает `Secure`/`Domain` из конфигурации. JSON для auth/admin ограничен 8 KiB, профиль реквизитов компании — 32 KiB, JSON задания и плана бюджета — 1 MiB, все multipart-тело задания — 64 MiB. MIME загружаемой книги берётся из расширения (`.xlsx`/`.xlsm`), клиентский `Content-Type` игнорируется. Логотип ограничен 512 KiB и форматами PNG, JPEG или WebP.
 
 ## Внутренние зависимости
 
@@ -146,6 +148,7 @@ Gateway не владеет постоянным хранилищем. `POSTGRES
 | `file-service` | Загрузка и скачивание объектов, архивы, логотипы и preview-чанки. |
 | `audit-service` | Запись и чтение событий аудита. Запись выполняется best-effort с таймаутом 750 ms. |
 | `brand-service` | Каталог, действующие политики и сохранение изменений администратора платформы. |
+| `calculation-service` | Планирование заказа до суммы (`PlanBudget`): скидка, брендовые кратности, комплектная скидка CHRISTINA PROFF. |
 | document worker, PostgreSQL, Redis | Только проверки для `/api/v1/status`; gateway не обращается к их данным напрямую. |
 
 gRPC-контракты находятся в [`../../proto/orderfill`](../../proto/orderfill). Максимальный размер gRPC-сообщения — 64 MiB.
@@ -168,6 +171,7 @@ gRPC-контракты находятся в [`../../proto/orderfill`](../../pr
 | `FILE_GRPC_ADDR` | `127.0.0.1:9095` | Адрес `file-service`. |
 | `AUDIT_GRPC_ADDR` | `127.0.0.1:9100` | Адрес `audit-service`. |
 | `BRAND_GRPC_ADDR` | `127.0.0.1:9098` | Адрес `brand-service` для страницы правил. |
+| `CALCULATION_GRPC_ADDR` | `127.0.0.1:9099` | Адрес `calculation-service` для `POST /api/v1/order/budget-plan`. |
 | `INBOUND_GRPC_ADDR` | `127.0.0.1:9101` | Адрес `inbound-service` для webhook и экрана интеграции 1С. |
 | `INBOUND_WEBHOOK_TOKEN` | `local-dev-inbound-webhook-token` | Bearer-секрет CloudMailin для `POST /api/v1/inbound/webhook`; вне local не-default и ≥16 байт. |
 | `INBOUND_WEBHOOK_RPS` | `10` | Скорость token-bucket на webhook; `0` отключает лимитер. |
@@ -233,14 +237,15 @@ docker compose -f deploy/docker-compose.yml up --build gateway-service
 go test ./...
 ```
 
-Из корня репозитория `make test` запускает тесты всех Go-модулей и frontend. Тесты gateway покрывают конфигурационную валидацию, CORS/CSRF и auth gate, ограничения ролей/логотипов, маршруты и preview.
+Из корня репозитория `make test` запускает тесты всех Go-модулей и frontend. Тесты gateway покрывают конфигурационную валидацию, CORS/CSRF и auth gate, ограничения ролей/логотипов, маршруты, preview, тонкую пересылку `POST /api/v1/order/budget-plan` в `calculation-service` и HTTP 400 на `CreateJob` при gRPC `InvalidArgument` (не-Excel).
 
 После изменения публичного API нужно синхронизировать OpenAPI-контракт и проверить его генерацию командами из [`../../Makefile`](../../Makefile).
 
 ## Эксплуатационные заметки и ограничения
 
 - `/healthz` — liveness, `/readyz` сейчас всегда отвечает `200` и не отражает доступность gRPC-зависимостей.
-- `/api/v1/status` и `GET /api/v1/audit` доступны только `platform_admin`. Status проверяет worker, PostgreSQL, Redis и file-service с общим deadline 2 секунды. Identity, TwoFA, Passkey, Job и Audit в эту диагностику не входят.
+- `/api/v1/status` и `GET /api/v1/audit` доступны только `platform_admin`. Status проверяет worker, PostgreSQL, Redis и file-service с общим deadline 2 секунды. Identity, TwoFA, Passkey, Job, Audit и Calculation в эту диагностику не входят.
+- `POST /api/v1/order/budget-plan` требует сессию и не пишет jobs/файлы: это preview, расчёт выполняет `calculation-service`.
 - Вне local сервис отказывается запускаться с insecure cookie, пустым CORS allowlist, wildcard origin, origin без HTTPS, `GRPC_TLS_MODE` отличным от `mtls` или без путей сертификата/ключа/CA.
 - Смена пароля и включение 2FA отзывают cookie-сессии. Отключение 2FA требует пароль и TOTP/recovery code.
 - В репозитории нет файла `LICENSE`; условия распространения сервиса в README не зафиксированы.

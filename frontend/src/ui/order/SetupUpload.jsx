@@ -145,7 +145,10 @@ function Dropzone({ title, hint, file, accept, onPick, tour, inputLabel = title 
         accept={accept}
         aria-label={inputLabel}
         className="hidden"
-        onChange={(event) => onPick(event.target.files?.[0] || null)}
+        onChange={(event) => {
+          const next = event.target.files?.[0] || null;
+          if (!next || fileMatchesAccept(next, accept)) onPick(next);
+        }}
       />
       <div className="mb-2 flex items-center justify-between">
         <span className="text-[15px] font-semibold">{title}</span>

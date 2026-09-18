@@ -12,6 +12,8 @@ import (
 	"testing"
 
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 
 	filesv1 "order-fill/backend/proto/gen/go/orderfill/files/v1"
 	jobsv1 "order-fill/backend/proto/gen/go/orderfill/jobs/v1"
@@ -47,6 +49,15 @@ func (c *uploadJobClient) CreateJob(_ context.Context, req *jobsv1.CreateJobRequ
 
 func (c *uploadJobClient) ListFiles(context.Context, *jobsv1.ListFilesRequest, ...grpc.CallOption) (*jobsv1.ListFilesResponse, error) {
 	return &jobsv1.ListFilesResponse{}, nil
+}
+
+type failingJobClient struct {
+	jobsv1.JobServiceClient
+	err error
+}
+
+func (c *failingJobClient) CreateJob(context.Context, *jobsv1.CreateJobRequest, ...grpc.CallOption) (*jobsv1.CreateJobResponse, error) {
+	return nil, c.err
 }
 
 func TestCreateOrderFillUploadsWarehouseWithItsOwnRole(t *testing.T) {
@@ -130,5 +141,47 @@ func TestCreateNorthMergeKeepsChristinaVariants(t *testing.T) {
 	}
 	if got := []string{files.requests[0].GetKey(), files.requests[1].GetKey()}; !strings.HasPrefix(got[0], "blank-home/") || !strings.HasPrefix(got[1], "blank-proff/") {
 		t.Fatalf("variant keys=%v", got)
+	}
+}
+
+func TestCreateOrderFillRejectsNonWorkbookAsBadRequest(t *testing.T) {
+	t.Parallel()
+	var body bytes.Buffer
+	form := multipart.NewWriter(&body)
+	addFile := func(field, name string) {
+		t.Helper()
+		part, err := form.CreateFormFile(field, name)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if _, err := io.WriteString(part, name); err != nil {
+			t.Fatal(err)
+		}
+	}
+	addFile("source_file", "qa-not-excel.txt")
+	addFile("blank_files", "blank.xlsx")
+	if err := form.Close(); err != nil {
+		t.Fatal(err)
+	}
+
+	api := &API{Clients: clients.Clients{
+		Files: &uploadFileClient{},
+		Jobs:  &failingJobClient{err: status.Error(codes.InvalidArgument, `invalid job: file "qa-not-excel.txt" must be .xlsx or .xlsm`)},
+	}}
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/jobs/order-fill", &body)
+	req.Header.Set("Content-Type", form.FormDataContentType())
+	req = req.WithContext(withUser(t.Context(), User{ID: "user-1", CompanyID: "company-1", Role: "purchaser"}))
+	rec := httptest.NewRecorder()
+
+	api.createOrderFill(rec, req)
+
+	if rec.Code != http.StatusBadRequest {
+		t.Fatalf("status=%d body=%s", rec.Code, rec.Body.String())
+	}
+	if !strings.Contains(rec.Body.String(), `"code":"bad_request"`) {
+		t.Fatalf("body=%s", rec.Body.String())
+	}
+	if !strings.Contains(rec.Body.String(), "must be .xlsx or .xlsm") {
+		t.Fatalf("body=%s", rec.Body.String())
 	}
 }

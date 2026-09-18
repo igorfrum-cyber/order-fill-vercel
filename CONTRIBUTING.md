@@ -99,6 +99,7 @@ npm run test --prefix frontend
 npm run test:ui --prefix frontend
 npm run test:component --prefix frontend
 npm run test:e2e --prefix frontend
+npm run qa:test --prefix frontend
 (cd backend/services/<service> && GOWORK=off go test ./...)
 ```
 
@@ -113,6 +114,9 @@ suite снова, пока не станет зелёным. Unit-тесты fro
 ```bash
 npm run test:e2e:install --prefix frontend
 ```
+
+Автономная разведка UI агентом (не заранее написанный E2E) описана в
+[`qa/README.md`](./qa/README.md).
 
 Включите git hooks один раз в клоне:
 

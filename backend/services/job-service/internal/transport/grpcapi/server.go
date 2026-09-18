@@ -87,15 +87,15 @@ func protoJob(job domain.Job) *jobsv1.Job {
 func (s *Server) CreateJob(ctx context.Context, req *jobsv1.CreateJobRequest) (*jobsv1.CreateJobResponse, error) {
 	actor, err := s.actorFrom(ctx, req.GetMeta())
 	if err != nil {
-		return nil, err
+		return nil, toStatus(err)
 	}
 	jobType, err := domain.ParseType(req.GetType())
 	if err != nil {
-		return nil, err
+		return nil, toStatus(err)
 	}
 	job, err := s.svc.Create(ctx, actor, jobType, req.GetInputFileIds(), req.GetBrand())
 	if err != nil {
-		return nil, err
+		return nil, toStatus(err)
 	}
 	return &jobsv1.CreateJobResponse{Job: protoJob(job)}, nil
 }
@@ -103,11 +103,11 @@ func (s *Server) CreateJob(ctx context.Context, req *jobsv1.CreateJobRequest) (*
 func (s *Server) GetJob(ctx context.Context, req *jobsv1.GetJobRequest) (*jobsv1.GetJobResponse, error) {
 	actor, err := s.actorFrom(ctx, req.GetMeta())
 	if err != nil {
-		return nil, err
+		return nil, toStatus(err)
 	}
 	job, err := s.svc.Get(ctx, actor, req.GetJobId())
 	if err != nil {
-		return nil, err
+		return nil, toStatus(err)
 	}
 	return &jobsv1.GetJobResponse{Job: protoJob(job)}, nil
 }
@@ -115,11 +115,11 @@ func (s *Server) GetJob(ctx context.Context, req *jobsv1.GetJobRequest) (*jobsv1
 func (s *Server) ListJobs(ctx context.Context, req *jobsv1.ListJobsRequest) (*jobsv1.ListJobsResponse, error) {
 	actor, err := s.actorFrom(ctx, req.GetMeta())
 	if err != nil {
-		return nil, err
+		return nil, toStatus(err)
 	}
 	items, err := s.svc.List(ctx, actor)
 	if err != nil {
-		return nil, err
+		return nil, toStatus(err)
 	}
 	out := make([]*jobsv1.Job, 0, len(items))
 	for _, item := range items {
@@ -130,7 +130,7 @@ func (s *Server) ListJobs(ctx context.Context, req *jobsv1.ListJobsRequest) (*jo
 
 func (s *Server) CompleteJob(ctx context.Context, req *jobsv1.CompleteJobRequest) (*jobsv1.CompleteJobResponse, error) {
 	if err := s.requireWorker(ctx); err != nil {
-		return nil, err
+		return nil, toStatus(err)
 	}
 	files := make([]domain.FileRef, 0, len(req.GetFiles()))
 	for _, file := range req.GetFiles() {
@@ -154,17 +154,17 @@ func (s *Server) CompleteJob(ctx context.Context, req *jobsv1.CompleteJobRequest
 		})
 	}
 	if err := s.svc.Complete(ctx, req.GetJobId(), report, files); err != nil {
-		return nil, err
+		return nil, toStatus(err)
 	}
 	return &jobsv1.CompleteJobResponse{}, nil
 }
 
 func (s *Server) FailJob(ctx context.Context, req *jobsv1.FailJobRequest) (*jobsv1.FailJobResponse, error) {
 	if err := s.requireWorker(ctx); err != nil {
-		return nil, err
+		return nil, toStatus(err)
 	}
 	if err := s.svc.Fail(ctx, req.GetJobId(), req.GetErrorMessage()); err != nil {
-		return nil, err
+		return nil, toStatus(err)
 	}
 	return &jobsv1.FailJobResponse{}, nil
 }
@@ -172,7 +172,7 @@ func (s *Server) FailJob(ctx context.Context, req *jobsv1.FailJobRequest) (*jobs
 func (s *Server) SubmitEdits(ctx context.Context, req *jobsv1.SubmitEditsRequest) (*jobsv1.SubmitEditsResponse, error) {
 	actor, err := s.actorFrom(ctx, req.GetMeta())
 	if err != nil {
-		return nil, err
+		return nil, toStatus(err)
 	}
 	edits := make([]domain.Edit, 0, len(req.GetEdits()))
 	for _, edit := range req.GetEdits() {
@@ -180,7 +180,7 @@ func (s *Server) SubmitEdits(ctx context.Context, req *jobsv1.SubmitEditsRequest
 	}
 	job, err := s.svc.SubmitEdits(ctx, actor, req.GetJobId(), edits)
 	if err != nil {
-		return nil, err
+		return nil, toStatus(err)
 	}
 	return &jobsv1.SubmitEditsResponse{Job: protoJob(job)}, nil
 }
@@ -188,11 +188,11 @@ func (s *Server) SubmitEdits(ctx context.Context, req *jobsv1.SubmitEditsRequest
 func (s *Server) GetReport(ctx context.Context, req *jobsv1.GetReportRequest) (*jobsv1.GetReportResponse, error) {
 	actor, err := s.actorFrom(ctx, req.GetMeta())
 	if err != nil {
-		return nil, err
+		return nil, toStatus(err)
 	}
 	report, err := s.svc.GetReport(ctx, actor, req.GetJobId())
 	if err != nil {
-		return nil, err
+		return nil, toStatus(err)
 	}
 	return &jobsv1.GetReportResponse{
 		Summary: protoSummary(report.Summary),
@@ -203,11 +203,11 @@ func (s *Server) GetReport(ctx context.Context, req *jobsv1.GetReportRequest) (*
 func (s *Server) ListFiles(ctx context.Context, req *jobsv1.ListFilesRequest) (*jobsv1.ListFilesResponse, error) {
 	actor, err := s.actorFrom(ctx, req.GetMeta())
 	if err != nil {
-		return nil, err
+		return nil, toStatus(err)
 	}
 	files, err := s.svc.ListFiles(ctx, actor, req.GetJobId())
 	if err != nil {
-		return nil, err
+		return nil, toStatus(err)
 	}
 	out := make([]*jobsv1.FileRef, 0, len(files))
 	for _, file := range files {
@@ -221,10 +221,10 @@ func (s *Server) ListFiles(ctx context.Context, req *jobsv1.ListFilesRequest) (*
 
 func (s *Server) UpdateProgress(ctx context.Context, req *jobsv1.UpdateProgressRequest) (*jobsv1.UpdateProgressResponse, error) {
 	if err := s.requireWorker(ctx); err != nil {
-		return nil, err
+		return nil, toStatus(err)
 	}
 	if err := s.svc.UpdateProgress(ctx, req.GetJobId(), domain.Status(req.GetStatus()), req.GetMessage(), req.GetProgress()); err != nil {
-		return nil, err
+		return nil, toStatus(err)
 	}
 	return &jobsv1.UpdateProgressResponse{}, nil
 }

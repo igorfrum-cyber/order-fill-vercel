@@ -56,6 +56,7 @@ make test
 npm run test:ui --prefix frontend
 npm run test:component --prefix frontend
 npm run test:e2e --prefix frontend
+npm run qa:test --prefix frontend
 make lint
 make verify
 make security

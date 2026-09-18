@@ -1,6 +1,30 @@
 package north
 
-import "testing"
+import (
+	"testing"
+
+	"order-fill/backend/services/document-service/internal/domain/orderfill"
+)
+
+func TestBuildReportCarriesChristinaLine(t *testing.T) {
+	t.Parallel()
+	line := &orderfill.ChristinaLine{ID: "MUSE", Name: "MUSE", Article: "CHR001", Required: []string{"CHR001", "CHR002"}}
+	needs := []Need{
+		{City: "surgut", Article: "proff:CHR001", Name: "Товар A", Variant: "proff", Qty: 3, Price: 100, Line: line},
+		{City: "surgut", Article: "proff:CHR002", Name: "Товар B", Variant: "proff", Qty: 3, Price: 100},
+	}
+	report := BuildReport("christina", needs, nil, nil, nil)
+	byKey := map[string]PlanRow{}
+	for _, row := range report.PlanRows {
+		byKey[row.Key] = row
+	}
+	if got := byKey["proff:CHR001"].ChristinaLine; got == nil || got.ID != "MUSE" {
+		t.Fatalf("proff:CHR001 line = %+v, want MUSE", got)
+	}
+	if byKey["proff:CHR002"].ChristinaLine != nil {
+		t.Fatalf("proff:CHR002 had no line in needs; must stay nil: %+v", byKey["proff:CHR002"].ChristinaLine)
+	}
+}
 
 func TestBuildReport(t *testing.T) {
 	t.Parallel()

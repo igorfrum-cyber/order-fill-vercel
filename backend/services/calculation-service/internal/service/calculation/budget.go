@@ -88,10 +88,31 @@ func collectBudgetCands(rows []domain.BudgetRow, up bool) []budgetCand {
 		nextMonths, _ := Coverage(r, q)
 		out = append(out, budgetCand{
 			idx: i, q: q, months: months, nextMonths: nextMonths,
-			cost: budgetCents(r.Price*q) - budgetCents(r.Price*r.Quantity),
+			cost: changeCost(rows, i, q),
 		})
 	}
 	return out
+}
+
+// changeCost is the whole-order kopeck delta of setting rows[i] to q. A PROFF
+// row's quantity changes the set discount on its siblings, so the full order is
+// re-evaluated; every other row uses the direct per-row delta. Mirrors
+// origin/main changeCost.
+//
+// ponytail: O(n) per call via ProcurementTotalCents → O(n²) per planning
+// iteration. Fine for blank-sized inputs; revisit only if PROFF line counts
+// grow large enough to matter.
+func changeCost(rows []domain.BudgetRow, i int, q float64) int64 {
+	r := rows[i]
+	if r.Group != "proff" || r.Line == nil {
+		return budgetCents(r.Price*q) - budgetCents(r.Price*r.Quantity)
+	}
+	before := rows[i].Quantity
+	oldTotal := ProcurementTotalCents(rows)
+	rows[i].Quantity = q
+	cost := ProcurementTotalCents(rows) - oldTotal
+	rows[i].Quantity = before
+	return cost
 }
 
 func pickUpStage(rows []domain.BudgetRow, candidates []budgetCand) string {
@@ -161,8 +182,10 @@ func sortBudgetDown(candidates []budgetCand, goal, amount int64) {
 	})
 }
 
-// PlanBudget matches origin/main planBudget. It copies input and never mutates it.
-func PlanBudget(input []domain.BudgetRow, target float64, opts domain.BudgetOptions) (domain.BudgetPlan, error) {
+// planBudgetCore is the pure coverage planner: no PROFF line awareness beyond
+// the set discount folded into ProcurementTotalCents and changeCost. It copies
+// input and never mutates it. Mirrors origin/main planBudgetCore.
+func planBudgetCore(input []domain.BudgetRow, target float64, opts domain.BudgetOptions) (domain.BudgetPlan, error) {
 	if !finiteNumber(target) || target < 0 {
 		return domain.BudgetPlan{}, errors.New("введите неотрицательную сумму")
 	}
@@ -180,13 +203,7 @@ func PlanBudget(input []domain.BudgetRow, target float64, opts domain.BudgetOpti
 			return domain.BudgetPlan{}, fmt.Errorf("некорректные данные: %s", r.Name)
 		}
 	}
-	total := func() int64 {
-		var sum int64
-		for _, r := range rows {
-			sum += budgetCents(r.Price * r.Quantity)
-		}
-		return sum
-	}
+	total := func() int64 { return ProcurementTotalCents(rows) }
 	start := total()
 	goal := budgetCents(target)
 	up := goal > start
@@ -259,7 +276,7 @@ func PlanBudget(input []domain.BudgetRow, target float64, opts domain.BudgetOpti
 			r := &rows[i]
 			for r.Quantity < r.Before {
 				q := nextQuantity(*r, r.Quantity, 1)
-				cost := budgetCents(r.Price*q) - budgetCents(r.Price*r.Quantity)
+				cost := changeCost(rows, i, q)
 				if q > r.Before || amount+cost > goal {
 					break
 				}
@@ -273,6 +290,125 @@ func PlanBudget(input []domain.BudgetRow, target float64, opts domain.BudgetOpti
 		Rows: rows, Before: float64(start) / 100, Total: float64(amount) / 100,
 		Target: target, Reason: reason, Complete: complete,
 	}, nil
+}
+
+// PlanBudget matches origin/main planBudget: an atomic CHRISTINA PROFF
+// set-completion pre-pass, then the normal coverage top-up, then a final
+// first-set completion that can still lower the total. Copies input and never
+// mutates it, so callers can preview safely.
+func PlanBudget(input []domain.BudgetRow, target float64, opts domain.BudgetOptions) (domain.BudgetPlan, error) {
+	original := make([]domain.BudgetRow, len(input))
+	for i, r := range input {
+		r.Quantity = numberOrZero(r.Quantity)
+		original[i] = r
+	}
+	hasProff := slices.ContainsFunc(original, func(r domain.BudgetRow) bool {
+		return r.Group == "proff" && r.Line != nil
+	})
+	before := float64(ProcurementTotalCents(original)) / 100
+	if !hasProff || target < before {
+		return planBudgetCore(input, target, opts)
+	}
+	// Validate the same row contract even when the line pass reaches the target.
+	if _, err := planBudgetCore(original, before, opts); err != nil {
+		return domain.BudgetPlan{}, err
+	}
+	baselines := BudgetBaselines(original)
+	starting := make(map[string]float64, len(original))
+	for _, r := range original {
+		starting[r.Key] = r.Quantity
+	}
+	rows := original
+	var result domain.BudgetPlan
+	var steps []domain.CompletionStep
+	// A final first-set completion can reduce the total, so resume the top-up if
+	// needed; a completed line cannot receive that exception a second time.
+	for pass := 0; pass <= len(baselines)+1; pass++ {
+		lines, err := CompleteChristinaLines(rows, target, baselines)
+		if err != nil {
+			return domain.BudgetPlan{}, err
+		}
+		rows = lines.Rows
+		steps = append(steps, lines.Steps...)
+		if float64(ProcurementTotalCents(rows))/100 >= target {
+			result = domain.BudgetPlan{Rows: rows, Total: float64(ProcurementTotalCents(rows)) / 100, Target: target,
+				Complete: float64(ProcurementTotalCents(rows))/100 <= target*1.05}
+			break
+		}
+		result, err = planBudgetCore(rows, target, opts)
+		if err != nil {
+			return domain.BudgetPlan{}, err
+		}
+		rows = result.Rows
+		if !result.Complete {
+			break
+		}
+		finish, err := CompleteChristinaLines(rows, target, baselines)
+		if err != nil {
+			return domain.BudgetPlan{}, err
+		}
+		rows = finish.Rows
+		steps = append(steps, finish.Steps...)
+		result.Rows = rows
+		result.Total = float64(ProcurementTotalCents(rows)) / 100
+		if result.Total >= target {
+			break
+		}
+	}
+
+	completed := make(map[string]bool, len(steps))
+	for _, s := range steps {
+		completed[s.ID] = true
+	}
+	for i := range rows {
+		key := rows[i].Key
+		rows[i].Before = starting[key]
+		rows[i].HasBefore = true
+		rows[i].LineCompletion = ""
+		if rows[i].Line != nil && completed[rows[i].Line.ID] && rows[i].Quantity > starting[key] {
+			rows[i].LineCompletion = rows[i].Line.Name
+		}
+	}
+	totalCents := ProcurementTotalCents(rows)
+	result.Rows = rows
+	result.Before = before
+	result.Complete = result.Complete &&
+		totalCents >= int64(math.Round(target*100)) &&
+		totalCents <= int64(math.Floor(target*105+1e-8))
+	result.LineSteps = steps
+	return result, nil
+}
+
+// PlanReportBudget prices raw report rows (main discount + brand order rules +
+// delivery months) and runs PlanBudget. It is the owner-side entry point so the
+// browser and gateway pass only raw numbers and never compute pricing, brand
+// multiples or the CHRISTINA set discount. Mirrors origin/main
+// budgetRowsFromReport + planBudget.
+func PlanReportBudget(req domain.BudgetRequest) (domain.BudgetPlan, error) {
+	factor := 1 - req.Discount/100
+	rows := make([]domain.BudgetRow, len(req.Rows))
+	for i, r := range req.Rows {
+		unit, step, minimum := BudgetOrderRules(req.Brand, r.Name, r.BoxSize)
+		rows[i] = domain.BudgetRow{
+			Key: r.Key, Name: r.Name, Category: r.Category, Quantity: r.Quantity,
+			Price:    math.Round(r.BasePrice*factor*100) / 100,
+			Demand:   r.Demand,
+			Delivery: req.DeliveryWeeks * 0.25,
+			Stock:    r.Stock, Transit: r.Transit, Outbound: r.Outbound,
+			Unit: unit, Step: step, Minimum: minimum,
+			Locked: r.Locked, Excluded: r.Excluded, Unsafe: r.Unsafe,
+			Group: r.Group, Line: r.Line,
+		}
+	}
+	return PlanBudget(rows, req.Target, req.Options)
+}
+
+// numberOrZero mirrors JS Number(x || 0): NaN and 0 collapse to 0.
+func numberOrZero(v float64) float64 {
+	if v == 0 || math.IsNaN(v) {
+		return 0
+	}
+	return v
 }
 
 // BudgetOrderRules matches origin/main budgetOrderRules.
@@ -313,19 +449,25 @@ func BudgetOrderRules(brand, name string, box float64) (unit, step, minimum floa
 	return 1, step, minimum
 }
 
-// BudgetChangeComment matches origin/main budgetChangeComment.
+// BudgetChangeComment matches origin/main budgetChangeComment. A positive change
+// on a completed PROFF line also names which line was filled.
 func BudgetChangeComment(row domain.BudgetRow) string {
 	if !row.HasBefore {
 		return ""
 	}
 	delta := row.Quantity - row.Before
-	if delta > 0 {
-		return additionComment(delta, row.Unit)
-	}
-	if delta < 0 {
+	switch {
+	case delta > 0:
+		note := additionComment(delta, row.Unit)
+		if row.LineCompletion != "" {
+			note += " Дополнение комплектов " + row.LineCompletion + "."
+		}
+		return note
+	case delta < 0:
 		return "Уменьшено на " + ruMoney(-delta) + " " + unitLabel(row.Unit) + " Для снижения заказа до указанной суммы."
+	default:
+		return ""
 	}
-	return ""
 }
 
 func additionComment(quantity, unit float64) string {

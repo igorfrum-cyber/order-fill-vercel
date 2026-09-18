@@ -45,6 +45,7 @@ services:
       FILE_GRPC_ADDR: file-service:9095
       AUDIT_GRPC_ADDR: audit-service:9100
       BRAND_GRPC_ADDR: brand-service:9098
+      CALCULATION_GRPC_ADDR: calculation-service:9099
       INBOUND_GRPC_ADDR: inbound-service:9101
       INBOUND_WEBHOOK_TOKEN: ${INBOUND_WEBHOOK_TOKEN:-local-dev-inbound-webhook-token}
       INBOUND_WEBHOOK_RPS: ${INBOUND_WEBHOOK_RPS:-10}
@@ -70,6 +71,8 @@ services:
       file-service:
         condition: service_healthy
       audit-service:
+        condition: service_healthy
+      calculation-service:
         condition: service_healthy
       document-worker:
         condition: service_healthy

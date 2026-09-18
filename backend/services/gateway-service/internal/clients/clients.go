@@ -6,6 +6,7 @@ import (
 	"order-fill/backend/pkg/grpcutil"
 	auditv1 "order-fill/backend/proto/gen/go/orderfill/audit/v1"
 	brandv1 "order-fill/backend/proto/gen/go/orderfill/brand/v1"
+	calculationv1 "order-fill/backend/proto/gen/go/orderfill/calculation/v1"
 	filesv1 "order-fill/backend/proto/gen/go/orderfill/files/v1"
 	identityv1 "order-fill/backend/proto/gen/go/orderfill/identity/v1"
 	inboundv1 "order-fill/backend/proto/gen/go/orderfill/inbound/v1"
@@ -16,14 +17,15 @@ import (
 )
 
 type Clients struct {
-	Identity identityv1.IdentityServiceClient
-	TwoFA    twofav1.TwoFAServiceClient
-	Passkey  passkeyv1.PasskeyServiceClient
-	Jobs     jobsv1.JobServiceClient
-	Files    filesv1.FileServiceClient
-	Audit    auditv1.AuditServiceClient
-	Brand    brandv1.BrandServiceClient
-	Inbound  inboundv1.InboundServiceClient
+	Identity    identityv1.IdentityServiceClient
+	TwoFA       twofav1.TwoFAServiceClient
+	Passkey     passkeyv1.PasskeyServiceClient
+	Jobs        jobsv1.JobServiceClient
+	Files       filesv1.FileServiceClient
+	Audit       auditv1.AuditServiceClient
+	Brand       brandv1.BrandServiceClient
+	Inbound     inboundv1.InboundServiceClient
+	Calculation calculationv1.CalculationServiceClient
 }
 
 func Dial(ctx context.Context, cfg config.Config) (Clients, error) {
@@ -59,14 +61,19 @@ func Dial(ctx context.Context, cfg config.Config) (Clients, error) {
 	if err != nil {
 		return Clients{}, err
 	}
+	calculationConn, err := grpcutil.Dial(ctx, cfg.CalculationGRPC)
+	if err != nil {
+		return Clients{}, err
+	}
 	return Clients{
-		Identity: identityv1.NewIdentityServiceClient(identityConn),
-		TwoFA:    twofav1.NewTwoFAServiceClient(twoFAConn),
-		Passkey:  passkeyv1.NewPasskeyServiceClient(passkeyConn),
-		Jobs:     jobsv1.NewJobServiceClient(jobConn),
-		Files:    filesv1.NewFileServiceClient(fileConn),
-		Audit:    auditv1.NewAuditServiceClient(auditConn),
-		Brand:    brandv1.NewBrandServiceClient(brandConn),
-		Inbound:  inboundv1.NewInboundServiceClient(inboundConn),
+		Identity:    identityv1.NewIdentityServiceClient(identityConn),
+		TwoFA:       twofav1.NewTwoFAServiceClient(twoFAConn),
+		Passkey:     passkeyv1.NewPasskeyServiceClient(passkeyConn),
+		Jobs:        jobsv1.NewJobServiceClient(jobConn),
+		Files:       filesv1.NewFileServiceClient(fileConn),
+		Audit:       auditv1.NewAuditServiceClient(auditConn),
+		Brand:       brandv1.NewBrandServiceClient(brandConn),
+		Inbound:     inboundv1.NewInboundServiceClient(inboundConn),
+		Calculation: calculationv1.NewCalculationServiceClient(calculationConn),
 	}, nil
 }

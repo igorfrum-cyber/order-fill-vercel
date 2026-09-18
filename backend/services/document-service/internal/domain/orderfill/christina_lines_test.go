@@ -34,7 +34,7 @@ func TestChristinaProffLinesByRow_NoStyles(t *testing.T) {
 		{"CHR003", "Product C"},
 	})
 	sheet := newFakeWorkbook("Sheet1", grid).sheets[0]
-	result := christinaProffLinesByRow(sheet)
+	result := ChristinaProffLinesByRow(sheet)
 
 	if len(result) != 2 {
 		t.Fatalf("want 2 mapped rows, got %d", len(result))
@@ -80,7 +80,7 @@ func TestChristinaProffLinesByRow_MultipleLines(t *testing.T) {
 		{"CHR011", "Product Y"},
 	})
 	sheet := newFakeWorkbook("Sheet1", grid).sheets[0]
-	result := christinaProffLinesByRow(sheet)
+	result := ChristinaProffLinesByRow(sheet)
 
 	if len(result) != 3 {
 		t.Fatalf("want 3 mapped rows, got %d", len(result))
@@ -118,7 +118,7 @@ func TestChristinaProffLinesByRow_NuanceNoHeader(t *testing.T) {
 		{"CHR003", "Nuance Serum"},
 	})
 	sheet := newFakeWorkbook("Sheet1", grid).sheets[0]
-	result := christinaProffLinesByRow(sheet)
+	result := ChristinaProffLinesByRow(sheet)
 
 	// CHR001 → MUSE; CHR002 & CHR003 → NUANCE (auto-created).
 	if len(result) != 3 {
@@ -138,7 +138,7 @@ func TestChristinaProffLinesByRow_NuanceNoHeader(t *testing.T) {
 // TestChristinaProffLinesByRow_EmptySheet should return an empty map.
 func TestChristinaProffLinesByRow_EmptySheet(t *testing.T) {
 	sheet := newFakeWorkbook("Sheet1", [][]string{}).sheets[0]
-	result := christinaProffLinesByRow(sheet)
+	result := ChristinaProffLinesByRow(sheet)
 	if len(result) != 0 {
 		t.Errorf("want empty map, got %d entries", len(result))
 	}

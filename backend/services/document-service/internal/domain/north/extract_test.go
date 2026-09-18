@@ -99,6 +99,48 @@ func TestNeedsFromBlankKeepsVariantAndSkipsRepeatedHeader(t *testing.T) {
 	}
 }
 
+func TestNeedsFromBlankAttachesChristinaProffLine(t *testing.T) {
+	t.Parallel()
+	got, err := NeedsFromBlank(gridBook([][]string{
+		{"Артикул", "Наименование", "Цена", "Кол-во"},
+		{"", "MUSE", "", ""},
+		{"CHR001", "Товар A", "100", "3"},
+		{"CHR002", "Товар B", "100", "3"},
+	}), brand.Rule("christina"), "surgut", "proff")
+	if err != nil {
+		t.Fatal(err)
+	}
+	var member *Need
+	for i := range got {
+		if got[i].ArticleRaw == "CHR001" {
+			member = &got[i]
+		}
+	}
+	if member == nil || member.Line == nil {
+		t.Fatalf("CHR001 need must carry a christina line: %+v", got)
+	}
+	if member.Line.ID != "MUSE" || member.Line.Article != "CHR001" {
+		t.Fatalf("line = %+v, want id MUSE / article CHR001", member.Line)
+	}
+	if len(member.Line.Required) != 2 || member.Line.Required[0] != "CHR001" || member.Line.Required[1] != "CHR002" {
+		t.Fatalf("required = %v, want [CHR001 CHR002]", member.Line.Required)
+	}
+}
+
+func TestNeedsFromBlankNoChristinaLineForOtherBrands(t *testing.T) {
+	t.Parallel()
+	got, err := NeedsFromBlank(gridBook([][]string{
+		{"Артикул", "Наименование", "Кол-во"},
+		{"CHR001", "Товар A", "3"},
+	}), brand.Rule("angiopharm"), "surgut")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(got) != 1 || got[0].Line != nil {
+		t.Fatalf("non-christina brand must not attach a line: %+v", got)
+	}
+}
+
 type gridBook [][]string
 
 func (g gridBook) Sheets() []spreadsheet.Sheet { return []spreadsheet.Sheet{gridSheet(g)} }

@@ -19,6 +19,7 @@ gateway-service  --gRPC--> identity-service
       |          --gRPC--> twofa-service
       |          --gRPC--> passkey-service
       |          --gRPC--> inbound-service
+      |          --gRPC--> calculation-service
       |
       +-- Redis stream --> document-worker
 
@@ -56,7 +57,8 @@ Frontend в production отдает статические файлы через
 
 Пользовательский интерфейс: загрузка файлов, выбор компании и режима,
 отображение статуса job, просмотр отчета, ручные правки и скачивание результата.
-Excel не парсит.
+Excel не парсит. Заказ до суммы не считает: шлёт сырые строки в
+`POST /api/v1/order/budget-plan`.
 
 ### gateway-service
 
@@ -69,7 +71,9 @@ Excel не парсит.
 - прием пользовательских запросов и файлов;
 - оркестрацию gRPC-вызовов во внутренние сервисы;
 - streaming/download endpoints;
-- ограничение размера upload и preview windows.
+- ограничение размера upload и preview windows;
+- тонкий `POST /api/v1/order/budget-plan` в `calculation-service` (скидка
+  проверяется на границе, количества считает calculation).
 
 ### identity-service
 
@@ -119,7 +123,10 @@ message, а не из identity-service.
 Они не доступны из браузера напрямую. Gateway предоставляет администратору
 платформы только read-only HTTP-проекцию каталога `brand-service` на странице
 правил. `matching-service` возвращает канонические
-категории отчёта; Excel не читает.
+категории отчёта; Excel не читает. `calculation-service` считает и заказ до
+суммы (`PlanBudget`): скидку, брендовые кратности и комплектную скидку CHRISTINA
+PROFF; браузер шлёт сырые строки в `POST /api/v1/order/budget-plan` и сам расчёт
+не выполняет.
 
 ### audit-service
 

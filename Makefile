@@ -1,8 +1,17 @@
-.PHONY: verify lint test docs docs-sync contracts security up down logs load-order-fill lan-https lan-https-down https https-down hooks
+.PHONY: verify lint test docs docs-sync contracts security up down logs load-order-fill lan-https lan-https-down https https-down hooks qa-test qa-test-headed qa-report
 
 hooks:
 	git config core.hooksPath .githooks
 	chmod +x .githooks/pre-commit .githooks/pre-push
+
+qa-test:
+	npm run qa:test --prefix frontend
+
+qa-test-headed:
+	npm run qa:test:headed --prefix frontend
+
+qa-report:
+	npm run qa:report --prefix frontend
 
 verify:
 	bash scripts/verify.sh

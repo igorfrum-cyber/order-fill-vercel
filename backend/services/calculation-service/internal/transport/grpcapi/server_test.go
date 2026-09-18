@@ -108,14 +108,17 @@ func TestPlanBudgetAndWarehouseTransferRPC(t *testing.T) {
 	t.Parallel()
 	s := NewServer(calculation.New())
 	budget, err := s.PlanBudget(t.Context(), &calculationv1.PlanBudgetRequest{
-		Target: 2200,
+		Target: 2200, DeliveryWeeks: 1,
 		Rows: []*calculationv1.BudgetRow{
-			{Key: "a", Name: "a", Category: "A", Quantity: 10, Price: 100, Demand: 10, Delivery: 0.25, Unit: 1, Step: 1, Minimum: 1},
-			{Key: "c", Name: "c", Category: "C", Quantity: 10, Price: 100, Demand: 10, Delivery: 0.25, Unit: 1, Step: 1, Minimum: 1},
+			{Key: "a", Name: "a", Category: "A", Quantity: 10, BasePrice: 100, Demand: 10},
+			{Key: "c", Name: "c", Category: "C", Quantity: 10, BasePrice: 100, Demand: 10},
 		},
 	})
 	if err != nil || budget.GetRows()[0].GetQuantity() != 10 || budget.GetRows()[1].GetQuantity() != 12 {
 		t.Fatalf("%+v err=%v", budget, err)
+	}
+	if budget.GetRows()[1].GetCategory() != "C" {
+		t.Fatalf("category not mapped: %+v", budget.GetRows()[1])
 	}
 	_, err = s.PlanBudget(t.Context(), &calculationv1.PlanBudgetRequest{Target: -1})
 	if err == nil {

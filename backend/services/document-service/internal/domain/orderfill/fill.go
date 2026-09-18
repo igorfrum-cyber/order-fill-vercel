@@ -311,7 +311,7 @@ func blankPositions(blank Detection, blankID string, rule brand.RuleConfig) []bl
 	// Pre-compute PROFF line membership for Christina blanks.
 	var linesByRow map[int]*ChristinaLine
 	if rule.Key == "christina" {
-		linesByRow = christinaProffLinesByRow(blank.Sheet)
+		linesByRow = ChristinaProffLinesByRow(blank.Sheet)
 	}
 
 	positions := make([]blankPosition, 0)

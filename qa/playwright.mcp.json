@@ -1,0 +1,9 @@
+{
+  "browser": {
+    "browserName": "chromium",
+    "isolated": true
+  },
+  "capabilities": ["vision"],
+  "outputDir": "qa/artifacts/mcp",
+  "imageResponses": "allow"
+}

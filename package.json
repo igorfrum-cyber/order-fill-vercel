@@ -16,7 +16,10 @@
     "generate:sources:bench": "python3 scripts/generate-tyumen-source.py --series",
     "load:order-fill": "node scripts/load-order-fill.mjs",
     "verify": "bash scripts/verify.sh",
-    "precommit": "bash scripts/verify.sh"
+    "precommit": "bash scripts/verify.sh",
+    "qa:test": "npm run qa:test --prefix frontend",
+    "qa:test:headed": "npm run qa:test:headed --prefix frontend",
+    "qa:report": "npm run qa:report --prefix frontend"
   },
   "engines": {
     "node": ">=24"

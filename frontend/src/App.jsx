@@ -1,12 +1,11 @@
 import { useEffect, useState } from "react";
 import { getCompanyLogin, getMe, listCompanies, listJobs, logout } from "./api/auth.js";
 import { onAuthRequired } from "./api/client.js";
-import { getJob, getJobReport, listJobFiles } from "./api/jobs.js";
 import { companyIdFromSearch, navItemHref, parseAppPath, pathForScreen, resolveOrderNavJobId, scopedPath, screenAllowed, withCompanyQuery } from "./features/app/routes.js";
 import { companyLoginURL, companySlugFromHost, companySlugFromPath, homeScreen, navItemsForRole, needsSecurityNudge, resolveUsersCompanyId } from "./features/auth/accessPresentation.js";
 import { shouldAutoStartTour, tourSceneForView } from "./features/help/firstRun.js";
 import { headerContext, roleLabel, securitySetupLabel, twoFactorRequiredHint } from "./features/help/copy.js";
-import { initialEditState } from "./features/order/reviewEdits.js";
+import { loadOrderResume, resumeStage } from "./features/jobs/orderJobWorkflow.js";
 import { BrandRulesScreen, CompaniesScreen, CompanyScreen, InboundScreen, JobHistory, OverviewScreen, QueueScreen, UsersScreen } from "./ui/admin/AdminScreens.jsx";
 import { AccountScreen, InviteScreen, LoginScreen } from "./ui/auth/AuthScreens.jsx";
 import { HelpButton, ProfileMenu } from "./ui/chrome.jsx";
@@ -220,14 +219,14 @@ export default function App() {
   }
 
   async function openJob(job) {
-    if (job.type === "north_merge") {
+    if (job.type === "north_merge" && job.status !== "failed") {
       if (me.role === "platform_admin") return;
       go("north");
       return;
     }
     const loaded = await loadOrderResume(job.id);
     setResume(loaded);
-    setOrderStage(loaded.finalized ? "preview" : "fill");
+    setOrderStage(resumeStage(loaded));
     go("order", loaded.jobId);
   }
 
@@ -437,7 +436,7 @@ function applyLocation(user, setScreen, setCompanyId, setResume, setOrderStage) 
   loadOrderResume(nextJob)
     .then((loaded) => {
       setResume(loaded);
-      setOrderStage(loaded.finalized ? "preview" : "fill");
+      setOrderStage(resumeStage(loaded));
     })
     .catch(() => {
       setResume(null);
@@ -445,22 +444,4 @@ function applyLocation(user, setScreen, setCompanyId, setResume, setOrderStage) 
       setScreen(home);
       window.history.replaceState(null, "", withCompanyQuery(pathForScreen(home), cid));
     });
-}
-
-async function loadOrderResume(jobId) {
-  const job = await getJob(jobId);
-  const report = await getJobReport(jobId).catch(() => null);
-  const files = job.status === "completed" ? await listJobFiles(jobId).catch(() => ({ files: [] })) : { files: [] };
-  const rows = report?.rows || [];
-  return {
-    jobId: job.id,
-    brand: job.brand,
-    month: job.order_month,
-    status: job.status,
-    rows,
-    results: report ? [{ summary: report.summary, reportRows: rows }] : [],
-    edits: initialEditState(rows),
-    outputFiles: files.files || [],
-    finalized: job.status === "completed",
-  };
 }

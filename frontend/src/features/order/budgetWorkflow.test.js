@@ -1,40 +1,45 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { budgetPatches, budgetRowsFromReport } from "./budgetWorkflow.js";
+import { appendBudgetComment, budgetPatches, budgetRequestRows } from "./budgetWorkflow.js";
 
-test("budgetRowsFromReport uses the current edit and locks a manual deviation", () => {
+test("budgetRequestRows sends raw report numbers and locks a manual deviation", () => {
   const rows = [{
     key: "row-1", editable: true, hasBudgetData: true, inserted: 3,
-    blankName: "Крем", blankBoxSize: "3", budgetCategory: "B", budgetDemand: 10,
-    budgetPrice: 100, stock: "2", inTransit: "1",
+    blankName: "Крем", blankBoxSize: "3", blankId: "proff", budgetCategory: "B", budgetDemand: 10,
+    budgetPrice: 100, stock: "2", inTransit: "1", christinaLine: { id: "MUSE", name: "MUSE", article: "0", required: ["0"] },
   }];
-  const input = budgetRowsFromReport(rows, new Map([["row-1", { value: 6, comment: "решение" }]]), {
-    brand: "angiopharm", deliveryWeeks: 1,
-  });
+  const input = budgetRequestRows(rows, new Map([["row-1", { value: 6, comment: "решение" }]]));
   assert.deepEqual(input[0], {
-    key: "row-1", name: "Крем", category: "B", quantity: 6, price: 100,
-    demand: 10, delivery: 0.25, stock: 2, transit: 1, outbound: 0,
-    unit: 1, step: 3, minimum: 3, locked: true, excluded: false, unsafe: false,
-    group: "main", line: null,
+    key: "row-1", name: "Крем", category: "B", quantity: 6, base_price: 100,
+    demand: 10, stock: 2, transit: 1, outbound: 0, box_size: 3,
+    group: "proff", line: { id: "MUSE", name: "MUSE", article: "0", required: ["0"] },
+    locked: true, excluded: false, unsafe: false,
   });
 });
 
-test("budgetRowsFromReport applies the entered discount to kopecks", () => {
+test("budgetRequestRows carries the base price without discounting it", () => {
   const rows = [{
     key: "row-1", editable: true, hasBudgetData: true, inserted: 2,
     blankName: "Крем", budgetCategory: "B", budgetDemand: 10, budgetPrice: 199.99,
   }];
-
-  const [row] = budgetRowsFromReport(rows, new Map(), { discount: 12.5 });
-
-  assert.equal(row.price, 174.99);
+  const [row] = budgetRequestRows(rows, new Map());
+  assert.equal(row.base_price, 199.99);
+  assert.equal(row.group, "main");
+  assert.equal(row.line, null);
 });
 
-test("budgetPatches preserves the previous comment and returns an undo snapshot", () => {
+test("budgetPatches keeps the previous comment and takes the note from the plan row", () => {
   const edits = new Map([["row-1", { value: 3, comment: "проверено" }]]);
-  const patches = budgetPatches({ rows: [{ key: "row-1", name: "Крем", unit: 1, before: 3, quantity: 6 }] }, edits);
+  const plan = { rows: [{ key: "row-1", name: "Крем", before: 3, quantity: 6, comment: "Добавилось 3 шт. Для закупа до суммы." }] };
+  const patches = budgetPatches(plan, edits);
   assert.equal(patches[0].next.value, 6);
   assert.match(patches[0].next.comment, /^проверено; Добавилось 3 шт\./);
   assert.deepEqual(patches[0].previous, { value: 3, comment: "проверено" });
+});
+
+test("appendBudgetComment joins non-empty parts", () => {
+  assert.equal(appendBudgetComment("ручная правка", "Уменьшено"), "ручная правка; Уменьшено");
+  assert.equal(appendBudgetComment("", "Уменьшено"), "Уменьшено");
+  assert.equal(appendBudgetComment("ручная правка", ""), "ручная правка");
 });

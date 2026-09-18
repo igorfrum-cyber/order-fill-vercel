@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
-import { budgetChangeComment, budgetOrderRules, budgetTargetValue, discountValue, planBudget } from "../../features/order/budgetPlanner.js";
+import { planOrderBudget } from "../../api/budget.js";
+import { budgetTargetValue, discountValue } from "../../features/order/budgetInput.js";
 import { GhostButton, Modal } from "../widgets.jsx";
 
 const money = (value) => Number(value || 0).toLocaleString("ru-RU", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -32,15 +33,23 @@ function NorthBudgetGroup({ label, brand, deliveryWeeks, rows, actualValue, lock
   const [discount, setDiscount] = useState("0");
   const [preview, setPreview] = useState(null);
   const [error, setError] = useState("");
-  const input = useMemo(() => budgetRows(rows, actualValue, lockedKeys, brand, deliveryWeeks, appliedDiscount), [rows, actualValue, lockedKeys, brand, deliveryWeeks, appliedDiscount]);
+  const input = useMemo(() => budgetRows(rows, actualValue, lockedKeys), [rows, actualValue, lockedKeys]);
   if (!input.length) return null;
-  const current = input.reduce((sum, row) => sum + row.price * row.quantity, 0);
+  const factor = 1 - (appliedDiscount || 0) / 100;
+  const current = input.reduce((sum, row) => sum + (Math.round(row.base_price * factor * 100) / 100) * row.quantity, 0);
   const changed = preview?.rows.filter((row) => row.quantity !== row.before) || [];
 
-  function calculate() {
+  async function calculate() {
     try {
       const percent = discountValue(discount);
-      const planned = planBudget(budgetRows(rows, actualValue, lockedKeys, brand, deliveryWeeks, percent), budgetTargetValue(target));
+      const value = budgetTargetValue(target);
+      const planned = await planOrderBudget({
+        brand,
+        target: value,
+        discount: percent,
+        delivery_weeks: deliveryWeeks || 1,
+        rows: budgetRows(rows, actualValue, lockedKeys),
+      });
       setPreview({ ...planned, discount: percent });
       setError(planned.reason ? budgetReason(planned.reason) : "");
     } catch (err) {
@@ -60,7 +69,7 @@ function NorthBudgetGroup({ label, brand, deliveryWeeks, rows, actualValue, lock
           confirmLabel={preview ? "Применить" : "Рассчитать"}
           confirmDisabled={preview ? !preview.complete || !changed.length : !target.trim()}
           onCancel={() => setOpen(false)}
-          onConfirm={preview ? () => { changed.forEach((row) => onApply(row.key, row.quantity, budgetChangeComment(row))); onDiscount(preview.discount); setOpen(false); } : calculate}
+          onConfirm={preview ? () => { changed.forEach((row) => onApply(row.key, row.quantity, row.comment)); onDiscount(preview.discount); setOpen(false); } : calculate}
           wide
         >
           <div className="grid gap-3 sm:grid-cols-3">
@@ -77,24 +86,30 @@ function NorthBudgetGroup({ label, brand, deliveryWeeks, rows, actualValue, lock
   );
 }
 
-function budgetRows(rows, actualValue, lockedKeys, brand, deliveryWeeks, discount) {
-  const factor = 1 - discount / 100;
-  return rows.filter((row) => row.hasBudgetData).map((row) => ({
-    key: row.key,
-    name: row.name,
-    category: row.budgetCategory,
-    quantity: Number(actualValue(row) || 0),
-    price: Math.round(Number(row.budgetPrice || 0) * factor * 100) / 100,
-    demand: Number(row.budgetDemand || 0),
-    delivery: Number(deliveryWeeks || 1) * 0.25,
-    stock: Number(row.tyumenStock || 0),
-    transit: Number(row.tyumenInTransit || 0),
-    outbound: Number(row.northNeed || 0),
-    ...budgetOrderRules(brand, row.name, row.blankBoxSize),
-    locked: lockedKeys.has(row.key),
-    excluded: false,
-    unsafe: false,
-  }));
+// budgetRows maps North plan rows to raw budget-plan API rows. Pricing and brand
+// order rules run in calculation-service; the browser only shapes data. Priced
+// CHRISTINA PROFF line members are included even without sales demand so the
+// line stays complete and earns the set discount (mirrors origin/main north).
+function budgetRows(rows, actualValue, lockedKeys) {
+  return rows
+    .filter((row) => row.hasBudgetData || (row.christinaLine && Number(row.budgetPrice || 0) > 0))
+    .map((row) => ({
+      key: row.key,
+      name: row.name,
+      category: row.budgetCategory,
+      quantity: Number(actualValue(row) || 0),
+      base_price: Number(row.budgetPrice || 0),
+      demand: Number(row.budgetDemand || 0),
+      stock: Number(row.tyumenStock || 0),
+      transit: Number(row.tyumenInTransit || 0),
+      outbound: Number(row.northNeed || 0),
+      box_size: Number(row.blankBoxSize || 0),
+      group: row.variant || "main",
+      line: row.christinaLine || null,
+      locked: lockedKeys.has(row.key),
+      excluded: false,
+      unsafe: false,
+    }));
 }
 
 function Metric({ label, value }) {

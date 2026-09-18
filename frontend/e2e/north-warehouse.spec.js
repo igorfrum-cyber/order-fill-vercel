@@ -77,6 +77,14 @@ test("North uploads office and delivery warehouse as distinct inputs", async ({ 
       }] } });
       return;
     }
+    if (path === "/api/v1/order/budget-plan") {
+      await route.fulfill({ json: {
+        before: 500, total: 700, target: 700, reason: "", complete: true,
+        rows: [{ key: "A1", name: "Крем", category: "A", before: 5, quantity: 7, comment: "Добавилось 2 шт. Для закупа до суммы." }],
+        line_steps: [], line_groups: [],
+      } });
+      return;
+    }
     await route.fulfill({ status: 404, json: { message: `Unexpected ${request.method()} ${path}` } });
   });
 

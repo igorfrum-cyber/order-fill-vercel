@@ -133,6 +133,16 @@ message ValidateManualEditsResponse {
   repeated string blocking_row_ids = 2;
 }
 
+// ChristinaLine is the PROFF product line a budget row belongs to. required is
+// the full article list from the blank, so the planner can tell whether a line
+// is complete.
+message ChristinaLine {
+  string id = 1;
+  string name = 2;
+  string article = 3;
+  repeated string required = 4;
+}
+
 message BudgetRow {
   string key = 1;
   string name = 2;
@@ -150,6 +160,17 @@ message BudgetRow {
   bool locked = 14;
   bool excluded = 15;
   bool unsafe = 16;
+  // group is the blank type; only "proff" rows earn the CHRISTINA set discount.
+  string group = 17;
+  // line is the PROFF line membership; unset for HOME and other brands.
+  ChristinaLine line = 18;
+  // base_price is the blank price BEFORE the main discount. The service applies
+  // PlanBudgetRequest.discount and brand order rules, so the caller sends raw
+  // report numbers. price/unit/step/minimum/delivery are computed server-side
+  // and ignored on input.
+  double base_price = 19;
+  // box_size is the blank box/multiple hint for brand order rules.
+  double box_size = 20;
 }
 
 message PlanBudgetRequest {
@@ -157,6 +178,12 @@ message PlanBudgetRequest {
   double target = 2;
   bool allow_over_six = 3;
   bool allow_below_one = 4;
+  // brand selects order-quantity rules (multiples, boxes, novacutan minimums).
+  string brand = 5;
+  // discount is the main discount percent applied to base_price (0..99.99).
+  double discount = 6;
+  // delivery_weeks feeds coverage: delivery months = delivery_weeks * 0.25.
+  double delivery_weeks = 7;
 }
 
 message PlannedBudgetRow {
@@ -165,6 +192,26 @@ message PlannedBudgetRow {
   double before = 3;
   double quantity = 4;
   string comment = 5;
+  string category = 6;
+}
+
+// PlannedLineStep is one accepted CHRISTINA PROFF set-completion step (rubles).
+message PlannedLineStep {
+  string id = 1;
+  string name = 2;
+  int32 sets = 3;
+  double added = 4;
+  double saved = 5;
+}
+
+// PlannedLineGroup is the final per-line PROFF state for the preview (rubles).
+message PlannedLineGroup {
+  string id = 1;
+  string name = 2;
+  bool valid = 3;
+  int32 sets = 4;
+  double saving = 5;
+  double net = 6;
 }
 
 message PlanBudgetResponse {
@@ -174,6 +221,8 @@ message PlanBudgetResponse {
   double target = 4;
   string reason = 5;
   bool complete = 6;
+  repeated PlannedLineStep line_steps = 7;
+  repeated PlannedLineGroup line_groups = 8;
 }
 
 message CalculateWarehouseTransferRequest {

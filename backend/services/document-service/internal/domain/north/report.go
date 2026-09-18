@@ -43,38 +43,39 @@ type Transfer struct {
 }
 
 type PlanRow struct {
-	Key                 string    `json:"key"`
-	Article             string    `json:"article"`
-	ArticleRaw          string    `json:"articleRaw,omitempty"`
-	Name                string    `json:"name"`
-	Cities              []CityQty `json:"cities"`
-	SupplierParts       []CityQty `json:"supplierParts"`
-	TyumenParts         []CityQty `json:"tyumenParts"`
-	TyumenStock         float64   `json:"tyumenStock"`
-	TyumenInTransit     float64   `json:"tyumenInTransit"`
-	TyumenTarget        float64   `json:"tyumenTarget"`
-	TyumenPlannedOrder  float64   `json:"tyumenPlannedOrder"`
-	TyumenFree          float64   `json:"tyumenFree"`
-	FromTyumen          float64   `json:"fromTyumen"`
-	SupplierNeed        float64   `json:"supplierNeed"`
-	SupplierUnitSize    float64   `json:"supplierUnitSize"`
-	NovacutanMinimum    float64   `json:"novacutanMinimum,omitzero"`
-	BlankBoxSize        float64   `json:"blankBoxSize,omitzero"`
-	HasBoxSize          bool      `json:"hasBoxSize,omitzero"`
-	Variant             string    `json:"variant,omitempty"`
-	HasBudgetData       bool      `json:"hasBudgetData,omitzero"`
-	BudgetCategory      string    `json:"budgetCategory,omitempty"`
-	BudgetDemand        float64   `json:"budgetDemand,omitzero"`
-	BudgetPrice         float64   `json:"budgetPrice,omitzero"`
-	BudgetDiscount      float64   `json:"budgetDiscount,omitzero"`
-	BudgetComment       string    `json:"budgetComment,omitempty"`
-	ActualSupplierOrder float64   `json:"actualSupplierOrder"`
-	NorthNeed           float64   `json:"northNeed"`
-	Comment             string    `json:"comment"`
-	HasTyumenSource     bool      `json:"hasTyumenSource"`
-	WarehouseStock      float64   `json:"warehouseStock"`
-	WarehouseTransit    float64   `json:"warehouseTransit"`
-	HasWarehouseStock   bool      `json:"hasWarehouseStock"`
+	Key                 string                   `json:"key"`
+	Article             string                   `json:"article"`
+	ArticleRaw          string                   `json:"articleRaw,omitempty"`
+	Name                string                   `json:"name"`
+	Cities              []CityQty                `json:"cities"`
+	SupplierParts       []CityQty                `json:"supplierParts"`
+	TyumenParts         []CityQty                `json:"tyumenParts"`
+	TyumenStock         float64                  `json:"tyumenStock"`
+	TyumenInTransit     float64                  `json:"tyumenInTransit"`
+	TyumenTarget        float64                  `json:"tyumenTarget"`
+	TyumenPlannedOrder  float64                  `json:"tyumenPlannedOrder"`
+	TyumenFree          float64                  `json:"tyumenFree"`
+	FromTyumen          float64                  `json:"fromTyumen"`
+	SupplierNeed        float64                  `json:"supplierNeed"`
+	SupplierUnitSize    float64                  `json:"supplierUnitSize"`
+	NovacutanMinimum    float64                  `json:"novacutanMinimum,omitzero"`
+	BlankBoxSize        float64                  `json:"blankBoxSize,omitzero"`
+	HasBoxSize          bool                     `json:"hasBoxSize,omitzero"`
+	Variant             string                   `json:"variant,omitempty"`
+	ChristinaLine       *orderfill.ChristinaLine `json:"christinaLine,omitempty"`
+	HasBudgetData       bool                     `json:"hasBudgetData,omitzero"`
+	BudgetCategory      string                   `json:"budgetCategory,omitempty"`
+	BudgetDemand        float64                  `json:"budgetDemand,omitzero"`
+	BudgetPrice         float64                  `json:"budgetPrice,omitzero"`
+	BudgetDiscount      float64                  `json:"budgetDiscount,omitzero"`
+	BudgetComment       string                   `json:"budgetComment,omitempty"`
+	ActualSupplierOrder float64                  `json:"actualSupplierOrder"`
+	NorthNeed           float64                  `json:"northNeed"`
+	Comment             string                   `json:"comment"`
+	HasTyumenSource     bool                     `json:"hasTyumenSource"`
+	WarehouseStock      float64                  `json:"warehouseStock"`
+	WarehouseTransit    float64                  `json:"warehouseTransit"`
+	HasWarehouseStock   bool                     `json:"hasWarehouseStock"`
 }
 
 type Summary struct {
@@ -100,6 +101,7 @@ func BuildReport(brand string, needs []Need, stock []Stock, planned []Planned, g
 	names := map[string]string{}
 	rawArticles := map[string]string{}
 	prices := map[string]float64{}
+	lines := map[string]*orderfill.ChristinaLine{}
 	uploaded := make([]string, 0)
 	for _, need := range needs {
 		if qtyByArticle[need.Article] == nil {
@@ -108,6 +110,9 @@ func BuildReport(brand string, needs []Need, stock []Stock, planned []Planned, g
 		qtyByArticle[need.Article][need.City] += need.Qty
 		if names[need.Article] == "" {
 			names[need.Article] = need.Name
+		}
+		if lines[need.Article] == nil && need.Line != nil {
+			lines[need.Article] = need.Line
 		}
 		if rawArticles[need.Article] == "" {
 			rawArticles[need.Article] = need.ArticleRaw
@@ -170,6 +175,7 @@ func BuildReport(brand string, needs []Need, stock []Stock, planned []Planned, g
 			BlankBoxSize:        plan.BoxSize,
 			HasBoxSize:          plan.HasBoxSize,
 			Variant:             plan.Variant,
+			ChristinaLine:       lines[article],
 			HasBudgetData:       prices[article] > 0 && src.MonthlyDemand > 0 && slices.Contains([]string{"A+", "A", "B", "C"}, src.Category),
 			BudgetCategory:      src.Category,
 			BudgetDemand:        src.MonthlyDemand,

@@ -1047,6 +1047,32 @@ paths:
           $ref: "#/components/responses/Unauthorized"
         "404":
           $ref: "#/components/responses/NotFound"
+  /api/v1/order/budget-plan:
+    post:
+      operationId: planOrderBudget
+      tags: [orders]
+      summary: Plan order quantities to a budget target (CHRISTINA PROFF aware)
+      description: >-
+        Recomputes supplier quantities up or down to a target sum. Pricing, brand
+        order rules and the CHRISTINA PROFF set discount run in
+        calculation-service; the browser sends raw report rows only.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/BudgetPlanRequest"
+      responses:
+        "200":
+          description: Planned order preview.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BudgetPlanResult"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
   /api/v1/jobs/order-fill:
     post:
       operationId: createOrderFillJob
@@ -1640,6 +1666,148 @@ components:
           schema:
             $ref: "#/components/schemas/ApiError"
   schemas:
+    ChristinaLine:
+      type: object
+      description: PROFF line membership; the required list is the full blank article set.
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        article:
+          type: string
+        required:
+          type: array
+          items:
+            type: string
+    BudgetPlanRow:
+      type: object
+      required: [key]
+      description: Raw report row; the service prices it and applies brand order rules.
+      properties:
+        key:
+          type: string
+        name:
+          type: string
+        category:
+          type: string
+        quantity:
+          type: number
+        base_price:
+          type: number
+          description: Blank price before the main discount.
+        demand:
+          type: number
+        stock:
+          type: number
+        transit:
+          type: number
+        outbound:
+          type: number
+        box_size:
+          type: number
+        group:
+          type: string
+        locked:
+          type: boolean
+        excluded:
+          type: boolean
+        unsafe:
+          type: boolean
+        line:
+          $ref: "#/components/schemas/ChristinaLine"
+    BudgetPlanRequest:
+      type: object
+      required: [target, rows]
+      properties:
+        brand:
+          type: string
+        target:
+          type: number
+        discount:
+          type: number
+          description: Main discount percent applied to base_price (0..99.99).
+        delivery_weeks:
+          type: number
+        allow_over_six:
+          type: boolean
+        allow_below_one:
+          type: boolean
+        rows:
+          type: array
+          items:
+            $ref: "#/components/schemas/BudgetPlanRow"
+    PlannedBudgetRow:
+      type: object
+      properties:
+        key:
+          type: string
+        name:
+          type: string
+        category:
+          type: string
+        before:
+          type: number
+        quantity:
+          type: number
+        comment:
+          type: string
+    BudgetLineStep:
+      type: object
+      description: One accepted CHRISTINA PROFF set-completion step (rubles).
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        sets:
+          type: integer
+        added:
+          type: number
+        saved:
+          type: number
+    BudgetLineGroup:
+      type: object
+      description: Final per-line PROFF state for the preview (rubles).
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        valid:
+          type: boolean
+        sets:
+          type: integer
+        saving:
+          type: number
+        net:
+          type: number
+    BudgetPlanResult:
+      type: object
+      required: [before, total, target, complete, rows]
+      properties:
+        before:
+          type: number
+        total:
+          type: number
+        target:
+          type: number
+        reason:
+          type: string
+        complete:
+          type: boolean
+        rows:
+          type: array
+          items:
+            $ref: "#/components/schemas/PlannedBudgetRow"
+        line_steps:
+          type: array
+          items:
+            $ref: "#/components/schemas/BudgetLineStep"
+        line_groups:
+          type: array
+          items:
+            $ref: "#/components/schemas/BudgetLineGroup"
     User:
       type: object
       required: [id, login, role, activated, is_primary_admin]

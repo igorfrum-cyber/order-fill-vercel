@@ -9,7 +9,7 @@ import {
   submitJobEdits,
 } from "../../api/jobs.js";
 import { blankSlotsForSource, brandLabel } from "../../features/brands/brandPresentation.js";
-import { runOrderFillJob } from "../../features/jobs/orderJobWorkflow.js";
+import { resumeStage, runOrderFillJob } from "../../features/jobs/orderJobWorkflow.js";
 import { sameSelectedFile } from "../../features/jobs/uploadCopy.js";
 import { formatOrderMonthLabel } from "../../features/order/monthPolicy.js";
 import { collectReviewEdits, downloadBlockerKeys, hasManualDeviations, initialEditState, patchEdit, rowKey, validateReviewEdits } from "../../features/order/reviewEdits.js";
@@ -44,7 +44,7 @@ function triggerBlobDownload(blob, fileName) {
 }
 
 export function OrderFillApp({ companyId, canSelectCompany = false, resumeJob, onHome, onHelp, onStage, onJobReady, embedded = false }) {
-  const [stage, setStage] = useState(resumeJob ? (resumeJob.finalized ? "preview" : "fill") : "upload");
+  const [stage, setStage] = useState(resumeStage(resumeJob));
   const [brand, setBrand] = useState(resumeJob?.brand || "");
   const [month, setMonth] = useState(resumeJob?.month || "");
   const [sourceFile, setSourceFile] = useState(null);
@@ -342,6 +342,7 @@ export function OrderFillApp({ companyId, canSelectCompany = false, resumeJob, o
           onHelp={onHelp}
         />
       ) : null}
+      {stage !== "failed" ? (
       <StageRail
         stage={stage}
         brandLabel={brandLabel(brand)}
@@ -355,7 +356,21 @@ export function OrderFillApp({ companyId, canSelectCompany = false, resumeJob, o
           setStage(next);
         }}
       />
+      ) : null}
       <main className="relative min-h-0 flex-1 overflow-hidden">
+        {stage === "failed" && (
+          <div className="grid h-full place-items-center bg-[var(--color-ground)] px-6">
+            <div className="max-w-md text-center">
+              <h2 className="text-[22px] font-semibold tracking-tight">Не получилось обработать</h2>
+              <p role="alert" className="mt-2 text-[15px] leading-relaxed text-[var(--color-ink-soft)]">
+                {userFacingError({ message: resumeJob?.error }, "Не получилось обработать файлы.")}
+              </p>
+              <div className="mt-5 flex justify-center">
+                <GhostButton onClick={onHome}>К выгрузкам</GhostButton>
+              </div>
+            </div>
+          </div>
+        )}
         {(stage === "upload" || stage === "processing") && (
           <UploadStage
             sourceFile={sourceFile}

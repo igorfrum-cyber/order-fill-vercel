@@ -16,7 +16,7 @@ under `backend/`.
 - `backend/services/document-service/` owns Excel parsing/writing, supported supplier header-field mappings, preview artifacts, and document job execution. It maps workbook rows to matching items and applies returned identity decisions; it does not decide product identity itself.
 - `backend/services/matching-service/` owns product matching decisions. It accepts structured items and returns canonical `ReportCategory` plus `MatchReasons`; it does not parse Excel.
 - `backend/services/brand-service/` owns the read-only brand catalog and brand-specific rules; gateway may expose their projection to platform admins but does not own or edit them.
-- `backend/services/calculation-service/` owns quantity calculations over normalized inputs.
+- `backend/services/calculation-service/` owns quantity calculations over normalized inputs, including budget-to-target planning: pricing (main discount), brand order rules, and the CHRISTINA PROFF set discount. The set discount applies on both the Tyumen and North flows — `document-service` attaches PROFF line metadata to North rows so the planner can complete sets there too. The browser sends raw report rows to `POST /api/v1/order/budget-plan`; it does not compute the plan.
 - `backend/services/inbound-service/` owns the inbound 1С mail contour: CloudMailin webhook payloads, company receive addresses, message metadata, and attachment objects. It uses its own PostgreSQL instance and a dedicated S3 bucket and does not depend on business services.
 - `backend/proto/` owns internal gRPC contracts.
 
@@ -28,7 +28,9 @@ same-origin `/api/v1/...` paths; the frontend nginx container proxies `/api/` to
 
 Gateway handlers must not parse Excel workbooks, write object blobs directly, or
 reach into other services' storage. They validate HTTP inputs once, derive user
-identity from the session cookie, then call internal gRPC services.
+identity from the session cookie, then call internal gRPC services. Budget
+preview is session-gated `POST /api/v1/order/budget-plan`: gateway checks the
+discount range and maps JSON to `PlanBudget`; it does not compute quantities.
 
 ## Internal Boundary
 

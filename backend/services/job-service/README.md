@@ -72,7 +72,7 @@ gateway-service
 - при создании задачи `GetObject` идёт от имени актора: чужой `file_id` другой компании `file-service` скрывает как not found;
 - `UpdateProgress`, `CompleteJob` и `FailJob` требуют metadata `x-worker-token`, совпадающий с `WORKER_TOKEN`. Вне local токен обязателен и не может быть local default.
 
-Поддерживаются статусы `queued`, `processing`, `needs_review`, `finalizing`, `completed`, `failed`. Для `order_fill` нужен ровно один файл с ролью `source`, не больше одного `warehouse` и от одного до двух `blank`; вариантные роли там запрещены. Для `north_merge` нужен минимум один `blank`, `blank-home` или `blank-proff`, а `source` и `warehouse` необязательны. Один и тот же файл (совпадающее имя) дважды не принимается. Все входы должны иметь расширение `.xlsx` или `.xlsm`. Роль берётся из первого сегмента object key, который вернул `file-service`.
+Поддерживаются статусы `queued`, `processing`, `needs_review`, `finalizing`, `completed`, `failed`. Для `order_fill` нужен ровно один файл с ролью `source`, не больше одного `warehouse` и от одного до двух `blank`; вариантные роли там запрещены. Для `north_merge` нужен минимум один `blank`, `blank-home` или `blank-proff`, а `source` и `warehouse` необязательны. Один и тот же файл (совпадающее имя) дважды не принимается. Все входы должны иметь расширение `.xlsx` или `.xlsm`. Роль берётся из первого сегмента object key, который вернул `file-service`. `CreateJob` отдаёт ошибки валидации (`ErrInvalid`) как gRPC `InvalidArgument`, чтобы публичный HTTP ответил 400, а не 500.
 
 Redis message хранится в поле `payload` записи stream `order-fill:jobs` как JSON версии `v1`: `job_id`, `type`, `stage`, `matching_mode`, `inputs`, а также `brand` и `order_profile` для process и `edits` для finalize. Профиль берётся из `identity-service` в момент создания, поэтому уже запущенная обработка не меняется при последующей правке реквизитов.
 
@@ -165,7 +165,7 @@ go vet ./...
 go build ./cmd/job
 ```
 
-Из `backend/` доступен `make check` для всех Go-модулей. Unit-тесты покрывают upload constraints, authz, matching-mode snapshot, queue message, complete/edits, конфигурацию, SQL migration contents и часть PostgreSQL error mapping. Интеграционных тестов с реальными PostgreSQL, Redis и gRPC-сервисами нет.
+Из `backend/` доступен `make check` для всех Go-модулей. Unit-тесты покрывают upload constraints, authz, matching-mode snapshot, queue message, complete/edits, конфигурацию, SQL migration contents, часть PostgreSQL error mapping и gRPC-код `InvalidArgument` для не-Excel входа. Интеграционных тестов с реальными PostgreSQL, Redis и gRPC-сервисами нет.
 
 ## Эксплуатационные заметки и ограничения
 
