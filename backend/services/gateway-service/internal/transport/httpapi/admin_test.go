@@ -1,13 +1,35 @@
 package httpapi
 
 import (
+	"context"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
+
 	commonv1 "order-fill/backend/proto/gen/go/orderfill/common/v1"
 	identityv1 "order-fill/backend/proto/gen/go/orderfill/identity/v1"
+	"order-fill/backend/services/gateway-service/internal/clients"
 )
+
+type enableUserClient struct {
+	identityv1.IdentityServiceClient
+	userID string
+	actor  string
+	err    error
+}
+
+func (c *enableUserClient) EnableUser(_ context.Context, req *identityv1.EnableUserRequest, _ ...grpc.CallOption) (*identityv1.EnableUserResponse, error) {
+	c.userID = req.GetUserId()
+	c.actor = req.GetMeta().GetActorUserId()
+	if c.err != nil {
+		return nil, c.err
+	}
+	return &identityv1.EnableUserResponse{}, nil
+}
 
 func TestCompanyMatchingMode(t *testing.T) {
 	t.Parallel()
@@ -123,6 +145,37 @@ func TestListStatusRequiresPlatformAdmin(t *testing.T) {
 	api.listStatus(rec, req)
 	if rec.Code != http.StatusNotFound {
 		t.Fatalf("status=%d", rec.Code)
+	}
+}
+
+func TestEnableUserForwardsActorAndUserID(t *testing.T) {
+	t.Parallel()
+	identity := &enableUserClient{}
+	api := &API{Clients: clients.Clients{Identity: identity}}
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/users/buyer/enable", nil)
+	req.SetPathValue("user_id", "buyer")
+	req = req.WithContext(withUser(t.Context(), User{ID: "owner", Role: "company_owner", CompanyID: "c1"}))
+	rec := httptest.NewRecorder()
+	api.enableUser(rec, req)
+	if rec.Code != http.StatusNoContent {
+		t.Fatalf("status=%d body=%s", rec.Code, rec.Body.String())
+	}
+	if identity.userID != "buyer" || identity.actor != "owner" {
+		t.Fatalf("user=%q actor=%q", identity.userID, identity.actor)
+	}
+}
+
+func TestEnableUserMapsIdentityNotFound(t *testing.T) {
+	t.Parallel()
+	identity := &enableUserClient{err: status.Error(codes.NotFound, "not found")}
+	api := &API{Clients: clients.Clients{Identity: identity}}
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/users/root/enable", nil)
+	req.SetPathValue("user_id", "root")
+	req = req.WithContext(withUser(t.Context(), User{ID: "ops", Role: "platform_admin"}))
+	rec := httptest.NewRecorder()
+	api.enableUser(rec, req)
+	if rec.Code != http.StatusNotFound {
+		t.Fatalf("status=%d body=%s", rec.Code, rec.Body.String())
 	}
 }
 

@@ -4,10 +4,11 @@ import (
 	"testing"
 
 	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/status"
 
-	"google.golang.org/grpc/metadata"
 	brandv1 "order-fill/backend/proto/gen/go/orderfill/brand/v1"
+	commonv1 "order-fill/backend/proto/gen/go/orderfill/common/v1"
 	"order-fill/backend/services/brand-service/internal/service/brands"
 	"order-fill/backend/services/brand-service/internal/storage/memory"
 )
@@ -41,6 +42,28 @@ func TestUpdateBrandPolicyRequiresPlatformAdmin(t *testing.T) {
 	ctx := metadata.NewIncomingContext(t.Context(), metadata.Pairs("x-actor-role", "platform_admin"))
 	if _, err := s.UpdateBrandPolicy(ctx, req); status.Code(err) != codes.InvalidArgument {
 		t.Fatalf("missing actor code = %v", status.Code(err))
+	}
+}
+
+func TestUpdateBrandPolicySavesForPlatformAdmin(t *testing.T) {
+	t.Parallel()
+	store := memory.New()
+	s := NewServer(brands.New(store))
+	ctx := metadata.NewIncomingContext(t.Context(), metadata.Pairs("x-actor-role", "platform_admin"))
+	req := &brandv1.UpdateBrandPolicyRequest{
+		Meta:   &commonv1.RequestMeta{ActorUserId: "admin"},
+		Policy: &brandv1.BrandPolicy{Brand: "klapp", Label: "KLAPP", Adjustment: "nearestMultiple", QuantityMultiple: 6},
+	}
+	resp, err := s.UpdateBrandPolicy(ctx, req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if resp.GetPolicy().GetQuantityMultiple() != 6 {
+		t.Fatalf("rpc policy %+v", resp.GetPolicy())
+	}
+	got, ok, err := store.Get(t.Context(), "klapp")
+	if err != nil || !ok || got.Multiple != 6 {
+		t.Fatalf("stored %+v ok=%v err=%v", got, ok, err)
 	}
 }
 

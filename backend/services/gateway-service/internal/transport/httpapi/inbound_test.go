@@ -210,6 +210,36 @@ func TestInboundCompanyOwnerReadsOwn(t *testing.T) {
 	}
 }
 
+func TestInboundCompanyReadAllowsCompanyStaff(t *testing.T) {
+	t.Parallel()
+	api := &API{Clients: clients.Clients{Inbound: inboundClient{}}}
+	cases := []struct {
+		name string
+		user User
+		want int
+	}{
+		{"owner", User{ID: "u1", Role: "company_owner", CompanyID: "c1"}, http.StatusOK},
+		{"admin", User{ID: "u2", Role: "company_admin", CompanyID: "c1"}, http.StatusOK},
+		{"purchaser", User{ID: "u3", Role: "purchaser", CompanyID: "c1"}, http.StatusNotFound},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			req := httptest.NewRequest(http.MethodGet, "/api/v1/inbound/companies/c1", nil)
+			req.SetPathValue("company_id", "c1")
+			req = req.WithContext(withUser(t.Context(), tc.user))
+			rec := httptest.NewRecorder()
+			api.inboundCompany(rec, req)
+			if rec.Code != tc.want {
+				t.Fatalf("status=%d want=%d body=%s", rec.Code, tc.want, rec.Body.String())
+			}
+			if tc.want == http.StatusOK && !strings.Contains(rec.Body.String(), `"sender_email":"1c@company.ru"`) {
+				t.Fatalf("body=%s", rec.Body.String())
+			}
+		})
+	}
+}
+
 func TestInboundCompanyUpdateRequiresOwner(t *testing.T) {
 	t.Parallel()
 	api := &API{}
@@ -233,6 +263,20 @@ func TestInboundCompanyUpdateOwner(t *testing.T) {
 	api.updateInboundCompany(rec, req)
 	body := rec.Body.String()
 	if rec.Code != http.StatusOK || !strings.Contains(body, `"sender_email":"1c@x.ru"`) {
+		t.Fatalf("status=%d body=%s", rec.Code, body)
+	}
+}
+
+func TestInboundMessagesCompanyAdmin(t *testing.T) {
+	t.Parallel()
+	api := &API{Clients: clients.Clients{Inbound: inboundClient{}}}
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/inbound/companies/c1/messages", nil)
+	req.SetPathValue("company_id", "c1")
+	req = req.WithContext(withUser(t.Context(), User{ID: "u2", Role: "company_admin", CompanyID: "c1"}))
+	rec := httptest.NewRecorder()
+	api.inboundMessages(rec, req)
+	body := rec.Body.String()
+	if rec.Code != http.StatusOK || !strings.Contains(body, `"subject":"Заказ №123"`) {
 		t.Fatalf("status=%d body=%s", rec.Code, body)
 	}
 }

@@ -148,6 +148,19 @@ func TestPrimaryPlatformAdminInvitesAndManagesSecondaryAdmin(t *testing.T) {
 	if err := svc.Disable(t.Context(), primary, created.ID); err != nil {
 		t.Fatalf("primary disable secondary: %v", err)
 	}
+	if err := svc.Enable(t.Context(), secondary, primary.ID); !errors.Is(err, domain.ErrNotFound) {
+		t.Fatalf("secondary enable primary: %v", err)
+	}
+	if err := svc.Enable(t.Context(), primary, primary.ID); !errors.Is(err, domain.ErrNotFound) {
+		t.Fatalf("primary enable self: %v", err)
+	}
+	if err := svc.Enable(t.Context(), primary, created.ID); err != nil {
+		t.Fatalf("primary enable secondary: %v", err)
+	}
+	restored, err := svc.Get(t.Context(), created.ID)
+	if err != nil || restored.DisabledAt != nil {
+		t.Fatalf("enabled secondary disabled_at=%v err=%v", restored.DisabledAt, err)
+	}
 	items, err := svc.List(t.Context(), secondary, "")
 	if err != nil || len(items) != 3 {
 		t.Fatalf("list platform admins: len=%d err=%v", len(items), err)

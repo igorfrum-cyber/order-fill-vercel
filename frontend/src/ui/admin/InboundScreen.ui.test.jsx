@@ -29,6 +29,22 @@ import { InboundScreen } from "./InboundScreen.jsx";
 
 const companyMe = { role: "company_owner", company_id: "c1" };
 
+test("company admin sees inbound sender like the owner", async () => {
+  mockGetInboundCompany.mockResolvedValue({
+    company_id: "c1",
+    receive_address: "7e1432246b724f3bcd6c@cloudmailin.net",
+    sender_email: "1c@admin-company.ru",
+    enabled: true,
+  });
+  mockGetInboundMessages.mockResolvedValue({ messages: [] });
+  mockGetInboundSettings.mockRejectedValue({ status: 404 });
+
+  render(<InboundScreen me={{ role: "company_admin", company_id: "c1" }} companyId="c1" />);
+
+  expect(await screen.findByText("1c@admin-company.ru")).toBeInTheDocument();
+  expect(screen.queryByText("Адрес приёма")).not.toBeInTheDocument();
+});
+
 test("company owner sees sender_email even when settings endpoint returns 404", async () => {
   mockGetInboundCompany.mockResolvedValue({
     company_id: "c1",
