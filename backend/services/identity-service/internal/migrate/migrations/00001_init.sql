@@ -1,3 +1,5 @@
+-- Applied files are frozen. New columns belong in 0000N_*.sql
+-- (00003 last_login, 00004 primary admin) so existing DBs keep migrating.
 CREATE TABLE IF NOT EXISTS companies (
 	id TEXT PRIMARY KEY,
 	name TEXT NOT NULL,
