@@ -47,6 +47,18 @@ func (c Config) Validate() error {
 		if strings.TrimSpace(c.DatabaseURL) == "" {
 			return fmt.Errorf("INBOUND_DATABASE_URL is required outside local environment")
 		}
+		if strings.TrimSpace(c.InboundS3.Endpoint) == "" {
+			return fmt.Errorf("INBOUND_S3_ENDPOINT is required outside local environment")
+		}
+		if strings.TrimSpace(c.InboundS3.Bucket) == "" {
+			return fmt.Errorf("INBOUND_S3_BUCKET is required outside local environment")
+		}
+		if strings.TrimSpace(c.InboundS3.AccessKey) == "" || strings.TrimSpace(c.InboundS3.SecretKey) == "" {
+			return fmt.Errorf("INBOUND_S3_ACCESS_KEY and INBOUND_S3_SECRET_KEY are required outside local environment")
+		}
+		if c.InboundS3.AccessKey == "minioadmin" || c.InboundS3.SecretKey == "minioadmin" {
+			return fmt.Errorf("default MinIO credentials are not allowed outside local environment")
+		}
 	}
 	return grpcutil.CheckWorkerToken(c.Environment, c.WorkerToken)
 }

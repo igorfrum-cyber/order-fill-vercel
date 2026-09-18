@@ -88,14 +88,14 @@ CloudMailin присылает письмо на webhook gateway через за
 | --- | --- | --- |
 | `INBOUND_GRPC_ADDR` | `:9101` | Адрес gRPC listener. |
 | `INBOUND_HEALTH_ADDR` | `:8093` | Адрес HTTP listener для `/healthz` и `/readyz`. |
-| `INBOUND_ENV` | `APP_ENV`, затем `local` | Вне local `Validate` требует `INBOUND_DATABASE_URL`. |
+| `INBOUND_ENV` | `APP_ENV`, затем `local` | Вне local `Validate` требует `INBOUND_DATABASE_URL`, S3 endpoint/bucket и не-дефолтные ключи. |
 | `APP_ENV` | `local` | Общий fallback окружения; пустое значение и `local` включают local-режим. |
 | `INBOUND_DATABASE_URL` | пусто | PostgreSQL контура приёма; вне local обязателен. |
 | `WORKER_TOKEN` | `local-dev-worker-token` | Общий секрет для worker-вызовов от gateway; вне local обязателен, ≥16 байт. |
-| `INBOUND_S3_ENDPOINT` | `minio:9000` | Endpoint S3/MinIO для вложений. |
-| `INBOUND_S3_ACCESS_KEY` | `minioadmin` | Access key вложений. |
-| `INBOUND_S3_SECRET_KEY` | `minioadmin` | Secret key вложений; хранить как секрет и не добавлять в репозиторий. |
-| `INBOUND_S3_BUCKET` | `order-fill-inbound` | Имя бакета вложений. |
+| `INBOUND_S3_ENDPOINT` | `minio:9000` | Endpoint S3/MinIO для вложений; вне local обязателен. |
+| `INBOUND_S3_ACCESS_KEY` | `minioadmin` | Access key вложений; `minioadmin` вне local запрещён. |
+| `INBOUND_S3_SECRET_KEY` | `minioadmin` | Secret key вложений; `minioadmin` вне local запрещён. Не коммитить. |
+| `INBOUND_S3_BUCKET` | `order-fill-inbound` | Имя бакета вложений; вне local обязателен. |
 | `INBOUND_S3_USE_SSL` | пусто | `true` включает TLS для S3-клиента. |
 | `GRPC_TLS_MODE` | `insecure` | Читается из окружения; назначение см. config.go. |
 | `GRPC_TLS_CERT_FILE` | пусто | Читается из окружения; назначение см. config.go. |
@@ -141,7 +141,7 @@ make test
 
 ## Эксплуатационные заметки и ограничения
 
-- `/healthz` проверяет процесс, `/readyz` при наличии PostgreSQL и S3-эндпоинта проверяет соединение с ними.
+- Пустой `INBOUND_DATABASE_URL` теперь завершает процесс с ошибкой (`inbound store is required`), а не с кодом 0.
 - Логи пишутся в stdout в JSON на уровне `info`.
 - Сервер завершает работу по `SIGINT`/`SIGTERM`; graceful timeout gRPC/HTTP — 10 секунд.
 - `ingest` идемпотентен по `provider_message_id`; ошибки webhook пишутся как сообщения со статусом `error:*` без содержимого.

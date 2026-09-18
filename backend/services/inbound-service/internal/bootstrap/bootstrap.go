@@ -2,6 +2,7 @@ package bootstrap
 
 import (
 	"context"
+	"fmt"
 	"log/slog"
 	"net/http"
 
@@ -19,6 +20,9 @@ func Run(ctx context.Context, cfg config.Config, log *slog.Logger) error {
 	if err := cfg.Validate(); err != nil {
 		return err
 	}
+	if cfg.DatabaseURL == "" {
+		return fmt.Errorf("inbound store is required")
+	}
 	objects, err := objectstore.New(
 		cfg.InboundS3.Endpoint,
 		cfg.InboundS3.AccessKey,
@@ -35,24 +39,20 @@ func Run(ctx context.Context, cfg config.Config, log *slog.Logger) error {
 
 	var store inbound.Store
 	var readyCheck func(context.Context) error
-	if cfg.DatabaseURL != "" {
-		pool, err := postgres.OpenPool(ctx, cfg.DatabaseURL)
-		if err != nil {
-			return err
-		}
-		defer pool.Close()
-		if err := migrate.Up(ctx, pool); err != nil {
-			return err
-		}
-		store = postgres.New(pool)
-		readyCheck = pool.Ping
-		log.Info("inbound-service using postgres")
-	} else {
-		log.Info("inbound-service: no DATABASE_URL, store is nil")
+	pool, err := postgres.OpenPool(ctx, cfg.DatabaseURL)
+	if err != nil {
+		return err
 	}
+	defer pool.Close()
+	if err := migrate.Up(ctx, pool); err != nil {
+		return err
+	}
+	store = postgres.New(pool)
+	readyCheck = pool.Ping
+	log.Info("inbound-service using postgres")
 
 	if store == nil {
-		return nil
+		return fmt.Errorf("inbound store is required")
 	}
 
 	svc := inbound.New(store, objects, cfg.InboundS3.Bucket)
