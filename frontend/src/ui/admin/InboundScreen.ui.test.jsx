@@ -56,6 +56,22 @@ test("company owner sees empty sender_email placeholder when not configured", as
   expect(placeholders.length).toBeGreaterThanOrEqual(1);
 });
 
+test("platform admin delivery table shows status without mail headers", async () => {
+  const platformMe = { role: "platform_admin" };
+  mockGetInboundSettings.mockResolvedValue({ enabled: true, receive_address: "in@cloudmailin.net", webhook_count: 1, error_count: 0 });
+  mockGetInboundDeliveries.mockResolvedValue({
+    deliveries: [{ id: "d1", received_at: "2026-09-15T10:00:00Z", company_id: "c1", status: "received", subject: "секрет", envelope_from: "1c@secret.ru" }],
+  });
+
+  render(<InboundScreen me={platformMe} />);
+
+  expect(await screen.findByText("Принято")).toBeInTheDocument();
+  expect(screen.queryByText("секрет")).not.toBeInTheDocument();
+  expect(screen.queryByText("1c@secret.ru")).not.toBeInTheDocument();
+  expect(screen.queryByText("Тема")).not.toBeInTheDocument();
+  expect(screen.queryByText("Отправитель")).not.toBeInTheDocument();
+});
+
 test("platform admin sees address panel with save button", async () => {
   const platformMe = { role: "platform_admin" };
   mockGetInboundSettings.mockResolvedValue({ enabled: true, receive_address: "7e1432246b724f3bcd6c@cloudmailin.net", webhook_count: 5, error_count: 0 });

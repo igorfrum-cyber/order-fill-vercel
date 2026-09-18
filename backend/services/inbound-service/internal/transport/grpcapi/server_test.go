@@ -149,3 +149,30 @@ func TestIngestWebhookPayloadTooLargeIsInvalidArgument(t *testing.T) {
 		t.Fatalf("got %v, want InvalidArgument for oversized payload", err)
 	}
 }
+
+func TestListDeliveriesOmitsSubjectAndSender(t *testing.T) {
+	t.Parallel()
+	srv, store := testServer(t)
+	store.saved = []domain.MessageSummary{{
+		ID: "d1", ProviderMessageID: "abc", Subject: "Заказ №456", EnvelopeFrom: "1c@company.ru",
+		Status: domain.StatusReceived, BodyText: "secret", BodyHTML: "<p>secret</p>",
+	}}
+	ctx := incomingRole(t, "platform_admin")
+	resp, err := srv.ListDeliveries(ctx, &inboundv1.ListDeliveriesRequest{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(resp.GetDeliveries()) != 1 {
+		t.Fatalf("deliveries=%d", len(resp.GetDeliveries()))
+	}
+	got := resp.GetDeliveries()[0]
+	if got.GetSubject() != "" || got.GetEnvelopeFrom() != "" {
+		t.Fatalf("platform feed must hide subject/from, got subject=%q from=%q", got.GetSubject(), got.GetEnvelopeFrom())
+	}
+	if got.GetBodyText() != "" || got.GetBodyHtml() != "" {
+		t.Fatalf("platform feed must hide bodies")
+	}
+	if got.GetStatus() != inboundv1.InboundMessageStatus_INBOUND_MESSAGE_STATUS_RECEIVED {
+		t.Fatalf("status=%v", got.GetStatus())
+	}
+}

@@ -220,6 +220,8 @@ func (s *Server) ListDeliveries(ctx context.Context, req *inboundv1.ListDeliveri
 		out[i] = protoMessageSummary(m)
 		out[i].BodyText = ""
 		out[i].BodyHtml = ""
+		out[i].Subject = ""
+		out[i].EnvelopeFrom = ""
 	}
 	return &inboundv1.ListDeliveriesResponse{Deliveries: out}, nil
 }

@@ -320,7 +320,7 @@ func TestPresentInboundMessageNil(t *testing.T) {
 	}
 }
 
-func TestInboundDeliveriesShowsSubject(t *testing.T) {
+func TestInboundDeliveriesOmitsSubjectAndSender(t *testing.T) {
 	t.Parallel()
 	api := &API{Clients: clients.Clients{Inbound: inboundClient{}}}
 	req := httptest.NewRequest(http.MethodGet, "/api/v1/inbound/deliveries", nil)
@@ -328,8 +328,14 @@ func TestInboundDeliveriesShowsSubject(t *testing.T) {
 	rec := httptest.NewRecorder()
 	api.inboundDeliveries(rec, req)
 	body := rec.Body.String()
-	if rec.Code != http.StatusOK || !strings.Contains(body, `"subject":"Заказ №456"`) {
+	if rec.Code != http.StatusOK {
 		t.Fatalf("status=%d body=%s", rec.Code, body)
+	}
+	if strings.Contains(body, `"subject":"Заказ №456"`) || strings.Contains(body, `"envelope_from":"1c@company.ru"`) {
+		t.Fatalf("platform deliveries must omit subject/from, body=%s", body)
+	}
+	if !strings.Contains(body, `"status":"received"`) || !strings.Contains(body, `"provider_message_id":"abc"`) {
+		t.Fatalf("status/id still required, body=%s", body)
 	}
 }
 

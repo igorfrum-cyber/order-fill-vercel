@@ -270,9 +270,7 @@ function DeliveriesTable({ rows }) {
         <thead>
           <tr className="border-b border-[var(--color-line)] text-[var(--color-ink-faint)]">
             <th className="py-2 pr-4 font-medium">Время</th>
-            <th className="py-2 pr-4 font-medium">Тема</th>
             <th className="py-2 pr-4 font-medium">Компания</th>
-            <th className="py-2 pr-4 font-medium">Отправитель</th>
             <th className="py-2 pr-4 font-medium">Статус</th>
           </tr>
         </thead>
@@ -280,9 +278,7 @@ function DeliveriesTable({ rows }) {
           {rows.map((row) => (
             <tr key={row.id} className="border-b border-[var(--color-line-soft)] last:border-0">
               <td className="py-2 pr-4 text-[var(--color-ink-soft)]">{shortDateTime(row.received_at)}</td>
-              <td className="py-2 pr-4">{row.subject || "—"}</td>
               <td className="py-2 pr-4">{row.company_id || "—"}</td>
-              <td className="py-2 pr-4">{row.envelope_from || "—"}</td>
               <td className="py-2 pr-4"><StatusPill status={row.status} /></td>
             </tr>
           ))}

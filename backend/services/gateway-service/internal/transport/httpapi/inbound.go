@@ -260,7 +260,10 @@ func (a *API) inboundDeliveries(w http.ResponseWriter, r *http.Request) {
 	}
 	deliveries := make([]inboundMessageJSON, 0, len(resp.GetDeliveries()))
 	for _, m := range resp.GetDeliveries() {
-		deliveries = append(deliveries, presentInboundMessage(m))
+		item := presentInboundMessage(m)
+		item.Subject = ""
+		item.EnvelopeFrom = ""
+		deliveries = append(deliveries, item)
 	}
 	writeJSON(w, http.StatusOK, map[string]any{"deliveries": deliveries})
 }
