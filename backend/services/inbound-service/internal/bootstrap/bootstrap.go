@@ -55,7 +55,7 @@ func Run(ctx context.Context, cfg config.Config, log *slog.Logger) error {
 		return fmt.Errorf("inbound store is required")
 	}
 
-	svc := inbound.New(store, objects, cfg.InboundS3.Bucket)
+	svc := inbound.New(store, objects)
 	health := http.NewServeMux()
 	health.Handle("GET /healthz", healthz.Live())
 	health.Handle("GET /readyz", healthz.Ready(readyCheck))

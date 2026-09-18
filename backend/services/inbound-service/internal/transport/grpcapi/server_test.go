@@ -86,7 +86,7 @@ func testServer(t *testing.T) (*grpcapi.Server, *stubStore) {
 			"co-2": {CompanyID: "co-2", SenderEmail: "1c@co2.ru", Enabled: true},
 		},
 	}
-	return grpcapi.NewServer(inbound.New(store, stubObjects{}, "bucket"), "worker-token-16b!"), store
+	return grpcapi.NewServer(inbound.New(store, stubObjects{}), "worker-token-16b!"), store
 }
 
 func incomingRole(t *testing.T, role string) context.Context {

@@ -121,7 +121,6 @@ function PlatformPanel() {
 
 function CompanyPanel({ companyId }) {
   const [state, setState] = useState(null);
-  const [settings, setSettings] = useState(null);
   const [messages, setMessages] = useState([]);
   const [draft, setDraft] = useState(null);
   const [selectedMessage, setSelectedMessage] = useState(null);
@@ -139,8 +138,8 @@ function CompanyPanel({ companyId }) {
   useEffect(() => {
     let cancelled = false;
     setLoading(true);
-    Promise.allSettled([getInboundCompany(companyId), getInboundMessages(companyId), getInboundSettings()])
-      .then(([companyResult, messagesResult, settingsResult]) => {
+    Promise.allSettled([getInboundCompany(companyId), getInboundMessages(companyId)])
+      .then(([companyResult, messagesResult]) => {
         if (cancelled) return;
         if (companyResult.status === "fulfilled") {
           setState(companyResult.value);
@@ -149,9 +148,6 @@ function CompanyPanel({ companyId }) {
         }
         if (messagesResult.status === "fulfilled") {
           setMessages(messagesResult.value.messages || []);
-        }
-        if (settingsResult.status === "fulfilled") {
-          setSettings(settingsResult.value);
         }
       })
       .finally(() => {
@@ -198,7 +194,7 @@ function CompanyPanel({ companyId }) {
   }
 
   const company = draft || state || { receive_address: "", sender_email: "", enabled: true };
-  const platformAddress = settings?.receive_address || "";
+  const platformAddress = company.receive_address || "";
 
   return (
     <>

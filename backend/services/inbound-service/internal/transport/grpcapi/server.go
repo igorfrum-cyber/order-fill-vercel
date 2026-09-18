@@ -105,7 +105,7 @@ func (s *Server) UpdateSettings(ctx context.Context, req *inboundv1.UpdateSettin
 	if err := s.requireAdmin(ctx); err != nil {
 		return nil, err
 	}
-	st, err := s.svc.UpdateSettings(ctx, req.GetEnabled(), req.GetReceiveAddress(), req.GetMeta().GetActorUserId())
+	st, err := s.svc.UpdateSettings(ctx, req.GetEnabled(), req.GetReceiveAddress())
 	if err != nil {
 		return nil, status.Error(codes.Internal, "failed to update settings")
 	}

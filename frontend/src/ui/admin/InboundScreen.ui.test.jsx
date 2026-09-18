@@ -85,7 +85,7 @@ test("platform admin sees address panel with save button", async () => {
   expect(saveButton).toBeInTheDocument();
 });
 
-test("company panel shows platform address from settings", async () => {
+test("company panel shows receive address from company inbound", async () => {
   mockGetInboundCompany.mockResolvedValue({
     company_id: "c1",
     receive_address: "7e1432246b724f3bcd6c@cloudmailin.net",

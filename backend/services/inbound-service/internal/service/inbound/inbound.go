@@ -8,7 +8,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"math"
 	"mime"
 	"strings"
 	"time"
@@ -41,20 +40,19 @@ type ObjectStore interface {
 }
 
 type Service struct {
-	store      Store
-	objects    ObjectStore
-	inboundKey string
+	store   Store
+	objects ObjectStore
 }
 
-func New(store Store, objects ObjectStore, inboundKey string) *Service {
-	return &Service{store: store, objects: objects, inboundKey: inboundKey}
+func New(store Store, objects ObjectStore) *Service {
+	return &Service{store: store, objects: objects}
 }
 
 func (s *Service) GetSettings(ctx context.Context) (domain.Settings, error) {
 	return s.store.GetSettings(ctx)
 }
 
-func (s *Service) UpdateSettings(ctx context.Context, enabled bool, receiveAddress string, actorUserID string) (domain.Settings, error) {
+func (s *Service) UpdateSettings(ctx context.Context, enabled bool, receiveAddress string) (domain.Settings, error) {
 	return s.store.UpsertSettings(ctx, enabled, receiveAddress)
 }
 
@@ -239,7 +237,7 @@ func (s *Service) IngestWebhook(ctx context.Context, rawPayload []byte) error {
 		ReceivedAt:        time.Now().UTC(),
 		CompanyID:         inbound.CompanyID,
 		Status:            domain.StatusReceived,
-		AttachmentCount:   count32(len(storedAttachments)),
+		AttachmentCount:   int32(len(storedAttachments)),
 		TotalBytes:        totalBytes,
 		BodyText:          bodyText,
 		BodyHTML:          bodyHTML,
@@ -410,14 +408,4 @@ func generateID() string {
 
 func generateFallbackID() string {
 	return "msg-" + uuid.New().String()
-}
-
-func count32(n int) int32 {
-	if n > math.MaxInt32 {
-		return math.MaxInt32
-	}
-	if n < math.MinInt32 {
-		return math.MinInt32
-	}
-	return int32(n)
 }

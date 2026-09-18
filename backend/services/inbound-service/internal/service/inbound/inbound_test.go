@@ -168,7 +168,7 @@ func base64Of(s string) string { return base64.StdEncoding.EncodeToString([]byte
 func TestIngestSenderMatch(t *testing.T) {
 	t.Parallel()
 	store := newFakeStore()
-	svc := New(store, newFakeObjectStore(), "bucket")
+	svc := New(store, newFakeObjectStore())
 	body := webhookWithAttachments("msg-sender-1", []rawAttachment{
 		{FileName: "report.xlsx", ContentType: "application/vnd.ms-excel", Content: base64Of("xlsx-bytes")},
 	})
@@ -190,7 +190,7 @@ func TestIngestSenderMatch(t *testing.T) {
 func TestIngestInvalidJSONIsInvalidPayload(t *testing.T) {
 	t.Parallel()
 	store := newFakeStore()
-	svc := New(store, newFakeObjectStore(), "bucket")
+	svc := New(store, newFakeObjectStore())
 	err := svc.IngestWebhook(t.Context(), []byte("{"))
 	if !errors.Is(err, domain.ErrInvalidPayload) {
 		t.Fatalf("got %v, want ErrInvalidPayload", err)
@@ -203,7 +203,7 @@ func TestIngestInvalidJSONIsInvalidPayload(t *testing.T) {
 func TestIngestPayloadTooLarge(t *testing.T) {
 	t.Parallel()
 	store := newFakeStore()
-	svc := New(store, newFakeObjectStore(), "bucket")
+	svc := New(store, newFakeObjectStore())
 	err := svc.IngestWebhook(t.Context(), make([]byte, 32<<20+1))
 	if !errors.Is(err, domain.ErrPayloadTooLarge) {
 		t.Fatalf("got %v, want ErrPayloadTooLarge", err)
@@ -216,7 +216,7 @@ func TestIngestPayloadTooLarge(t *testing.T) {
 func TestIngestUnknownSenderSavesMinimal(t *testing.T) {
 	t.Parallel()
 	store := newFakeStore()
-	svc := New(store, newFakeObjectStore(), "bucket")
+	svc := New(store, newFakeObjectStore())
 	body := `{"message_id":"msg-sender-2","envelope":{"from":"unknown@x.io","to":"7e1432246b724f3bcd6c@cloudmailin.net"},"plain":"секрет 1С","html":"<p>секрет 1С</p>","attachments":[]}`
 	if err := svc.IngestWebhook(t.Context(), []byte(body)); err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -244,7 +244,7 @@ func TestIngestUnknownSenderSavesMinimal(t *testing.T) {
 func TestIngestSubjectSaved(t *testing.T) {
 	t.Parallel()
 	store := newFakeStore()
-	svc := New(store, newFakeObjectStore(), "bucket")
+	svc := New(store, newFakeObjectStore())
 	body := webhookWithSubject("msg-subject-1", "Заказ №12345")
 	if err := svc.IngestWebhook(t.Context(), []byte(body)); err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -260,7 +260,7 @@ func TestIngestSubjectSaved(t *testing.T) {
 func TestIngestStoresFormattedMessageBody(t *testing.T) {
 	t.Parallel()
 	store := newFakeStore()
-	svc := New(store, newFakeObjectStore(), "bucket")
+	svc := New(store, newFakeObjectStore())
 	body := `{"message_id":"msg-body-1","envelope":{"from":"1c@company.ru","to":"7e1432246b724f3bcd6c@cloudmailin.net"},"subject":"Заказ","plain":"Текст письма","html":"<p><strong>Текст</strong> письма</p>","attachments":[{"file_name":"report.xlsx","content":"` + base64Of("data") + `"}]}`
 	if err := svc.IngestWebhook(t.Context(), []byte(body)); err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -279,7 +279,7 @@ func TestIngestStoresFormattedMessageBody(t *testing.T) {
 func TestIngestSubjectFromHeaders(t *testing.T) {
 	t.Parallel()
 	store := newFakeStore()
-	svc := New(store, newFakeObjectStore(), "bucket")
+	svc := New(store, newFakeObjectStore())
 	body := `{"message_id":"msg-subject-2","envelope":{"from":"1c@company.ru","to":"7e1432246b724f3bcd6c@cloudmailin.net"},"headers":{"Subject":["Тема из заголовков"]},"attachments":[]}`
 	if err := svc.IngestWebhook(t.Context(), []byte(body)); err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -295,7 +295,7 @@ func TestIngestSubjectFromHeaders(t *testing.T) {
 func TestIngestSubjectSavedOnMinimalMessage(t *testing.T) {
 	t.Parallel()
 	store := newFakeStore()
-	svc := New(store, newFakeObjectStore(), "bucket")
+	svc := New(store, newFakeObjectStore())
 	body := webhookWithSubject("msg-subject-3", "Ошибка доставки")
 	if err := svc.IngestWebhook(t.Context(), []byte(body)); err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -311,7 +311,7 @@ func TestIngestSubjectSavedOnMinimalMessage(t *testing.T) {
 func TestIngestUUIDv7Format(t *testing.T) {
 	t.Parallel()
 	store := newFakeStore()
-	svc := New(store, newFakeObjectStore(), "bucket")
+	svc := New(store, newFakeObjectStore())
 	body := webhookWithAttachments("msg-uuid-1", []rawAttachment{
 		{FileName: "data.xlsx", Content: base64Of("bytes")},
 	})
@@ -330,7 +330,7 @@ func TestIngestUUIDv7Format(t *testing.T) {
 func TestIngestDedupesByProviderMessageID(t *testing.T) {
 	t.Parallel()
 	store := newFakeStore()
-	svc := New(store, newFakeObjectStore(), "bucket")
+	svc := New(store, newFakeObjectStore())
 	body := webhookWithAttachments("dup-sender-1", []rawAttachment{
 		{FileName: "a.xlsx", Content: base64Of("data")},
 	})
@@ -350,7 +350,7 @@ func TestIngestDisabledRejects(t *testing.T) {
 	t.Parallel()
 	store := newFakeStore()
 	store.settings.Enabled = false
-	svc := New(store, newFakeObjectStore(), "bucket")
+	svc := New(store, newFakeObjectStore())
 	body := webhookEnvelope("1c@company.ru", "7e1432246b724f3bcd6c@cloudmailin.net", "msg-disabled-1")
 	if err := svc.IngestWebhook(t.Context(), []byte(body)); err == nil {
 		t.Fatal("expected error when disabled")
@@ -363,7 +363,7 @@ func TestIngestDisabledRejects(t *testing.T) {
 func TestIngestNoAttachments(t *testing.T) {
 	t.Parallel()
 	store := newFakeStore()
-	svc := New(store, newFakeObjectStore(), "bucket")
+	svc := New(store, newFakeObjectStore())
 	body := webhookEnvelope("1c@company.ru", "7e1432246b724f3bcd6c@cloudmailin.net", "msg-noatt-1")
 	if err := svc.IngestWebhook(t.Context(), []byte(body)); err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -377,7 +377,7 @@ func TestIngestStoresAttachmentAndObject(t *testing.T) {
 	t.Parallel()
 	store := newFakeStore()
 	objects := newFakeObjectStore()
-	svc := New(store, objects, "bucket")
+	svc := New(store, objects)
 	body := webhookWithAttachments("msg-store-1", []rawAttachment{
 		{FileName: "report.xlsx", ContentType: "application/vnd.ms-excel", Content: base64Of("xlsx-bytes")},
 	})
@@ -406,7 +406,7 @@ func TestIngestStoresAttachmentAndObject(t *testing.T) {
 func TestIngestSkipsInvalidBase64(t *testing.T) {
 	t.Parallel()
 	store := newFakeStore()
-	svc := New(store, newFakeObjectStore(), "bucket")
+	svc := New(store, newFakeObjectStore())
 	body := webhookWithAttachments("msg-b64-1", []rawAttachment{
 		{FileName: "bad.bin", Content: "not-base64!!"},
 		{FileName: "ok.txt", Content: base64Of("hello")},
@@ -422,7 +422,7 @@ func TestIngestSkipsInvalidBase64(t *testing.T) {
 func TestIngestTooLargeAttachmentRejected(t *testing.T) {
 	t.Parallel()
 	store := newFakeStore()
-	svc := New(store, newFakeObjectStore(), "bucket")
+	svc := New(store, newFakeObjectStore())
 	body := webhookWithAttachments("msg-large-1", []rawAttachment{
 		{FileName: "big.bin", Content: base64Of(strings.Repeat("a", 21<<20))},
 	})
@@ -459,7 +459,7 @@ func TestIngestSenderMatchOnStoreError(t *testing.T) {
 	t.Parallel()
 	store := newFakeStore()
 	store.senderErr = errors.New("db down")
-	svc := New(store, newFakeObjectStore(), "bucket")
+	svc := New(store, newFakeObjectStore())
 	body := webhookEnvelope("1c@company.ru", "7e1432246b724f3bcd6c@cloudmailin.net", "msg-dberr-1")
 	if err := svc.IngestWebhook(t.Context(), []byte(body)); err == nil {
 		t.Fatal("expected error when store fails")
@@ -469,7 +469,7 @@ func TestIngestSenderMatchOnStoreError(t *testing.T) {
 func TestUpdateCompanyInboundRejectsDuplicateSender(t *testing.T) {
 	t.Parallel()
 	store := newFakeStore()
-	svc := New(store, newFakeObjectStore(), "bucket")
+	svc := New(store, newFakeObjectStore())
 	if _, err := svc.UpdateCompanyInbound(t.Context(), "c1", "addr@test.com", "1c@shared.ru", true); err != nil {
 		t.Fatalf("first company: %v", err)
 	}
@@ -482,7 +482,7 @@ func TestUpdateCompanyInboundRejectsDuplicateSender(t *testing.T) {
 func TestUpdateCompanyInboundEmptySenderRejected(t *testing.T) {
 	t.Parallel()
 	store := newFakeStore()
-	svc := New(store, newFakeObjectStore(), "bucket")
+	svc := New(store, newFakeObjectStore())
 	_, err := svc.UpdateCompanyInbound(t.Context(), "c1", "addr@test.com", "", true)
 	if !errors.Is(err, domain.ErrInvalid) {
 		t.Fatalf("expected ErrInvalid for empty senderEmail, got: %v", err)
@@ -492,8 +492,8 @@ func TestUpdateCompanyInboundEmptySenderRejected(t *testing.T) {
 func TestUpdateSettingsPassesReceiveAddress(t *testing.T) {
 	t.Parallel()
 	store := newFakeStore()
-	svc := New(store, newFakeObjectStore(), "bucket")
-	got, err := svc.UpdateSettings(t.Context(), true, "new@cloudmailin.net", "admin-id")
+	svc := New(store, newFakeObjectStore())
+	got, err := svc.UpdateSettings(t.Context(), true, "new@cloudmailin.net")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -508,7 +508,7 @@ func TestUpdateSettingsPassesReceiveAddress(t *testing.T) {
 func TestIngestSubjectHeadersBeatTopLevel(t *testing.T) {
 	t.Parallel()
 	store := newFakeStore()
-	svc := New(store, newFakeObjectStore(), "bucket")
+	svc := New(store, newFakeObjectStore())
 	body := `{"message_id":"msg-hdr-1","envelope":{"from":"1c@company.ru","to":"7e1432246b724f3bcd6c@cloudmailin.net"},"subject":"top-level","headers":{"Subject":["from-header"]},"attachments":[{"file_name":"f.xlsx","content":"` + base64Of("data") + `"}]}`
 	if err := svc.IngestWebhook(t.Context(), []byte(body)); err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -524,7 +524,7 @@ func TestIngestSubjectHeadersBeatTopLevel(t *testing.T) {
 func TestIngestUsesCloudMailinHeaderMessageIDForDeduplication(t *testing.T) {
 	t.Parallel()
 	store := newFakeStore()
-	svc := New(store, newFakeObjectStore(), "bucket")
+	svc := New(store, newFakeObjectStore())
 	body := `{"envelope":{"from":"1c@company.ru","to":"7e1432246b724f3bcd6c@cloudmailin.net"},"headers":{"message_id":"<cloudmailin-123@example.com>"},"attachments":[{"file_name":"f.xlsx","content":"` + base64Of("data") + `"}]}`
 	if err := svc.IngestWebhook(t.Context(), []byte(body)); err != nil {
 		t.Fatalf("first ingest: %v", err)
@@ -543,7 +543,7 @@ func TestIngestUsesCloudMailinHeaderMessageIDForDeduplication(t *testing.T) {
 func TestIngestSubjectOnTooLargeError(t *testing.T) {
 	t.Parallel()
 	store := newFakeStore()
-	svc := New(store, newFakeObjectStore(), "bucket")
+	svc := New(store, newFakeObjectStore())
 	body := `{"message_id":"msg-lg-subj","envelope":{"from":"1c@company.ru","to":"7e1432246b724f3bcd6c@cloudmailin.net"},"subject":"Огромный файл","attachments":[{"file_name":"big.bin","content":"` + base64Of(strings.Repeat("x", 21<<20)) + `"}]}`
 	if err := svc.IngestWebhook(t.Context(), []byte(body)); err != nil {
 		t.Fatalf("unexpected error: %v", err)
