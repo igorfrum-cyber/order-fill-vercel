@@ -14,6 +14,7 @@ import (
 type fakeStore struct {
 	settings         domain.Settings
 	companyBySender  domain.CompanyInbound
+	companies        map[string]domain.CompanyInbound
 	senderErr        error
 	exists           map[string]bool
 	saved            []domain.MessageSummary
@@ -59,8 +60,18 @@ func (f *fakeStore) GetCompanyByAllowedSender(_ context.Context, senderEmail str
 	return domain.CompanyInbound{}, domain.ErrNotFound
 }
 func (f *fakeStore) UpsertCompanyInbound(_ context.Context, companyID, receiveAddress, senderEmail string, enabled bool) (domain.CompanyInbound, error) {
-	f.companyBySender = domain.CompanyInbound{CompanyID: companyID, ReceiveAddress: receiveAddress, SenderEmail: senderEmail, Enabled: enabled}
-	return f.companyBySender, nil
+	if f.companies == nil {
+		f.companies = map[string]domain.CompanyInbound{}
+	}
+	for id, existing := range f.companies {
+		if id != companyID && strings.EqualFold(existing.SenderEmail, senderEmail) {
+			return domain.CompanyInbound{}, domain.ErrInvalid
+		}
+	}
+	ci := domain.CompanyInbound{CompanyID: companyID, ReceiveAddress: receiveAddress, SenderEmail: senderEmail, Enabled: enabled}
+	f.companies[companyID] = ci
+	f.companyBySender = ci
+	return ci, nil
 }
 func (f *fakeStore) MessageExists(_ context.Context, providerMessageID string) (bool, error) {
 	_, ok := f.exists[providerMessageID]
@@ -452,6 +463,19 @@ func TestIngestSenderMatchOnStoreError(t *testing.T) {
 	body := webhookEnvelope("1c@company.ru", "7e1432246b724f3bcd6c@cloudmailin.net", "msg-dberr-1")
 	if err := svc.IngestWebhook(t.Context(), []byte(body)); err == nil {
 		t.Fatal("expected error when store fails")
+	}
+}
+
+func TestUpdateCompanyInboundRejectsDuplicateSender(t *testing.T) {
+	t.Parallel()
+	store := newFakeStore()
+	svc := New(store, newFakeObjectStore(), "bucket")
+	if _, err := svc.UpdateCompanyInbound(t.Context(), "c1", "addr@test.com", "1c@shared.ru", true); err != nil {
+		t.Fatalf("first company: %v", err)
+	}
+	_, err := svc.UpdateCompanyInbound(t.Context(), "c2", "addr@test.com", "1C@shared.ru", true)
+	if !errors.Is(err, domain.ErrInvalid) {
+		t.Fatalf("second company must not take the same sender_email, got %v", err)
 	}
 }
 

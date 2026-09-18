@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"order-fill/backend/services/inbound-service/internal/domain"
@@ -96,7 +97,7 @@ func (s *Store) UpsertCompanyInbound(ctx context.Context, companyID, receiveAddr
 		SET receive_address = $2, sender_email = $3, enabled = $4
 	`, companyID, strings.TrimSpace(receiveAddress), strings.TrimSpace(senderEmail), enabled)
 	if err != nil {
-		return domain.CompanyInbound{}, fmt.Errorf("upsert company inbound: %w", err)
+		return domain.CompanyInbound{}, mapCompanyInboundUpsertError(err)
 	}
 	return s.GetCompanyInbound(ctx, companyID)
 }
@@ -249,4 +250,11 @@ func (s *Store) ListDeliveries(ctx context.Context, limit int) ([]domain.Message
 		out = append(out, m)
 	}
 	return out, rows.Err()
+}
+
+func mapCompanyInboundUpsertError(err error) error {
+	if pgErr, ok := errors.AsType[*pgconn.PgError](err); ok && pgErr.Code == "23505" {
+		return domain.ErrInvalid
+	}
+	return fmt.Errorf("upsert company inbound: %w", err)
 }

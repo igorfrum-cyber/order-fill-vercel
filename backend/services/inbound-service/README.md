@@ -141,6 +141,7 @@ make test
 
 ## Эксплуатационные заметки и ограничения
 
+- Перед выкладкой с миграцией `00006_unique_sender_email` разрешите дубликаты `sender_email` вручную: индекс уникален по `LOWER(sender_email)` и упадёт, если две компании уже делят один ящик 1С.
 - Пустой `INBOUND_DATABASE_URL` теперь завершает процесс с ошибкой (`inbound store is required`), а не с кодом 0.
 - Логи пишутся в stdout в JSON на уровне `info`.
 - Сервер завершает работу по `SIGINT`/`SIGTERM`; graceful timeout gRPC/HTTP — 10 секунд.
