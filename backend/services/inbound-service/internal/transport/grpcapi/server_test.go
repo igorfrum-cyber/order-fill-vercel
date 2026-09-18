@@ -129,3 +129,23 @@ func TestGetCompanyInboundRejectsForeignCompany(t *testing.T) {
 		t.Fatalf("foreign company_id must be denied, got %v", err)
 	}
 }
+
+func TestIngestWebhookInvalidJSONIsInvalidArgument(t *testing.T) {
+	t.Parallel()
+	srv, _ := testServer(t)
+	ctx := incomingWorker(t, "worker-token-16b!")
+	_, err := srv.IngestWebhook(ctx, &inboundv1.IngestWebhookRequest{RawPayload: []byte("{")})
+	if status.Code(err) != codes.InvalidArgument {
+		t.Fatalf("got %v, want InvalidArgument so CloudMailin stops retrying poison payloads", err)
+	}
+}
+
+func TestIngestWebhookPayloadTooLargeIsInvalidArgument(t *testing.T) {
+	t.Parallel()
+	srv, _ := testServer(t)
+	ctx := incomingWorker(t, "worker-token-16b!")
+	_, err := srv.IngestWebhook(ctx, &inboundv1.IngestWebhookRequest{RawPayload: make([]byte, 32<<20+1)})
+	if status.Code(err) != codes.InvalidArgument {
+		t.Fatalf("got %v, want InvalidArgument for oversized payload", err)
+	}
+}

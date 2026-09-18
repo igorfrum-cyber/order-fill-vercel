@@ -147,7 +147,7 @@ func (s *Service) parseWebhookPayload(rawPayload []byte) (rawWebhook, error) {
 
 	var mail rawWebhook
 	if err := json.Unmarshal(rawPayload, &mail); err != nil {
-		return rawWebhook{}, fmt.Errorf("parse inbound webhook: %w", err)
+		return rawWebhook{}, fmt.Errorf("parse inbound webhook: %w: %v", domain.ErrInvalidPayload, err)
 	}
 	return mail, nil
 }

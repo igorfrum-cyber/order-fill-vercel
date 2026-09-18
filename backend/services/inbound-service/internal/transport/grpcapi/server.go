@@ -78,7 +78,14 @@ func (s *Server) IngestWebhook(ctx context.Context, req *inboundv1.IngestWebhook
 		return nil, status.Error(codes.InvalidArgument, "raw payload is required")
 	}
 	if err := s.svc.IngestWebhook(ctx, req.GetRawPayload()); err != nil {
-		return nil, status.Error(codes.Internal, "ingest failed")
+		switch {
+		case errors.Is(err, domain.ErrPayloadTooLarge):
+			return nil, status.Error(codes.InvalidArgument, "payload too large")
+		case errors.Is(err, domain.ErrInvalidPayload):
+			return nil, status.Error(codes.InvalidArgument, "invalid payload")
+		default:
+			return nil, status.Error(codes.Internal, "ingest failed")
+		}
 	}
 	return &inboundv1.IngestWebhookResponse{}, nil
 }

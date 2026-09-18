@@ -176,6 +176,32 @@ func TestIngestSenderMatch(t *testing.T) {
 	}
 }
 
+func TestIngestInvalidJSONIsInvalidPayload(t *testing.T) {
+	t.Parallel()
+	store := newFakeStore()
+	svc := New(store, newFakeObjectStore(), "bucket")
+	err := svc.IngestWebhook(t.Context(), []byte("{"))
+	if !errors.Is(err, domain.ErrInvalidPayload) {
+		t.Fatalf("got %v, want ErrInvalidPayload", err)
+	}
+	if len(store.saved) != 0 {
+		t.Fatalf("poison payload must not be stored, saved=%d", len(store.saved))
+	}
+}
+
+func TestIngestPayloadTooLarge(t *testing.T) {
+	t.Parallel()
+	store := newFakeStore()
+	svc := New(store, newFakeObjectStore(), "bucket")
+	err := svc.IngestWebhook(t.Context(), make([]byte, 32<<20+1))
+	if !errors.Is(err, domain.ErrPayloadTooLarge) {
+		t.Fatalf("got %v, want ErrPayloadTooLarge", err)
+	}
+	if len(store.saved) != 0 {
+		t.Fatalf("oversized payload must not be stored, saved=%d", len(store.saved))
+	}
+}
+
 func TestIngestUnknownSenderSavesMinimal(t *testing.T) {
 	t.Parallel()
 	store := newFakeStore()

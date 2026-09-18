@@ -10,4 +10,5 @@ var (
 	ErrFailedPrecond      = errors.New("failed precondition")
 	ErrPayloadTooLarge    = errors.New("payload too large")
 	ErrAttachmentTooLarge = errors.New("attachment too large")
+	ErrInvalidPayload     = errors.New("invalid payload")
 )
