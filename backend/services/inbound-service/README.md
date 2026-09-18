@@ -26,7 +26,7 @@ curl http://127.0.0.1:8093/readyz
 - Вложения принимаются только как inline base64 `content`; URL не открываются (анти-SSRF). Одно вложение ограничено 20 МБ в раскодированном виде, всё тело запроса — 32 МБ.
 - Текстовая и HTML-части письма сохраняются в собственной БД и доступны владельцу/админу компании через просмотр письма. HTML открывается в изолированном iframe без разрешения скриптов.
 - При неизвестном адресе, отправителе вне whitelist, отсутствии вложений или слишком большом вложении сохраняются только минимальные метаданные со статусом `error:*` — содержимое не хранится, ответ 200 (CloudMailin перестаёт ретраить).
-- Отвечает за настройки приёма (platform-wide), адрес и whitelist компании, ленту сообщений и скачивание вложений для владельца компании.
+- Отвечает за настройки приёма (platform-wide), адрес и `sender_email` компании (один ящик 1С), ленту сообщений и скачивание вложений для владельца компании.
 - Не авторизует пользователей напрямую — роли приходят от gateway в `RequestMeta`, вложения защищены учётными данными собственного S3-инстанса.
 - Не создаёт заказы и jobs — письма остаются в контуре до явного импорта отдельной итерацией.
 
@@ -57,8 +57,8 @@ internal/domain                    модель и ошибки контура
 | `IngestWebhook` | `/orderfill.inbound.v1.InboundService/IngestWebhook` | Принимает raw-пейлоад CloudMailin от gateway. Требует worker-токен. |
 | `GetSettings` | `/orderfill.inbound.v1.InboundService/GetSettings` | Возвращает глобальные настройки приёма. Требует роль `platform_admin`. |
 | `UpdateSettings` | `/orderfill.inbound.v1.InboundService/UpdateSettings` | Включает/останавливает приём. Требует роль `platform_admin`. |
-| `GetCompanyInbound` | `/orderfill.inbound.v1.InboundService/GetCompanyInbound` | Возвращает адрес приёма и whitelist компании. Требует роль `company_owner` или `company_admin` этой компании. |
-| `UpdateCompanyInbound` | `/orderfill.inbound.v1.InboundService/UpdateCompanyInbound` | Сохраняет адрес приёма, whitelist и включение. Требует роль `company_owner`. |
+| `GetCompanyInbound` | `/orderfill.inbound.v1.InboundService/GetCompanyInbound` | Возвращает адрес приёма и `sender_email` компании. Требует роль `company_owner` или `company_admin` этой компании. |
+| `UpdateCompanyInbound` | `/orderfill.inbound.v1.InboundService/UpdateCompanyInbound` | Сохраняет адрес приёма, `sender_email` и включение. Требует роль `company_owner`. |
 | `ListMessages` | `/orderfill.inbound.v1.InboundService/ListMessages` | Лента писем компании с метаданными вложений. Требует роль владельца/админа компании. |
 | `GetMessage` | `/orderfill.inbound.v1.InboundService/GetMessage` | Просмотр тела одного письма в plain text/HTML. Требует роль владельца/админа компании. |
 | `GetMessageFile` | `/orderfill.inbound.v1.InboundService/GetMessageFile` | Скачивание одного сохранённого вложения. Требует роль владельца/админа компании. |

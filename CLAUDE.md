@@ -29,6 +29,7 @@ frontend/nginx --HTTP /api--> gateway-service
                                   |
                                   +--gRPC--> identity / twofa / passkey
                                   +--gRPC--> jobs / files / audit
+                                  +--gRPC--> inbound-service :9101
                                                    |       |
                                                    v       v
                                              Redis Stream  S3/MinIO
@@ -40,12 +41,14 @@ frontend/nginx --HTTP /api--> gateway-service
                                           matching brand calculation
 
 stateful services ---------------------------> PostgreSQL
+inbound-service -----------------------------> inbound-postgres + order-fill-inbound bucket
 ```
 
 - `gateway-service` is the only browser-facing backend.
 - Internal business APIs use protobuf/gRPC.
 - `job-service` publishes `order-fill:jobs`; `document-worker` consumes it.
-- `file-service` is the object-storage boundary.
+- `file-service` is the object-storage boundary except inbound mail
+  attachments, which stay in `inbound-service`'s dedicated bucket.
 - `document-api` exists as an internal synchronous API, but gateway does not
   currently call it.
 - Local Compose provides PostgreSQL, Redis, and MinIO.
@@ -66,6 +69,7 @@ stateful services ---------------------------> PostgreSQL
 | Brand catalog, detection, and policies | `brand-service` |
 | Quantity calculations and North planning | `calculation-service` |
 | Audit event persistence | `audit-service` |
+| Inbound 1С mail, webhook ingest, dedicated Postgres/S3 | `inbound-service` |
 | Internal gRPC contracts | `backend/proto/` |
 | Shared transport/infrastructure helpers | `backend/pkg/` |
 
@@ -82,7 +86,8 @@ actual RPCs, environment variables, dependencies, and known limitations.
   goes through protobuf/gRPC or the Redis job contract.
 - Do not let matching, brand, or calculation services read Excel or access
   object storage.
-- Do not bypass `file-service` for persistent object operations.
+- Do not bypass `file-service` for persistent object operations, except
+  inbound mail attachments which stay in `inbound-service`'s dedicated bucket.
 - Keep calculations deterministic and explainable unless an explicit task asks
   for an experiment.
 - Preserve current brand-specific behavior unless the change explicitly alters
