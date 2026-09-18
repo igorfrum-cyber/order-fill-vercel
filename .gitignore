@@ -49,3 +49,7 @@ opencode.json
 .settings/
 .shared
 .shared/*
+
+# Accidental `go build` outputs next to sources
+backend/services/inbound-service/inbound
+agent_config.txt
