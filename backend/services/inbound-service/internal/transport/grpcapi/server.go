@@ -106,7 +106,7 @@ func (s *Server) UpdateSettings(ctx context.Context, req *inboundv1.UpdateSettin
 }
 
 func (s *Server) GetCompanyInbound(ctx context.Context, req *inboundv1.GetCompanyInboundRequest) (*inboundv1.GetCompanyInboundResponse, error) {
-	if err := s.requireOwner(ctx, req.GetMeta(), req.GetCompanyId()); err != nil {
+	if err := s.requireCompanyRead(ctx, req.GetMeta(), req.GetCompanyId()); err != nil {
 		return nil, err
 	}
 	ci, err := s.svc.GetCompanyInbound(ctx, req.GetCompanyId())
