@@ -206,7 +206,7 @@ func TestIngestUnknownSenderSavesMinimal(t *testing.T) {
 	t.Parallel()
 	store := newFakeStore()
 	svc := New(store, newFakeObjectStore(), "bucket")
-	body := webhookEnvelope("unknown@x.io", "7e1432246b724f3bcd6c@cloudmailin.net", "msg-sender-2")
+	body := `{"message_id":"msg-sender-2","envelope":{"from":"unknown@x.io","to":"7e1432246b724f3bcd6c@cloudmailin.net"},"plain":"секрет 1С","html":"<p>секрет 1С</p>","attachments":[]}`
 	if err := svc.IngestWebhook(t.Context(), []byte(body)); err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -221,6 +221,12 @@ func TestIngestUnknownSenderSavesMinimal(t *testing.T) {
 	}
 	if store.errors != 1 {
 		t.Fatalf("errors=%d", store.errors)
+	}
+	if store.saved[0].BodyText != "" || store.saved[0].BodyHTML != "" {
+		t.Fatalf("error ingest must omit letter bodies, text=%q html=%q", store.saved[0].BodyText, store.saved[0].BodyHTML)
+	}
+	if store.savedAttachments[store.saved[0].ID] != nil {
+		t.Fatalf("error ingest must not store attachments")
 	}
 }
 

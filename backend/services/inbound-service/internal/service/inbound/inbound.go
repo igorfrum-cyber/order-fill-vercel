@@ -286,7 +286,7 @@ func (s *Service) storeAttachments(ctx context.Context, companyID string, msgID 
 	return stored, nil
 }
 
-func (s *Service) saveMinimalMessage(ctx context.Context, providerID, subject, bodyText, bodyHTML string, mail rawWebhook, status domain.InboundStatus, errorCode string) error {
+func (s *Service) saveMinimalMessage(ctx context.Context, providerID, subject, _, _ string, mail rawWebhook, status domain.InboundStatus, errorCode string) error {
 	msg := domain.MessageSummary{
 		ID:                generateID(),
 		ProviderMessageID: providerID,
@@ -296,8 +296,6 @@ func (s *Service) saveMinimalMessage(ctx context.Context, providerID, subject, b
 		ReceivedAt:        time.Now().UTC(),
 		Status:            status,
 		ErrorCode:         errorCode,
-		BodyText:          bodyText,
-		BodyHTML:          bodyHTML,
 	}
 
 	if err := s.store.SaveMessage(ctx, msg, nil); err != nil {
