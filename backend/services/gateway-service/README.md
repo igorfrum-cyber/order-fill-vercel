@@ -36,7 +36,7 @@ curl http://127.0.0.1:8080/readyz
 - Просмотр и изменение действующих правил брендов администратором платформы.
 - Приём CloudMailin на `POST /api/v1/inbound/webhook`: Bearer-токен, лимит тела 32 MiB, token-bucket (`INBOUND_WEBHOOK_RPS` / `INBOUND_WEBHOOK_BURST`, ответ 429), best-effort аудит `inbound_webhook_received` / `inbound_rejected`.
 - Просмотр и изменение реквизитов заказа своей компании; скидка хранится отдельно по бренду и валидируется как процент от 0 до 100.
-- Планирование заказа до суммы (`POST /api/v1/order/budget-plan`): gateway пересылает сырые строки отчёта в `calculation-service`, который применяет скидку, брендовые кратности и комплектную скидку CHRISTINA PROFF. Браузер и gateway бизнес-логику не считают; gateway лишь проверяет диапазон скидки и маппит ответ.
+- Планирование заказа до суммы (`POST /api/v1/order/budget-plan`): gateway пересылает сырые строки отчёта в `calculation-service`, который применяет скидку, брендовые кратности и комплектную скидку CHRISTINA PROFF. Режим оракула (`standard` / `fast` / `compare`) gateway берёт из компании актора через Identity `ListCompanies` и не доверяет полю из браузера. Браузер и gateway бизнес-логику не считают; gateway лишь проверяет диапазон скидки и маппит ответ, включая `compare` и `fast_*` в режиме сверки.
 - CORS, CSRF-проверка POST-запросов (включая public login/invite/passkey), security headers (`Cache-Control: private, no-store`, `Cross-Origin-Opener-Policy`/`Cross-Origin-Resource-Policy: same-origin`) и HTTP-only cookie `order_fill_session`.
 
 Gateway не владеет постоянным хранилищем. `POSTGRES_ADDR` и `REDIS_ADDR` используются только диагностическим `/api/v1/status`.

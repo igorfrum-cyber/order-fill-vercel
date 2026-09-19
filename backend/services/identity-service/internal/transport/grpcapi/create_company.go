@@ -11,7 +11,7 @@ func (s *Server) CreateCompany(ctx context.Context, req *identityv1.CreateCompan
 	if err != nil {
 		return nil, toStatus(err)
 	}
-	company, err := s.companies.Create(ctx, actor, req.GetName(), req.GetLoginSlug(), domainMatchingMode(req.GetMatchingMode()))
+	company, err := s.companies.Create(ctx, actor, req.GetName(), req.GetLoginSlug(), domainMatchingMode(req.GetMatchingMode()), domainChristinaProffMode(req.GetChristinaProffMode()))
 	if err != nil {
 		return nil, toStatus(err)
 	}

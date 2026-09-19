@@ -36,9 +36,9 @@ func (s *Store) CreateCompany(ctx context.Context, company domain.Company) error
 		created = time.Now().UTC()
 	}
 	_, err := s.pool.Exec(ctx,
-		`INSERT INTO companies (id, name, created_at, login_slug, logo_content_type, matching_mode)
-		 VALUES ($1, $2, $3, $4, $5, $6)`,
-		company.ID, company.Name, created, company.LoginSlug, company.LogoContentType, string(company.MatchingMode))
+		`INSERT INTO companies (id, name, created_at, login_slug, logo_content_type, matching_mode, christina_proff_mode)
+		 VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+		company.ID, company.Name, created, company.LoginSlug, company.LogoContentType, string(company.MatchingMode), string(company.ChristinaProffMode))
 	if err != nil {
 		return mapConflict(err)
 	}
@@ -47,17 +47,17 @@ func (s *Store) CreateCompany(ctx context.Context, company domain.Company) error
 
 func (s *Store) GetCompany(ctx context.Context, id string) (domain.Company, error) {
 	return s.scanCompany(s.pool.QueryRow(ctx,
-		`SELECT id, name, login_slug, logo_content_type, matching_mode, created_at, disabled_at, order_profile FROM companies WHERE id = $1`, id))
+		`SELECT id, name, login_slug, logo_content_type, matching_mode, christina_proff_mode, created_at, disabled_at, order_profile FROM companies WHERE id = $1`, id))
 }
 
 func (s *Store) GetCompanyByLoginSlug(ctx context.Context, slug string) (domain.Company, error) {
 	return s.scanCompany(s.pool.QueryRow(ctx,
-		`SELECT id, name, login_slug, logo_content_type, matching_mode, created_at, disabled_at, order_profile FROM companies WHERE login_slug = $1`, slug))
+		`SELECT id, name, login_slug, logo_content_type, matching_mode, christina_proff_mode, created_at, disabled_at, order_profile FROM companies WHERE login_slug = $1`, slug))
 }
 
 func (s *Store) ListCompanies(ctx context.Context) ([]domain.Company, error) {
 	rows, err := s.pool.Query(ctx,
-		`SELECT id, name, login_slug, logo_content_type, matching_mode, created_at, disabled_at, order_profile FROM companies ORDER BY created_at`)
+		`SELECT id, name, login_slug, logo_content_type, matching_mode, christina_proff_mode, created_at, disabled_at, order_profile FROM companies ORDER BY created_at`)
 	if err != nil {
 		return nil, fmt.Errorf("list companies: %w", err)
 	}
@@ -88,10 +88,10 @@ func (s *Store) SetCompanyOrderProfile(ctx context.Context, id string, profile d
 	return nil
 }
 
-func (s *Store) SetCompanyProfile(ctx context.Context, id, name, slug string, mode domain.MatchingMode) error {
+func (s *Store) SetCompanyProfile(ctx context.Context, id, name, slug string, mode domain.MatchingMode, christina domain.ChristinaProffMode) error {
 	tag, err := s.pool.Exec(ctx,
-		`UPDATE companies SET name = $2, login_slug = $3, matching_mode = $4 WHERE id = $1`,
-		id, name, slug, string(mode))
+		`UPDATE companies SET name = $2, login_slug = $3, matching_mode = $4, christina_proff_mode = $5 WHERE id = $1`,
+		id, name, slug, string(mode), string(christina))
 	if err != nil {
 		return mapConflict(err)
 	}
@@ -363,8 +363,9 @@ func scanUserRow(row scanner) (domain.User, error) {
 func scanCompanyRow(row scanner) (domain.Company, error) {
 	var c domain.Company
 	var mode string
+	var christina string
 	var profile []byte
-	if err := row.Scan(&c.ID, &c.Name, &c.LoginSlug, &c.LogoContentType, &mode, &c.CreatedAt, &c.DisabledAt, &profile); err != nil {
+	if err := row.Scan(&c.ID, &c.Name, &c.LoginSlug, &c.LogoContentType, &mode, &christina, &c.CreatedAt, &c.DisabledAt, &profile); err != nil {
 		return domain.Company{}, err
 	}
 	if len(profile) > 0 {
@@ -373,6 +374,7 @@ func scanCompanyRow(row scanner) (domain.Company, error) {
 		}
 	}
 	c.MatchingMode = domain.ParseMatchingMode(mode)
+	c.ChristinaProffMode = domain.ParseChristinaProffMode(christina)
 	c.CreatedAt = c.CreatedAt.UTC()
 	return c, nil
 }

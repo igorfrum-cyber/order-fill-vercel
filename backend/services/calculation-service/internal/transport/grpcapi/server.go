@@ -3,6 +3,7 @@ package grpcapi
 import (
 	"context"
 	"math"
+	"strconv"
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
@@ -10,6 +11,7 @@ import (
 
 	"order-fill/backend/pkg/grpcutil"
 	calculationv1 "order-fill/backend/proto/gen/go/orderfill/calculation/v1"
+	commonv1 "order-fill/backend/proto/gen/go/orderfill/common/v1"
 	"order-fill/backend/services/calculation-service/internal/domain"
 	"order-fill/backend/services/calculation-service/internal/service/calculation"
 )
@@ -200,24 +202,13 @@ func (s *Server) PlanBudget(_ context.Context, req *calculationv1.PlanBudgetRequ
 	plan, err := calculation.PlanReportBudget(domain.BudgetRequest{
 		Brand: req.GetBrand(), Discount: req.GetDiscount(), DeliveryWeeks: req.GetDeliveryWeeks(),
 		Target: req.GetTarget(), Rows: rows,
-		Options: domain.BudgetOptions{AllowOverSix: req.GetAllowOverSix(), AllowBelowOne: req.GetAllowBelowOne()},
+		Options: domain.BudgetOptions{
+			AllowOverSix: req.GetAllowOverSix(), AllowBelowOne: req.GetAllowBelowOne(),
+			ChristinaProffMode: domainChristinaProffMode(req.GetChristinaProffMode()),
+		},
 	})
 	if err != nil {
 		return nil, status.Error(codes.InvalidArgument, err.Error())
-	}
-	out := make([]*calculationv1.PlannedBudgetRow, 0, len(plan.Rows))
-	for _, row := range plan.Rows {
-		out = append(out, &calculationv1.PlannedBudgetRow{
-			Key: row.Key, Name: row.Name, Before: row.Before, Quantity: row.Quantity,
-			Comment: calculation.BudgetChangeComment(row), Category: row.Category,
-		})
-	}
-	steps := make([]*calculationv1.PlannedLineStep, 0, len(plan.LineSteps))
-	for _, st := range plan.LineSteps {
-		steps = append(steps, &calculationv1.PlannedLineStep{
-			Id: st.ID, Name: st.Name, Sets: int32Clamp(st.Sets),
-			Added: float64(st.AddedCents) / 100, Saved: float64(st.SavedCents) / 100,
-		})
 	}
 	groups := make([]*calculationv1.PlannedLineGroup, 0)
 	for _, g := range calculation.ChristinaLineGroups(plan.Rows) {
@@ -226,10 +217,67 @@ func (s *Server) PlanBudget(_ context.Context, req *calculationv1.PlanBudgetRequ
 			Saving: float64(g.SavingCents) / 100, Net: float64(g.NetCents) / 100,
 		})
 	}
-	return &calculationv1.PlanBudgetResponse{
-		Rows: out, Before: plan.Before, Total: plan.Total, Target: plan.Target,
-		Reason: plan.Reason, Complete: plan.Complete, LineSteps: steps, LineGroups: groups,
-	}, nil
+	resp := &calculationv1.PlanBudgetResponse{
+		Rows: toProtoPlannedRows(plan.Rows), Before: plan.Before, Total: plan.Total, Target: plan.Target,
+		Reason: plan.Reason, Complete: plan.Complete, LineSteps: toProtoLineSteps(plan.LineSteps), LineGroups: groups,
+		ChristinaProffMode: protoChristinaProffMode(plan.ChristinaProffMode),
+	}
+	if plan.ChristinaProffMode == domain.ChristinaProffCompare {
+		resp.FastRows = toProtoPlannedRows(plan.FastRows)
+		resp.FastTotal = plan.FastTotal
+		resp.FastComplete = plan.FastComplete
+		resp.FastReason = plan.FastReason
+		resp.FastLineSteps = toProtoLineSteps(plan.FastLineSteps)
+		resp.Compare = toProtoOracleCompare(plan)
+	}
+	return resp, nil
+}
+
+func toProtoPlannedRows(rows []domain.BudgetRow) []*calculationv1.PlannedBudgetRow {
+	out := make([]*calculationv1.PlannedBudgetRow, 0, len(rows))
+	for _, row := range rows {
+		out = append(out, &calculationv1.PlannedBudgetRow{
+			Key: row.Key, Name: row.Name, Before: row.Before, Quantity: row.Quantity,
+			Comment: calculation.BudgetChangeComment(row), Category: row.Category,
+		})
+	}
+	return out
+}
+
+func toProtoLineSteps(steps []domain.CompletionStep) []*calculationv1.PlannedLineStep {
+	out := make([]*calculationv1.PlannedLineStep, 0, len(steps))
+	for _, st := range steps {
+		out = append(out, &calculationv1.PlannedLineStep{
+			Id: st.ID, Name: st.Name, Sets: int32Clamp(st.Sets),
+			Added: float64(st.AddedCents) / 100, Saved: float64(st.SavedCents) / 100,
+		})
+	}
+	return out
+}
+
+func toProtoOracleCompare(plan domain.BudgetPlan) *calculationv1.BudgetOracleCompare {
+	ms := make([]*calculationv1.BudgetOracleMismatch, 0, len(plan.Mismatches))
+	for _, m := range plan.Mismatches {
+		ms = append(ms, &calculationv1.BudgetOracleMismatch{
+			Where: m.Where, Key: m.Key, Field: m.Where,
+			Want: strconv.FormatInt(m.Want, 10), Got: strconv.FormatInt(m.Got, 10),
+		})
+	}
+	return &calculationv1.BudgetOracleCompare{
+		Match: plan.CompareMatch, StandardMs: plan.CompareStandardMs, FastMs: plan.CompareFastMs,
+		Mismatches: ms,
+	}
+}
+
+func protoChristinaProffMode(mode string) commonv1.ChristinaProffMode {
+	switch calculation.NormalizeChristinaProffMode(mode) {
+	case domain.ChristinaProffFast:
+		return commonv1.ChristinaProffMode_CHRISTINA_PROFF_MODE_FAST
+	case domain.ChristinaProffCompare:
+		return commonv1.ChristinaProffMode_CHRISTINA_PROFF_MODE_COMPARE
+	default:
+		return commonv1.ChristinaProffMode_CHRISTINA_PROFF_MODE_STANDARD
+	}
 }
 
 func (s *Server) CalculateWarehouseTransfer(_ context.Context, req *calculationv1.CalculateWarehouseTransferRequest) (*calculationv1.CalculateWarehouseTransferResponse, error) {
@@ -237,4 +285,15 @@ func (s *Server) CalculateWarehouseTransfer(_ context.Context, req *calculationv
 		Quantity: calculation.WarehouseTransferQuantity(req.GetOfficeStock(), req.GetWarehouseStock()),
 		Target:   calculation.WarehouseOfficeTarget(req.GetOfficeStock(), req.GetWarehouseStock()),
 	}, nil
+}
+
+func domainChristinaProffMode(mode commonv1.ChristinaProffMode) string {
+	switch mode {
+	case commonv1.ChristinaProffMode_CHRISTINA_PROFF_MODE_FAST:
+		return domain.ChristinaProffFast
+	case commonv1.ChristinaProffMode_CHRISTINA_PROFF_MODE_COMPARE:
+		return domain.ChristinaProffCompare
+	default:
+		return domain.ChristinaProffStandard
+	}
 }

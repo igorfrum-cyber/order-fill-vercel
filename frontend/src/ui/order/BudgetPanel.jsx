@@ -3,6 +3,7 @@ import { planOrderBudget } from "../../api/budget.js";
 import { budgetTargetValue, discountValue } from "../../features/order/budgetInput.js";
 import { budgetPatches, budgetRequestRows } from "../../features/order/budgetWorkflow.js";
 import { GhostButton, Modal } from "../widgets.jsx";
+import { ChristinaCompare } from "./ChristinaCompare.jsx";
 
 const money = (value) => Number(value || 0).toLocaleString("ru-RU", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const targetInput = (value) => /^\d{0,12}(?:[.,]\d{0,2})?$/.test(String(value).replace(/\s/g, ""));
@@ -197,6 +198,7 @@ export function BudgetPanel({ brand, deliveryWeeks, rows, edits, onEdit }) {
                 </div>
                 <span className="text-[13px]">Изменено позиций: {changed.length}</span>
               </div>
+              <ChristinaCompare plan={plan} />
               {plan.lineSteps?.length ? (
                 <details className="mt-2 rounded-xl border border-[var(--color-line)] bg-[var(--color-surface)] px-4 py-3">
                   <summary className="cursor-pointer font-medium text-[var(--color-ink)]">

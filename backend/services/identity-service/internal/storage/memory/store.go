@@ -85,7 +85,7 @@ func (s *Store) ListCompanies(_ context.Context) ([]domain.Company, error) {
 	return out, nil
 }
 
-func (s *Store) SetCompanyProfile(_ context.Context, id, name, slug string, mode domain.MatchingMode) error {
+func (s *Store) SetCompanyProfile(_ context.Context, id, name, slug string, mode domain.MatchingMode, christina domain.ChristinaProffMode) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	c, ok := s.companies[id]
@@ -99,6 +99,7 @@ func (s *Store) SetCompanyProfile(_ context.Context, id, name, slug string, mode
 	c.Name = name
 	c.LoginSlug = slug
 	c.MatchingMode = mode
+	c.ChristinaProffMode = christina
 	s.companies[id] = c
 	s.slugs[slug] = id
 	return nil

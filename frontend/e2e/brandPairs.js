@@ -50,6 +50,29 @@ export function matchBrandPairs(blankNames, saleNames) {
   return pairs;
 }
 
+/** Canonical Christina PROFF UI fixtures — real Tyumen sales × PROFF (1) blank. */
+export const CHRISTINA_PROFF_UI_BLANK = "Актуальный_бланк PROFF (1).xlsx";
+export const CHRISTINA_PROFF_UI_SOURCE = "Кристина Тюмень .xlsx";
+
+export function sameWorkbookName(left, right) {
+  return norm(left) === norm(right);
+}
+
+export function resolvePrivateTestdata(repoRoot, env = process.env) {
+  if (env.ORDER_FILL_PRIVATE_TESTDATA) return env.ORDER_FILL_PRIVATE_TESTDATA;
+  const candidates = [
+    path.join(repoRoot, "testdata/private"),
+    // git worktree under .worktrees/<slug> shares private fixtures with the main checkout
+    path.resolve(repoRoot, "../../testdata/private"),
+  ];
+  for (const root of candidates) {
+    if (fs.existsSync(path.join(root, BLANKS_DIR)) && fs.existsSync(path.join(root, SALES_DIR))) {
+      return root;
+    }
+  }
+  return candidates[0];
+}
+
 export function scanPrivateBrandPairs(dataRoot) {
   const blankDir = path.join(dataRoot, BLANKS_DIR);
   const salesDir = path.join(dataRoot, SALES_DIR);
@@ -62,6 +85,19 @@ export function scanPrivateBrandPairs(dataRoot) {
     sourcePath: path.join(salesDir, pair.source),
   }));
   return { available: true, pairs };
+}
+
+/** One real Christina PROFF pair for UI / budget / compare checks. */
+export function christinaProffUiPair(dataRoot) {
+  const scanned = scanPrivateBrandPairs(dataRoot);
+  if (!scanned.available) return { available: false, pair: null };
+  const pair = scanned.pairs.find(
+    (item) =>
+      item.brand === "christina" &&
+      sameWorkbookName(item.blank, CHRISTINA_PROFF_UI_BLANK) &&
+      sameWorkbookName(item.source, CHRISTINA_PROFF_UI_SOURCE),
+  );
+  return { available: true, pair: pair || null };
 }
 
 function groupByBrand(names) {

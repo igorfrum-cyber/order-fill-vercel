@@ -24,3 +24,22 @@ func ParseMatchingMode(raw string) MatchingMode {
 	}
 	return MatchingModeStandard
 }
+
+type ChristinaProffMode string
+
+const (
+	ChristinaProffModeStandard ChristinaProffMode = "standard"
+	ChristinaProffModeFast     ChristinaProffMode = "fast"
+	ChristinaProffModeCompare  ChristinaProffMode = "compare"
+)
+
+func ParseChristinaProffMode(raw string) ChristinaProffMode {
+	switch ChristinaProffMode(raw) {
+	case ChristinaProffModeFast:
+		return ChristinaProffModeFast
+	case ChristinaProffModeCompare:
+		return ChristinaProffModeCompare
+	default:
+		return ChristinaProffModeStandard
+	}
+}

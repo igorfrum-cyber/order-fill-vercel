@@ -4,10 +4,12 @@ import (
 	"cmp"
 	"errors"
 	"fmt"
+	"maps"
 	"math"
 	"slices"
 	"strconv"
 	"strings"
+	"time"
 
 	"order-fill/backend/services/calculation-service/internal/domain"
 )
@@ -70,11 +72,12 @@ func eligibleBudget(r domain.BudgetRow) bool {
 	return !r.Locked && !r.Excluded && !r.Unsafe && r.Price > 0 && r.Demand > 0 && known
 }
 
-func collectBudgetCands(rows []domain.BudgetRow, up bool) []budgetCand {
+func collectBudgetCands(rows []domain.BudgetRow, up, fast bool) []budgetCand {
 	dir := 1.0
 	if !up {
 		dir = -1
 	}
+	lines := proffLineMembers(rows)
 	var out []budgetCand
 	for i, r := range rows {
 		if !eligibleBudget(r) {
@@ -88,24 +91,65 @@ func collectBudgetCands(rows []domain.BudgetRow, up bool) []budgetCand {
 		nextMonths, _ := Coverage(r, q)
 		out = append(out, budgetCand{
 			idx: i, q: q, months: months, nextMonths: nextMonths,
-			cost: changeCost(rows, i, q),
+			cost: changeCost(rows, i, q, fast, lines),
 		})
 	}
 	return out
 }
 
+// NormalizeChristinaProffMode maps empty/UNSPECIFIED/unknown to standard.
+func NormalizeChristinaProffMode(mode string) string {
+	switch strings.ToLower(strings.TrimSpace(mode)) {
+	case domain.ChristinaProffFast:
+		return domain.ChristinaProffFast
+	case domain.ChristinaProffCompare:
+		return domain.ChristinaProffCompare
+	default:
+		return domain.ChristinaProffStandard
+	}
+}
+
+func useFastOracle(opts domain.BudgetOptions) bool {
+	return NormalizeChristinaProffMode(opts.ChristinaProffMode) == domain.ChristinaProffFast
+}
+
+func proffLineMembers(rows []domain.BudgetRow) map[string][]int {
+	out := make(map[string][]int)
+	for i, r := range rows {
+		if r.Group == "proff" && r.Line != nil {
+			out[r.Line.ID] = append(out[r.Line.ID], i)
+		}
+	}
+	return out
+}
+
+func lineMembers(rows []domain.BudgetRow, id string, index map[string][]int) []int {
+	if index != nil {
+		return index[id]
+	}
+	var out []int
+	for i, r := range rows {
+		if r.Group == "proff" && r.Line != nil && r.Line.ID == id {
+			out = append(out, i)
+		}
+	}
+	return out
+}
+
 // changeCost is the whole-order kopeck delta of setting rows[i] to q. A PROFF
-// row's quantity changes the set discount on its siblings, so the full order is
-// re-evaluated; every other row uses the direct per-row delta. Mirrors
-// origin/main changeCost.
+// row's quantity changes the set discount on its siblings. Non-PROFF is O(1)
+// per-row cents. Standard PROFF re-evaluates the full order; fast PROFF is O(s)
+// on the touched line and must match the full oracle as int64.
 //
-// ponytail: O(n) per call via ProcurementTotalCents → O(n²) per planning
-// iteration. Fine for blank-sized inputs; revisit only if PROFF line counts
-// grow large enough to matter.
-func changeCost(rows []domain.BudgetRow, i int, q float64) int64 {
+// ponytail: standard is O(n) per call via ProcurementTotalCents → O(n²) per
+// planning iteration. Fast is O(s) after one O(n) member index per iteration.
+func changeCost(rows []domain.BudgetRow, i int, q float64, fast bool, lines map[string][]int) int64 {
 	r := rows[i]
 	if r.Group != "proff" || r.Line == nil {
 		return budgetCents(r.Price*q) - budgetCents(r.Price*r.Quantity)
+	}
+	if fast {
+		return changeCostFast(rows, i, q, lineMembers(rows, r.Line.ID, lines))
 	}
 	before := rows[i].Quantity
 	oldTotal := ProcurementTotalCents(rows)
@@ -113,6 +157,83 @@ func changeCost(rows []domain.BudgetRow, i int, q float64) int64 {
 	cost := ProcurementTotalCents(rows) - oldTotal
 	rows[i].Quantity = before
 	return cost
+}
+
+// changeCostFast is the incremental PROFF oracle: Δgross on the touched row
+// minus Δsaving over the line. Invalid/incomplete lines have Sets=0, so cost
+// is Δgross only. Does not mutate rows.
+func changeCostFast(rows []domain.BudgetRow, i int, q float64, members []int) int64 {
+	r := rows[i]
+	dGross := budgetCents(r.Price*q) - budgetCents(r.Price*r.Quantity)
+	oldValid, oldSets := proffLineSets(rows, members, -1, 0)
+	newValid, newSets := proffLineSets(rows, members, i, q)
+	if !oldValid {
+		oldSets = 0
+	}
+	if !newValid {
+		newSets = 0
+	}
+	var dSaving int64
+	for _, j := range members {
+		p := rows[j].Price
+		dSaving += budgetCents(p*float64(newSets)*christinaSetDiscount) - budgetCents(p*float64(oldSets)*christinaSetDiscount)
+	}
+	return dGross - dSaving
+}
+
+func proffLineSets(rows []domain.BudgetRow, members []int, overrideIdx int, overrideQ float64) (valid bool, sets int) {
+	if len(members) == 0 {
+		return false, 0
+	}
+	first := rows[members[0]]
+	if first.Line == nil {
+		return false, 0
+	}
+	required := first.Line.Required
+	for _, idx := range members {
+		row := rows[idx]
+		if row.Line == nil || !sameArticleSet(row.Line.Required, required) {
+			return false, 0
+		}
+	}
+	distinct := distinctCount(required)
+	articles := make([]string, len(members))
+	for k, idx := range members {
+		articles[k] = rows[idx].Line.Article
+	}
+	if !(distinct > 0 && distinct == len(required) &&
+		len(articles) == distinct && distinctCount(articles) == len(articles) &&
+		everyIn(articles, required) &&
+		allRowsSafeAt(rows, members, overrideIdx, overrideQ)) {
+		return false, 0
+	}
+	m := math.Inf(1)
+	for _, idx := range members {
+		qty := rows[idx].Quantity
+		if idx == overrideIdx {
+			qty = overrideQ
+		}
+		m = min(m, qty)
+	}
+	sets = int(math.Floor(m))
+	if sets < christinaSetSize {
+		sets = 0
+	}
+	return true, sets
+}
+
+func allRowsSafeAt(rows []domain.BudgetRow, idx []int, overrideIdx int, overrideQ float64) bool {
+	for _, i := range idx {
+		r := rows[i]
+		q := r.Quantity
+		if i == overrideIdx {
+			q = overrideQ
+		}
+		if r.Unsafe || !(r.Price > 0) || !finiteNumber(q) || q < 0 {
+			return false
+		}
+	}
+	return true
 }
 
 func pickUpStage(rows []domain.BudgetRow, candidates []budgetCand) string {
@@ -203,6 +324,7 @@ func planBudgetCore(input []domain.BudgetRow, target float64, opts domain.Budget
 			return domain.BudgetPlan{}, fmt.Errorf("некорректные данные: %s", r.Name)
 		}
 	}
+	fast := useFastOracle(opts)
 	total := func() int64 { return ProcurementTotalCents(rows) }
 	start := total()
 	goal := budgetCents(target)
@@ -215,7 +337,7 @@ func planBudgetCore(input []domain.BudgetRow, target float64, opts domain.Budget
 			reason = "Достигнут предел вычислений. Уточните сумму."
 			break
 		}
-		candidates := collectBudgetCands(rows, up)
+		candidates := collectBudgetCands(rows, up, fast)
 		if up {
 			var belowCap []budgetCand
 			for _, c := range candidates {
@@ -272,11 +394,12 @@ func planBudgetCore(input []domain.BudgetRow, target float64, opts domain.Budget
 		slices.SortFunc(idx, func(a, b int) int {
 			return cmp.Compare(slices.Index(budgetCats, rows[b].Category), slices.Index(budgetCats, rows[a].Category))
 		})
+		lines := proffLineMembers(rows)
 		for _, i := range idx {
 			r := &rows[i]
 			for r.Quantity < r.Before {
 				q := nextQuantity(*r, r.Quantity, 1)
-				cost := changeCost(rows, i, q)
+				cost := changeCost(rows, i, q, fast, lines)
 				if q > r.Before || amount+cost > goal {
 					break
 				}
@@ -296,7 +419,140 @@ func planBudgetCore(input []domain.BudgetRow, target float64, opts domain.Budget
 // set-completion pre-pass, then the normal coverage top-up, then a final
 // first-set completion that can still lower the total. Copies input and never
 // mutates it, so callers can preview safely.
+//
+// ChristinaProffMode "compare" runs standard and fast independently. Applied
+// Rows/Total/Complete/LineSteps/Reason are the standard plan; Fast* holds the
+// fast plan for download/diff. Greedy decisions never mix the two oracles.
 func PlanBudget(input []domain.BudgetRow, target float64, opts domain.BudgetOptions) (domain.BudgetPlan, error) {
+	mode := NormalizeChristinaProffMode(opts.ChristinaProffMode)
+	opts.ChristinaProffMode = mode
+	if mode == domain.ChristinaProffCompare {
+		return planBudgetCompare(input, target, opts)
+	}
+	plan, err := planBudgetRun(input, target, opts)
+	if err != nil {
+		return domain.BudgetPlan{}, err
+	}
+	plan.ChristinaProffMode = mode
+	return plan, nil
+}
+
+func planBudgetCompare(input []domain.BudgetRow, target float64, opts domain.BudgetOptions) (domain.BudgetPlan, error) {
+	stdOpts := opts
+	stdOpts.ChristinaProffMode = domain.ChristinaProffStandard
+	t0 := time.Now()
+	std, err := planBudgetRun(input, target, stdOpts)
+	stdMs := time.Since(t0).Milliseconds()
+	if err != nil {
+		return domain.BudgetPlan{}, err
+	}
+	fastOpts := opts
+	fastOpts.ChristinaProffMode = domain.ChristinaProffFast
+	t1 := time.Now()
+	fast, err := planBudgetRun(input, target, fastOpts)
+	fastMs := time.Since(t1).Milliseconds()
+	if err != nil {
+		return domain.BudgetPlan{}, err
+	}
+	return attachCompareResult(std, fast, stdMs, fastMs), nil
+}
+
+func attachCompareResult(std, fast domain.BudgetPlan, stdMs, fastMs int64) domain.BudgetPlan {
+	std.ChristinaProffMode = domain.ChristinaProffCompare
+	std.FastRows = fast.Rows
+	std.FastTotal = fast.Total
+	std.FastComplete = fast.Complete
+	std.FastReason = fast.Reason
+	std.FastLineSteps = fast.LineSteps
+	std.Mismatches = diffBudgetPlans(std, fast)
+	std.CompareMatch = len(std.Mismatches) == 0
+	std.CompareStandardMs = stdMs
+	std.CompareFastMs = fastMs
+	if len(std.Mismatches) > 0 {
+		m := std.Mismatches[0]
+		std.CompareMismatchWhere = m.Where
+		std.CompareMismatchKey = m.Key
+		std.CompareMismatchWant = m.Want
+		std.CompareMismatchGot = m.Got
+	}
+	return std
+}
+
+func boolInt(v bool) int64 {
+	if v {
+		return 1
+	}
+	return 0
+}
+
+func diffBudgetPlans(std, fast domain.BudgetPlan) []domain.BudgetOracleMismatch {
+	type view struct {
+		qty     float64
+		comment string
+	}
+	stdRows := make(map[string]view, len(std.Rows))
+	for _, r := range std.Rows {
+		stdRows[r.Key] = view{r.Quantity, BudgetChangeComment(r)}
+	}
+	fastRows := make(map[string]view, len(fast.Rows))
+	for _, r := range fast.Rows {
+		fastRows[r.Key] = view{r.Quantity, BudgetChangeComment(r)}
+	}
+	keys := make(map[string]struct{}, len(stdRows)+len(fastRows))
+	for k := range stdRows {
+		keys[k] = struct{}{}
+	}
+	for k := range fastRows {
+		keys[k] = struct{}{}
+	}
+	var out []domain.BudgetOracleMismatch
+	for _, key := range slices.Sorted(maps.Keys(keys)) {
+		s, sok := stdRows[key]
+		f, fok := fastRows[key]
+		if !sok || !fok || s.qty != f.qty {
+			out = append(out, domain.BudgetOracleMismatch{
+				Where: "quantity", Key: key,
+				Want: budgetCents(s.qty), Got: budgetCents(f.qty),
+			})
+		}
+		if !sok || !fok || s.comment != f.comment {
+			out = append(out, domain.BudgetOracleMismatch{Where: "comment", Key: key})
+		}
+	}
+	if budgetCents(std.Total) != budgetCents(fast.Total) {
+		out = append(out, domain.BudgetOracleMismatch{
+			Where: "total", Want: budgetCents(std.Total), Got: budgetCents(fast.Total),
+		})
+	}
+	if std.Complete != fast.Complete {
+		out = append(out, domain.BudgetOracleMismatch{
+			Where: "complete", Want: boolInt(std.Complete), Got: boolInt(fast.Complete),
+		})
+	}
+	n := max(len(std.LineSteps), len(fast.LineSteps))
+	for i := range n {
+		var s, f domain.CompletionStep
+		if i < len(std.LineSteps) {
+			s = std.LineSteps[i]
+		}
+		if i < len(fast.LineSteps) {
+			f = fast.LineSteps[i]
+		}
+		if s.ID != f.ID || s.Name != f.Name || s.Sets != f.Sets || s.AddedCents != f.AddedCents || s.SavedCents != f.SavedCents {
+			key := s.ID
+			if key == "" {
+				key = f.ID
+			}
+			out = append(out, domain.BudgetOracleMismatch{
+				Where: "line_steps", Key: key,
+				Want: s.AddedCents, Got: f.AddedCents,
+			})
+		}
+	}
+	return out
+}
+
+func planBudgetRun(input []domain.BudgetRow, target float64, opts domain.BudgetOptions) (domain.BudgetPlan, error) {
 	original := make([]domain.BudgetRow, len(input))
 	for i, r := range input {
 		r.Quantity = numberOrZero(r.Quantity)
@@ -323,8 +579,9 @@ func PlanBudget(input []domain.BudgetRow, target float64, opts domain.BudgetOpti
 	var steps []domain.CompletionStep
 	// A final first-set completion can reduce the total, so resume the top-up if
 	// needed; a completed line cannot receive that exception a second time.
+	fast := useFastOracle(opts)
 	for pass := 0; pass <= len(baselines)+1; pass++ {
-		lines, err := CompleteChristinaLines(rows, target, baselines)
+		lines, err := completeChristinaLines(rows, target, baselines, fast)
 		if err != nil {
 			return domain.BudgetPlan{}, err
 		}
@@ -343,7 +600,7 @@ func PlanBudget(input []domain.BudgetRow, target float64, opts domain.BudgetOpti
 		if !result.Complete {
 			break
 		}
-		finish, err := CompleteChristinaLines(rows, target, baselines)
+		finish, err := completeChristinaLines(rows, target, baselines, fast)
 		if err != nil {
 			return domain.BudgetPlan{}, err
 		}

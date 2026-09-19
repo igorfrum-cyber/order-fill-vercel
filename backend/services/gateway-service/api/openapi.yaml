@@ -591,6 +591,10 @@ paths:
                   type: string
                   enum: [standard, smart]
                   description: Platform admin only. Default standard.
+                christina_proff_mode:
+                  type: string
+                  enum: [standard, fast, compare]
+                  description: Platform admin only. CHRISTINA PROFF oracle. Default standard.
       responses:
         "201":
           description: Company created.
@@ -642,7 +646,7 @@ paths:
     post:
       operationId: updateCompany
       tags: [companies]
-      summary: Update company name, public login address, and matching mode (platform admin matching_mode only)
+      summary: Update company name, public login address, matching mode, and CHRISTINA PROFF mode (platform admin modes only)
       parameters:
         - $ref: "#/components/parameters/CompanyId"
       requestBody:
@@ -661,6 +665,10 @@ paths:
                   type: string
                   enum: [standard, smart]
                   description: Ignored unless the actor is platform_admin.
+                christina_proff_mode:
+                  type: string
+                  enum: [standard, fast, compare]
+                  description: Ignored unless the actor is platform_admin. Budget-plan compare schema is owned separately.
       responses:
         "200":
           description: Company updated.
@@ -1055,7 +1063,9 @@ paths:
       description: >-
         Recomputes supplier quantities up or down to a target sum. Pricing, brand
         order rules and the CHRISTINA PROFF set discount run in
-        calculation-service; the browser sends raw report rows only.
+        calculation-service; the browser sends raw report rows only. The gateway
+        injects christina_proff_mode from the actor's company and ignores any
+        client-supplied mode.
       requestBody:
         required: true
         content:
@@ -1808,6 +1818,56 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/BudgetLineGroup"
+        christina_proff_mode:
+          type: string
+          enum: [standard, fast, compare]
+          description: Oracle used for this preview. Gateway sets it from the company.
+        fast_total:
+          type: number
+          description: Fast oracle total. Present in compare mode.
+        fast_complete:
+          type: boolean
+        fast_reason:
+          type: string
+        fast_rows:
+          type: array
+          items:
+            $ref: "#/components/schemas/PlannedBudgetRow"
+        fast_line_steps:
+          type: array
+          items:
+            $ref: "#/components/schemas/BudgetLineStep"
+        compare:
+          $ref: "#/components/schemas/BudgetCompareResult"
+    BudgetCompareResult:
+      type: object
+      description: Present only in compare mode. Applied preview stays the standard plan.
+      required: [match, standard_ms, fast_ms, mismatches]
+      properties:
+        match:
+          type: boolean
+        standard_ms:
+          type: integer
+        fast_ms:
+          type: integer
+        mismatches:
+          type: array
+          items:
+            $ref: "#/components/schemas/BudgetCompareMismatch"
+    BudgetCompareMismatch:
+      type: object
+      properties:
+        where:
+          type: string
+          enum: [changeCost, proposeLineStep]
+        key:
+          type: string
+        field:
+          type: string
+        want:
+          type: string
+        got:
+          type: string
     User:
       type: object
       required: [id, login, role, activated, is_primary_admin]
@@ -1910,6 +1970,10 @@ components:
           type: string
           enum: [standard, smart]
           description: Present only for platform admin.
+        christina_proff_mode:
+          type: string
+          enum: [standard, fast, compare]
+          description: Present only for platform admin. Selects the CHRISTINA PROFF oracle.
         order_profile:
           $ref: "#/components/schemas/CompanyOrderProfile"
     CompanyOrderProfile:

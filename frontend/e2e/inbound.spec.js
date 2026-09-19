@@ -10,6 +10,10 @@ test("platform admin configures inbound receive address", async ({ page }) => {
       await route.fulfill({ json: { id: "admin", login: "admin", role: "platform_admin", two_factor_enabled: true } });
       return;
     }
+    if (path === "/api/v1/companies") {
+      await route.fulfill({ json: { companies: [] } });
+      return;
+    }
     if (path === "/api/v1/inbound/settings" && request.method() === "GET") {
       await route.fulfill({ json: { enabled: true, receive_address: savedAddress || "", webhook_count: 12, error_count: 1, last_webhook_at: "2026-09-15T10:00:00Z" } });
       return;

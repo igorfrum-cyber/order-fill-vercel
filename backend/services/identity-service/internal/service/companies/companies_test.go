@@ -16,11 +16,11 @@ func TestUpdateKeepsNameWhenOnlySlugSent(t *testing.T) {
 	store := memory.NewStore()
 	svc := companies.New(store, func() time.Time { return now })
 	admin := domain.User{ID: "admin", Role: domain.RolePlatformAdmin}
-	company, err := svc.Create(t.Context(), admin, "Acme", "acme", domain.MatchingModeStandard)
+	company, err := svc.Create(t.Context(), admin, "Acme", "acme", domain.MatchingModeStandard, "")
 	if err != nil {
 		t.Fatal(err)
 	}
-	got, err := svc.Update(t.Context(), admin, company.ID, "", "acme-shop", "")
+	got, err := svc.Update(t.Context(), admin, company.ID, "", "acme-shop", "", "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -34,7 +34,7 @@ func TestUpdateOrderProfileNormalizesAndScopesCompany(t *testing.T) {
 	store := memory.NewStore()
 	svc := companies.New(store, nil)
 	platform := domain.User{ID: "platform", Role: domain.RolePlatformAdmin}
-	company, err := svc.Create(t.Context(), platform, "Acme", "acme-profile", domain.MatchingModeStandard)
+	company, err := svc.Create(t.Context(), platform, "Acme", "acme-profile", domain.MatchingModeStandard, "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -56,7 +56,7 @@ func TestUpdateOrderProfileRejectsPurchaserAndInvalidDiscount(t *testing.T) {
 	store := memory.NewStore()
 	svc := companies.New(store, nil)
 	platform := domain.User{ID: "platform", Role: domain.RolePlatformAdmin}
-	company, err := svc.Create(t.Context(), platform, "Acme", "acme-invalid-profile", domain.MatchingModeStandard)
+	company, err := svc.Create(t.Context(), platform, "Acme", "acme-invalid-profile", domain.MatchingModeStandard, "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -78,11 +78,11 @@ func TestListReturnsOwnCompanyForPurchaser(t *testing.T) {
 	store := memory.NewStore()
 	svc := companies.New(store, func() time.Time { return now })
 	admin := domain.User{ID: "admin", Role: domain.RolePlatformAdmin}
-	own, err := svc.Create(t.Context(), admin, "Acme", "acme", domain.MatchingModeSmart)
+	own, err := svc.Create(t.Context(), admin, "Acme", "acme", domain.MatchingModeSmart, "")
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := svc.Create(t.Context(), admin, "Other", "other", domain.MatchingModeStandard); err != nil {
+	if _, err := svc.Create(t.Context(), admin, "Other", "other", domain.MatchingModeStandard, ""); err != nil {
 		t.Fatal(err)
 	}
 	items, err := svc.List(t.Context(), domain.User{ID: "buyer", Role: domain.RolePurchaser, CompanyID: own.ID})
@@ -109,11 +109,11 @@ func TestUpdateSetsMatchingModeForPlatformAdmin(t *testing.T) {
 	store := memory.NewStore()
 	svc := companies.New(store, func() time.Time { return now })
 	admin := domain.User{ID: "admin", Role: domain.RolePlatformAdmin}
-	company, err := svc.Create(t.Context(), admin, "Acme", "acme", domain.MatchingModeStandard)
+	company, err := svc.Create(t.Context(), admin, "Acme", "acme", domain.MatchingModeStandard, "")
 	if err != nil {
 		t.Fatal(err)
 	}
-	got, err := svc.Update(t.Context(), admin, company.ID, "", "", domain.MatchingModeSmart)
+	got, err := svc.Update(t.Context(), admin, company.ID, "", "", domain.MatchingModeSmart, "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -128,16 +128,64 @@ func TestUpdateIgnoresMatchingModeFromOwner(t *testing.T) {
 	store := memory.NewStore()
 	svc := companies.New(store, func() time.Time { return now })
 	admin := domain.User{ID: "admin", Role: domain.RolePlatformAdmin}
-	company, err := svc.Create(t.Context(), admin, "Acme", "acme", domain.MatchingModeStandard)
+	company, err := svc.Create(t.Context(), admin, "Acme", "acme", domain.MatchingModeStandard, "")
 	if err != nil {
 		t.Fatal(err)
 	}
 	owner := domain.User{ID: "owner", Role: domain.RoleCompanyOwner, CompanyID: company.ID}
-	got, err := svc.Update(t.Context(), owner, company.ID, "", "", domain.MatchingModeSmart)
+	got, err := svc.Update(t.Context(), owner, company.ID, "", "", domain.MatchingModeSmart, "")
 	if err != nil {
 		t.Fatal(err)
 	}
 	if got.MatchingMode != domain.MatchingModeStandard {
 		t.Fatalf("owner changed matching mode: %+v", got)
+	}
+}
+
+func TestCreateDefaultsChristinaProffModeToStandard(t *testing.T) {
+	t.Parallel()
+	svc := companies.New(memory.NewStore(), nil)
+	admin := domain.User{ID: "admin", Role: domain.RolePlatformAdmin}
+	got, err := svc.Create(t.Context(), admin, "Acme", "acme-default-proff", "", "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.ChristinaProffMode != domain.ChristinaProffModeStandard {
+		t.Fatalf("got %+v", got)
+	}
+}
+
+func TestUpdateSetsChristinaProffModeForPlatformAdmin(t *testing.T) {
+	t.Parallel()
+	svc := companies.New(memory.NewStore(), nil)
+	admin := domain.User{ID: "admin", Role: domain.RolePlatformAdmin}
+	company, err := svc.Create(t.Context(), admin, "Acme", "acme-proff", domain.MatchingModeStandard, "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	got, err := svc.Update(t.Context(), admin, company.ID, "", "", "", domain.ChristinaProffModeCompare)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.ChristinaProffMode != domain.ChristinaProffModeCompare {
+		t.Fatalf("got %+v", got)
+	}
+}
+
+func TestUpdateIgnoresChristinaProffModeFromOwner(t *testing.T) {
+	t.Parallel()
+	svc := companies.New(memory.NewStore(), nil)
+	admin := domain.User{ID: "admin", Role: domain.RolePlatformAdmin}
+	company, err := svc.Create(t.Context(), admin, "Acme", "acme-proff-owner", domain.MatchingModeStandard, "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	owner := domain.User{ID: "owner", Role: domain.RoleCompanyOwner, CompanyID: company.ID}
+	got, err := svc.Update(t.Context(), owner, company.ID, "", "", "", domain.ChristinaProffModeCompare)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.ChristinaProffMode != domain.ChristinaProffModeStandard {
+		t.Fatalf("owner changed christina proff mode: %+v", got)
 	}
 }

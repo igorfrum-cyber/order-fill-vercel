@@ -23,3 +23,7 @@ func ParseRole(raw string) (Role, error) {
 func (u User) CanSetMatchingMode() bool {
 	return !u.Disabled() && u.Role == RolePlatformAdmin
 }
+
+func (u User) CanSetChristinaProffMode() bool {
+	return u.CanSetMatchingMode()
+}

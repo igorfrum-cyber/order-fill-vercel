@@ -72,6 +72,60 @@ func (MatchingMode) EnumDescriptor() ([]byte, []int) {
 	return file_orderfill_common_v1_common_proto_rawDescGZIP(), []int{0}
 }
 
+// ChristinaProffMode selects the CHRISTINA PROFF cost oracle for PlanBudget.
+// Identity stores it on the company; unspecified is treated as standard.
+type ChristinaProffMode int32
+
+const (
+	ChristinaProffMode_CHRISTINA_PROFF_MODE_UNSPECIFIED ChristinaProffMode = 0
+	ChristinaProffMode_CHRISTINA_PROFF_MODE_STANDARD    ChristinaProffMode = 1
+	ChristinaProffMode_CHRISTINA_PROFF_MODE_FAST        ChristinaProffMode = 2
+	ChristinaProffMode_CHRISTINA_PROFF_MODE_COMPARE     ChristinaProffMode = 3
+)
+
+// Enum value maps for ChristinaProffMode.
+var (
+	ChristinaProffMode_name = map[int32]string{
+		0: "CHRISTINA_PROFF_MODE_UNSPECIFIED",
+		1: "CHRISTINA_PROFF_MODE_STANDARD",
+		2: "CHRISTINA_PROFF_MODE_FAST",
+		3: "CHRISTINA_PROFF_MODE_COMPARE",
+	}
+	ChristinaProffMode_value = map[string]int32{
+		"CHRISTINA_PROFF_MODE_UNSPECIFIED": 0,
+		"CHRISTINA_PROFF_MODE_STANDARD":    1,
+		"CHRISTINA_PROFF_MODE_FAST":        2,
+		"CHRISTINA_PROFF_MODE_COMPARE":     3,
+	}
+)
+
+func (x ChristinaProffMode) Enum() *ChristinaProffMode {
+	p := new(ChristinaProffMode)
+	*p = x
+	return p
+}
+
+func (x ChristinaProffMode) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (ChristinaProffMode) Descriptor() protoreflect.EnumDescriptor {
+	return file_orderfill_common_v1_common_proto_enumTypes[1].Descriptor()
+}
+
+func (ChristinaProffMode) Type() protoreflect.EnumType {
+	return &file_orderfill_common_v1_common_proto_enumTypes[1]
+}
+
+func (x ChristinaProffMode) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use ChristinaProffMode.Descriptor instead.
+func (ChristinaProffMode) EnumDescriptor() ([]byte, []int) {
+	return file_orderfill_common_v1_common_proto_rawDescGZIP(), []int{1}
+}
+
 // ReportCategory is the canonical buyer-facing classification of a report row.
 // It is independent of the matching algorithm that produced the row.
 type ReportCategory int32
@@ -119,11 +173,11 @@ func (x ReportCategory) String() string {
 }
 
 func (ReportCategory) Descriptor() protoreflect.EnumDescriptor {
-	return file_orderfill_common_v1_common_proto_enumTypes[1].Descriptor()
+	return file_orderfill_common_v1_common_proto_enumTypes[2].Descriptor()
 }
 
 func (ReportCategory) Type() protoreflect.EnumType {
-	return &file_orderfill_common_v1_common_proto_enumTypes[1]
+	return &file_orderfill_common_v1_common_proto_enumTypes[2]
 }
 
 func (x ReportCategory) Number() protoreflect.EnumNumber {
@@ -132,7 +186,7 @@ func (x ReportCategory) Number() protoreflect.EnumNumber {
 
 // Deprecated: Use ReportCategory.Descriptor instead.
 func (ReportCategory) EnumDescriptor() ([]byte, []int) {
-	return file_orderfill_common_v1_common_proto_rawDescGZIP(), []int{1}
+	return file_orderfill_common_v1_common_proto_rawDescGZIP(), []int{2}
 }
 
 type RequestMeta struct {
@@ -218,7 +272,12 @@ const file_orderfill_common_v1_common_proto_rawDesc = "" +
 	"\fMatchingMode\x12\x1d\n" +
 	"\x19MATCHING_MODE_UNSPECIFIED\x10\x00\x12\x1a\n" +
 	"\x16MATCHING_MODE_STANDARD\x10\x01\x12\x17\n" +
-	"\x13MATCHING_MODE_SMART\x10\x02*\x88\x02\n" +
+	"\x13MATCHING_MODE_SMART\x10\x02*\x9e\x01\n" +
+	"\x12ChristinaProffMode\x12$\n" +
+	" CHRISTINA_PROFF_MODE_UNSPECIFIED\x10\x00\x12!\n" +
+	"\x1dCHRISTINA_PROFF_MODE_STANDARD\x10\x01\x12\x1d\n" +
+	"\x19CHRISTINA_PROFF_MODE_FAST\x10\x02\x12 \n" +
+	"\x1cCHRISTINA_PROFF_MODE_COMPARE\x10\x03*\x88\x02\n" +
 	"\x0eReportCategory\x12\x1f\n" +
 	"\x1bREPORT_CATEGORY_UNSPECIFIED\x10\x00\x12\"\n" +
 	"\x1eREPORT_CATEGORY_NEEDS_DECISION\x10\x01\x12!\n" +
@@ -240,12 +299,13 @@ func file_orderfill_common_v1_common_proto_rawDescGZIP() []byte {
 	return file_orderfill_common_v1_common_proto_rawDescData
 }
 
-var file_orderfill_common_v1_common_proto_enumTypes = make([]protoimpl.EnumInfo, 2)
+var file_orderfill_common_v1_common_proto_enumTypes = make([]protoimpl.EnumInfo, 3)
 var file_orderfill_common_v1_common_proto_msgTypes = make([]protoimpl.MessageInfo, 1)
 var file_orderfill_common_v1_common_proto_goTypes = []any{
-	(MatchingMode)(0),   // 0: orderfill.common.v1.MatchingMode
-	(ReportCategory)(0), // 1: orderfill.common.v1.ReportCategory
-	(*RequestMeta)(nil), // 2: orderfill.common.v1.RequestMeta
+	(MatchingMode)(0),       // 0: orderfill.common.v1.MatchingMode
+	(ChristinaProffMode)(0), // 1: orderfill.common.v1.ChristinaProffMode
+	(ReportCategory)(0),     // 2: orderfill.common.v1.ReportCategory
+	(*RequestMeta)(nil),     // 3: orderfill.common.v1.RequestMeta
 }
 var file_orderfill_common_v1_common_proto_depIdxs = []int32{
 	0, // [0:0] is the sub-list for method output_type
@@ -265,7 +325,7 @@ func file_orderfill_common_v1_common_proto_init() {
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_orderfill_common_v1_common_proto_rawDesc), len(file_orderfill_common_v1_common_proto_rawDesc)),
-			NumEnums:      2,
+			NumEnums:      3,
 			NumMessages:   1,
 			NumExtensions: 0,
 			NumServices:   0,

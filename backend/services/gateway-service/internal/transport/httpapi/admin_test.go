@@ -69,14 +69,58 @@ func TestProtoMatchingMode(t *testing.T) {
 func TestPresentCompanyForHidesMatchingMode(t *testing.T) {
 	t.Parallel()
 	api := &API{}
-	company := &identityv1.Company{Id: "c1", MatchingMode: commonv1.MatchingMode_MATCHING_MODE_SMART}
+	company := &identityv1.Company{
+		Id: "c1", MatchingMode: commonv1.MatchingMode_MATCHING_MODE_SMART,
+		ChristinaProffMode: commonv1.ChristinaProffMode_CHRISTINA_PROFF_MODE_COMPARE,
+	}
 	admin := api.presentCompanyFor(t.Context(), User{Role: "platform_admin"}, company)
 	if admin["matching_mode"] != "smart" {
 		t.Fatalf("admin got %#v", admin["matching_mode"])
 	}
+	if admin["christina_proff_mode"] != "compare" {
+		t.Fatalf("admin got %#v", admin["christina_proff_mode"])
+	}
 	purchaser := api.presentCompanyFor(t.Context(), User{Role: "purchaser"}, company)
 	if _, ok := purchaser["matching_mode"]; ok {
 		t.Fatalf("purchaser saw matching_mode: %#v", purchaser)
+	}
+	if _, ok := purchaser["christina_proff_mode"]; ok {
+		t.Fatalf("purchaser saw christina_proff_mode: %#v", purchaser)
+	}
+}
+
+func TestCompanyChristinaProffMode(t *testing.T) {
+	t.Parallel()
+	if got := companyChristinaProffMode(nil); got != "standard" {
+		t.Fatalf("nil got %q", got)
+	}
+	if got := companyChristinaProffMode(&identityv1.Company{}); got != "standard" {
+		t.Fatalf("zero got %q", got)
+	}
+	if got := companyChristinaProffMode(&identityv1.Company{ChristinaProffMode: commonv1.ChristinaProffMode_CHRISTINA_PROFF_MODE_FAST}); got != "fast" {
+		t.Fatalf("fast got %q", got)
+	}
+}
+
+func TestProtoChristinaProffMode(t *testing.T) {
+	t.Parallel()
+	cases := []struct {
+		in   string
+		want commonv1.ChristinaProffMode
+	}{
+		{"compare", commonv1.ChristinaProffMode_CHRISTINA_PROFF_MODE_COMPARE},
+		{"FAST", commonv1.ChristinaProffMode_CHRISTINA_PROFF_MODE_FAST},
+		{"standard", commonv1.ChristinaProffMode_CHRISTINA_PROFF_MODE_STANDARD},
+		{"", commonv1.ChristinaProffMode_CHRISTINA_PROFF_MODE_UNSPECIFIED},
+		{"nope", commonv1.ChristinaProffMode_CHRISTINA_PROFF_MODE_UNSPECIFIED},
+	}
+	for _, tc := range cases {
+		t.Run(tc.in, func(t *testing.T) {
+			t.Parallel()
+			if got := protoChristinaProffMode(tc.in); got != tc.want {
+				t.Fatalf("got %v want %v", got, tc.want)
+			}
+		})
 	}
 }
 

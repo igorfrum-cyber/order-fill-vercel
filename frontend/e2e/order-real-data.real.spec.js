@@ -4,20 +4,33 @@ import { fileURLToPath } from "node:url";
 
 import { expect, test } from "@playwright/test";
 
-import { isChristinaProffBlank, scanPrivateBrandPairs } from "./brandPairs.js";
+import {
+  CHRISTINA_PROFF_UI_BLANK,
+  CHRISTINA_PROFF_UI_SOURCE,
+  christinaProffUiPair,
+  isChristinaProffBlank,
+  resolvePrivateTestdata,
+  scanPrivateBrandPairs,
+} from "./brandPairs.js";
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
-const dataRoot = process.env.ORDER_FILL_PRIVATE_TESTDATA || path.join(repoRoot, "testdata/private");
+const dataRoot = resolvePrivateTestdata(repoRoot);
 const login = process.env.REAL_E2E_LOGIN;
 const password = process.env.REAL_E2E_PASSWORD;
 const ownerLogin = process.env.REAL_E2E_OWNER_LOGIN;
 const ownerPassword = process.env.REAL_E2E_OWNER_PASSWORD;
 const profileLegalName = "ООО Сквозной E2E";
+const allPairs = process.env.REAL_E2E_ALL_PAIRS === "1";
 const scanned = scanPrivateBrandPairs(dataRoot);
+const christinaUi = christinaProffUiPair(dataRoot);
+const pairs = allPairs ? scanned.pairs : christinaUi.pair ? [christinaUi.pair] : [];
 
 function skipReason() {
   if (!scanned.available) return `Нет каталогов Бланки / таблицы продаж в ${dataRoot}`;
-  if (!scanned.pairs.length) return "В private testdata нет matched pairs по бренду";
+  if (allPairs && !scanned.pairs.length) return "В private testdata нет matched pairs по бренду";
+  if (!allPairs && !christinaUi.pair) {
+    return `Нет пары UI CHRISTINA: ${CHRISTINA_PROFF_UI_BLANK} × ${CHRISTINA_PROFF_UI_SOURCE} в ${dataRoot}`;
+  }
   if (!login || !password) return "Задайте REAL_E2E_LOGIN и REAL_E2E_PASSWORD";
   if (!ownerLogin || !ownerPassword) return "Задайте REAL_E2E_OWNER_LOGIN и REAL_E2E_OWNER_PASSWORD";
   return "";
@@ -25,10 +38,10 @@ function skipReason() {
 
 const reason = skipReason();
 
-test.describe("real matched brand pairs", () => {
+test.describe(allPairs ? "real matched brand pairs" : "real Christina PROFF UI pair", () => {
   test.skip(Boolean(reason), reason);
 
-  if (!scanned.pairs.length) {
+  if (!pairs.length) {
     test("opt-in real suite", () => {});
     return;
   }
@@ -41,7 +54,7 @@ test.describe("real matched brand pairs", () => {
     await context.close();
   });
 
-  for (const pair of scanned.pairs) {
+  for (const pair of pairs) {
     test(`${pair.brand}: ${pair.blank} × ${pair.source}`, async ({ page }, testInfo) => {
       expect(fs.existsSync(pair.sourcePath), `Missing real source workbook: ${pair.sourcePath}`).toBe(true);
       expect(fs.existsSync(pair.blankPath), `Missing real supplier workbook: ${pair.blankPath}`).toBe(true);

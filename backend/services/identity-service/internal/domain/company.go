@@ -3,14 +3,15 @@ package domain
 import "time"
 
 type Company struct {
-	ID              string
-	Name            string
-	LoginSlug       string
-	LogoContentType string
-	MatchingMode    MatchingMode
-	OrderProfile    OrderProfile
-	CreatedAt       time.Time
-	DisabledAt      *time.Time
+	ID                 string
+	Name               string
+	LoginSlug          string
+	LogoContentType    string
+	MatchingMode       MatchingMode
+	ChristinaProffMode ChristinaProffMode
+	OrderProfile       OrderProfile
+	CreatedAt          time.Time
+	DisabledAt         *time.Time
 }
 
 type OrderProfile struct {

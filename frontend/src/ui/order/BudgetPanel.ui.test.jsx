@@ -5,9 +5,14 @@ import { beforeEach, expect, test, vi } from "vitest";
 import { BudgetPanel } from "./BudgetPanel.jsx";
 import { planOrderBudget } from "../../api/budget.js";
 
-vi.mock("../../api/budget.js", () => ({ planOrderBudget: vi.fn() }));
+vi.mock("../../api/budget.js", async (importOriginal) => {
+  const actual = await importOriginal();
+  return { ...actual, planOrderBudget: vi.fn() };
+});
 
-beforeEach(() => planOrderBudget.mockReset());
+beforeEach(() => {
+  planOrderBudget.mockReset();
+});
 
 const proffRow = {
   key: "MUSE:3", editable: true, hasBudgetData: true, inserted: 3,

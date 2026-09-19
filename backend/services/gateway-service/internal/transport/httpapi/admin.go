@@ -38,15 +38,17 @@ func (a *API) listCompanies(w http.ResponseWriter, r *http.Request) {
 func (a *API) createCompany(w http.ResponseWriter, r *http.Request) {
 	user, _ := userFrom(r)
 	var payload struct {
-		Name         string `json:"name"`
-		LoginSlug    string `json:"login_slug"`
-		MatchingMode string `json:"matching_mode"`
+		Name               string `json:"name"`
+		LoginSlug          string `json:"login_slug"`
+		MatchingMode       string `json:"matching_mode"`
+		ChristinaProffMode string `json:"christina_proff_mode"`
 	}
 	if !decodeJSON(w, r, &payload, authJSONLimit) {
 		return
 	}
 	resp, err := a.Clients.Identity.CreateCompany(r.Context(), &identityv1.CreateCompanyRequest{
-		Meta: a.meta(user), Name: payload.Name, LoginSlug: payload.LoginSlug, MatchingMode: protoMatchingMode(payload.MatchingMode),
+		Meta: a.meta(user), Name: payload.Name, LoginSlug: payload.LoginSlug,
+		MatchingMode: protoMatchingMode(payload.MatchingMode), ChristinaProffMode: protoChristinaProffMode(payload.ChristinaProffMode),
 	})
 	if err != nil {
 		writeGRPCError(w, "create_company_failed", err)
@@ -58,16 +60,17 @@ func (a *API) createCompany(w http.ResponseWriter, r *http.Request) {
 func (a *API) updateCompany(w http.ResponseWriter, r *http.Request) {
 	user, _ := userFrom(r)
 	var payload struct {
-		Name         string `json:"name"`
-		LoginSlug    string `json:"login_slug"`
-		MatchingMode string `json:"matching_mode"`
+		Name               string `json:"name"`
+		LoginSlug          string `json:"login_slug"`
+		MatchingMode       string `json:"matching_mode"`
+		ChristinaProffMode string `json:"christina_proff_mode"`
 	}
 	if !decodeJSON(w, r, &payload, authJSONLimit) {
 		return
 	}
 	resp, err := a.Clients.Identity.UpdateCompany(r.Context(), &identityv1.UpdateCompanyRequest{
 		Meta: a.meta(user), CompanyId: r.PathValue("company_id"), Name: payload.Name, LoginSlug: payload.LoginSlug,
-		MatchingMode: protoMatchingMode(payload.MatchingMode),
+		MatchingMode: protoMatchingMode(payload.MatchingMode), ChristinaProffMode: protoChristinaProffMode(payload.ChristinaProffMode),
 	})
 	if err != nil {
 		writeGRPCError(w, "update_company_failed", err)
@@ -445,6 +448,7 @@ func (a *API) presentCompanyFor(ctx context.Context, user User, c *identityv1.Co
 	out := a.presentCompany(ctx, c)
 	if user.Role != "platform_admin" {
 		delete(out, "matching_mode")
+		delete(out, "christina_proff_mode")
 	}
 	return out
 }
@@ -503,8 +507,9 @@ func presentCompany(c *identityv1.Company) map[string]any {
 	return map[string]any{
 		"id": c.GetId(), "name": c.GetName(), "login_slug": c.GetLoginSlug(),
 		"has_logo": c.GetHasLogo(), "created_at": c.GetCreatedAt(), "disabled_at": c.GetDisabledAt(),
-		"matching_mode": companyMatchingMode(c),
-		"order_profile": presentOrderProfile(c.GetOrderProfile()),
+		"matching_mode":        companyMatchingMode(c),
+		"christina_proff_mode": companyChristinaProffMode(c),
+		"order_profile":        presentOrderProfile(c.GetOrderProfile()),
 	}
 }
 
@@ -523,5 +528,36 @@ func protoMatchingMode(raw string) commonv1.MatchingMode {
 		return commonv1.MatchingMode_MATCHING_MODE_STANDARD
 	default:
 		return commonv1.MatchingMode_MATCHING_MODE_UNSPECIFIED
+	}
+}
+
+func jsonChristinaProffMode(mode commonv1.ChristinaProffMode) string {
+	switch mode {
+	case commonv1.ChristinaProffMode_CHRISTINA_PROFF_MODE_FAST:
+		return "fast"
+	case commonv1.ChristinaProffMode_CHRISTINA_PROFF_MODE_COMPARE:
+		return "compare"
+	default:
+		return "standard"
+	}
+}
+
+func companyChristinaProffMode(c *identityv1.Company) string {
+	if c == nil {
+		return "standard"
+	}
+	return jsonChristinaProffMode(c.GetChristinaProffMode())
+}
+
+func protoChristinaProffMode(raw string) commonv1.ChristinaProffMode {
+	switch strings.ToLower(strings.TrimSpace(raw)) {
+	case "fast":
+		return commonv1.ChristinaProffMode_CHRISTINA_PROFF_MODE_FAST
+	case "compare":
+		return commonv1.ChristinaProffMode_CHRISTINA_PROFF_MODE_COMPARE
+	case "standard":
+		return commonv1.ChristinaProffMode_CHRISTINA_PROFF_MODE_STANDARD
+	default:
+		return commonv1.ChristinaProffMode_CHRISTINA_PROFF_MODE_UNSPECIFIED
 	}
 }

@@ -12,6 +12,15 @@ enum MatchingMode {
   MATCHING_MODE_SMART = 2;
 }
 
+// ChristinaProffMode selects the CHRISTINA PROFF cost oracle for PlanBudget.
+// Identity stores it on the company; unspecified is treated as standard.
+enum ChristinaProffMode {
+  CHRISTINA_PROFF_MODE_UNSPECIFIED = 0;
+  CHRISTINA_PROFF_MODE_STANDARD = 1;
+  CHRISTINA_PROFF_MODE_FAST = 2;
+  CHRISTINA_PROFF_MODE_COMPARE = 3;
+}
+
 // ReportCategory is the canonical buyer-facing classification of a report row.
 // It is independent of the matching algorithm that produced the row.
 enum ReportCategory {

@@ -124,9 +124,10 @@ export function listCompanies() {
   return apiClient.request("/api/v1/companies");
 }
 
-export function createCompany(name, loginSlug, matchingMode) {
+export function createCompany(name, loginSlug, matchingMode, christinaProffMode) {
   const body = { name, login_slug: loginSlug };
   if (matchingMode) body.matching_mode = matchingMode;
+  if (christinaProffMode) body.christina_proff_mode = christinaProffMode;
   return apiClient.request("/api/v1/companies", {
     method: "POST",
     body: JSON.stringify(body),
@@ -140,9 +141,10 @@ export function setCompanyLoginSlug(companyId, loginSlug) {
   });
 }
 
-export function updateCompany(companyId, name, loginSlug, matchingMode) {
+export function updateCompany(companyId, name, loginSlug, matchingMode, christinaProffMode) {
   const body = { name, login_slug: loginSlug };
   if (matchingMode) body.matching_mode = matchingMode;
+  if (christinaProffMode) body.christina_proff_mode = christinaProffMode;
   return apiClient.request(`/api/v1/companies/${encodeURIComponent(companyId)}/profile`, {
     method: "POST",
     body: JSON.stringify(body),

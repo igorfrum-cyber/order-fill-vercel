@@ -8,7 +8,7 @@ under `backend/`.
 
 - `frontend/` owns browser UI, state, rendering, and API calls through `frontend/src/api/`.
 - `backend/services/gateway-service/` owns the public HTTP API, session gate, CSRF/CORS, request validation, and response mapping.
-- `backend/services/identity-service/` owns users, companies, company order profiles, sessions, invites, password changes, and account authorization data.
+- `backend/services/identity-service/` owns users, companies, company order profiles, company `matching_mode` and `christina_proff_mode`, sessions, invites, password changes, and account authorization data.
 - `backend/services/twofa-service/` owns TOTP secrets, verification, and TOTP rate limiting.
 - `backend/services/passkey-service/` owns WebAuthn credentials and ceremony state.
 - `backend/services/job-service/` owns job metadata, job authorization context, report state, and queue publishing.
@@ -16,7 +16,7 @@ under `backend/`.
 - `backend/services/document-service/` owns Excel parsing/writing, supported supplier header-field mappings, preview artifacts, and document job execution. It maps workbook rows to matching items and applies returned identity decisions; it does not decide product identity itself.
 - `backend/services/matching-service/` owns product matching decisions. It accepts structured items and returns canonical `ReportCategory` plus `MatchReasons`; it does not parse Excel.
 - `backend/services/brand-service/` owns the read-only brand catalog and brand-specific rules; gateway may expose their projection to platform admins but does not own or edit them.
-- `backend/services/calculation-service/` owns quantity calculations over normalized inputs, including budget-to-target planning: pricing (main discount), brand order rules, and the CHRISTINA PROFF set discount. The set discount applies on both the Tyumen and North flows — `document-service` attaches PROFF line metadata to North rows so the planner can complete sets there too. The browser sends raw report rows to `POST /api/v1/order/budget-plan`; it does not compute the plan.
+- `backend/services/calculation-service/` owns quantity calculations over normalized inputs, including budget-to-target planning: pricing (main discount), brand order rules, the CHRISTINA PROFF set discount, and the company `christina_proff_mode` oracle (standard / fast / compare). The set discount applies on both the Tyumen and North flows — `document-service` attaches PROFF line metadata to North rows so the planner can complete sets there too. The browser sends raw report rows to `POST /api/v1/order/budget-plan`; it does not compute the plan. Compare mode returns the standard plan as the applied result plus an independent fast plan and a mismatch list; it does not produce two Excel files.
 - `backend/services/inbound-service/` owns the inbound 1С mail contour: CloudMailin webhook payloads, company receive addresses, message metadata, and attachment objects. It uses its own PostgreSQL instance and a dedicated S3 bucket and does not depend on business services.
 - `backend/proto/` owns internal gRPC contracts.
 

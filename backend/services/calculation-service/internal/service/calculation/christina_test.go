@@ -267,6 +267,77 @@ func TestPlanBudgetProffLockedStaysPut(t *testing.T) {
 	}
 }
 
+func TestPlanBudgetCompareModeMuseMatch(t *testing.T) {
+	t.Parallel()
+	rows := muse(18, 18, 18, 3)
+	std, err := calculation.PlanBudget(rows, 6100, domain.BudgetOptions{ChristinaProffMode: domain.ChristinaProffStandard})
+	if err != nil {
+		t.Fatal(err)
+	}
+	cmpPlan, err := calculation.PlanBudget(rows, 6100, domain.BudgetOptions{ChristinaProffMode: domain.ChristinaProffCompare})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cmpPlan.ChristinaProffMode != domain.ChristinaProffCompare {
+		t.Fatalf("mode=%q", cmpPlan.ChristinaProffMode)
+	}
+	if !cmpPlan.CompareMatch || len(cmpPlan.Mismatches) != 0 {
+		t.Fatalf("match=%v mismatches=%+v", cmpPlan.CompareMatch, cmpPlan.Mismatches)
+	}
+	if got, want := quantities(cmpPlan.Rows), quantities(std.Rows); !slices.Equal(got, want) {
+		t.Fatalf("applied qty=%v, want standard %v", got, want)
+	}
+	if got, want := quantities(cmpPlan.FastRows), quantities(cmpPlan.Rows); !slices.Equal(got, want) {
+		t.Fatalf("fast qty=%v, want applied %v", got, want)
+	}
+	if cmpPlan.FastTotal != cmpPlan.Total || cmpPlan.FastComplete != cmpPlan.Complete {
+		t.Fatalf("fast total/complete=%v/%v applied=%v/%v", cmpPlan.FastTotal, cmpPlan.FastComplete, cmpPlan.Total, cmpPlan.Complete)
+	}
+	if cmpPlan.CompareStandardMs < 0 || cmpPlan.CompareFastMs < 0 {
+		t.Fatalf("timings %d/%d", cmpPlan.CompareStandardMs, cmpPlan.CompareFastMs)
+	}
+	if got := quantities(rows); !slices.Equal(got, []float64{18, 18, 18, 3}) {
+		t.Fatalf("input mutated: %v", got)
+	}
+}
+
+func TestPlanBudgetCompareModeHomeMatch(t *testing.T) {
+	t.Parallel()
+	home := muse(18, 18, 18, 3)
+	for i := range home {
+		home[i].Group = "home"
+	}
+	plan, err := calculation.PlanBudget(home, 6100, domain.BudgetOptions{ChristinaProffMode: domain.ChristinaProffCompare})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !plan.CompareMatch || len(plan.Mismatches) != 0 {
+		t.Fatalf("home compare mismatches=%+v", plan.Mismatches)
+	}
+	if got, want := quantities(plan.FastRows), quantities(plan.Rows); !slices.Equal(got, want) {
+		t.Fatalf("home fast qty=%v applied=%v", got, want)
+	}
+}
+
+func TestPlanBudgetUnknownModeIsStandard(t *testing.T) {
+	t.Parallel()
+	rows := muse(18, 18, 18, 3)
+	std, err := calculation.PlanBudget(rows, 6100, domain.BudgetOptions{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	got, err := calculation.PlanBudget(rows, 6100, domain.BudgetOptions{ChristinaProffMode: "UNSPECIFIED"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.ChristinaProffMode != domain.ChristinaProffStandard {
+		t.Fatalf("mode=%q", got.ChristinaProffMode)
+	}
+	if !slices.Equal(quantities(got.Rows), quantities(std.Rows)) {
+		t.Fatalf("unknown mode qty=%v want %v", quantities(got.Rows), quantities(std.Rows))
+	}
+}
+
 // TestPlanReportBudgetNorthProffSetDiscount mirrors the North flow: raw rows with
 // group "proff" and line metadata must earn the CHRISTINA set discount, so the
 // reported "before" reflects the discounted procurement total, not the gross.

@@ -1,11 +1,18 @@
 import assert from "node:assert/strict";
+import fs from "node:fs";
+import path from "node:path";
 import test from "node:test";
 
 import {
+  CHRISTINA_PROFF_UI_BLANK,
+  CHRISTINA_PROFF_UI_SOURCE,
   brandKeyFromName,
+  christinaProffUiPair,
   isChristinaProffBlank,
   matchBrandPairs,
   norm,
+  resolvePrivateTestdata,
+  sameWorkbookName,
   scanPrivateBrandPairs,
 } from "./brandPairs.js";
 
@@ -90,4 +97,39 @@ test("scanPrivateBrandPairs skips when the private folders are missing", () => {
   const scanned = scanPrivateBrandPairs("/tmp/order-fill-no-private-testdata");
   assert.equal(scanned.available, false);
   assert.deepEqual(scanned.pairs, []);
+});
+
+test("sameWorkbookName ignores Unicode NFD and trailing spaces", () => {
+  assert.equal(sameWorkbookName(CHRISTINA_PROFF_UI_BLANK.normalize("NFD"), CHRISTINA_PROFF_UI_BLANK), true);
+  assert.equal(sameWorkbookName(CHRISTINA_PROFF_UI_SOURCE, "Кристина Тюмень.xlsx"), true);
+  assert.equal(sameWorkbookName(CHRISTINA_PROFF_UI_BLANK, "Актуальный_бланк PROFF.xlsx"), false);
+});
+
+test("christinaProffUiPair picks PROFF (1) × Кристина Тюмень", () => {
+  const root = fs.mkdtempSync(path.join("/tmp", "order-fill-christina-ui-"));
+  const blanks = path.join(root, "Бланки");
+  const sales = path.join(root, "таблицы продаж");
+  fs.mkdirSync(blanks);
+  fs.mkdirSync(sales);
+  fs.writeFileSync(path.join(blanks, CHRISTINA_PROFF_UI_BLANK.normalize("NFD")), "");
+  fs.writeFileSync(path.join(blanks, "Актуальный_бланк PROFF.xlsx"), "");
+  fs.writeFileSync(path.join(sales, CHRISTINA_PROFF_UI_SOURCE), "");
+  fs.writeFileSync(path.join(sales, "Кристина Сургут .xlsx"), "");
+  try {
+    const { available, pair } = christinaProffUiPair(root);
+    assert.equal(available, true);
+    assert.ok(pair);
+    assert.equal(pair.brand, "christina");
+    assert.equal(sameWorkbookName(pair.blank, CHRISTINA_PROFF_UI_BLANK), true);
+    assert.equal(sameWorkbookName(pair.source, CHRISTINA_PROFF_UI_SOURCE), true);
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("resolvePrivateTestdata prefers ORDER_FILL_PRIVATE_TESTDATA", () => {
+  assert.equal(
+    resolvePrivateTestdata("/tmp/repo", { ORDER_FILL_PRIVATE_TESTDATA: "/custom/private" }),
+    "/custom/private",
+  );
 });

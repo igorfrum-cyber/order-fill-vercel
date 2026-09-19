@@ -23,6 +23,18 @@ func TestInitSQLAddsCompanyColumnsOnLegacyTable(t *testing.T) {
 	}
 }
 
+func TestChristinaProffModeMigrationAddsCompanyColumn(t *testing.T) {
+	t.Parallel()
+	body, err := files.ReadFile("migrations/00005_christina_proff_mode.sql")
+	if err != nil {
+		t.Fatal(err)
+	}
+	sql := string(body)
+	if !strings.Contains(sql, "ADD COLUMN IF NOT EXISTS christina_proff_mode") {
+		t.Fatal("companies needs christina_proff_mode")
+	}
+}
+
 func TestPrimaryAdminMigrationProtectsExactlyOneBootstrapAdmin(t *testing.T) {
 	t.Parallel()
 	body, err := files.ReadFile("migrations/00004_primary_platform_admin.sql")

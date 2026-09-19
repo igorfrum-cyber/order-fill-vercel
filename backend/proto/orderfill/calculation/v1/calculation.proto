@@ -184,6 +184,8 @@ message PlanBudgetRequest {
   double discount = 6;
   // delivery_weeks feeds coverage: delivery months = delivery_weeks * 0.25.
   double delivery_weeks = 7;
+  // christina_proff_mode selects the PROFF cost oracle. UNSPECIFIED is standard.
+  orderfill.common.v1.ChristinaProffMode christina_proff_mode = 8;
 }
 
 message PlannedBudgetRow {
@@ -214,6 +216,26 @@ message PlannedLineGroup {
   double net = 6;
 }
 
+// BudgetOracleMismatch is one standard-vs-fast difference in compare mode.
+message BudgetOracleMismatch {
+  // where is "changeCost" or "proposeLineStep".
+  string where = 1;
+  string key = 2;
+  // field examples: quantity, total, comment, added_cents.
+  string field = 3;
+  string want = 4;
+  string got = 5;
+}
+
+// BudgetOracleCompare is filled in compare mode: two independent PlanBudget
+// passes, timings, and the full mismatch list. Applied rows/total stay standard.
+message BudgetOracleCompare {
+  bool match = 1;
+  int64 standard_ms = 2;
+  int64 fast_ms = 3;
+  repeated BudgetOracleMismatch mismatches = 4;
+}
+
 message PlanBudgetResponse {
   repeated PlannedBudgetRow rows = 1;
   double before = 2;
@@ -223,6 +245,14 @@ message PlanBudgetResponse {
   bool complete = 6;
   repeated PlannedLineStep line_steps = 7;
   repeated PlannedLineGroup line_groups = 8;
+  orderfill.common.v1.ChristinaProffMode christina_proff_mode = 9;
+  BudgetOracleCompare compare = 10;
+  // fast_* is the independent fast PlanBudget result; filled in compare mode.
+  repeated PlannedBudgetRow fast_rows = 11;
+  double fast_total = 12;
+  bool fast_complete = 13;
+  string fast_reason = 14;
+  repeated PlannedLineStep fast_line_steps = 15;
 }
 
 message CalculateWarehouseTransferRequest {

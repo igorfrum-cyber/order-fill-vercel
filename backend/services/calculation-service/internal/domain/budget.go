@@ -42,10 +42,20 @@ type BudgetRow struct {
 	LineCompletion string
 }
 
+// CHRISTINA PROFF cost-oracle modes. Empty, unknown and UNSPECIFIED map to standard.
+const (
+	ChristinaProffStandard = "standard"
+	ChristinaProffFast     = "fast"
+	ChristinaProffCompare  = "compare"
+)
+
 // BudgetOptions are explicit per-preview opt-ins, never inferred from the target.
 type BudgetOptions struct {
 	AllowOverSix  bool
 	AllowBelowOne bool
+	// ChristinaProffMode selects the PROFF cost oracle: standard, fast or compare.
+	// Empty, unknown and UNSPECIFIED are standard.
+	ChristinaProffMode string
 }
 
 // BudgetInputRow is a raw report row before pricing and brand order rules. The
@@ -90,6 +100,15 @@ type CompletionStep struct {
 	SavedCents int64
 }
 
+// BudgetOracleMismatch is one finished-plan difference in compare mode.
+// Where is "quantity", "comment", "total", "complete" or "line_steps".
+type BudgetOracleMismatch struct {
+	Where string
+	Key   string
+	Want  int64 // standard
+	Got   int64 // fast
+}
+
 // BudgetPlan is a pure preview: it never mutates the input.
 type BudgetPlan struct {
 	Rows      []BudgetRow
@@ -99,4 +118,21 @@ type BudgetPlan struct {
 	Reason    string
 	Complete  bool
 	LineSteps []CompletionStep
+
+	ChristinaProffMode string
+	// Fast* is the independent fast-oracle plan. Filled only in compare mode.
+	// Applied Rows/Total/Complete/LineSteps/Reason stay the standard run.
+	FastRows             []BudgetRow
+	FastTotal            float64
+	FastComplete         bool
+	FastReason           string
+	FastLineSteps        []CompletionStep
+	CompareMatch         bool // only meaningful in compare; true if no mismatch
+	CompareStandardMs    int64
+	CompareFastMs        int64
+	CompareMismatchWhere string
+	CompareMismatchKey   string
+	CompareMismatchWant  int64
+	CompareMismatchGot   int64
+	Mismatches           []BudgetOracleMismatch
 }

@@ -142,6 +142,10 @@ type LineStep struct {
 // ProposeLineStep evaluates bumping line id to its next full set. baselines are
 // the fixed net costs from BudgetBaselines. Mirrors origin/main proposeLineStep.
 func ProposeLineStep(rows []domain.BudgetRow, id string, baselines map[string]int64, target float64) LineStep {
+	return proposeLineStep(rows, id, baselines, target, false, 0, false)
+}
+
+func proposeLineStep(rows []domain.BudgetRow, id string, baselines map[string]int64, target float64, fast bool, runningTotal int64, hasRunning bool) LineStep {
 	groups := ChristinaLineGroups(rows)
 	li := slices.IndexFunc(groups, func(g LineGroup) bool { return g.ID == id })
 	if li < 0 || !groups[li].Valid {
@@ -160,7 +164,11 @@ func ProposeLineStep(rows []domain.BudgetRow, id string, baselines map[string]in
 	// without sales or within stock limits. It cannot repeat for later sets.
 	firstSingle := line.Sets == 0 && len(changes) == 1 && rows[changes[0]].Quantity == 0
 
-	if ProcurementTotalCents(rows) >= budgetCents(target) && !firstSingle {
+	current := runningTotal
+	if !fast || !hasRunning {
+		current = ProcurementTotalCents(rows)
+	}
+	if current >= budgetCents(target) && !firstSingle {
 		return LineStep{Reason: "targetReached"}
 	}
 	for _, idx := range changes {
@@ -201,7 +209,10 @@ func ProposeLineStep(rows []domain.BudgetRow, id string, baselines map[string]in
 	if addedCents <= 0 || savedCents*100 < addedCents*15 {
 		return LineStep{Reason: "saving"}
 	}
-	totalCents := ProcurementTotalCents(proposed)
+	totalCents := current + addedCents - savedCents
+	if !fast {
+		totalCents = ProcurementTotalCents(proposed)
+	}
 	if totalCents > int64(math.Floor(float64(budgetCents(target))*1.05+1e-8)) {
 		return LineStep{Reason: "targetLimit"}
 	}
@@ -234,16 +245,26 @@ type CompleteResult struct {
 // The caller then runs the normal coverage top-up. Mirrors origin/main
 // completeChristinaLines.
 func CompleteChristinaLines(input []domain.BudgetRow, target float64, baselines map[string]int64) (CompleteResult, error) {
+	return completeChristinaLines(input, target, baselines, false)
+}
+
+func completeChristinaLines(input []domain.BudgetRow, target float64, baselines map[string]int64, fast bool) (CompleteResult, error) {
 	if !finiteNumber(target) || target < 0 {
 		return CompleteResult{}, errors.New("введите неотрицательную сумму")
 	}
 	rows := slices.Clone(input)
 	var steps []domain.CompletionStep
+	running := int64(0)
+	hasRunning := false
+	if fast {
+		running = ProcurementTotalCents(rows)
+		hasRunning = true
+	}
 	for range 250000 {
 		groups := ChristinaLineGroups(rows)
 		proposals := make([]LineStep, len(groups))
 		for i, g := range groups {
-			proposals[i] = ProposeLineStep(rows, g.ID, baselines, target)
+			proposals[i] = proposeLineStep(rows, g.ID, baselines, target, fast, running, hasRunning)
 			proposals[i].ID = g.ID
 		}
 		var candidates []LineStep
@@ -272,6 +293,9 @@ func CompleteChristinaLines(input []domain.BudgetRow, target float64, baselines 
 		})
 		chosen := candidates[0]
 		rows = chosen.Rows
+		if hasRunning {
+			running = chosen.TotalCents
+		}
 		steps = append(steps, domain.CompletionStep{
 			ID: chosen.ID, Name: chosen.Name, Sets: chosen.Sets,
 			AddedCents: chosen.AddedCents, SavedCents: chosen.SavedCents,

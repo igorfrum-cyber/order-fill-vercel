@@ -16,7 +16,7 @@ type Store interface {
 	GetCompany(ctx context.Context, id string) (domain.Company, error)
 	GetCompanyByLoginSlug(ctx context.Context, slug string) (domain.Company, error)
 	ListCompanies(ctx context.Context) ([]domain.Company, error)
-	SetCompanyProfile(ctx context.Context, id, name, slug string, mode domain.MatchingMode) error
+	SetCompanyProfile(ctx context.Context, id, name, slug string, mode domain.MatchingMode, christina domain.ChristinaProffMode) error
 	SetCompanyOrderProfile(ctx context.Context, id string, profile domain.OrderProfile) error
 	DisableCompany(ctx context.Context, id string, at time.Time) error
 }
@@ -55,7 +55,7 @@ func New(store Store, now func() time.Time) *Companies {
 	return &Companies{store: store, now: now}
 }
 
-func (c *Companies) Create(ctx context.Context, actor domain.User, name, loginSlug string, mode domain.MatchingMode) (domain.Company, error) {
+func (c *Companies) Create(ctx context.Context, actor domain.User, name, loginSlug string, mode domain.MatchingMode, christina domain.ChristinaProffMode) (domain.Company, error) {
 	if !domain.CanCreatePlatformCompany(actor) {
 		return domain.Company{}, domain.ErrNotFound
 	}
@@ -73,16 +73,23 @@ func (c *Companies) Create(ctx context.Context, actor domain.User, name, loginSl
 	if mode == domain.MatchingModeSmart && !actor.CanSetMatchingMode() {
 		mode = domain.MatchingModeStandard
 	}
+	if christina == "" {
+		christina = domain.ChristinaProffModeStandard
+	}
+	if christina != domain.ChristinaProffModeStandard && !actor.CanSetChristinaProffMode() {
+		christina = domain.ChristinaProffModeStandard
+	}
 	id, err := secret.NewSecret()
 	if err != nil {
 		return domain.Company{}, err
 	}
 	company := domain.Company{
-		ID:           id,
-		Name:         name,
-		LoginSlug:    slug,
-		MatchingMode: mode,
-		CreatedAt:    c.now(),
+		ID:                 id,
+		Name:               name,
+		LoginSlug:          slug,
+		MatchingMode:       mode,
+		ChristinaProffMode: christina,
+		CreatedAt:          c.now(),
 	}
 	if err := c.store.CreateCompany(ctx, company); err != nil {
 		return domain.Company{}, err
@@ -104,7 +111,7 @@ func (c *Companies) List(ctx context.Context, actor domain.User) ([]domain.Compa
 	return []domain.Company{company}, nil
 }
 
-func (c *Companies) Update(ctx context.Context, actor domain.User, companyID, name, loginSlug string, mode domain.MatchingMode) (domain.Company, error) {
+func (c *Companies) Update(ctx context.Context, actor domain.User, companyID, name, loginSlug string, mode domain.MatchingMode, christina domain.ChristinaProffMode) (domain.Company, error) {
 	if domain.BoundToOwnCompany(actor) {
 		companyID = actor.CompanyID
 	}
@@ -130,12 +137,16 @@ func (c *Companies) Update(ctx context.Context, actor domain.User, companyID, na
 	if mode == "" || !actor.CanSetMatchingMode() {
 		mode = company.MatchingMode
 	}
-	if err := c.store.SetCompanyProfile(ctx, company.ID, name, slug, mode); err != nil {
+	if christina == "" || !actor.CanSetChristinaProffMode() {
+		christina = company.ChristinaProffMode
+	}
+	if err := c.store.SetCompanyProfile(ctx, company.ID, name, slug, mode, christina); err != nil {
 		return domain.Company{}, err
 	}
 	company.Name = name
 	company.LoginSlug = slug
 	company.MatchingMode = mode
+	company.ChristinaProffMode = christina
 	return company, nil
 }
 

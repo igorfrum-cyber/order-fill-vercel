@@ -56,6 +56,7 @@ message Company {
   string disabled_at = 6;
   orderfill.common.v1.MatchingMode matching_mode = 7;
   CompanyOrderProfile order_profile = 8;
+  orderfill.common.v1.ChristinaProffMode christina_proff_mode = 9;
 }
 
 message CompanyBrandTerms {
@@ -208,6 +209,7 @@ message CreateCompanyRequest {
   string name = 2;
   string login_slug = 3;
   orderfill.common.v1.MatchingMode matching_mode = 4;
+  orderfill.common.v1.ChristinaProffMode christina_proff_mode = 5;
 }
 
 message CreateCompanyResponse {
@@ -228,6 +230,7 @@ message UpdateCompanyRequest {
   string name = 3;
   string login_slug = 4;
   orderfill.common.v1.MatchingMode matching_mode = 5;
+  orderfill.common.v1.ChristinaProffMode christina_proff_mode = 6;
 }
 
 message UpdateCompanyResponse {

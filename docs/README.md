@@ -15,6 +15,7 @@
 Продуктовые решения, которые v2 должен сохранить:
 
 - [Режимы сопоставления](./plans/2026-09-05-order-matching-modes-design.md)
+- [Режимы оракула CHRISTINA PROFF](./plans/2026-09-19-christina-proff-oracle-modes-design.md)
 - [Правка количества в превью бланка](./plans/2026-09-05-blank-preview-quantity-edits-design.md)
 - [Purchaser upload / preview / downloads](./plans/2026-09-05-purchaser-upload-preview-downloads.md)
 

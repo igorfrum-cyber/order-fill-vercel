@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import { planOrderBudget } from "../../api/budget.js";
 import { budgetTargetValue, discountValue } from "../../features/order/budgetInput.js";
 import { GhostButton, Modal } from "../widgets.jsx";
+import { ChristinaCompare } from "../order/ChristinaCompare.jsx";
 
 const money = (value) => Number(value || 0).toLocaleString("ru-RU", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
@@ -79,7 +80,18 @@ function NorthBudgetGroup({ label, brand, deliveryWeeks, rows, actualValue, lock
           </div>
           <p className="mt-3 text-[13px] text-[var(--color-ink-soft)]">Ручные значения закреплены. Перемещения городам не меняются; добавка остаётся на складе доставки.</p>
           {error ? <p role="alert" className="mt-3 text-[var(--color-danger)]">{error}</p> : null}
-          {preview ? <div aria-label="Предпросмотр бюджета" className="mt-4 space-y-2"><Metric label="После расчёта" value={`${money(preview.before)} ₽ → ${money(preview.total)} ₽`} />{changed.map((row) => <div key={row.key} className="flex justify-between rounded-lg border border-[var(--color-line-soft)] px-3 py-2"><span>{row.name} · {row.category}</span><span className="font-mono">{row.before} → {row.quantity}</span></div>)}</div> : null}
+          {preview ? (
+            <div aria-label="Предпросмотр бюджета" className="mt-4 space-y-2">
+              <Metric label="После расчёта" value={`${money(preview.before)} ₽ → ${money(preview.total)} ₽`} />
+              <ChristinaCompare plan={preview} />
+              {changed.map((row) => (
+                <div key={row.key} className="flex justify-between rounded-lg border border-[var(--color-line-soft)] px-3 py-2">
+                  <span>{row.name} · {row.category}</span>
+                  <span className="font-mono">{row.before} → {row.quantity}</span>
+                </div>
+              ))}
+            </div>
+          ) : null}
         </Modal>
       ) : null}
     </div>

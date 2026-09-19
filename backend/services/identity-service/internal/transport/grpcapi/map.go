@@ -34,12 +34,13 @@ func protoUser(u domain.User) *identityv1.User {
 
 func protoCompany(c domain.Company) *identityv1.Company {
 	out := &identityv1.Company{
-		Id:           c.ID,
-		Name:         c.Name,
-		LoginSlug:    c.LoginSlug,
-		HasLogo:      c.HasLogo(),
-		MatchingMode: protoMatchingMode(c.MatchingMode),
-		OrderProfile: protoOrderProfile(c.OrderProfile),
+		Id:                 c.ID,
+		Name:               c.Name,
+		LoginSlug:          c.LoginSlug,
+		HasLogo:            c.HasLogo(),
+		MatchingMode:       protoMatchingMode(c.MatchingMode),
+		ChristinaProffMode: protoChristinaProffMode(c.ChristinaProffMode),
+		OrderProfile:       protoOrderProfile(c.OrderProfile),
 	}
 	if !c.CreatedAt.IsZero() {
 		out.CreatedAt = c.CreatedAt.UTC().Format(time.RFC3339)
@@ -113,6 +114,28 @@ func domainMatchingMode(mode commonv1.MatchingMode) domain.MatchingMode {
 		return domain.MatchingModeSmart
 	}
 	return domain.MatchingModeStandard
+}
+
+func protoChristinaProffMode(mode domain.ChristinaProffMode) commonv1.ChristinaProffMode {
+	switch mode {
+	case domain.ChristinaProffModeFast:
+		return commonv1.ChristinaProffMode_CHRISTINA_PROFF_MODE_FAST
+	case domain.ChristinaProffModeCompare:
+		return commonv1.ChristinaProffMode_CHRISTINA_PROFF_MODE_COMPARE
+	default:
+		return commonv1.ChristinaProffMode_CHRISTINA_PROFF_MODE_STANDARD
+	}
+}
+
+func domainChristinaProffMode(mode commonv1.ChristinaProffMode) domain.ChristinaProffMode {
+	switch mode {
+	case commonv1.ChristinaProffMode_CHRISTINA_PROFF_MODE_FAST:
+		return domain.ChristinaProffModeFast
+	case commonv1.ChristinaProffMode_CHRISTINA_PROFF_MODE_COMPARE:
+		return domain.ChristinaProffModeCompare
+	default:
+		return domain.ChristinaProffModeStandard
+	}
 }
 
 func metaActorID(meta *commonv1.RequestMeta) string {

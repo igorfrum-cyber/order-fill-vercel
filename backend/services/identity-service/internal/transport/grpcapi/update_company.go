@@ -15,7 +15,11 @@ func (s *Server) UpdateCompany(ctx context.Context, req *identityv1.UpdateCompan
 	if req.GetMatchingMode() == 0 {
 		mode = ""
 	}
-	company, err := s.companies.Update(ctx, actor, req.GetCompanyId(), req.GetName(), req.GetLoginSlug(), mode)
+	christina := domainChristinaProffMode(req.GetChristinaProffMode())
+	if req.GetChristinaProffMode() == 0 {
+		christina = ""
+	}
+	company, err := s.companies.Update(ctx, actor, req.GetCompanyId(), req.GetName(), req.GetLoginSlug(), mode, christina)
 	if err != nil {
 		return nil, toStatus(err)
 	}

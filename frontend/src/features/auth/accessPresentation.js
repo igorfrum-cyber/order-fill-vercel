@@ -42,6 +42,19 @@ export function normalizeMatchingMode(raw) {
   return raw === "smart" ? "smart" : "standard";
 }
 
+export function christinaProffModeOptions() {
+  return [
+    { value: "standard", label: "Текущий расчёт", hint: "Полный пересчёт на каждом шаге, как сейчас" },
+    { value: "fast", label: "Быстрый расчёт", hint: "Тот же заказ и та же сумма, без полного пересчёта" },
+    { value: "compare", label: "Сверка", hint: "Считает оба оракула; в превью остаётся текущий расчёт и показывает, совпали ли" },
+  ];
+}
+
+export function normalizeChristinaProffMode(raw) {
+  if (raw === "fast" || raw === "compare") return raw;
+  return "standard";
+}
+
 export function needsSecurityNudge(me, { completedJob = false } = {}) {
   if (!me || me.two_factor_enabled || me.has_passkey) return false;
   if (me.role === "purchaser" && !completedJob) return false;

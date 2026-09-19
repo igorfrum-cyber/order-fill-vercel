@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { createCompany, disableCompany, listCompanies, updateCompany } from "../../api/auth.js";
-import { companyLoginURL, loginSlugIssue, matchingModeOptions, normalizeLoginSlug, normalizeMatchingMode } from "../../features/auth/accessPresentation.js";
+import { companyLoginURL, loginSlugIssue, matchingModeOptions, normalizeLoginSlug, normalizeMatchingMode, christinaProffModeOptions, normalizeChristinaProffMode } from "../../features/auth/accessPresentation.js";
 import { GhostButton, Modal, PrimaryButton } from "../widgets.jsx";
 import { IconCheck } from "../icons.jsx";
 import { userFacingError } from "../../features/help/errors.js";
@@ -10,6 +10,7 @@ export function CompaniesScreen({ selectedId, onSelect }) {
   const [name, setName] = useState("");
   const [loginSlug, setLoginSlug] = useState("");
   const [matchingMode, setMatchingMode] = useState("standard");
+  const [christinaProffMode, setChristinaProffMode] = useState("standard");
   const [error, setError] = useState("");
   const [disableTarget, setDisableTarget] = useState(null);
 
@@ -33,10 +34,11 @@ export function CompaniesScreen({ selectedId, onSelect }) {
           event.preventDefault();
           setError("");
           try {
-            await createCompany(name, normalizeLoginSlug(loginSlug), matchingMode);
+            await createCompany(name, normalizeLoginSlug(loginSlug), matchingMode, christinaProffMode);
             setName("");
             setLoginSlug("");
             setMatchingMode("standard");
+            setChristinaProffMode("standard");
             reload();
           } catch (err) {
             setError(userFacingError(err, "Не удалось создать компанию."));
@@ -70,6 +72,7 @@ export function CompaniesScreen({ selectedId, onSelect }) {
           <p className="text-[13px] text-[var(--color-ink-faint)]">Первый адрес задаёте вы. Потом его меняет администратор компании.</p>
         )}
         <MatchingModePicker name="create-matching-mode" value={matchingMode} onChange={setMatchingMode} />
+        <ChristinaProffModePicker name="create-christina-proff-mode" value={christinaProffMode} onChange={setChristinaProffMode} />
       </form>
       {error ? <p className="text-[14px] text-[var(--color-danger)]">{error}</p> : null}
       <ul data-tour="companies-list" className="divide-y divide-[var(--color-line)] rounded-xl border border-[var(--color-line)] bg-[var(--color-surface)]">
@@ -100,10 +103,36 @@ export function CompaniesScreen({ selectedId, onSelect }) {
                 if (mode === normalizeMatchingMode(company.matching_mode)) return;
                 setError("");
                 try {
-                  const updated = await updateCompany(company.id, company.name, company.login_slug, mode);
+                  const updated = await updateCompany(
+                    company.id,
+                    company.name,
+                    company.login_slug,
+                    mode,
+                    normalizeChristinaProffMode(company.christina_proff_mode),
+                  );
                   setCompanies((items) => items.map((item) => (item.id === company.id ? { ...item, ...updated } : item)));
                 } catch (err) {
                   setError(userFacingError(err, "Не удалось сменить сопоставление."));
+                }
+              }}
+            />
+            <ChristinaProffModePicker
+              name={`christina-proff-mode-${company.id}`}
+              value={normalizeChristinaProffMode(company.christina_proff_mode)}
+              onChange={async (mode) => {
+                if (mode === normalizeChristinaProffMode(company.christina_proff_mode)) return;
+                setError("");
+                try {
+                  const updated = await updateCompany(
+                    company.id,
+                    company.name,
+                    company.login_slug,
+                    normalizeMatchingMode(company.matching_mode),
+                    mode,
+                  );
+                  setCompanies((items) => items.map((item) => (item.id === company.id ? { ...item, ...updated } : item)));
+                } catch (err) {
+                  setError(userFacingError(err, "Не удалось сменить расчёт CHRISTINA PROFF."));
                 }
               }}
             />
@@ -135,13 +164,36 @@ export function CompaniesScreen({ selectedId, onSelect }) {
 }
 
 function MatchingModePicker({ name, value, onChange }) {
-  const selected = normalizeMatchingMode(value);
+  return (
+    <ModePicker
+      name={name}
+      value={normalizeMatchingMode(value)}
+      onChange={onChange}
+      legend="Сопоставление"
+      options={matchingModeOptions()}
+    />
+  );
+}
+
+function ChristinaProffModePicker({ name, value, onChange }) {
+  return (
+    <ModePicker
+      name={name}
+      value={normalizeChristinaProffMode(value)}
+      onChange={onChange}
+      legend="CHRISTINA PROFF"
+      options={christinaProffModeOptions()}
+    />
+  );
+}
+
+function ModePicker({ name, value, onChange, legend, options }) {
   return (
     <fieldset className="space-y-2">
-      <legend className="text-[13px] font-medium text-[var(--color-ink-faint)]">Сопоставление</legend>
+      <legend className="text-[13px] font-medium text-[var(--color-ink-faint)]">{legend}</legend>
       <div className="grid gap-2 sm:grid-cols-2">
-        {matchingModeOptions().map((option) => {
-          const on = selected === option.value;
+        {options.map((option) => {
+          const on = value === option.value;
           return (
             <label
               key={option.value}

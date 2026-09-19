@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	calculationv1 "order-fill/backend/proto/gen/go/orderfill/calculation/v1"
+	commonv1 "order-fill/backend/proto/gen/go/orderfill/common/v1"
 	"order-fill/backend/services/calculation-service/internal/service/calculation"
 )
 
@@ -119,6 +120,27 @@ func TestPlanBudgetAndWarehouseTransferRPC(t *testing.T) {
 	}
 	if budget.GetRows()[1].GetCategory() != "C" {
 		t.Fatalf("category not mapped: %+v", budget.GetRows()[1])
+	}
+	if budget.GetChristinaProffMode() != commonv1.ChristinaProffMode_CHRISTINA_PROFF_MODE_STANDARD {
+		t.Fatalf("unspecified mode mapped to %v", budget.GetChristinaProffMode())
+	}
+	compare, err := s.PlanBudget(t.Context(), &calculationv1.PlanBudgetRequest{
+		Target:             2200,
+		DeliveryWeeks:      1,
+		ChristinaProffMode: commonv1.ChristinaProffMode_CHRISTINA_PROFF_MODE_COMPARE,
+		Rows: []*calculationv1.BudgetRow{
+			{Key: "a", Name: "a", Category: "A", Quantity: 10, BasePrice: 100, Demand: 10},
+			{Key: "c", Name: "c", Category: "C", Quantity: 10, BasePrice: 100, Demand: 10},
+		},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !compare.GetCompare().GetMatch() || len(compare.GetFastRows()) != 2 {
+		t.Fatalf("compare mapping %+v", compare)
+	}
+	if compare.GetFastRows()[0].GetQuantity() != compare.GetRows()[0].GetQuantity() {
+		t.Fatalf("fast qty diverged on non-PROFF: %+v", compare)
 	}
 	_, err = s.PlanBudget(t.Context(), &calculationv1.PlanBudgetRequest{Target: -1})
 	if err == nil {
