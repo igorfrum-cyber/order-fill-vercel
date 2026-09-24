@@ -58,10 +58,12 @@ function planBudgetCore(input, target, options = {}) {
       const belowCap = candidates.filter(c => c.nextMonths <= 6 + 1e-8);
       if (belowCap.length) candidates = belowCap;
       else if (!options.allowOverSix && candidates.length) { reason = 'overSix'; break; }
-      const stage = categories.find(cat => candidates.some(c => c.r.category === cat && c.months < NORMS[cat] + c.r.delivery - 1e-8));
-      if (stage) candidates = candidates.filter(c => c.r.category === stage && c.months < NORMS[stage] + c.r.delivery - 1e-8);
       candidates = candidates.filter(c => amount + c.cost <= Math.floor(goal * 1.05 + 1e-8));
-      candidates.sort((a,b) => a.months / (NORMS[a.r.category] + a.r.delivery) - b.months / (NORMS[b.r.category] + b.r.delivery) || Math.abs(goal - amount - a.cost) - Math.abs(goal - amount - b.cost));
+      // A supplier pack must fit the category stage after purchase. Defer packs
+      // that jump past it until every feasible stage has been considered.
+      const stage = categories.find(cat => candidates.some(c => c.r.category === cat && c.months < NORMS[cat] + c.r.delivery - 1e-8 && c.nextMonths <= NORMS[cat] + c.r.delivery + 1e-8));
+      if (stage) candidates = candidates.filter(c => c.r.category === stage && c.months < NORMS[stage] + c.r.delivery - 1e-8 && c.nextMonths <= NORMS[stage] + c.r.delivery + 1e-8);
+      candidates.sort((a,b) => (stage ? a.months : a.nextMonths) / (NORMS[a.r.category] + a.r.delivery) - (stage ? b.months : b.nextMonths) / (NORMS[b.r.category] + b.r.delivery) || Math.abs(goal - amount - a.cost) - Math.abs(goal - amount - b.cost));
     } else {
       // Protect one month plus delivery before considering category cuts.
       const protectedRows = candidates.filter(c => c.nextMonths >= 1 + c.r.delivery - 1e-8);

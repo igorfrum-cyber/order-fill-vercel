@@ -36,6 +36,15 @@ p=planBudget([row('none','C',{demand:0}),row('free')],2200);
 assert.equal(p.rows[0].quantity,10);
 p=planBudget([row('zero','C',{quantity:0}),row('manual-zero','C',{quantity:0,excluded:true})],200);
 assert.equal(p.rows[0].quantity,2); assert.equal(p.rows[1].quantity,0);
+// A full ANGIOPHARM box must not push slow-moving C above its category norm
+// while an A+ box still fits its own norm.
+p=planBudget([
+  row('slow-c','C',{quantity:0,demand:6,step:20,minimum:20,price:100}),
+  row('fast-a+','A+',{quantity:160,demand:100,stock:0,step:20,minimum:20,price:100}),
+],18000);
+assert.equal(p.rows[0].quantity,0);
+assert.equal(p.rows[1].quantity,180);
+assert.ok(p.complete);
 p=planBudget([row('cap','A',{quantity:60})],6200);
 assert.equal(p.reason,'overSix');
 p=planBudget([row('cap','A',{quantity:60})],6200,{allowOverSix:true}); assert.equal(p.total,6200);
