@@ -85,7 +85,7 @@ function installBudgetControls() {
     button.onclick = () => {
       if (north && !currentNorthResult) return alert('Сначала соедините бланки.');
       if (!north && !currentResults.length) return alert('Сначала заполните бланк.');
-      if (!north && currentResults.some(r => r.summary.sourceCity !== 'Тюмень')) return alert('Заказ до суммы доступен только для Тюмени. Для северных городов используйте раздел «Север».');
+      if (!north && selectedBrand() !== 'angiopharm' && currentResults.some(r => r.summary.sourceCity !== 'Тюмень')) return alert('Заказ до суммы доступен только для Тюмени. Для северных городов используйте раздел «Север».');
       if (north && !currentNorthResult.hasTyumenSource) return alert('Загрузите таблицу Тюмени для учета продаж и остатков.');
       const brand = north ? selectedNorthBrand() : selectedBrand();
       const locks = north ? northBudgetLocks : budgetLocks;
