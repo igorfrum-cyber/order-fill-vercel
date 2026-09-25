@@ -8,6 +8,7 @@ import { procurementTotalCents } from './christinaLines.js';
 import { installTableRecalculation } from './recalculateTable.js';
 import {
   applyFinalEdits,
+  addOrderBlankStocks,
   buildNorthOrderFiles,
   finalizeNorthOrderFiles,
   fillWorkbook,
@@ -203,6 +204,7 @@ const adjustmentHeader = document.querySelector("#adjustmentHeader");
 const priorityAdjustmentHeader = document.querySelector("#priorityAdjustmentHeader");
 const issueReportButton = document.querySelector("#issueReportButton");
 const downloadButton = document.querySelector("#downloadButton");
+const includeBlankStocks = document.querySelector("#includeBlankStocks");
 const downloadLinks = document.querySelector("#downloadLinks");
 const submitButton = form.querySelector("button");
 const orderSection = document.querySelector("#orderSection");
@@ -1781,10 +1783,16 @@ downloadButton.addEventListener("click", async () => {
       result.blankWorkbook = edited.blankWorkbook;
       currentSourceWorkbook = edited.sourceWorkbook;
       result.budgetPricing=priceOrderRows(liveBudgetRows(false).filter(r=>r.group===result.blankId),result.priceSettings);
+      const pricedBlank = applyBudgetWorkbookPricing(
+        result.blankWorkbook, result.blankDetection.sheetName, result.blankDetection.headerRow, result.budgetPricing,
+      );
+      const outputBlank = includeBlankStocks.checked
+        ? addOrderBlankStocks(pricedBlank, result.blankDetection, result.reportRows, selectedBrand())
+        : pricedBlank;
       files.push({
         label: `Скачать ${result.blankLabel || "бланк"}`,
         name: currentBlankOutputNames.get(result.blankId) || "blank заполненный.xlsx",
-        blob: new Blob([saveXlsx(applyBudgetWorkbookPricing(result.blankWorkbook,result.blankDetection.sheetName,result.blankDetection.headerRow,result.budgetPricing))], {
+        blob: new Blob([saveXlsx(outputBlank)], {
           type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
         }),
       });

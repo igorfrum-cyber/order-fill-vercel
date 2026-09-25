@@ -259,6 +259,21 @@ p {
   flex-wrap: wrap;
 }
 
+.download-stock-option {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.download-stock-option input {
+  width: 18px;
+  height: 18px;
+  margin: 0;
+  accent-color: var(--accent);
+}
+
 .secondary {
   min-height: 42px;
   border: 1px solid var(--line);

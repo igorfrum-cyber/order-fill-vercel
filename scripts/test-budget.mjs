@@ -15,7 +15,7 @@ assert.equal(budgetChangeComment({before:3,quantity:0,unit:5}),'Уменьшен
 assert.equal(budgetChangeComment({before:0,quantity:0,unit:1}),'');
 assert.equal(budgetChangeComment({quantity:4,unit:1}),'');
 assert.equal(budgetChangeComment({before:4,quantity:13,unit:1}),'Добавилось 9 шт. Для закупа до суммы.');
-import { applyBudgetWorkbookPricing, budgetOrderRules, budgetReportRows, fillWorkbook, loadXlsx, buildNorthOrderFiles, finalizeNorthOrderFiles, saveXlsx } from '../src/workbookProcessor.js';
+import { addOrderBlankStocks, applyBudgetWorkbookPricing, budgetOrderRules, budgetReportRows, fillWorkbook, loadXlsx, buildNorthOrderFiles, finalizeNorthOrderFiles, saveXlsx } from '../src/workbookProcessor.js';
 import { utils, write, read } from 'xlsx';
 import { mkdirSync, writeFileSync } from 'node:fs';
 const row = (key,category='A',extra={}) => ({key,name:key,category,quantity:10,demand:10,stock:0,transit:0,delivery:0.25,price:100,unit:1,step:1,minimum:1,...extra});
@@ -85,6 +85,16 @@ const blank=()=>book([
  ['P1','Крем 50 мл',100,{t:'n',f:'C3*(1-30%)',v:70},10,{t:'n',f:'D3*E3',v:700}]
 ], 'Бланк');
 const result=fillWorkbook({sourceWorkbook:source,blankWorkbook:blank(),brand:'skin_synergy',orderMonth:'2026-10',blankId:'main'});
+const originalBlank=read(saveXlsx(result.blankWorkbook),{type:'buffer'}).Sheets['Бланк'];
+assert.equal(originalBlank.G2,undefined);
+const stockedBlank=addOrderBlankStocks(loadXlsx(saveXlsx(result.blankWorkbook)),result.blankDetection,result.reportRows,'skin_synergy');
+const exportedStock=read(saveXlsx(stockedBlank),{type:'buffer'}).Sheets['Бланк'];
+assert.equal(exportedStock.G2.v,'Остаток');
+assert.equal(exportedStock.G3.v,0);
+assert.equal(exportedStock.D3.f,originalBlank.D3.f);
+const unknownStock=addOrderBlankStocks(loadXlsx(saveXlsx(result.blankWorkbook)),result.blankDetection,[{...result.reportRows[0],stock:''}],'skin_synergy');
+const exportedUnknown=read(saveXlsx(unknownStock),{type:'buffer'}).Sheets['Бланк'];
+assert.equal(exportedUnknown.G3?.v,undefined);
 const data=budgetReportRows(result,'skin_synergy');
 assert.equal(data[0].demand,10); assert.equal(data[0].category,'C');
 assert.equal(data[0].prices[1].price,70);
