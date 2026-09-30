@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { duplicateDescription, issueReason, issueReportCsv } from "./issueReport.js";
+import { duplicateDescription, isCleanupIssueRow, issueReason, issueReportCsv } from "./issueReport.js";
 
 test("duplicateDescription formats duplicate source rows", () => {
   assert.equal(duplicateDescription([
@@ -51,4 +51,52 @@ test("issue report includes canonical cleanup reasons", () => {
   assert.match(csv, /конфликт объёма/i);
   assert.match(csv, /есть в бланке, но нет в 1С/i);
   assert.match(csv, /есть в 1С с потребностью, но нет в бланке/i);
+});
+
+test("cleanup issue detection uses legacy status, canonical category and conflict reasons", () => {
+  for (const row of [
+    { category: "needs_decision" },
+    { category: "not_in_source" },
+    { category: "not_in_blank" },
+    { matchReasons: { volume: "conflict" } },
+    { matchReasons: { form: "conflict" } },
+    { matchReasons: { source: "name" } },
+    { status: "not_in_source" },
+  ]) {
+    assert.equal(isCleanupIssueRow(row), true, JSON.stringify(row));
+  }
+  assert.equal(isCleanupIssueRow({ category: "to_order", status: "matched" }), false);
+  assert.equal(isCleanupIssueRow({ matchReasons: { volume: "match", form: "match", source: "article" } }), false);
+});
+
+test("issueReason distinguishes Chestny Znak and duplicate-choice cases", () => {
+  const ambiguous = issueReason({
+    category: "needs_decision",
+    matchReasons: { source: "chz", duplicates: "needs_choice", volume: "conflict", form: "conflict" },
+  });
+  assert.match(ambiguous, /неоднозначный дубль/);
+  assert.match(ambiguous, /неоднозначное объединение ЧЗ/);
+  assert.match(ambiguous, /конфликт типа/);
+
+  const unmatchedClone = issueReason({
+    category: "not_in_blank",
+    matchReasons: { source: "chz", duplicates: "chosen_best" },
+    duplicate: true,
+    duplicateCandidates: [{ sourceRow: 5 }],
+  });
+  assert.match(unmatchedClone, /ЧЗ без основной строки/);
+  assert.match(unmatchedClone, /Есть дублирующиеся кандидаты/);
+  assert.match(unmatchedClone, /Дубли в таблице: Строка 5:/);
+});
+
+test("issue report emits a header for no rows and defaults absent edit comments", () => {
+  const csv = issueReportCsv([{
+    status: "source_duplicate",
+    duplicate: true,
+    duplicateCandidates: [],
+  }]);
+  assert.equal(csv.split("\n").length, 2);
+  assert.match(csv, /В таблице заказа есть несколько строк с одним артикулом/);
+  assert.ok(csv.endsWith('""'));
+  assert.equal(duplicateDescription([]), "");
 });
