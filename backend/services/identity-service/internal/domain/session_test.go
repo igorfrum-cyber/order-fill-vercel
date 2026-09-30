@@ -1,6 +1,7 @@
 package domain
 
 import (
+	"context"
 	"encoding/json"
 	"strings"
 	"testing"
@@ -40,5 +41,39 @@ func TestSessionPublicViewOmitsNetworkDetails(t *testing.T) {
 	body := string(raw)
 	if strings.Contains(body, "secret-hash") || strings.Contains(body, "10.0.0.8") {
 		t.Fatalf("leaked private fields: %s", body)
+	}
+}
+
+func TestClientContextTrimsAndBoundsMetadata(t *testing.T) {
+	t.Parallel()
+
+	if got := ClientFrom(t.Context()); got != (ClientInfo{}) {
+		t.Fatalf("ClientFrom(empty) = %+v", got)
+	}
+	info := ClientFrom(WithClient(t.Context(), ClientInfo{UserAgent: " agent ", IP: " 10.0.0.1 "}))
+	if info.UserAgent != "agent" || info.IP != "10.0.0.1" {
+		t.Fatalf("ClientFrom() = %+v", info)
+	}
+	long := WithClient(t.Context(), ClientInfo{
+		UserAgent: strings.Repeat("a", maxUserAgentLength+1),
+		IP:        strings.Repeat("1", maxIPLength+1),
+	})
+	bounded := ClientFrom(long)
+	if len(bounded.UserAgent) != maxUserAgentLength || len(bounded.IP) != maxIPLength {
+		t.Fatalf("metadata was not bounded: ua=%d ip=%d", len(bounded.UserAgent), len(bounded.IP))
+	}
+	if got := ClientFrom(WithClient(context.Background(), ClientInfo{})); got != (ClientInfo{}) {
+		t.Fatalf("empty client info = %+v", got)
+	}
+}
+
+func TestDeviceLabelUsesGenericBrowserForUnknownPlatformAndNamesIPad(t *testing.T) {
+	t.Parallel()
+
+	if got := DeviceLabel("SomeBrowser/1.0"); got != "Браузер" {
+		t.Fatalf("unknown browser label = %q", got)
+	}
+	if got := DeviceLabel("Mozilla/5.0 (iPad) Version/17.0 Safari/605.1"); got != "Safari на iPad" {
+		t.Fatalf("iPad label = %q", got)
 	}
 }

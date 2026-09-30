@@ -86,6 +86,26 @@ func TestCanManageCompany(t *testing.T) {
 	if CanManageCompany(User{Role: RolePurchaser, CompanyID: "co"}, "co") {
 		t.Fatal("purchaser must not manage company")
 	}
+	if CanManageCompany(User{Role: RoleCompanyOwner}, "") {
+		t.Fatal("company actor without a bound company must not manage company")
+	}
+	if CanManageCompany(User{Role: RolePlatformAdmin, CompanyDisabled: true}, "co") {
+		t.Fatal("disabled platform admin must not manage company")
+	}
+}
+
+func TestCanCreatePlatformCompany(t *testing.T) {
+	t.Parallel()
+
+	if !CanCreatePlatformCompany(User{Role: RolePlatformAdmin}) {
+		t.Fatal("active platform admin should create companies")
+	}
+	if CanCreatePlatformCompany(User{Role: RoleCompanyOwner}) {
+		t.Fatal("company owner must not create companies")
+	}
+	if CanCreatePlatformCompany(User{Role: RolePlatformAdmin, CompanyDisabled: true}) {
+		t.Fatal("disabled platform admin must not create companies")
+	}
 }
 
 func TestBoundToOwnCompany(t *testing.T) {
