@@ -1,7 +1,46 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { changePassword, completeTwoFactorLogin, createCompany, createPlatformAdmin, disableTwoFactor, enableTwoFactor, enableUser, getCompanyLogin, getCompanyOrderProfile, listAudit, listPlatformAdmins, listSessions, listStatus, login, logoutEverywhere, setCompanyLogo, setCompanyLoginSlug, startTwoFactorSetup, updateCompany, updateCompanyOrderProfile } from "./auth.js";
+import {
+  acceptInvite,
+  beginPasskeyLogin,
+  beginPasskeyRegistration,
+  changePassword,
+  clearCompanyLogo,
+  completeTwoFactorLogin,
+  createCompany,
+  createPlatformAdmin,
+  createUser,
+  deletePasskey,
+  disableCompany,
+  disableTwoFactor,
+  disableUser,
+  enableTwoFactor,
+  enableUser,
+  finishPasskeyLogin,
+  finishPasskeyRegistration,
+  getCompanyLogin,
+  getCompanyOrderProfile,
+  getMe,
+  listAudit,
+  listCompanies,
+  listJobs,
+  listPasskeys,
+  listPlatformAdmins,
+  listSessions,
+  listStatus,
+  listUsers,
+  login,
+  logout,
+  logoutEverywhere,
+  resetUser,
+  revokeSession,
+  setCompanyLogo,
+  setCompanyLoginSlug,
+  startTwoFactorSetup,
+  updateCompany,
+  updateCompanyOrderProfile,
+} from "./auth.js";
 import { ApiClient, apiClient } from "./client.js";
 
 test("platform admin API lists admins and posts a new login", async () => {
@@ -405,4 +444,87 @@ test("ApiClient.requestDownload sends credentials", async () => {
   });
   const download = await client.requestDownload("/api/v1/jobs/job-1/archive");
   assert.equal(download.fileName, "angiopharm_2026-09.zip");
+});
+
+test("authentication and admin endpoints encode paths and preserve request payloads", async () => {
+  const calls = [];
+  const originalFetcher = apiClient.fetcher;
+  const originalBase = apiClient.baseUrl;
+  apiClient.baseUrl = "";
+  apiClient.fetcher = async (url, options) => {
+    calls.push({ url, options });
+    return {
+      ok: true,
+      status: 200,
+      headers: new Map([["Content-Type", "application/json"]]),
+      json: async () => ({ ok: true }),
+    };
+  };
+  try {
+    await getMe();
+    await acceptInvite("token-1", "safe-password");
+    await logout();
+    await beginPasskeyRegistration();
+    await beginPasskeyRegistration("Laptop");
+    await finishPasskeyRegistration("challenge/1", { id: "credential" });
+    await listPasskeys();
+    await revokeSession("session/1");
+    await deletePasskey("passkey/1");
+    await beginPasskeyLogin();
+    await beginPasskeyLogin("buyer");
+    await finishPasskeyLogin("challenge/2", { id: "credential" });
+    await listJobs();
+    await listJobs("company / 1");
+    await listCompanies();
+    await createCompany("Acme", "acme");
+    await updateCompany("company/1", "Acme", "acme");
+    await disableCompany("company/1");
+    await listUsers("company/1");
+    await createUser("company/1", "new-user", "purchaser");
+    await disableUser("user/1");
+    await resetUser("user/1");
+    await clearCompanyLogo("company/1");
+
+    assert.deepEqual(calls.map(({ url }) => url), [
+      "/api/v1/auth/me",
+      "/api/v1/auth/invite",
+      "/api/v1/auth/logout",
+      "/api/v1/auth/passkeys/register/begin",
+      "/api/v1/auth/passkeys/register/begin",
+      "/api/v1/auth/passkeys/register/finish",
+      "/api/v1/auth/passkeys",
+      "/api/v1/auth/sessions/session%2F1/delete",
+      "/api/v1/auth/passkeys/passkey%2F1/delete",
+      "/api/v1/auth/passkeys/login/begin",
+      "/api/v1/auth/passkeys/login/begin",
+      "/api/v1/auth/passkeys/login/finish",
+      "/api/v1/jobs",
+      "/api/v1/jobs?company_id=company%20%2F%201",
+      "/api/v1/companies",
+      "/api/v1/companies",
+      "/api/v1/companies/company%2F1/profile",
+      "/api/v1/companies/company%2F1/disable",
+      "/api/v1/companies/company%2F1/users",
+      "/api/v1/companies/company%2F1/users",
+      "/api/v1/users/user%2F1/disable",
+      "/api/v1/users/user%2F1/reset",
+      "/api/v1/companies/company%2F1/logo/clear",
+    ]);
+    assert.deepEqual(JSON.parse(calls[1].options.body), { token: "token-1", password: "safe-password" });
+    assert.deepEqual(JSON.parse(calls[3].options.body), { name: "" });
+    assert.deepEqual(JSON.parse(calls[4].options.body), { name: "Laptop" });
+    assert.deepEqual(JSON.parse(calls[5].options.body), {
+      challenge_id: "challenge/1",
+      credential: { id: "credential" },
+      name: "",
+    });
+    assert.deepEqual(JSON.parse(calls[9].options.body), { login: "" });
+    assert.deepEqual(JSON.parse(calls[10].options.body), { login: "buyer" });
+    assert.deepEqual(JSON.parse(calls[15].options.body), { name: "Acme", login_slug: "acme" });
+    assert.deepEqual(JSON.parse(calls[16].options.body), { name: "Acme", login_slug: "acme" });
+    assert.deepEqual(JSON.parse(calls[19].options.body), { login: "new-user", role: "purchaser" });
+  } finally {
+    apiClient.fetcher = originalFetcher;
+    apiClient.baseUrl = originalBase;
+  }
 });
