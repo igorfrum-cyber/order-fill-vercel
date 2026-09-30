@@ -19,3 +19,29 @@ test("runNorthMergeJob creates north job and returns normalized plan", async () 
   assert.deepEqual(result.plan.uploadedCities, ["Сургут"]);
   assert.equal(result.plan.summary.kind, "christina");
 });
+
+test("runNorthMergeJob forwards polling status updates to the caller", async () => {
+  const updates = [];
+  const api = {
+    createNorthMergeJob: async () => ({ id: "north-2" }),
+    pollJob: async (_id, options) => {
+      const job = { id: "north-2", status: "processing", progress: 0.5, progressMessage: "Собираю план" };
+      options.onUpdate(job);
+      return { id: "north-2", status: "completed" };
+    },
+    getJobReport: async () => ({}),
+  };
+  await runNorthMergeJob({ api, command: {}, onStatus: (...args) => updates.push(args) });
+  assert.equal(updates.length, 1);
+  assert.equal(updates[0][0], "Собираю план");
+  assert.equal(updates[0][1].progress, 0.5);
+});
+
+test("runNorthMergeJob surfaces the terminal failure message", async () => {
+  const api = {
+    createNorthMergeJob: async () => ({ id: "north-3" }),
+    pollJob: async () => ({ id: "north-3", status: "failed", error: { message: "Файл повреждён" } }),
+    getJobReport: async () => { throw new Error("report must not be requested after failure"); },
+  };
+  await assert.rejects(runNorthMergeJob({ api, command: {} }), /Файл повреждён/);
+});
