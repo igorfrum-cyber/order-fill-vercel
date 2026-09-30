@@ -14,6 +14,18 @@ test("mapReportRow preserves canonical category and match reasons", () => {
   assert.deepEqual(row.matchReasons, { article: "exact", source: "article" });
 });
 
+test("mapReportRow normalizes Christina line details and missing required values", () => {
+  const row = mapReportRow({
+    key: "r1",
+    christina_line: { id: "MUSE", name: "Muse", article: "A1", required: ["A1", "A2"] },
+  });
+  assert.deepEqual(row.christinaLine, { id: "MUSE", name: "Muse", article: "A1", required: ["A1", "A2"] });
+
+  const sparse = mapReportRow({ christina_line: { required: "not-an-array" } });
+  assert.deepEqual(sparse.christinaLine, { id: "", name: "", article: "", required: [] });
+  assert.equal(mapReportRow({}).christinaLine, null);
+});
+
 const absoluteUrl = (path) => `http://api.test${path}`;
 
 test("mapReport converts the API contract into the shape the UI renders", () => {

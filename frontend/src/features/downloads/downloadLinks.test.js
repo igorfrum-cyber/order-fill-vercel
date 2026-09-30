@@ -25,3 +25,10 @@ test("fileNameFromContentDisposition prefers the RFC 5987 file name", () => {
     "angiopharm_2026-09.zip",
   );
 });
+
+test("fileNameFromContentDisposition falls back to the undecoded value when escaping is invalid", () => {
+  assert.equal(fileNameFromContentDisposition("attachment; filename*=UTF-8''bad%ZZ"), "bad%ZZ");
+  assert.equal(fileNameFromContentDisposition('attachment; filename="quoted.zip"'), "quoted.zip");
+  assert.equal(fileNameFromContentDisposition("attachment; filename= plain.zip "), "plain.zip");
+  assert.equal(fileNameFromContentDisposition(null), "");
+});
