@@ -1,7 +1,27 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { combinedSummary, filterJobs, historyDeskLine, initialComment, jobNextAction, jobProgress, jobStatusText, jobStatusLabel, jobsEmptyMessage, jobsEmptyState, jobStatusHint, liveJobs, queueJobs, reportSummaryFromRows, statusLabel } from "./reportModel.js";
+import {
+  baselineForReportRow,
+  combinedSummary,
+  filterJobs,
+  historyDeskLine,
+  initialComment,
+  isIssueRow,
+  isPriorityRow,
+  jobNextAction,
+  jobProgress,
+  jobStatusText,
+  jobStatusLabel,
+  jobsEmptyMessage,
+  jobsEmptyState,
+  jobStatusHint,
+  liveJobs,
+  queueJobs,
+  reportSummaryFromRows,
+  rowMatchesFilter,
+  statusLabel,
+} from "./reportModel.js";
 
 test("reportSummaryFromRows derives dashboard metrics from API report rows", () => {
   const rows = [
@@ -198,4 +218,33 @@ test("filterJobs keeps brand status and month", () => {
     ).map((job) => job.id),
     ["q", "p"],
   );
+});
+
+test("report baselines prefer inserted quantity then positive rounded demand", () => {
+  assert.equal(baselineForReportRow({ inserted: "4.5", rounded: 8, recommended: 2 }), 4.5);
+  assert.equal(baselineForReportRow({ inserted: "invalid", rounded: 8, recommended: 2 }), 8);
+  assert.equal(baselineForReportRow({ rounded: 8, recommended: 1 }), null);
+  assert.equal(baselineForReportRow({ rounded: 0, recommended: 2 }), null);
+  assert.equal(baselineForReportRow({ rounded: "invalid", recommended: 2 }), null);
+});
+
+test("issue and priority filters cover warning and duplicate rows", () => {
+  assert.equal(isIssueRow({ status: "warning_name_differs" }), true);
+  assert.equal(isIssueRow({ status: "warning_name_only" }), true);
+  assert.equal(isIssueRow({ status: "matched" }), false);
+  assert.equal(isPriorityRow({ status: "warning_name_only" }), true);
+  assert.equal(isPriorityRow({ duplicate: true }), true);
+  assert.equal(isPriorityRow({ status: "matched" }), false);
+
+  const filters = [
+    [{ status: "left_blank_nonpositive" }, "leftBlank", true],
+    [{ status: "warning_name_only" }, "suspicious", true],
+    [{ status: "not_in_source" }, "notInSource", true],
+    [{ status: "not_in_blank" }, "notInBlank", true],
+    [{ duplicate: true }, "duplicates", true],
+    [{ status: "unknown" }, "unknown-filter", true],
+  ];
+  for (const [row, filter, expected] of filters) {
+    assert.equal(rowMatchesFilter(row, filter), expected, filter);
+  }
 });
