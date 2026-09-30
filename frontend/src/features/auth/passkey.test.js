@@ -4,12 +4,18 @@ import test from "node:test";
 import {
   bytesToBase64url,
   creationOptionsFromJSON,
+  credentialToJSON,
+  conditionalMediationAvailable,
   defaultPasskeyName,
-  passkeyErrorMessage,
   isPasskeyRequestPending,
+  passkeyErrorMessage,
   passkeyOriginIssue,
   passkeySupported,
   passkeyUsable,
+  publicKeyFromBegin,
+  requestOptionsFromJSON,
+  toBuffer,
+  waitForPasskeySlot,
 } from "./passkey.js";
 
 test("defaultPasskeyName names the current device without asking", () => {
@@ -104,4 +110,153 @@ test("passkeyErrorMessage explains browser security errors", () => {
     "Ключ доступа ещё занят. Нажмите «Войти по Face ID или Touch ID» ещё раз.",
   );
   assert.equal(isPasskeyRequestPending(pending), true);
+});
+
+test("passkey helpers normalize names, origins and browser support edge cases", () => {
+  assert.equal(defaultPasskeyName(-2), "Это устройство");
+  assert.equal(defaultPasskeyName("2"), "Это устройство 3");
+  assert.equal(passkeyOriginIssue(null), "");
+  assert.equal(passkeyOriginIssue({ protocol: "http:", hostname: "[::1]" }), "insecure");
+  assert.equal(passkeyOriginIssue({ protocol: "http:", hostname: "::1" }), "");
+  assert.equal(passkeyOriginIssue({ protocol: "http:", hostname: "laptop.localhost" }), "");
+  assert.equal(isPasskeyRequestPending(new Error("not pending")), false);
+  assert.equal(isPasskeyRequestPending(null), false);
+  assert.deepEqual(publicKeyFromBegin(null), null);
+  assert.deepEqual(publicKeyFromBegin({ challenge: "c" }), { challenge: "c" });
+  assert.deepEqual(publicKeyFromBegin({ publicKey: { challenge: "c" }, id: "outer" }), { challenge: "c" });
+
+  const previousCredential = globalThis.PublicKeyCredential;
+  const previousNavigator = globalThis.navigator;
+  try {
+    globalThis.PublicKeyCredential = function PublicKeyCredential() {};
+    Object.defineProperty(globalThis, "navigator", { configurable: true, value: { credentials: {} } });
+    assert.equal(passkeySupported(), false);
+    assert.equal(passkeyUsable({ protocol: "https:", hostname: "example.com" }), false);
+    Object.defineProperty(globalThis, "navigator", { configurable: true, value: { credentials: { create() {} } } });
+    assert.equal(passkeySupported(), true);
+  } finally {
+    globalThis.PublicKeyCredential = previousCredential;
+    Object.defineProperty(globalThis, "navigator", { configurable: true, value: previousNavigator });
+  }
+});
+
+test("conditional mediation availability handles unsupported, success, false and rejection", async () => {
+  const previousCredential = globalThis.PublicKeyCredential;
+  const previousNavigator = globalThis.navigator;
+  try {
+    globalThis.PublicKeyCredential = undefined;
+    Object.defineProperty(globalThis, "navigator", { configurable: true, value: {} });
+    assert.equal(await conditionalMediationAvailable(), false);
+
+    function FakePublicKeyCredential() {}
+    globalThis.PublicKeyCredential = FakePublicKeyCredential;
+    Object.defineProperty(globalThis, "navigator", { configurable: true, value: { credentials: { create() {} } } });
+    assert.equal(await conditionalMediationAvailable(), false);
+    FakePublicKeyCredential.isConditionalMediationAvailable = async () => true;
+    assert.equal(await conditionalMediationAvailable(), true);
+    FakePublicKeyCredential.isConditionalMediationAvailable = async () => false;
+    assert.equal(await conditionalMediationAvailable(), false);
+    FakePublicKeyCredential.isConditionalMediationAvailable = async () => { throw new Error("unsupported"); };
+    assert.equal(await conditionalMediationAvailable(), false);
+  } finally {
+    globalThis.PublicKeyCredential = previousCredential;
+    Object.defineProperty(globalThis, "navigator", { configurable: true, value: previousNavigator });
+  }
+});
+
+test("registration and assertion options decode challenge and credential IDs", () => {
+  const encoded = bytesToBase64url(new Uint8Array([1, 2, 3]).buffer);
+  const registration = creationOptionsFromJSON({
+    challenge: encoded,
+    user: { id: encoded, name: "buyer" },
+    excludeCredentials: [{ id: encoded, type: "public-key" }],
+  });
+  assert.deepEqual([...new Uint8Array(registration.challenge)], [1, 2, 3]);
+  assert.deepEqual([...new Uint8Array(registration.user.id)], [1, 2, 3]);
+  assert.deepEqual([...new Uint8Array(registration.excludeCredentials[0].id)], [1, 2, 3]);
+
+  const assertion = requestOptionsFromJSON({
+    challenge: encoded,
+    allowCredentials: [{ id: encoded, transports: ["internal"] }],
+  });
+  assert.deepEqual([...new Uint8Array(assertion.allowCredentials[0].id)], [1, 2, 3]);
+  assert.equal(requestOptionsFromJSON({ challenge: encoded }).challenge instanceof ArrayBuffer, true);
+
+  assert.throws(() => creationOptionsFromJSON(null), /сервер не прислал параметры/);
+  assert.throws(() => requestOptionsFromJSON("invalid"), /сервер не прислал параметры/);
+  assert.throws(() => requestOptionsFromJSON({}), /нет challenge/);
+  assert.throws(() => creationOptionsFromJSON({ challenge: encoded }), /нет user.id/);
+  assert.throws(() => toBuffer(42), /unsupported passkey value/);
+  const view = new Uint8Array([4, 5]);
+  assert.equal(toBuffer(view), view.buffer);
+});
+
+test("credential serialization handles native JSON and registration and assertion responses", () => {
+  assert.deepEqual(credentialToJSON({ toJSON: () => ({ id: "native" }) }), { id: "native" });
+
+  const registration = credentialToJSON({
+    id: "credential-1",
+    rawId: new Uint8Array([1, 2]).buffer,
+    response: {
+      clientDataJSON: new Uint8Array([3]).buffer,
+      attestationObject: new Uint8Array([4]).buffer,
+      getTransports: () => ["internal"],
+    },
+    getClientExtensionResults: () => ({ appid: true }),
+  });
+  assert.equal(registration.rawId, "AQI");
+  assert.equal(registration.response.clientDataJSON, "Aw");
+  assert.equal(registration.response.attestationObject, "BA");
+  assert.deepEqual(registration.response.transports, ["internal"]);
+  assert.deepEqual(registration.clientExtensionResults, { appid: true });
+
+  const assertion = credentialToJSON({
+    id: "credential-2",
+    rawId: new Uint8Array([5]).buffer,
+    type: "",
+    response: {
+      clientDataJSON: new Uint8Array([6]).buffer,
+      authenticatorData: new Uint8Array([7]).buffer,
+      signature: new Uint8Array([8]).buffer,
+      userHandle: new Uint8Array([9]).buffer,
+    },
+  });
+  assert.equal(assertion.type, "public-key");
+  assert.equal(assertion.response.authenticatorData, "Bw");
+  assert.equal(assertion.response.signature, "CA");
+  assert.equal(assertion.response.userHandle, "CQ");
+  assert.deepEqual(assertion.clientExtensionResults, {});
+  assert.equal(bytesToBase64url(new Uint8Array([255, 254]).buffer), "__4");
+});
+
+test("passkey error messages cover cancellation, unsupported browser, server data and fallback", () => {
+  for (const name of ["AbortError", "NotAllowedError"]) {
+    const error = Object.assign(new Error("cancelled"), { name });
+    assert.equal(passkeyErrorMessage(error, "login"), "Вход с ключом доступа отменён.");
+  }
+  assert.equal(passkeyErrorMessage(Object.assign(new Error(), { name: "NotSupportedError" })), "Этот браузер или приложение не умеет создавать ключ доступа.");
+  assert.equal(passkeyErrorMessage(Object.assign(new Error(), { name: "ConstraintError" })), "Это устройство не подходит. Выберите другое приложение или ключ.");
+  for (const name of ["TypeError", "DataError", "EncodingError", "SyntaxError"]) {
+    assert.match(passkeyErrorMessage(Object.assign(new Error(), { name })), /Параметры ключа доступа/);
+  }
+  assert.equal(passkeyErrorMessage(Object.assign(new Error("bad response"), { name: "ApiError", status: 500 }), "login"), "Не получилось войти с ключом доступа. Можно войти паролем.");
+  assert.equal(passkeyErrorMessage(new Error("  ")), "Не удалось добавить ключ доступа. Попробуйте другое приложение или ключ.");
+  assert.equal(passkeyErrorMessage(null, "login"), "Не получилось войти с ключом доступа. Можно войти паролем.");
+  assert.equal(typeof passkeyErrorMessage(new Error("unexpected passkey error")), "string");
+});
+
+test("waitForPasskeySlot yields through a short timer", async () => {
+  const originalSetTimeout = globalThis.setTimeout;
+  let delay;
+  globalThis.setTimeout = (callback, milliseconds) => {
+    delay = milliseconds;
+    callback();
+    return 0;
+  };
+  try {
+    await waitForPasskeySlot();
+    assert.equal(delay, 100);
+  } finally {
+    globalThis.setTimeout = originalSetTimeout;
+  }
 });
