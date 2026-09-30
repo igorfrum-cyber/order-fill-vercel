@@ -15,6 +15,11 @@ import {
   matchReasonLabel,
   needsAcknowledgement,
   presentationStatus,
+  matchPercent,
+  boxStep,
+  pairedRowCount,
+  fillReadiness,
+  quantityDisplay,
   attentionReason,
   reviewTableHeaders,
   rowCategory,
@@ -187,4 +192,76 @@ test("reviewQueueLine counts work left", () => {
 
 test("rowCategory prefers canonical category over legacy status", () => {
   assert.equal(rowCategory({ category: "order_not_needed", status: "left_blank_nonpositive" }), "order_not_needed");
+});
+
+test("row presentation maps status categories, percent, box size and fill readiness", () => {
+  assert.equal(rowCategory({ duplicate: true, status: "not_in_source" }), "needs_decision");
+  assert.equal(rowCategory({ status: "not_in_source" }), "not_in_source");
+  assert.equal(rowCategory({ status: "not_in_blank" }), "not_in_blank");
+  assert.equal(rowCategory({ status: "matched" }), "order_not_needed");
+  assert.equal(presentationStatus({ status: "matched", inserted: 5 }), "to_order");
+  assert.equal(matchPercent({ status: "not_in_source", similarity: 0.9 }), null);
+  assert.equal(matchPercent({ status: "matched", similarity: 0.927 }), 93);
+  assert.equal(boxStep({ blankBoxSize: "6" }), 6);
+  assert.equal(boxStep({ blankBoxSize: "bad" }), 1);
+  assert.equal(boxStep({ blankBoxSize: 0 }), 1);
+  assert.equal(pairedRowCount({ to_order: 3, order_not_needed: 1, needs_decision: 2, not_in_blank: 10 }), 6);
+  assert.equal(fillReadiness({ to_order: 0 }), 0);
+  assert.equal(fillReadiness({ to_order: 3, order_not_needed: 1 }), 0.75);
+});
+
+test("row matches tab through canonical categories and legacy aggregate filters", () => {
+  assert.equal(rowMatchesTab({}, ""), true);
+  assert.equal(rowMatchesTab({ category: "to_order" }, "to_order"), true);
+  assert.equal(rowMatchesTab({ category: "to_order" }, "not_in_blank"), false);
+  assert.equal(rowMatchesTab({ status: "matched", inserted: 5 }, "to_order"), true);
+  assert.equal(rowMatchesTab({ status: "matched", inserted: null }, "to_order"), false);
+  assert.equal(rowMatchesTab({ status: "left_blank_nonpositive" }, "order_not_needed"), true);
+  assert.equal(rowMatchesTab({ status: "warning_name_differs" }, "check_name_or_volume"), true);
+  assert.equal(rowMatchesTab({ status: "source_duplicate" }, "needs_decision"), true);
+  assert.equal(rowMatchesTab({ status: "not_in_source" }, "not_in_source"), true);
+  assert.equal(rowMatchesTab({ status: "not_in_blank" }, "not_in_blank"), true);
+  assert.equal(rowMatchesTab({ status: "unrecognized" }, "unknown"), false);
+});
+
+test("match reason labels and attention reasons cover every service decision", () => {
+  const reasons = [
+    [{ duplicates: "chosen_best" }, "Дубль: выбран лучший"],
+    [{ volume: "conflict" }, "Проверить объём"],
+    [{ form: "conflict" }, "Проверить тип"],
+    [{ source: "name" }, "Найдено только по названию"],
+    [{ source: "none" }, "Нет пары"],
+    [{ article: "alias" }, "Надёжно"],
+  ];
+  for (const [matchReasons, expected] of reasons) {
+    assert.equal(matchReasonLabel({ matchReasons }), expected);
+    assert.equal(attentionReason({ matchReasons }), expected);
+  }
+  assert.equal(matchReasonLabel({}), "");
+});
+
+test("query search accepts empty text and scans both source and blank fields", () => {
+  const row = { sourceArticle: "A-100", sourceName: "Serum", blankArticle: "B-200", blankName: "Cream" };
+  assert.equal(rowMatchesQuery(row, "  "), true);
+  assert.equal(rowMatchesQuery(row, "a-100"), true);
+  assert.equal(rowMatchesQuery(row, "serum"), true);
+  assert.equal(rowMatchesQuery(row, "b-200"), true);
+  assert.equal(rowMatchesQuery(row, "missing"), false);
+});
+
+test("decision hint distinguishes clean, duplicate-only and mixed queues", () => {
+  assert.equal(decisionHint([]), "");
+  assert.equal(decisionHint([{ status: "source_duplicate" }, { duplicate: true }]), decisionHint([{ status: "source_duplicate" }]));
+  assert.match(decisionHint([{ status: "warning_name_only" }, { status: "source_duplicate" }]), /Есть дубли и сомнительные пары/);
+  assert.equal(isDuplicateDecision({ matchReasons: { duplicates: "needs_choice" } }), true);
+  assert.equal(attentionReason({ status: "matched" }), "");
+});
+
+test("firstReviewTab falls back to no-order work and quantityDisplay handles empty and numeric values", () => {
+  assert.equal(firstReviewTab({}), "order_not_needed");
+  assert.equal(quantityDisplay(null), "");
+  assert.equal(quantityDisplay(""), "");
+  assert.equal(quantityDisplay("not-number"), "not-number");
+  assert.equal(quantityDisplay(3), "3");
+  assert.equal(quantityDisplay(3.25), "3.25");
 });
