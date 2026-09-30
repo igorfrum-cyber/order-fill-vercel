@@ -78,6 +78,20 @@ func (c ingestResultClient) IngestWebhook(context.Context, *inboundv1.IngestWebh
 
 type inboundClient struct{ inboundv1.InboundServiceClient }
 
+type messageClient struct {
+	inboundv1.InboundServiceClient
+	err error
+}
+
+func (c messageClient) GetMessage(context.Context, *inboundv1.GetMessageRequest, ...grpc.CallOption) (*inboundv1.GetMessageResponse, error) {
+	if c.err != nil {
+		return nil, c.err
+	}
+	return &inboundv1.GetMessageResponse{Message: &inboundv1.InboundMessageSummary{
+		Id: "m1", Subject: "Заказ", CompanyId: "c1", BodyText: "plain", BodyHtml: "<p>html</p>",
+	}}, nil
+}
+
 type inboundSettingsCapture struct {
 	inboundv1.InboundServiceClient
 	gotCtx context.Context
@@ -395,6 +409,44 @@ func TestInboundMessagesOwner(t *testing.T) {
 	body := rec.Body.String()
 	if rec.Code != http.StatusOK || !strings.Contains(body, `"status":"received"`) || !strings.Contains(body, `"subject":"Заказ №123"`) || !strings.Contains(body, `"name":"report.xlsx"`) {
 		t.Fatalf("status=%d body=%s", rec.Code, body)
+	}
+}
+
+func TestInboundMessageReturnsFormattedBody(t *testing.T) {
+	t.Parallel()
+
+	api := &API{Clients: clients.Clients{Inbound: messageClient{}}}
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/inbound/companies/c1/messages/m1", nil)
+	req.SetPathValue("company_id", "c1")
+	req.SetPathValue("message_id", "m1")
+	req = req.WithContext(withUser(t.Context(), User{ID: "owner", Role: "company_owner", CompanyID: "c1"}))
+	rec := httptest.NewRecorder()
+	api.inboundMessage(rec, req)
+	body := rec.Body.String()
+	if rec.Code != http.StatusOK || !strings.Contains(body, `"body_text":"plain"`) || !strings.Contains(body, `"body_html":"\u003cp\u003ehtml\u003c/p\u003e"`) {
+		t.Fatalf("status=%d body=%s", rec.Code, body)
+	}
+}
+
+func TestInboundMessageHidesUnauthorizedAndMapsServiceErrors(t *testing.T) {
+	t.Parallel()
+
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/inbound/companies/c1/messages/m1", nil)
+	req.SetPathValue("company_id", "c1")
+	req.SetPathValue("message_id", "m1")
+	req = req.WithContext(withUser(t.Context(), User{ID: "buyer", Role: "purchaser", CompanyID: "c1"}))
+	rec := httptest.NewRecorder()
+	(&API{}).inboundMessage(rec, req)
+	if rec.Code != http.StatusNotFound {
+		t.Fatalf("unauthorized status=%d", rec.Code)
+	}
+
+	api := &API{Clients: clients.Clients{Inbound: messageClient{err: status.Error(codes.NotFound, "missing")}}}
+	req = req.WithContext(withUser(t.Context(), User{ID: "owner", Role: "company_owner", CompanyID: "c1"}))
+	rec = httptest.NewRecorder()
+	api.inboundMessage(rec, req)
+	if rec.Code != http.StatusNotFound || !strings.Contains(rec.Body.String(), `"code":"not_found"`) {
+		t.Fatalf("service error status=%d body=%s", rec.Code, rec.Body.String())
 	}
 }
 
