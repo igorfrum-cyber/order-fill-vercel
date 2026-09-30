@@ -133,3 +133,49 @@ test("resolvePrivateTestdata prefers ORDER_FILL_PRIVATE_TESTDATA", () => {
     "/custom/private",
   );
 });
+
+test("resolvePrivateTestdata checks repository data, worktree sibling data and final fallback", () => {
+  const root = fs.mkdtempSync(path.join("/tmp", "order-fill-private-resolution-"));
+  const repo = path.join(root, "nested", "project");
+  const repositoryData = path.join(repo, "testdata", "private");
+  const sharedData = path.resolve(repo, "../../testdata/private");
+  try {
+    fs.mkdirSync(path.join(repositoryData, "Бланки"), { recursive: true });
+    fs.mkdirSync(path.join(repositoryData, "таблицы продаж"), { recursive: true });
+    fs.mkdirSync(path.join(sharedData, "Бланки"), { recursive: true });
+    fs.mkdirSync(path.join(sharedData, "таблицы продаж"), { recursive: true });
+    assert.equal(resolvePrivateTestdata(repo, {}), repositoryData);
+
+    fs.rmSync(repositoryData, { recursive: true, force: true });
+    assert.equal(resolvePrivateTestdata(repo, {}), sharedData);
+
+    fs.rmSync(sharedData, { recursive: true, force: true });
+    assert.equal(resolvePrivateTestdata(repo, {}), repositoryData);
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true });
+    fs.rmSync(path.resolve(repo, "../../testdata"), { recursive: true, force: true });
+  }
+});
+
+test("private pair scanning filters lock and non-workbook files and reports no exact Christina pair", () => {
+  const root = fs.mkdtempSync(path.join("/tmp", "order-fill-private-scan-"));
+  const blanks = path.join(root, "Бланки");
+  const sales = path.join(root, "таблицы продаж");
+  fs.mkdirSync(blanks);
+  fs.mkdirSync(sales);
+  fs.writeFileSync(path.join(blanks, "~$Клапп.xlsx"), "");
+  fs.writeFileSync(path.join(blanks, "Клапп.xlsx"), "");
+  fs.writeFileSync(path.join(blanks, "Клапп.xlsm"), "");
+  fs.writeFileSync(path.join(sales, "Клапп Тюмень.xlsx"), "");
+  try {
+    const scan = scanPrivateBrandPairs(root);
+    assert.equal(scan.available, true);
+    assert.equal(scan.pairs.length, 1);
+    assert.equal(scan.pairs[0].blankPath, path.join(blanks, "Клапп.xlsx"));
+    assert.equal(scan.pairs[0].sourcePath, path.join(sales, "Клапп Тюмень.xlsx"));
+    assert.deepEqual(christinaProffUiPair(root), { available: true, pair: null });
+    assert.deepEqual(christinaProffUiPair(path.join(root, "missing")), { available: false, pair: null });
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true });
+  }
+});
