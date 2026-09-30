@@ -64,3 +64,18 @@ test("consumeQuickStart opens once then stays closed", () => {
   assert.equal(consumeQuickStart({ id: "u1" }, adapter), false);
   assert.equal(shouldShowQuickStart({ id: "u1" }, adapter), false);
 });
+
+test("quick start tolerates missing users and unavailable preference storage", () => {
+  assert.equal(shouldShowQuickStart(null, { getItem: () => null }), false);
+  assert.equal(shouldShowQuickStart({}, { getItem: () => null }), false);
+  assert.equal(shouldShowQuickStart({ id: "u1" }, { getItem: () => { throw new Error("storage denied"); } }), true);
+  assert.doesNotThrow(() => dismissQuickStart(null, { setItem: () => { throw new Error("unused"); } }));
+  assert.doesNotThrow(() => dismissQuickStart({ id: "u1" }, { setItem: () => { throw new Error("storage denied"); } }));
+  assert.equal(consumeQuickStart(null, { getItem: () => null }), false);
+});
+
+test("tourSceneForView recognizes replayed overview and defaults unknown order stages to upload", () => {
+  assert.equal(tourSceneForView({ screen: "overview", replay: true }), "overview");
+  assert.equal(tourSceneForView({ screen: "order", stage: "unknown" }), "order-upload");
+  assert.equal(tourSceneForView(), "home");
+});
