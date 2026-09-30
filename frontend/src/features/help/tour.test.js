@@ -84,3 +84,32 @@ test("prefersReducedMotion follows the system setting", () => {
     false,
   );
 });
+
+test("prefersReducedMotion safely handles an unavailable media query", () => {
+  assert.equal(prefersReducedMotion(undefined), false);
+  assert.equal(prefersReducedMotion(() => { throw new Error("media query unavailable"); }), false);
+});
+
+test("tooltipLayout supports top, left and right placements and flips when needed", () => {
+  const target = { left: 400, top: 300, width: 100, height: 40 };
+  const size = { width: 120, height: 70 };
+  const viewport = { width: 1000, height: 800 };
+
+  assert.equal(tooltipLayout(target, size, viewport, "top").arrow, "bottom");
+  assert.equal(tooltipLayout(target, size, viewport, "left").arrow, "right");
+  assert.equal(tooltipLayout(target, size, viewport, "right").arrow, "left");
+
+  assert.equal(tooltipLayout({ ...target, left: 20 }, size, viewport, "left").arrow, "left");
+  assert.equal(tooltipLayout({ ...target, left: 850 }, size, viewport, "right").arrow, "right");
+  assert.equal(tooltipLayout({ ...target, top: 10 }, size, viewport, "top").arrow, "top");
+});
+
+test("tooltipLayout keeps the minimum margin when the viewport is smaller than the card", () => {
+  const layout = tooltipLayout(
+    { left: 0, top: 0, width: 1, height: 1 },
+    { width: 200, height: 200 },
+    { width: 20, height: 20 },
+  );
+  assert.equal(layout.left, 16);
+  assert.equal(layout.top, 16);
+});
