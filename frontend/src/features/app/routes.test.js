@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { companyIdFromSearch, navItemHref, parseAppPath, pathForScreen, resolveOrderNavJobId, scopedPath, screenAllowed, withCompanyQuery } from "./routes.js";
+import { companyIdFromSearch, homePath, navItemHref, parseAppPath, pathForScreen, resolveOrderNavJobId, scopedPath, screenAllowed, withCompanyQuery } from "./routes.js";
 
 test("parseAppPath reads signed-in screens and job ids", () => {
   assert.deepEqual(parseAppPath("/"), { screen: "", jobId: "", unknown: false });
@@ -33,6 +33,12 @@ test("pathForScreen writes the URL for a screen", () => {
   assert.equal(pathForScreen("company"), "/company");
   assert.equal(pathForScreen("north"), "/north");
   assert.equal(pathForScreen("brand-rules"), "/brand-rules");
+});
+
+test("pathForScreen falls back to root and homePath scopes the user home", () => {
+  assert.equal(pathForScreen("unknown-screen"), "/");
+  assert.equal(homePath("purchaser"), "/jobs/new");
+  assert.equal(homePath("purchaser", "company/1"), "/jobs/new?company=company%2F1");
 });
 
 test("resolveOrderNavJobId keeps the open job when Work is clicked again", () => {
