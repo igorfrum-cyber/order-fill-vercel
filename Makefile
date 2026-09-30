@@ -1,4 +1,4 @@
-.PHONY: verify lint test docs docs-sync contracts security up down logs load-order-fill lan-https lan-https-down https https-down hooks qa-test qa-test-headed qa-report
+.PHONY: verify lint test coverage docs docs-sync contracts security up down logs load-order-fill lan-https lan-https-down https https-down hooks qa-test qa-test-headed qa-report
 
 hooks:
 	git config core.hooksPath .githooks
@@ -36,6 +36,16 @@ test:
 			GOCACHE="$${GOCACHE:-$$root/.cache/go-build}" \
 			GOMODCACHE="$${GOMODCACHE:-$$root/.cache/go-mod}" \
 			go test ./...); \
+		done
+
+coverage:
+	npm run test:coverage --prefix frontend
+	@root=$$(pwd); \
+	for module in backend/pkg backend/proto backend/services/*; do \
+		if [ -f "$$module/go.mod" ]; then \
+			echo "==> $$module"; \
+			(cd "$$module" && GOWORK=off GOTOOLCHAIN="$${GOTOOLCHAIN:-auto}" GOCACHE="$${GOCACHE:-$$root/.cache/go-build}" GOMODCACHE="$${GOMODCACHE:-$$root/.cache/go-mod}" go test -cover ./...) || exit $$?; \
+		fi; \
 	done
 
 docs-sync:

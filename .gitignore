@@ -5,6 +5,7 @@ deploy/secrets/
 deploy/Caddyfile.lan
 node_modules/
 dist/
+frontend/coverage/
 .cache/
 test-output/
 testdata/private/
