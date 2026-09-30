@@ -1,6 +1,7 @@
 package grpcapi
 
 import (
+	"math"
 	"testing"
 
 	"google.golang.org/grpc/codes"
@@ -9,6 +10,7 @@ import (
 
 	brandv1 "order-fill/backend/proto/gen/go/orderfill/brand/v1"
 	commonv1 "order-fill/backend/proto/gen/go/orderfill/common/v1"
+	"order-fill/backend/services/brand-service/internal/domain"
 	"order-fill/backend/services/brand-service/internal/service/brands"
 	"order-fill/backend/services/brand-service/internal/storage/memory"
 )
@@ -88,5 +90,72 @@ func TestDetectBrandMapsNomenclatureGroup(t *testing.T) {
 	}
 	if resp.GetBrand() != "levissime" {
 		t.Fatalf("brand = %q", resp.GetBrand())
+	}
+}
+
+func TestListBrandsReturnsCatalog(t *testing.T) {
+	t.Parallel()
+
+	resp, err := NewServer(brands.New()).ListBrands(t.Context(), &brandv1.ListBrandsRequest{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := []string{"angiopharm", "christina", "klapp", "levissime", "novacutan", "skin_synergy", "sothys"}
+	if len(resp.GetBrands()) != len(want) {
+		t.Fatalf("brands = %v", resp.GetBrands())
+	}
+	for index, brand := range want {
+		if resp.GetBrands()[index] != brand {
+			t.Fatalf("brand[%d] = %q, want %q", index, resp.GetBrands()[index], brand)
+		}
+	}
+}
+
+func TestDetectBrandReturnsEmptyForUnknownInputs(t *testing.T) {
+	t.Parallel()
+
+	resp, err := NewServer(brands.New()).DetectBrand(t.Context(), &brandv1.DetectBrandRequest{NomenclatureGroup: "unknown", FileName: "unknown.xlsx"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if resp.GetBrand() != "" || resp.GetVariant() != "" {
+		t.Fatalf("unknown brand detection = %+v", resp)
+	}
+}
+
+func TestProtoPolicyClampsIntegerFieldsAndPreservesOptionalUnitFlag(t *testing.T) {
+	t.Parallel()
+
+	policy := protoPolicy(domain.Policy{Key: "brand", Multiple: math.MaxInt32 + 1, MinQuantity: math.MinInt32 - 1})
+	if policy.GetQuantityMultiple() != math.MaxInt32 || policy.GetMinQuantity() != math.MinInt32 || policy.RequireUnit != nil {
+		t.Fatalf("clamped policy = %+v", policy)
+	}
+	requireUnit := false
+	policy = protoPolicy(domain.Policy{RequireUnit: &requireUnit})
+	if policy.RequireUnit == nil || *policy.RequireUnit {
+		t.Fatalf("optional require-unit value was lost: %+v", policy)
+	}
+}
+
+func TestNewRegistersConfiguredHandler(t *testing.T) {
+	t.Parallel()
+
+	server := New(&Server{svc: brands.New()})
+	defer server.Stop()
+	if len(server.GetServiceInfo()) != 1 {
+		t.Fatalf("registered services = %v", server.GetServiceInfo())
+	}
+}
+
+func TestUpdateBrandPolicyRejectsInvalidPolicy(t *testing.T) {
+	t.Parallel()
+
+	ctx := metadata.NewIncomingContext(t.Context(), metadata.Pairs("x-actor-role", "platform_admin"))
+	request := &brandv1.UpdateBrandPolicyRequest{
+		Meta:   &commonv1.RequestMeta{ActorUserId: "admin"},
+		Policy: &brandv1.BrandPolicy{Brand: "klapp", Label: "KLAPP", Adjustment: "invalid"},
+	}
+	if _, err := NewServer(brands.New(memory.New())).UpdateBrandPolicy(ctx, request); status.Code(err) != codes.InvalidArgument {
+		t.Fatalf("invalid policy code = %v, error = %v", status.Code(err), err)
 	}
 }
