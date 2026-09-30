@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { formulaOverlays } from "./formulas.js";
+import { evaluateFormula, formulaOverlays } from "./formulas.js";
 
 test("formulaOverlays recomputes a column SUM after a quantity overlay", () => {
   const formulas = [{ row: 4, column: 5, formula: "SUM(E2:E3)" }];
@@ -105,4 +105,47 @@ test("formulaOverlays prefers a computable price formula over a stale cached val
   const derived = formulaOverlays(formulas, { overlays, values });
   assert.equal(derived.get("2:8").value, "4020");
   assert.equal(derived.get("2:11").value, "8040");
+});
+
+test("formula evaluator covers supported functions, references, precedence and comparisons", () => {
+  const values = new Map([["1:1", 4], ["1:2", 5], ["2:1", 6], ["2:2", 7]]);
+  const getNumber = (row, column) => values.get(`${row}:${column}`) || 0;
+  assert.equal(evaluateFormula("-2+3*4", getNumber), 10);
+  assert.equal(evaluateFormula("SUM(A1,2,A2:B1)", getNumber), 28);
+  assert.equal(evaluateFormula("SUM(B2:A1)", getNumber), 22);
+  assert.equal(evaluateFormula("ROUND(1.256,2)", getNumber), 1.26);
+  assert.equal(evaluateFormula("IF(1=1,2,3)", getNumber), 2);
+  assert.equal(evaluateFormula("IF(1=0,2,3)", getNumber), 3);
+  assert.equal(evaluateFormula("IFERROR(1/0,9)", getNumber), 9);
+  assert.equal(evaluateFormula("SUBTOTAL(9,A1:B2)", getNumber), 22);
+  assert.equal(evaluateFormula("SUBTOTAL(109,A1:B2)", getNumber), 22);
+  assert.equal(evaluateFormula("1=2", getNumber), 0);
+});
+
+test("formula evaluator rejects malformed expressions and overlays ignore invalid formula rows", () => {
+  const zero = () => 0;
+  for (const formula of ["UNKNOWN(1)", "SUBTOTAL(8,A1)", "A0", "@", '"unclosed', "*1", "9".repeat(400)]) {
+    assert.throws(() => evaluateFormula(formula, zero), undefined, formula);
+  }
+  assert.equal(evaluateFormula("A1+1 trailing", zero), null);
+
+  const result = formulaOverlays([
+    null,
+    { row: 0, column: 1, formula: "1" },
+    { row: 1, column: 0, formula: "1" },
+    { row: 1, column: 1, formula: "" },
+    { row: 2, column: 2, formula: "1/0" },
+    { row: 3, column: 3, formula: "?" },
+  ]);
+  assert.equal(result.size, 0);
+});
+
+test("formula overlays resolve circular references from cached values", () => {
+  const result = formulaOverlays([
+    { row: 1, column: 1, formula: "B1+1" },
+    { row: 1, column: 2, formula: "A1+1" },
+  ], { values: { "1:1": 10, "1:2": 20 } });
+  assert.equal(result.size, 2);
+  assert.equal(result.get("1:1").value, "21");
+  assert.equal(result.get("1:2").value, "22");
 });
