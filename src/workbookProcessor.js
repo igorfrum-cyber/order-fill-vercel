@@ -536,6 +536,20 @@ function canonicalProductArticle(article, rule) {
   return article;
 }
 
+function levissimeRussianIdentity(value, rule) {
+  const name = asText(value).replace(/^чз\s*\+?\s*/iu, "");
+  const parts = name.split("/");
+  if (parts.length > 2 || (parts.length === 2 && !/^[A-Za-z0-9\s+().,-]+$/.test(parts[1]))) return null;
+  const primary = parts[0];
+  if (!/[а-яё]/iu.test(primary) || !/\d\s*(?:мл|мг|г|л)(?=$|[^а-яё])/iu.test(primary)) return null;
+  return comparableChzName(primary, rule).replace(/[a-z][a-z0-9]*/giu, " ").replace(/\s+/gu, " ").trim();
+}
+
+function levissimeVolumeSignature(value) {
+  const volumes = asText(value).toLowerCase().match(/\d+(?:[.,]\d+)?\s*(?:мл|мг|г|л)(?=$|[^а-яё])/gu) || [];
+  return [...new Set(volumes.map(volume => volume.replace(/\s+/gu, "").replace(",", ".")))].sort().join(";");
+}
+
 function calculateTargetNew(values) {
   const numeric = values.map((value) => (value == null ? null : Number(value)));
   const total = numeric.reduce((sum, value) => sum + (Number.isFinite(value) ? value : 0), 0);
@@ -722,31 +736,42 @@ function rebuildSourceWithChz(detection, deliveryWeeks, rule, calculationColumns
   }
 
   const rowsToDelete = [];
+  const consumed = new Set();
   for (const group of rowsByArticle.values()) {
     const normalRows = group.filter((row) => !row.isChz);
     const chzRows = group.filter((row) => row.isChz);
-    if (!normalRows.length || !chzRows.length) continue;
+    for (const target of normalRows) {
+      if (consumed.has(target.row)) continue;
+      const identity = rule.label === "LeviSsime" ? levissimeRussianIdentity(target.name, rule) : null;
+      const matchingNormalRows = identity ? normalRows.filter(row => row !== target && !consumed.has(row.row)
+        && levissimeRussianIdentity(row.name, rule) === identity) : [];
+      const matchingChzRows = chzRows.filter((row) => !consumed.has(row.row)
+        && (rule.label !== "LeviSsime" || levissimeVolumeSignature(target.name) === levissimeVolumeSignature(row.name))
+        && ((identity && levissimeRussianIdentity(row.name, rule) === identity) || chzNameSimilarity(target.name, row.name, rule) >= 0.9));
+      const matchingRows = [...matchingNormalRows, ...matchingChzRows];
+      if (!matchingRows.length) continue;
 
-    const target = normalRows[0];
-    const matchingChzRows = chzRows.filter((row) => chzNameSimilarity(target.name, row.name, rule) >= 0.9);
-    if (!matchingChzRows.length) continue;
-
-    const sourceRowsList = [target, ...matchingChzRows].map((row) => row.row);
-    const mergedName = `ЧЗ + ${target.name}`;
-    setTextCell(sheet, target.row, columns.name, mergedName);
-    if (columns.name !== 1 && columns.article !== 1) setTextCell(sheet, target.row, 1, mergedName);
-    sumColumns(sheet, target.row, sourceRowsList, [
-      ...calculationColumns.salesColumns,
-      calculationColumns.totalQuantity,
-      calculationColumns.revenue,
-      calculationColumns.previousQuantity,
-      columns.stock,
-      columns.inTransit,
-    ]);
-    const fact = mergeFactAndComment(sheet, sourceRowsList, columns);
-    setNumericCell(sheet, target.row, columns.orderedFact, fact.fact);
-    setTextCell(sheet, target.row, columns.comment, fact.comment);
-    rowsToDelete.push(...matchingChzRows.map((row) => row.row));
+      const sourceRowsList = [target, ...matchingRows].map((row) => row.row);
+      const hasChz = matchingChzRows.length || [target, ...matchingNormalRows].some(row => isCombinedChzName(row.name));
+      const mergedName = hasChz ? `ЧЗ + ${target.name.replace(/^чз\s*\+\s*/iu, "")}` : target.name;
+      setTextCell(sheet, target.row, columns.name, mergedName);
+      if (columns.name !== 1 && columns.article !== 1) setTextCell(sheet, target.row, 1, mergedName);
+      sumColumns(sheet, target.row, sourceRowsList, [
+        ...calculationColumns.salesColumns,
+        calculationColumns.totalQuantity,
+        calculationColumns.revenue,
+        calculationColumns.previousQuantity,
+        columns.stock,
+        columns.inTransit,
+      ]);
+      const fact = mergeFactAndComment(sheet, sourceRowsList, columns);
+      setNumericCell(sheet, target.row, columns.orderedFact, fact.fact);
+      setTextCell(sheet, target.row, columns.comment, fact.comment);
+      for (const row of matchingRows) {
+        consumed.add(row.row);
+        rowsToDelete.push(row.row);
+      }
+    }
   }
 
   removeWorksheetRows(sheet, rowsToDelete);
@@ -963,7 +988,9 @@ function compatibleTyumenNames(left, right, brand) {
   if (brand === "levissime" && left.article && right.article) {
     const rule = brandRule(brand);
     if (canonicalProductArticle(left.article, rule) === canonicalProductArticle(right.article, rule)) {
-      return comparableChzName(left.name, rule) === comparableChzName(right.name, rule);
+      const identity = levissimeRussianIdentity(left.name, rule);
+      return (identity && identity === levissimeRussianIdentity(right.name, rule))
+        || comparableChzName(left.name, rule) === comparableChzName(right.name, rule);
     }
   }
   return clean(left.name) === clean(right.name);

@@ -140,6 +140,21 @@ const differentSizeRows = utils.sheet_to_json(read(saveXlsx(differentSize), { ty
 const differentSizeMatches = differentSizeRows.filter((row) => row[0] === "4644" || row[0] === "МТ4644");
 assert.equal(differentSizeMatches.length, 2);
 assert.ok(differentSizeMatches.every((row) => String(row[26]).includes("Проверить:")));
+for (const [article, first, second] of [
+  ["4672", "Levissime Себорегулирующий концентрат 30 мл/Pure balance concentrate", "Levissime Себорегулирующий концентрат 30 мл"],
+  ["4670", "Levissime Осветляющий концентрат 30 мл", "ЧЗ Lev Осветляющий концентрат WHITE PEARL CONCENTRATE Q 30 мл"],
+]) {
+  const input = source([{ article, name: first, sales: 1, stock: 6 }, { article, name: second, sales: 2, stock: 2 }]);
+  const result = recalculateOrderTable({ workbook: input, brand: "levissime", orderMonth: "2026-10" });
+  assert.equal(result.rows.length, 1);
+  assert.equal(result.rows[0].stock, 8);
+  assert.equal(result.rows[0].orderedFact, 1998);
+  const outputRows = utils.sheet_to_json(read(saveXlsx(result.workbook), { type: "buffer" }).Sheets.Тюмень, { header: 1 });
+  assert.equal(outputRows[3][2], 3);
+  const repeated = recalculateOrderTable({ workbook: result.workbook, brand: "levissime", orderMonth: "2026-10" });
+  assert.equal(repeated.rows.length, 1);
+  assert.equal(repeated.rows[0].stock, 8, "Repeated processing must not double-count merged inventory");
+}
 const nameOnlyPlan = buildTyumenWarehousePlan({ officeWorkbook: source([{ article: "", name: "Novacutan SBIO, 2 мл", stock: 10 }]), warehouseWorkbook: source([{ article: "", name: "Novacutan SBIO, 2 мл", stock: 90 }, { article: "", name: "Novacutan YBIO, 2 мл", stock: 20 }]), brand: "novacutan" });
 assert.equal(nameOnlyPlan.length, 2);
 assert.equal(nameOnlyPlan.find((r) => r.name.includes("YBIO")).quantity, 5);
