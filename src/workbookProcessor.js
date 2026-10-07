@@ -550,6 +550,23 @@ function levissimeVolumeSignature(value) {
   return [...new Set(volumes.map(volume => volume.replace(/\s+/gu, "").replace(",", ".")))].sort().join(";");
 }
 
+function levissimeEnglishIdentity(value) {
+  // The first English product segment precedes optional descriptive text.
+  const segment = asText(value).split("/").slice(1).find(part => /^\s*[A-Za-z]/u.test(part));
+  if (!segment) return null;
+  const product = segment.replace(/\d+(?:[.,]\d+)?\s*(?:мл|мг|г|л)(?=$|[^а-яё]).*$/iu, "").trim();
+  if (!/^[A-Za-z\s+().-]+$/u.test(product)) return null;
+  const normalized = normalizeHeader(product);
+  return normalized.split(" ").length >= 3 ? normalized : null;
+}
+
+function matchingLevissimeEnglishNames(left, right) {
+  const identity = levissimeEnglishIdentity(left);
+  const volume = levissimeVolumeSignature(left);
+  return Boolean(identity && volume && identity === levissimeEnglishIdentity(right)
+    && volume === levissimeVolumeSignature(right));
+}
+
 function calculateTargetNew(values) {
   const numeric = values.map((value) => (value == null ? null : Number(value)));
   const total = numeric.reduce((sum, value) => sum + (Number.isFinite(value) ? value : 0), 0);
@@ -747,7 +764,9 @@ function rebuildSourceWithChz(detection, deliveryWeeks, rule, calculationColumns
         && levissimeRussianIdentity(row.name, rule) === identity) : [];
       const matchingChzRows = chzRows.filter((row) => !consumed.has(row.row)
         && (rule.label !== "LeviSsime" || levissimeVolumeSignature(target.name) === levissimeVolumeSignature(row.name))
-        && ((identity && levissimeRussianIdentity(row.name, rule) === identity) || chzNameSimilarity(target.name, row.name, rule) >= 0.9));
+        && ((identity && levissimeRussianIdentity(row.name, rule) === identity)
+          || (rule.label === "LeviSsime" && matchingLevissimeEnglishNames(target.name, row.name))
+          || chzNameSimilarity(target.name, row.name, rule) >= 0.9));
       const matchingRows = [...matchingNormalRows, ...matchingChzRows];
       if (!matchingRows.length) continue;
 
@@ -990,6 +1009,7 @@ function compatibleTyumenNames(left, right, brand) {
     if (canonicalProductArticle(left.article, rule) === canonicalProductArticle(right.article, rule)) {
       const identity = levissimeRussianIdentity(left.name, rule);
       return (identity && identity === levissimeRussianIdentity(right.name, rule))
+        || matchingLevissimeEnglishNames(left.name, right.name)
         || comparableChzName(left.name, rule) === comparableChzName(right.name, rule);
     }
   }

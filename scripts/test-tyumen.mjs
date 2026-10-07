@@ -120,6 +120,19 @@ for (const [article, , , stock, chzStock, chzStockWarehouse, stockWarehouse] of 
 }
 const leviSingle = recalculateOrderTable({ workbook: leviOffice, brand: "levissime", orderMonth: "2026-10" });
 assert.equal(leviSingle.rows.filter((item) => item.article === "4644" || item.article === "MT4644").length, 1);
+const stickName = "Lev Омолаживающий бальзам-стик / HYDRAGE GLOBAL be.STICK/ FACIAL STICK FOR MATURE SKIN 18,5 г";
+const stickChz = "ЧЗ Lev Маска-стик ночная регенерирующая, несмываемая/HYDRAGE GLOBAL be.STICK 18,5 г";
+for (const [name, count] of [[stickChz, 1], [stickChz.replace("18,5", "20"), 2], [stickChz.replace("be.STICK", "be.CREAM"), 2]]) {
+  const result = recalculateOrderTable({ workbook: source([
+    { article: "4775", name: stickName, stock: 3, sales: 2 },
+    { article: "МТ4775", name, stock: 30, sales: 0 },
+  ]), brand: "levissime", orderMonth: "2026-10" });
+  assert.equal(result.rows.length, count);
+  if (count === 1) {
+    assert.equal(result.rows[0].stock, 33);
+    assert.equal(result.rows[0].recommended, 0);
+  }
+}
 const splitAlias = mergeTyumenSources({
   officeWorkbook: source([{ article: "4644", name: "Levissime Ампулы с витамином С 6*3 мл", stock: 1 }]),
   warehouseWorkbook: source([{ article: "МТ4644", name: "ЧЗ Lev Ампулы с витамином С 6*3 мл", stock: 2 }]),
