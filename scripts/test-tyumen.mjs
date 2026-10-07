@@ -96,6 +96,50 @@ const chzWithin = mergeTyumenSources({ officeWorkbook: source([{ article: "P1", 
 const chzRow = utils.sheet_to_json(read(saveXlsx(chzWithin), { type: "buffer" }).Sheets.Тюмень, { header: 1 })[3];
 assert.equal(chzRow[0], "P1", "CHZ merging must not overwrite an article in the first column");
 assert.equal(chzRow[22], 105);
+const leviProducts = [
+  ["4644", "Levissime Ампулы с витамином С 6*3 мл", "ЧЗ Lev Ампулы с витамином С 6*3 мл", 1, 2, 4, 1],
+  ["4620", "Levissime Лифтинг-ампулы 6*3 мл", "ЧЗ Lev Лифтинг-ампулы 6*3 мл", 0, 3, 2, 1],
+  ["4542", "Lev Балансирующий крем Armony Cream 200 мл", "ЧЗ Lev Балансирующий крем Armony Cream 200 мл", 0, 6, 1, 2],
+  ["4664", "Levissime Отбеливающая маска White2 Mask 50 мл", "ЧЗ Lev Осветляющая маска White2 Mask 50 мл", 0, 5, 1, 1],
+];
+const leviOffice = source(leviProducts.flatMap(([article, normal, chz, stock, chzStock]) => [
+  { article, name: normal, sales: 10, stock },
+  { article: article === "4664" ? article : `МТ${article}`, name: chz, sales: 0, stock: chzStock },
+]));
+const leviWarehouse = source(leviProducts.flatMap(([article, normal, chz, , , chzStockWarehouse, stockWarehouse]) => [
+  { article: article === "4664" ? article : `МТ${article}`, name: chz, sales: 0, stock: chzStockWarehouse },
+  { article, name: normal, sales: 0, stock: stockWarehouse },
+]));
+const leviMerged = mergeTyumenSources({ officeWorkbook: leviOffice, warehouseWorkbook: leviWarehouse, brand: "levissime" });
+const leviRows = utils.sheet_to_json(read(saveXlsx(leviMerged), { type: "buffer" }).Sheets.Тюмень, { header: 1 });
+for (const [article, , , stock, chzStock, chzStockWarehouse, stockWarehouse] of leviProducts) {
+  const matches = leviRows.filter((row) => row[0] === article || row[0] === `МТ${article}`);
+  assert.equal(matches.length, 1, `LeviSsime ${article} must have one combined source row`);
+  assert.equal(matches[0][2], 10, "Only the original sales must contribute to demand");
+  assert.equal(matches[0][22], stock + chzStock + chzStockWarehouse + stockWarehouse);
+}
+const leviSingle = recalculateOrderTable({ workbook: leviOffice, brand: "levissime", orderMonth: "2026-10" });
+assert.equal(leviSingle.rows.filter((item) => item.article === "4644" || item.article === "MT4644").length, 1);
+const splitAlias = mergeTyumenSources({
+  officeWorkbook: source([{ article: "4644", name: "Levissime Ампулы с витамином С 6*3 мл", stock: 1 }]),
+  warehouseWorkbook: source([{ article: "МТ4644", name: "ЧЗ Lev Ампулы с витамином С 6*3 мл", stock: 2 }]),
+  brand: "levissime",
+});
+const splitAliasRows = utils.sheet_to_json(read(saveXlsx(splitAlias), { type: "buffer" }).Sheets.Тюмень, { header: 1 });
+assert.equal(splitAliasRows.filter((row) => row[0] === "4644" || row[0] === "МТ4644").length, 1);
+assert.equal(splitAliasRows.find((row) => row[0] === "4644" || row[0] === "МТ4644")[22], 3);
+const differentSize = mergeTyumenSources({
+  officeWorkbook: source([
+    { article: "4644", name: "Lev Ампулы 6*3 мл", stock: 1 },
+    { article: "МТ4644", name: "ЧЗ Lev Ампулы 6*10 мл", stock: 2 },
+  ]),
+  warehouseWorkbook: source([]),
+  brand: "levissime",
+});
+const differentSizeRows = utils.sheet_to_json(read(saveXlsx(differentSize), { type: "buffer" }).Sheets.Тюмень, { header: 1 });
+const differentSizeMatches = differentSizeRows.filter((row) => row[0] === "4644" || row[0] === "МТ4644");
+assert.equal(differentSizeMatches.length, 2);
+assert.ok(differentSizeMatches.every((row) => String(row[26]).includes("Проверить:")));
 const nameOnlyPlan = buildTyumenWarehousePlan({ officeWorkbook: source([{ article: "", name: "Novacutan SBIO, 2 мл", stock: 10 }]), warehouseWorkbook: source([{ article: "", name: "Novacutan SBIO, 2 мл", stock: 90 }, { article: "", name: "Novacutan YBIO, 2 мл", stock: 20 }]), brand: "novacutan" });
 assert.equal(nameOnlyPlan.length, 2);
 assert.equal(nameOnlyPlan.find((r) => r.name.includes("YBIO")).quantity, 5);

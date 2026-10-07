@@ -507,18 +507,33 @@ function isChzCloneName(value) {
   return normalizeHeader(value).startsWith("чз ") && !isCombinedChzName(value);
 }
 
-function comparableChzName(value) {
-  return normalizeHeader(value)
+function comparableChzName(value, rule) {
+  let name = normalizeHeader(value)
     .replace(/^чз\s+/u, "")
     .replace(/\bчз\b/gu, " ")
     .replace(/\bан\b/gu, " ")
     .replace(/\bangiopharm\b/gu, " ")
     .replace(/\s+/gu, " ")
     .trim();
+  if (rule.label === "LeviSsime") {
+    name = name.replace(/^(?:levissime|lev)\s+/u, "")
+      .replace(/отбеливающая/gu, "осветляющая");
+  }
+  return name;
 }
 
-function chzNameSimilarity(left, right) {
-  return similarity(comparableChzName(left), comparableChzName(right));
+function chzNameSimilarity(left, right, rule) {
+  return similarity(comparableChzName(left, rule), comparableChzName(right, rule));
+}
+
+function canonicalProductArticle(article, rule) {
+  // LeviSsime uses both numeric and MT-prefixed articles for one product.
+  for (const prefix of rule.articlePrefixAliases || []) {
+    if (article.startsWith(prefix) && /^\d+$/.test(article.slice(prefix.length))) {
+      return article.slice(prefix.length);
+    }
+  }
+  return article;
 }
 
 function calculateTargetNew(values) {
@@ -701,8 +716,9 @@ function rebuildSourceWithChz(detection, deliveryWeeks, rule, calculationColumns
   for (const row of rows) {
     if (asText(sheetCellValue(sheet,row.row,columns.comment)).includes('Проверить: неоднозначная позиция.')) continue;
     if (!row.article) continue;
-    if (!rowsByArticle.has(row.article)) rowsByArticle.set(row.article, []);
-    rowsByArticle.get(row.article).push(row);
+    const key = canonicalProductArticle(row.article, rule);
+    if (!rowsByArticle.has(key)) rowsByArticle.set(key, []);
+    rowsByArticle.get(key).push(row);
   }
 
   const rowsToDelete = [];
@@ -712,7 +728,7 @@ function rebuildSourceWithChz(detection, deliveryWeeks, rule, calculationColumns
     if (!normalRows.length || !chzRows.length) continue;
 
     const target = normalRows[0];
-    const matchingChzRows = chzRows.filter((row) => chzNameSimilarity(target.name, row.name) >= 0.9);
+    const matchingChzRows = chzRows.filter((row) => chzNameSimilarity(target.name, row.name, rule) >= 0.9);
     if (!matchingChzRows.length) continue;
 
     const sourceRowsList = [target, ...matchingChzRows].map((row) => row.row);
@@ -913,7 +929,7 @@ function tyumenColumns(detection) {
 }
 
 function tyumenProductKey(item, brand) {
-  if (item.article) return `article:${item.article}`;
+  if (item.article) return `article:${canonicalProductArticle(item.article, brandRule(brand))}`;
   if (brand === "novacutan") return `name:${novacutanPositionKey(item.name)}`;
   return `name:${normalizeName(item.name.replace(/^\s*чз\s*\+?\s*/iu, ""))}`;
 }
@@ -942,18 +958,24 @@ function tyumenRows(workbook, brand, options = {}) {
   return { detection, calculation, byKey };
 }
 
-function compatibleTyumenNames(left, right) {
+function compatibleTyumenNames(left, right, brand) {
   const clean = (name) => normalizeName(name.replace(/^\s*чз\s*\+?\s*/iu, ""));
-  return clean(left) === clean(right);
+  if (brand === "levissime" && left.article && right.article) {
+    const rule = brandRule(brand);
+    if (canonicalProductArticle(left.article, rule) === canonicalProductArticle(right.article, rule)) {
+      return comparableChzName(left.name, rule) === comparableChzName(right.name, rule);
+    }
+  }
+  return clean(left.name) === clean(right.name);
 }
 
-function alignTyumenKeys(office, warehouse) {
+function alignTyumenKeys(office, warehouse, brand) {
   // An ambiguous identity must not silently pick one warehouse counterpart.
   const conflicts=new Set();
-  for(const side of [office,warehouse])for(const item of side.byKey.values())if(item.ambiguous)conflicts.add(item.article || normalizeName(item.name));
-  for(const [key,a] of office.byKey){const b=warehouse.byKey.get(key);if(b&&!compatibleTyumenNames(a.name,b.name))conflicts.add(a.article || normalizeName(a.name));}
+  for(const side of [office,warehouse])for(const item of side.byKey.values())if(item.ambiguous)conflicts.add(tyumenProductKey(item,brand));
+  for(const [key,a] of office.byKey){const b=warehouse.byKey.get(key);if(b&&!compatibleTyumenNames(a,b,brand))conflicts.add(tyumenProductKey(a,brand));}
   for(const [label,side] of [['office',office],['warehouse',warehouse]]) {
-    for(const [key,item] of [...side.byKey])if(conflicts.has(item.article || normalizeName(item.name))) {
+    for(const [key,item] of [...side.byKey])if(conflicts.has(tyumenProductKey(item,brand))) {
       item.ambiguous=true;side.byKey.delete(key);side.byKey.set(`review:${label}:${item.row}`,item);
     }
   }
@@ -962,7 +984,7 @@ function alignTyumenKeys(office, warehouse) {
   for (const [key, item] of [...office.byKey]) {
     if(item.ambiguous)continue;
     if (warehouse.byKey.has(key)) continue;
-    const candidates = [...warehouse.byKey].filter(([, other]) => !other.ambiguous && (!item.article || !other.article) && compatibleTyumenNames(item.name, other.name));
+    const candidates = [...warehouse.byKey].filter(([, other]) => !other.ambiguous && (!item.article || !other.article) && compatibleTyumenNames(item, other, brand));
     if (candidates.length > 1) throw new Error(`Неоднозначное соответствие по названию «${item.name}» между офисом и складом.`);
     if (candidates.length === 1) {
       const [targetKey] = candidates[0];
@@ -995,7 +1017,7 @@ export function mergeTyumenSources({ officeWorkbook, warehouseWorkbook, brand = 
   // A new warehouse may have inventory but no monthly columns yet. Use the
   // office template so the combined report still has a complete sales timeline.
   const workbook = warehouseHasSales ? warehouseCopy : officeCopy;
-  alignTyumenKeys(office, warehouse);
+  alignTyumenKeys(office, warehouse, brand);
   const monthHeaders = ({ detection, calculation }) => calculation.salesColumns.map((col) => normalizeHeader(sheetCellValue(detection.sheet, detection.headerRow - 1, col)));
   if (warehouseHasSales && JSON.stringify(monthHeaders(office)) !== JSON.stringify(monthHeaders(warehouse))) throw new Error("Месяцы продаж офиса и склада не совпадают.");
   const { detection, calculation } = warehouseHasSales ? warehouse : office;
@@ -1010,7 +1032,7 @@ export function mergeTyumenSources({ officeWorkbook, warehouseWorkbook, brand = 
   for (const key of keys) {
     const a = office.byKey.get(key);
     const b = warehouse.byKey.get(key);
-    if (a && b && !compatibleTyumenNames(a.name, b.name)) throw new Error(`У артикула ${a.articleRaw} разные названия: «${a.name}» и «${b.name}». Уточните соответствие перед объединением.`);
+    if (a && b && !compatibleTyumenNames(a, b, brand)) throw new Error(`У артикула ${a.articleRaw} разные названия: «${a.name}» и «${b.name}». Уточните соответствие перед объединением.`);
     const row = (warehouseHasSales ? b?.row : a?.row) ?? ++lastRow;
     const value = (source, item, col) => item && col ? (parseNumber(sheetCellValue(source.detection.sheet, item.row, col)) ?? 0) : 0;
     const stockOffice = value(office, a, office.detection.columns.stock);
