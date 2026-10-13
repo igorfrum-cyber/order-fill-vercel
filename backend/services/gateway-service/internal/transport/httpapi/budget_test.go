@@ -173,3 +173,25 @@ func TestPlanOrderBudgetMissingCompanyUsesStandard(t *testing.T) {
 		t.Fatalf("mode=%v", calc.req.GetChristinaProffMode())
 	}
 }
+
+func TestQuoteBudgetForwardsPerGroupDiscountAndAuthoritativePrice(t *testing.T) {
+	t.Parallel()
+	calc := &fakeCalcClient{resp: &calculationv1.PlanBudgetResponse{Before: 270, Total: 270, Complete: true, Rows: []*calculationv1.PlannedBudgetRow{{Key: "x", Price: 90, Discount: 10, Quantity: 3}}}}
+	api := &API{Clients: clients.Clients{Calculation: calc}}
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/order/budget-plan", strings.NewReader(`{"quote_only":true,"rows":[{"key":"x","base_price":100,"quantity":3,"discount_override":10}]}`))
+	rec := httptest.NewRecorder()
+	api.planOrderBudget(rec, req)
+	if rec.Code != http.StatusOK {
+		t.Fatal(rec.Body.String())
+	}
+	if !calc.req.GetQuoteOnly() || calc.req.Rows[0].DiscountOverride == nil || *calc.req.Rows[0].DiscountOverride != 10 {
+		t.Fatalf("request %+v", calc.req)
+	}
+	var got budgetPlanResponseJSON
+	if err := json.Unmarshal(rec.Body.Bytes(), &got); err != nil {
+		t.Fatal(err)
+	}
+	if got.Rows[0].Price != 90 || got.Rows[0].Discount != 10 {
+		t.Fatalf("rows %+v", got.Rows)
+	}
+}

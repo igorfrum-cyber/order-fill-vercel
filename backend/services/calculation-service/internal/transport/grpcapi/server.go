@@ -38,7 +38,7 @@ func toProtoRow(row domain.OrderRow) *calculationv1.OrderRow {
 		RecommendedQty: row.Recommended, AbcCategory: row.ABCCategory,
 		TargetStock: row.TargetStock, RevenuePercent: row.RevenuePercent,
 		CumulativePercent: row.CumulativePercent, AverageMonthly: row.AverageMonthly,
-		TotalQuantity:  row.TotalQuantity,
+		TotalQuantity: row.TotalQuantity, MonthlyNeed: row.MonthlyNeed,
 		WarehouseStock: row.WarehouseStock, WarehouseTransit: row.WarehouseTransit,
 		HasWarehouseStock: row.HasWarehouseStock, BoxSize: row.BoxSize, HasBoxSize: row.HasBoxSize,
 	}
@@ -54,7 +54,7 @@ func protoRow(row *calculationv1.OrderRow) domain.OrderRow {
 		MonthlySales: row.GetMonthlySales(), Recommended: row.GetRecommendedQty(), ABCCategory: row.GetAbcCategory(),
 		TargetStock: row.GetTargetStock(), RevenuePercent: row.GetRevenuePercent(),
 		CumulativePercent: row.GetCumulativePercent(), AverageMonthly: row.GetAverageMonthly(),
-		TotalQuantity:  row.GetTotalQuantity(),
+		TotalQuantity: row.GetTotalQuantity(), MonthlyNeed: row.GetMonthlyNeed(),
 		WarehouseStock: row.GetWarehouseStock(), WarehouseTransit: row.GetWarehouseTransit(),
 		HasWarehouseStock: row.GetHasWarehouseStock(), BoxSize: row.GetBoxSize(), HasBoxSize: row.GetHasBoxSize(),
 	}
@@ -118,6 +118,7 @@ func (s *Server) CalculateAdjustedQuantity(_ context.Context, req *calculationv1
 	} else {
 		adj = calculation.AdjustQuantity(req.GetRecommendedQty(), req.GetBrand(), req.GetOrderedFact(), req.GetHasOrderedFact(), req.GetBoxSize())
 	}
+	adj = calculation.ConvertSupplierUnits(adj, req.GetSupplierUnitSize())
 	resp := &calculationv1.CalculateAdjustedQuantityResponse{Rounded: int32Clamp(adj.Rounded), AutoComment: adj.AutoComment, BoxAdjusted: adj.BoxAdjusted}
 	if adj.Inserted != nil {
 		resp.Inserted = true
@@ -139,7 +140,7 @@ func int32Clamp(n int) int32 {
 func (s *Server) CalculateNorthPlan(_ context.Context, req *calculationv1.CalculateNorthPlanRequest) (*calculationv1.CalculateNorthPlanResponse, error) {
 	needs := make([]domain.CityNeed, 0, len(req.GetNeeds()))
 	for _, n := range req.GetNeeds() {
-		needs = append(needs, domain.CityNeed{City: n.GetCity(), Article: n.GetArticle(), Qty: n.GetQty()})
+		needs = append(needs, domain.CityNeed{City: n.GetCity(), Article: n.GetArticle(), Qty: n.GetQty(), Name: n.GetName(), SupplierUnitSize: n.GetSupplierUnitSize(), Minimum: n.GetMinimum(), BoxSize: n.GetBoxSize(), HasBoxSize: n.GetHasBoxSize()})
 	}
 	stock := make([]domain.OrderRow, 0, len(req.GetTyumenStock()))
 	for _, row := range req.GetTyumenStock() {
@@ -177,7 +178,7 @@ func protoBudgetInputRow(row *calculationv1.BudgetRow) domain.BudgetInputRow {
 	}
 	return domain.BudgetInputRow{
 		Key: row.GetKey(), Name: row.GetName(), Category: row.GetCategory(),
-		Quantity: row.GetQuantity(), BasePrice: row.GetBasePrice(), Demand: row.GetDemand(),
+		Quantity: row.GetQuantity(), BasePrice: row.GetBasePrice(), DiscountOverride: row.DiscountOverride, Demand: row.GetDemand(),
 		Stock: row.GetStock(), Transit: row.GetTransit(), Outbound: row.GetOutbound(),
 		BoxSize: row.GetBoxSize(), Group: row.GetGroup(), Line: protoChristinaLine(row.GetLine()),
 		Locked: row.GetLocked(), Excluded: row.GetExcluded(), Unsafe: row.GetUnsafe(),
@@ -200,7 +201,7 @@ func (s *Server) PlanBudget(_ context.Context, req *calculationv1.PlanBudgetRequ
 		rows = append(rows, protoBudgetInputRow(row))
 	}
 	plan, err := calculation.PlanReportBudget(domain.BudgetRequest{
-		Brand: req.GetBrand(), Discount: req.GetDiscount(), DeliveryWeeks: req.GetDeliveryWeeks(),
+		Brand: req.GetBrand(), Discount: req.GetDiscount(), DeliveryWeeks: req.GetDeliveryWeeks(), QuoteOnly: req.GetQuoteOnly(),
 		Target: req.GetTarget(), Rows: rows,
 		Options: domain.BudgetOptions{
 			AllowOverSix: req.GetAllowOverSix(), AllowBelowOne: req.GetAllowBelowOne(),
@@ -238,7 +239,7 @@ func toProtoPlannedRows(rows []domain.BudgetRow) []*calculationv1.PlannedBudgetR
 	for _, row := range rows {
 		out = append(out, &calculationv1.PlannedBudgetRow{
 			Key: row.Key, Name: row.Name, Before: row.Before, Quantity: row.Quantity,
-			Comment: calculation.BudgetChangeComment(row), Category: row.Category,
+			Comment: calculation.BudgetChangeComment(row), Category: row.Category, Price: row.Price, Discount: row.Discount,
 		})
 	}
 	return out

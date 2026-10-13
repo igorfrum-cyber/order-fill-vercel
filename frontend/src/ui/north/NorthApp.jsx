@@ -47,6 +47,7 @@ export function NorthApp({ companyId, onHome, onHelp }) {
   const [cityEdits, setCityEdits] = useState(new Map());
   const [actualEdits, setActualEdits] = useState(new Map());
   const [manualActual, setManualActual] = useState(new Set());
+  const [budgetPriceColumns, setBudgetPriceColumns] = useState(new Map());
   const [budgetDiscounts, setBudgetDiscounts] = useState(new Map());
   const [budgetComments, setBudgetComments] = useState(new Map());
 
@@ -60,6 +61,7 @@ export function NorthApp({ companyId, onHome, onHelp }) {
     setActualEdits(new Map());
     setManualActual(new Set());
     setBudgetDiscounts(new Map());
+    setBudgetPriceColumns(new Map());
     setBudgetComments(new Map());
     setError("");
   }
@@ -218,6 +220,7 @@ export function NorthApp({ companyId, onHome, onHelp }) {
         comment: JSON.stringify({
           cities: cityQuantities(source),
           discount: budgetDiscounts.get(source.variant || "main") || 0,
+          price_column: budgetPriceColumns.get(source.variant || "main") || 0,
           budgetComment: budgetComments.get(source.key) || "",
         }),
       }));
@@ -327,6 +330,8 @@ export function NorthApp({ companyId, onHome, onHelp }) {
                 actualValue={actualValue}
                 lockedKeys={manualActual}
                 discounts={budgetDiscounts}
+                priceColumns={budgetPriceColumns}
+                onPriceColumn={(group, column) => setBudgetPriceColumns((current) => new Map(current).set(group, column))}
                 onApply={(key, value, comment) => {
                   setActualEdits((current) => new Map(current).set(key, value));
                   setBudgetComments((current) => new Map(current).set(key, comment));

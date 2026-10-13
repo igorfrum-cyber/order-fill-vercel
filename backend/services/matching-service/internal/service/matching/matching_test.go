@@ -46,7 +46,7 @@ func TestArticleExactAndAlias(t *testing.T) {
 	}
 }
 
-func TestNameFallbackAndSuspiciousVolume(t *testing.T) {
+func TestNameFallbackAndMainVolumeScore(t *testing.T) {
 	t.Parallel()
 	svc := matching.New()
 	nameOnly := svc.Match(
@@ -62,7 +62,7 @@ func TestNameFallbackAndSuspiciousVolume(t *testing.T) {
 		[]domain.Item{{ID: "s1", Article: "A1", Name: "Cream 30 ml"}},
 		matching.Options{},
 	)
-	if volume[0].Category != domain.CategoryCheckNameOrVolume {
+	if volume[0].Category != domain.CategoryToOrder {
 		t.Fatalf("%+v", volume)
 	}
 }
@@ -143,14 +143,14 @@ func TestMergeChzSmartFlagsAmbiguousBaseRows(t *testing.T) {
 	}
 }
 
-func TestFormConflictSetsCheckNameOrVolume(t *testing.T) {
+func TestMainScoreControlsFormDifference(t *testing.T) {
 	t.Parallel()
 	got := matching.New().Match(
 		[]domain.Item{{ID: "b1", Article: "A1", Name: "Крем 50 мл"}},
 		[]domain.Item{{ID: "s1", Article: "A1", Name: "Сыворотка 50 мл"}},
 		matching.Options{},
 	)
-	if got[0].Category != domain.CategoryCheckNameOrVolume || got[0].Reasons.Form != "conflict" {
+	if got[0].Category != domain.CategoryToOrder {
 		t.Fatalf("%+v", got)
 	}
 }

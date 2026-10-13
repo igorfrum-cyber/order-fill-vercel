@@ -40,7 +40,7 @@ test("planOrderBudget posts the payload and normalizes the response", async () =
     target: 6100,
     reason: "",
     complete: true,
-    rows: [{ key: "MUSE:3", name: "MUSE 3", category: "A+", before: 3, quantity: 6, comment: "Добавилось 3 шт. Для закупа до суммы." }],
+    rows: [{ key: "MUSE:3", name: "MUSE 3", category: "A+", before: 3, quantity: 6, price:70, discount:30,comment: "Добавилось 3 шт. Для закупа до суммы." }],
     line_steps: [{ id: "MUSE", name: "MUSE", sets: 6, added: 300, saved: 60 }],
     line_groups: [{ id: "MUSE", name: "MUSE", valid: true, sets: 6, saving: 120, net: 5880 }],
   });
@@ -53,6 +53,8 @@ test("planOrderBudget posts the payload and normalizes the response", async () =
     assert.equal(plan.complete, true);
     assert.equal(plan.total, 5880);
     assert.equal(plan.rows[0].category, "A+");
+    assert.equal(plan.rows[0].price, 70);
+    assert.equal(plan.rows[0].discount, 30);
     assert.equal(plan.lineSteps[0].saved, 60);
     assert.equal(plan.lineGroups[0].net, 5880);
   } finally {

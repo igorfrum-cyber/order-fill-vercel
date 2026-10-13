@@ -19,6 +19,7 @@ const (
 )
 
 type RuleConfig struct {
+	SupplierUnitSize        float64
 	Key                     string
 	Label                   string
 	Adjustment              Adjustment
@@ -164,7 +165,7 @@ func CategoryCoefficient(value string, rule RuleConfig) float64 {
 	}
 }
 
-func CalculateAdjustedQuantity(recommended float64, rule RuleConfig, boxSizeValue string) AdjustedQuantity {
+func calculatePieceAdjustedQuantity(recommended float64, rule RuleConfig, boxSizeValue string) AdjustedQuantity {
 	rounded := normalize.RoundHalfUp(recommended)
 	if !rule.AllowSmallPositiveOrder && recommended < 1.5 {
 		return AdjustedQuantity{Rounded: rounded}
@@ -267,4 +268,20 @@ func floatPtr(value float64) *float64 {
 
 func boolPtr(value bool) *bool {
 	return &value
+}
+
+// CalculateAdjustedQuantity is the in-memory calculation adapter used by domain fixtures.
+func CalculateAdjustedQuantity(recommended float64, rule RuleConfig, boxSizeValue string) AdjustedQuantity {
+	out := calculatePieceAdjustedQuantity(recommended, rule, boxSizeValue)
+	size := rule.SupplierUnitSize
+	if size > 1 && !math.IsNaN(size) && !math.IsInf(size, 0) {
+		if out.Rounded > 0 {
+			out.Rounded = int(math.Ceil(float64(out.Rounded) / size))
+		}
+		if out.Inserted != nil && *out.Inserted > 0 {
+			out.Inserted = new(math.Ceil(*out.Inserted / size))
+			out.AutoComment = "коробки по 5 шт."
+		}
+	}
+	return out
 }

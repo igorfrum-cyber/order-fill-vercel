@@ -21,13 +21,21 @@ func (s *Service) NorthPlan(brand string, needs []domain.CityNeed, tyumen []doma
 	}
 	byArticle := map[string]map[string]float64{}
 	names := map[string]string{}
+	positions := map[string]domain.CityNeed{}
 	for _, need := range needs {
+		current, exists := positions[need.Article]
+		if !exists || need.City == "tyumen" && current.City != "tyumen" {
+			positions[need.Article] = need
+		}
 		if byArticle[need.Article] == nil {
 			byArticle[need.Article] = map[string]float64{}
 		}
 		byArticle[need.Article][need.City] += need.Qty
 		if names[need.Article] == "" {
 			names[need.Article] = need.Article
+			if need.Name != "" {
+				names[need.Article] = need.Name
+			}
 		}
 	}
 	out := make([]domain.PlanRow, 0, len(byArticle))
@@ -48,6 +56,21 @@ func (s *Service) NorthPlan(brand string, needs []domain.CityNeed, tyumen []doma
 		if brand == "novacutan" {
 			row.UnitSize = NovacutanSupplierUnitSize(row.Name)
 			row.NovacutanMin = NovacutanMinimumQuantity(row.Name)
+		}
+
+		position := positions[article]
+		if position.Name != "" {
+			row.Name = position.Name
+		}
+		if position.SupplierUnitSize > 0 {
+			row.UnitSize = position.SupplierUnitSize
+		}
+		if position.Minimum > 0 {
+			row.NovacutanMin = position.Minimum
+		}
+		if position.HasBoxSize {
+			row.BoxSize = position.BoxSize
+			row.HasBoxSize = true
 		}
 		out = append(out, recalculateNorthRow(row, cities, brand))
 	}
@@ -85,8 +108,8 @@ func recalculateNorthRow(row domain.PlanRow, cities map[string]float64, brand st
 		fromTyumenPart := min(qty, freeLeft)
 		fromSupplierPart := qty - fromTyumenPart
 		freeLeft -= fromTyumenPart
-		fromTyumen += fromTyumenPart
-		supplierNorth += fromSupplierPart
+		fromTyumen += roundTo2(fromTyumenPart)
+		supplierNorth += roundTo2(fromSupplierPart)
 		if fromTyumenPart > 0 {
 			commentParts = append(commentParts, fmt.Sprintf("Отправить в %s: %s", northLabels[city], formatQty(fromTyumenPart)))
 		}

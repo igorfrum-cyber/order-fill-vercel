@@ -2,6 +2,7 @@
 # Build context: backend/
 ARG BIN=document-api
 FROM mirror.gcr.io/library/golang:1.26-alpine AS build
+ENV GOTOOLCHAIN=go1.26.9
 ARG BIN
 WORKDIR /src
 ENV GOPROXY=https://proxy.golang.org,https://goproxy.io,direct

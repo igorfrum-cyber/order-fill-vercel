@@ -467,6 +467,7 @@ type CreateJobRequest struct {
 	Type          string                 `protobuf:"bytes,2,opt,name=type,proto3" json:"type,omitempty"`
 	InputFileIds  []string               `protobuf:"bytes,3,rep,name=input_file_ids,json=inputFileIds,proto3" json:"input_file_ids,omitempty"`
 	Brand         string                 `protobuf:"bytes,4,opt,name=brand,proto3" json:"brand,omitempty"`
+	OrderMonth    string                 `protobuf:"bytes,5,opt,name=order_month,json=orderMonth,proto3" json:"order_month,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -525,6 +526,13 @@ func (x *CreateJobRequest) GetInputFileIds() []string {
 func (x *CreateJobRequest) GetBrand() string {
 	if x != nil {
 		return x.Brand
+	}
+	return ""
+}
+
+func (x *CreateJobRequest) GetOrderMonth() string {
+	if x != nil {
+		return x.OrderMonth
 	}
 	return ""
 }
@@ -957,18 +965,98 @@ func (x *ListFilesResponse) GetFiles() []*FileRef {
 	return nil
 }
 
-type SubmitEditsRequest struct {
+// BudgetPricing snapshots the selected supplier base and agreed discount.
+type BudgetPricing struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	Meta          *v1.RequestMeta        `protobuf:"bytes,1,opt,name=meta,proto3" json:"meta,omitempty"`
-	JobId         string                 `protobuf:"bytes,2,opt,name=job_id,json=jobId,proto3" json:"job_id,omitempty"`
-	Edits         []*Edit                `protobuf:"bytes,3,rep,name=edits,proto3" json:"edits,omitempty"`
+	RowKey        string                 `protobuf:"bytes,1,opt,name=row_key,json=rowKey,proto3" json:"row_key,omitempty"`
+	PriceColumn   int32                  `protobuf:"varint,2,opt,name=price_column,json=priceColumn,proto3" json:"price_column,omitempty"`
+	BasePrice     float64                `protobuf:"fixed64,3,opt,name=base_price,json=basePrice,proto3" json:"base_price,omitempty"`
+	Discount      float64                `protobuf:"fixed64,4,opt,name=discount,proto3" json:"discount,omitempty"`
+	Price         float64                `protobuf:"fixed64,5,opt,name=price,proto3" json:"price,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
+func (x *BudgetPricing) Reset() {
+	*x = BudgetPricing{}
+	mi := &file_orderfill_jobs_v1_jobs_proto_msgTypes[15]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *BudgetPricing) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*BudgetPricing) ProtoMessage() {}
+
+func (x *BudgetPricing) ProtoReflect() protoreflect.Message {
+	mi := &file_orderfill_jobs_v1_jobs_proto_msgTypes[15]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use BudgetPricing.ProtoReflect.Descriptor instead.
+func (*BudgetPricing) Descriptor() ([]byte, []int) {
+	return file_orderfill_jobs_v1_jobs_proto_rawDescGZIP(), []int{15}
+}
+
+func (x *BudgetPricing) GetRowKey() string {
+	if x != nil {
+		return x.RowKey
+	}
+	return ""
+}
+
+func (x *BudgetPricing) GetPriceColumn() int32 {
+	if x != nil {
+		return x.PriceColumn
+	}
+	return 0
+}
+
+func (x *BudgetPricing) GetBasePrice() float64 {
+	if x != nil {
+		return x.BasePrice
+	}
+	return 0
+}
+
+func (x *BudgetPricing) GetDiscount() float64 {
+	if x != nil {
+		return x.Discount
+	}
+	return 0
+}
+
+func (x *BudgetPricing) GetPrice() float64 {
+	if x != nil {
+		return x.Price
+	}
+	return 0
+}
+
+type SubmitEditsRequest struct {
+	state                protoimpl.MessageState `protogen:"open.v1"`
+	Meta                 *v1.RequestMeta        `protobuf:"bytes,1,opt,name=meta,proto3" json:"meta,omitempty"`
+	JobId                string                 `protobuf:"bytes,2,opt,name=job_id,json=jobId,proto3" json:"job_id,omitempty"`
+	Edits                []*Edit                `protobuf:"bytes,3,rep,name=edits,proto3" json:"edits,omitempty"`
+	IncludeBlankStocks   bool                   `protobuf:"varint,4,opt,name=include_blank_stocks,json=includeBlankStocks,proto3" json:"include_blank_stocks,omitempty"`
+	BudgetPricing        []*BudgetPricing       `protobuf:"bytes,5,rep,name=budget_pricing,json=budgetPricing,proto3" json:"budget_pricing,omitempty"`
+	ReplaceBudgetPricing bool                   `protobuf:"varint,6,opt,name=replace_budget_pricing,json=replaceBudgetPricing,proto3" json:"replace_budget_pricing,omitempty"`
+	unknownFields        protoimpl.UnknownFields
+	sizeCache            protoimpl.SizeCache
+}
+
 func (x *SubmitEditsRequest) Reset() {
 	*x = SubmitEditsRequest{}
-	mi := &file_orderfill_jobs_v1_jobs_proto_msgTypes[15]
+	mi := &file_orderfill_jobs_v1_jobs_proto_msgTypes[16]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -980,7 +1068,7 @@ func (x *SubmitEditsRequest) String() string {
 func (*SubmitEditsRequest) ProtoMessage() {}
 
 func (x *SubmitEditsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_orderfill_jobs_v1_jobs_proto_msgTypes[15]
+	mi := &file_orderfill_jobs_v1_jobs_proto_msgTypes[16]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -993,7 +1081,7 @@ func (x *SubmitEditsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SubmitEditsRequest.ProtoReflect.Descriptor instead.
 func (*SubmitEditsRequest) Descriptor() ([]byte, []int) {
-	return file_orderfill_jobs_v1_jobs_proto_rawDescGZIP(), []int{15}
+	return file_orderfill_jobs_v1_jobs_proto_rawDescGZIP(), []int{16}
 }
 
 func (x *SubmitEditsRequest) GetMeta() *v1.RequestMeta {
@@ -1017,6 +1105,27 @@ func (x *SubmitEditsRequest) GetEdits() []*Edit {
 	return nil
 }
 
+func (x *SubmitEditsRequest) GetIncludeBlankStocks() bool {
+	if x != nil {
+		return x.IncludeBlankStocks
+	}
+	return false
+}
+
+func (x *SubmitEditsRequest) GetBudgetPricing() []*BudgetPricing {
+	if x != nil {
+		return x.BudgetPricing
+	}
+	return nil
+}
+
+func (x *SubmitEditsRequest) GetReplaceBudgetPricing() bool {
+	if x != nil {
+		return x.ReplaceBudgetPricing
+	}
+	return false
+}
+
 type SubmitEditsResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Job           *Job                   `protobuf:"bytes,1,opt,name=job,proto3" json:"job,omitempty"`
@@ -1026,7 +1135,7 @@ type SubmitEditsResponse struct {
 
 func (x *SubmitEditsResponse) Reset() {
 	*x = SubmitEditsResponse{}
-	mi := &file_orderfill_jobs_v1_jobs_proto_msgTypes[16]
+	mi := &file_orderfill_jobs_v1_jobs_proto_msgTypes[17]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1038,7 +1147,7 @@ func (x *SubmitEditsResponse) String() string {
 func (*SubmitEditsResponse) ProtoMessage() {}
 
 func (x *SubmitEditsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_orderfill_jobs_v1_jobs_proto_msgTypes[16]
+	mi := &file_orderfill_jobs_v1_jobs_proto_msgTypes[17]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1051,7 +1160,7 @@ func (x *SubmitEditsResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SubmitEditsResponse.ProtoReflect.Descriptor instead.
 func (*SubmitEditsResponse) Descriptor() ([]byte, []int) {
-	return file_orderfill_jobs_v1_jobs_proto_rawDescGZIP(), []int{16}
+	return file_orderfill_jobs_v1_jobs_proto_rawDescGZIP(), []int{17}
 }
 
 func (x *SubmitEditsResponse) GetJob() *Job {
@@ -1073,7 +1182,7 @@ type UpdateProgressRequest struct {
 
 func (x *UpdateProgressRequest) Reset() {
 	*x = UpdateProgressRequest{}
-	mi := &file_orderfill_jobs_v1_jobs_proto_msgTypes[17]
+	mi := &file_orderfill_jobs_v1_jobs_proto_msgTypes[18]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1085,7 +1194,7 @@ func (x *UpdateProgressRequest) String() string {
 func (*UpdateProgressRequest) ProtoMessage() {}
 
 func (x *UpdateProgressRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_orderfill_jobs_v1_jobs_proto_msgTypes[17]
+	mi := &file_orderfill_jobs_v1_jobs_proto_msgTypes[18]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1098,7 +1207,7 @@ func (x *UpdateProgressRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UpdateProgressRequest.ProtoReflect.Descriptor instead.
 func (*UpdateProgressRequest) Descriptor() ([]byte, []int) {
-	return file_orderfill_jobs_v1_jobs_proto_rawDescGZIP(), []int{17}
+	return file_orderfill_jobs_v1_jobs_proto_rawDescGZIP(), []int{18}
 }
 
 func (x *UpdateProgressRequest) GetJobId() string {
@@ -1137,7 +1246,7 @@ type UpdateProgressResponse struct {
 
 func (x *UpdateProgressResponse) Reset() {
 	*x = UpdateProgressResponse{}
-	mi := &file_orderfill_jobs_v1_jobs_proto_msgTypes[18]
+	mi := &file_orderfill_jobs_v1_jobs_proto_msgTypes[19]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1149,7 +1258,7 @@ func (x *UpdateProgressResponse) String() string {
 func (*UpdateProgressResponse) ProtoMessage() {}
 
 func (x *UpdateProgressResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_orderfill_jobs_v1_jobs_proto_msgTypes[18]
+	mi := &file_orderfill_jobs_v1_jobs_proto_msgTypes[19]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1162,7 +1271,7 @@ func (x *UpdateProgressResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UpdateProgressResponse.ProtoReflect.Descriptor instead.
 func (*UpdateProgressResponse) Descriptor() ([]byte, []int) {
-	return file_orderfill_jobs_v1_jobs_proto_rawDescGZIP(), []int{18}
+	return file_orderfill_jobs_v1_jobs_proto_rawDescGZIP(), []int{19}
 }
 
 type CompleteJobRequest struct {
@@ -1177,7 +1286,7 @@ type CompleteJobRequest struct {
 
 func (x *CompleteJobRequest) Reset() {
 	*x = CompleteJobRequest{}
-	mi := &file_orderfill_jobs_v1_jobs_proto_msgTypes[19]
+	mi := &file_orderfill_jobs_v1_jobs_proto_msgTypes[20]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1189,7 +1298,7 @@ func (x *CompleteJobRequest) String() string {
 func (*CompleteJobRequest) ProtoMessage() {}
 
 func (x *CompleteJobRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_orderfill_jobs_v1_jobs_proto_msgTypes[19]
+	mi := &file_orderfill_jobs_v1_jobs_proto_msgTypes[20]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1202,7 +1311,7 @@ func (x *CompleteJobRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CompleteJobRequest.ProtoReflect.Descriptor instead.
 func (*CompleteJobRequest) Descriptor() ([]byte, []int) {
-	return file_orderfill_jobs_v1_jobs_proto_rawDescGZIP(), []int{19}
+	return file_orderfill_jobs_v1_jobs_proto_rawDescGZIP(), []int{20}
 }
 
 func (x *CompleteJobRequest) GetJobId() string {
@@ -1241,7 +1350,7 @@ type CompleteJobResponse struct {
 
 func (x *CompleteJobResponse) Reset() {
 	*x = CompleteJobResponse{}
-	mi := &file_orderfill_jobs_v1_jobs_proto_msgTypes[20]
+	mi := &file_orderfill_jobs_v1_jobs_proto_msgTypes[21]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1253,7 +1362,7 @@ func (x *CompleteJobResponse) String() string {
 func (*CompleteJobResponse) ProtoMessage() {}
 
 func (x *CompleteJobResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_orderfill_jobs_v1_jobs_proto_msgTypes[20]
+	mi := &file_orderfill_jobs_v1_jobs_proto_msgTypes[21]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1266,7 +1375,7 @@ func (x *CompleteJobResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CompleteJobResponse.ProtoReflect.Descriptor instead.
 func (*CompleteJobResponse) Descriptor() ([]byte, []int) {
-	return file_orderfill_jobs_v1_jobs_proto_rawDescGZIP(), []int{20}
+	return file_orderfill_jobs_v1_jobs_proto_rawDescGZIP(), []int{21}
 }
 
 type FailJobRequest struct {
@@ -1279,7 +1388,7 @@ type FailJobRequest struct {
 
 func (x *FailJobRequest) Reset() {
 	*x = FailJobRequest{}
-	mi := &file_orderfill_jobs_v1_jobs_proto_msgTypes[21]
+	mi := &file_orderfill_jobs_v1_jobs_proto_msgTypes[22]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1291,7 +1400,7 @@ func (x *FailJobRequest) String() string {
 func (*FailJobRequest) ProtoMessage() {}
 
 func (x *FailJobRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_orderfill_jobs_v1_jobs_proto_msgTypes[21]
+	mi := &file_orderfill_jobs_v1_jobs_proto_msgTypes[22]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1304,7 +1413,7 @@ func (x *FailJobRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use FailJobRequest.ProtoReflect.Descriptor instead.
 func (*FailJobRequest) Descriptor() ([]byte, []int) {
-	return file_orderfill_jobs_v1_jobs_proto_rawDescGZIP(), []int{21}
+	return file_orderfill_jobs_v1_jobs_proto_rawDescGZIP(), []int{22}
 }
 
 func (x *FailJobRequest) GetJobId() string {
@@ -1329,7 +1438,7 @@ type FailJobResponse struct {
 
 func (x *FailJobResponse) Reset() {
 	*x = FailJobResponse{}
-	mi := &file_orderfill_jobs_v1_jobs_proto_msgTypes[22]
+	mi := &file_orderfill_jobs_v1_jobs_proto_msgTypes[23]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1341,7 +1450,7 @@ func (x *FailJobResponse) String() string {
 func (*FailJobResponse) ProtoMessage() {}
 
 func (x *FailJobResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_orderfill_jobs_v1_jobs_proto_msgTypes[22]
+	mi := &file_orderfill_jobs_v1_jobs_proto_msgTypes[23]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1354,7 +1463,7 @@ func (x *FailJobResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use FailJobResponse.ProtoReflect.Descriptor instead.
 func (*FailJobResponse) Descriptor() ([]byte, []int) {
-	return file_orderfill_jobs_v1_jobs_proto_rawDescGZIP(), []int{22}
+	return file_orderfill_jobs_v1_jobs_proto_rawDescGZIP(), []int{23}
 }
 
 var File_orderfill_jobs_v1_jobs_proto protoreflect.FileDescriptor
@@ -1404,12 +1513,14 @@ const file_orderfill_jobs_v1_jobs_proto_rawDesc = "" +
 	"\arow_key\x18\x01 \x01(\tR\x06rowKey\x12\x14\n" +
 	"\x05field\x18\x02 \x01(\tR\x05field\x12\x14\n" +
 	"\x05value\x18\x03 \x01(\tR\x05value\x12\x18\n" +
-	"\acomment\x18\x04 \x01(\tR\acomment\"\x98\x01\n" +
+	"\acomment\x18\x04 \x01(\tR\acomment\"\xb9\x01\n" +
 	"\x10CreateJobRequest\x124\n" +
 	"\x04meta\x18\x01 \x01(\v2 .orderfill.common.v1.RequestMetaR\x04meta\x12\x12\n" +
 	"\x04type\x18\x02 \x01(\tR\x04type\x12$\n" +
 	"\x0einput_file_ids\x18\x03 \x03(\tR\finputFileIds\x12\x14\n" +
-	"\x05brand\x18\x04 \x01(\tR\x05brand\"=\n" +
+	"\x05brand\x18\x04 \x01(\tR\x05brand\x12\x1f\n" +
+	"\vorder_month\x18\x05 \x01(\tR\n" +
+	"orderMonth\"=\n" +
 	"\x11CreateJobResponse\x12(\n" +
 	"\x03job\x18\x01 \x01(\v2\x16.orderfill.jobs.v1.JobR\x03job\"\\\n" +
 	"\rGetJobRequest\x124\n" +
@@ -1431,11 +1542,21 @@ const file_orderfill_jobs_v1_jobs_proto_rawDesc = "" +
 	"\x04meta\x18\x01 \x01(\v2 .orderfill.common.v1.RequestMetaR\x04meta\x12\x15\n" +
 	"\x06job_id\x18\x02 \x01(\tR\x05jobId\"E\n" +
 	"\x11ListFilesResponse\x120\n" +
-	"\x05files\x18\x01 \x03(\v2\x1a.orderfill.jobs.v1.FileRefR\x05files\"\x90\x01\n" +
+	"\x05files\x18\x01 \x03(\v2\x1a.orderfill.jobs.v1.FileRefR\x05files\"\x9c\x01\n" +
+	"\rBudgetPricing\x12\x17\n" +
+	"\arow_key\x18\x01 \x01(\tR\x06rowKey\x12!\n" +
+	"\fprice_column\x18\x02 \x01(\x05R\vpriceColumn\x12\x1d\n" +
+	"\n" +
+	"base_price\x18\x03 \x01(\x01R\tbasePrice\x12\x1a\n" +
+	"\bdiscount\x18\x04 \x01(\x01R\bdiscount\x12\x14\n" +
+	"\x05price\x18\x05 \x01(\x01R\x05price\"\xc1\x02\n" +
 	"\x12SubmitEditsRequest\x124\n" +
 	"\x04meta\x18\x01 \x01(\v2 .orderfill.common.v1.RequestMetaR\x04meta\x12\x15\n" +
 	"\x06job_id\x18\x02 \x01(\tR\x05jobId\x12-\n" +
-	"\x05edits\x18\x03 \x03(\v2\x17.orderfill.jobs.v1.EditR\x05edits\"?\n" +
+	"\x05edits\x18\x03 \x03(\v2\x17.orderfill.jobs.v1.EditR\x05edits\x120\n" +
+	"\x14include_blank_stocks\x18\x04 \x01(\bR\x12includeBlankStocks\x12G\n" +
+	"\x0ebudget_pricing\x18\x05 \x03(\v2 .orderfill.jobs.v1.BudgetPricingR\rbudgetPricing\x124\n" +
+	"\x16replace_budget_pricing\x18\x06 \x01(\bR\x14replaceBudgetPricing\"?\n" +
 	"\x13SubmitEditsResponse\x12(\n" +
 	"\x03job\x18\x01 \x01(\v2\x16.orderfill.jobs.v1.JobR\x03job\"|\n" +
 	"\x15UpdateProgressRequest\x12\x15\n" +
@@ -1478,7 +1599,7 @@ func file_orderfill_jobs_v1_jobs_proto_rawDescGZIP() []byte {
 	return file_orderfill_jobs_v1_jobs_proto_rawDescData
 }
 
-var file_orderfill_jobs_v1_jobs_proto_msgTypes = make([]protoimpl.MessageInfo, 23)
+var file_orderfill_jobs_v1_jobs_proto_msgTypes = make([]protoimpl.MessageInfo, 24)
 var file_orderfill_jobs_v1_jobs_proto_goTypes = []any{
 	(*Job)(nil),                    // 0: orderfill.jobs.v1.Job
 	(*FileRef)(nil),                // 1: orderfill.jobs.v1.FileRef
@@ -1495,61 +1616,63 @@ var file_orderfill_jobs_v1_jobs_proto_goTypes = []any{
 	(*GetReportResponse)(nil),      // 12: orderfill.jobs.v1.GetReportResponse
 	(*ListFilesRequest)(nil),       // 13: orderfill.jobs.v1.ListFilesRequest
 	(*ListFilesResponse)(nil),      // 14: orderfill.jobs.v1.ListFilesResponse
-	(*SubmitEditsRequest)(nil),     // 15: orderfill.jobs.v1.SubmitEditsRequest
-	(*SubmitEditsResponse)(nil),    // 16: orderfill.jobs.v1.SubmitEditsResponse
-	(*UpdateProgressRequest)(nil),  // 17: orderfill.jobs.v1.UpdateProgressRequest
-	(*UpdateProgressResponse)(nil), // 18: orderfill.jobs.v1.UpdateProgressResponse
-	(*CompleteJobRequest)(nil),     // 19: orderfill.jobs.v1.CompleteJobRequest
-	(*CompleteJobResponse)(nil),    // 20: orderfill.jobs.v1.CompleteJobResponse
-	(*FailJobRequest)(nil),         // 21: orderfill.jobs.v1.FailJobRequest
-	(*FailJobResponse)(nil),        // 22: orderfill.jobs.v1.FailJobResponse
-	(v1.MatchingMode)(0),           // 23: orderfill.common.v1.MatchingMode
-	(v1.ReportCategory)(0),         // 24: orderfill.common.v1.ReportCategory
-	(*v1.RequestMeta)(nil),         // 25: orderfill.common.v1.RequestMeta
+	(*BudgetPricing)(nil),          // 15: orderfill.jobs.v1.BudgetPricing
+	(*SubmitEditsRequest)(nil),     // 16: orderfill.jobs.v1.SubmitEditsRequest
+	(*SubmitEditsResponse)(nil),    // 17: orderfill.jobs.v1.SubmitEditsResponse
+	(*UpdateProgressRequest)(nil),  // 18: orderfill.jobs.v1.UpdateProgressRequest
+	(*UpdateProgressResponse)(nil), // 19: orderfill.jobs.v1.UpdateProgressResponse
+	(*CompleteJobRequest)(nil),     // 20: orderfill.jobs.v1.CompleteJobRequest
+	(*CompleteJobResponse)(nil),    // 21: orderfill.jobs.v1.CompleteJobResponse
+	(*FailJobRequest)(nil),         // 22: orderfill.jobs.v1.FailJobRequest
+	(*FailJobResponse)(nil),        // 23: orderfill.jobs.v1.FailJobResponse
+	(v1.MatchingMode)(0),           // 24: orderfill.common.v1.MatchingMode
+	(v1.ReportCategory)(0),         // 25: orderfill.common.v1.ReportCategory
+	(*v1.RequestMeta)(nil),         // 26: orderfill.common.v1.RequestMeta
 }
 var file_orderfill_jobs_v1_jobs_proto_depIdxs = []int32{
-	23, // 0: orderfill.jobs.v1.Job.matching_mode:type_name -> orderfill.common.v1.MatchingMode
-	24, // 1: orderfill.jobs.v1.ReportRow.category:type_name -> orderfill.common.v1.ReportCategory
-	25, // 2: orderfill.jobs.v1.CreateJobRequest.meta:type_name -> orderfill.common.v1.RequestMeta
+	24, // 0: orderfill.jobs.v1.Job.matching_mode:type_name -> orderfill.common.v1.MatchingMode
+	25, // 1: orderfill.jobs.v1.ReportRow.category:type_name -> orderfill.common.v1.ReportCategory
+	26, // 2: orderfill.jobs.v1.CreateJobRequest.meta:type_name -> orderfill.common.v1.RequestMeta
 	0,  // 3: orderfill.jobs.v1.CreateJobResponse.job:type_name -> orderfill.jobs.v1.Job
-	25, // 4: orderfill.jobs.v1.GetJobRequest.meta:type_name -> orderfill.common.v1.RequestMeta
+	26, // 4: orderfill.jobs.v1.GetJobRequest.meta:type_name -> orderfill.common.v1.RequestMeta
 	0,  // 5: orderfill.jobs.v1.GetJobResponse.job:type_name -> orderfill.jobs.v1.Job
-	25, // 6: orderfill.jobs.v1.ListJobsRequest.meta:type_name -> orderfill.common.v1.RequestMeta
+	26, // 6: orderfill.jobs.v1.ListJobsRequest.meta:type_name -> orderfill.common.v1.RequestMeta
 	0,  // 7: orderfill.jobs.v1.ListJobsResponse.jobs:type_name -> orderfill.jobs.v1.Job
-	25, // 8: orderfill.jobs.v1.GetReportRequest.meta:type_name -> orderfill.common.v1.RequestMeta
+	26, // 8: orderfill.jobs.v1.GetReportRequest.meta:type_name -> orderfill.common.v1.RequestMeta
 	2,  // 9: orderfill.jobs.v1.GetReportResponse.summary:type_name -> orderfill.jobs.v1.ReportSummary
 	3,  // 10: orderfill.jobs.v1.GetReportResponse.rows:type_name -> orderfill.jobs.v1.ReportRow
-	25, // 11: orderfill.jobs.v1.ListFilesRequest.meta:type_name -> orderfill.common.v1.RequestMeta
+	26, // 11: orderfill.jobs.v1.ListFilesRequest.meta:type_name -> orderfill.common.v1.RequestMeta
 	1,  // 12: orderfill.jobs.v1.ListFilesResponse.files:type_name -> orderfill.jobs.v1.FileRef
-	25, // 13: orderfill.jobs.v1.SubmitEditsRequest.meta:type_name -> orderfill.common.v1.RequestMeta
+	26, // 13: orderfill.jobs.v1.SubmitEditsRequest.meta:type_name -> orderfill.common.v1.RequestMeta
 	4,  // 14: orderfill.jobs.v1.SubmitEditsRequest.edits:type_name -> orderfill.jobs.v1.Edit
-	0,  // 15: orderfill.jobs.v1.SubmitEditsResponse.job:type_name -> orderfill.jobs.v1.Job
-	2,  // 16: orderfill.jobs.v1.CompleteJobRequest.summary:type_name -> orderfill.jobs.v1.ReportSummary
-	3,  // 17: orderfill.jobs.v1.CompleteJobRequest.rows:type_name -> orderfill.jobs.v1.ReportRow
-	1,  // 18: orderfill.jobs.v1.CompleteJobRequest.files:type_name -> orderfill.jobs.v1.FileRef
-	5,  // 19: orderfill.jobs.v1.JobService.CreateJob:input_type -> orderfill.jobs.v1.CreateJobRequest
-	7,  // 20: orderfill.jobs.v1.JobService.GetJob:input_type -> orderfill.jobs.v1.GetJobRequest
-	9,  // 21: orderfill.jobs.v1.JobService.ListJobs:input_type -> orderfill.jobs.v1.ListJobsRequest
-	11, // 22: orderfill.jobs.v1.JobService.GetReport:input_type -> orderfill.jobs.v1.GetReportRequest
-	13, // 23: orderfill.jobs.v1.JobService.ListFiles:input_type -> orderfill.jobs.v1.ListFilesRequest
-	15, // 24: orderfill.jobs.v1.JobService.SubmitEdits:input_type -> orderfill.jobs.v1.SubmitEditsRequest
-	17, // 25: orderfill.jobs.v1.JobService.UpdateProgress:input_type -> orderfill.jobs.v1.UpdateProgressRequest
-	19, // 26: orderfill.jobs.v1.JobService.CompleteJob:input_type -> orderfill.jobs.v1.CompleteJobRequest
-	21, // 27: orderfill.jobs.v1.JobService.FailJob:input_type -> orderfill.jobs.v1.FailJobRequest
-	6,  // 28: orderfill.jobs.v1.JobService.CreateJob:output_type -> orderfill.jobs.v1.CreateJobResponse
-	8,  // 29: orderfill.jobs.v1.JobService.GetJob:output_type -> orderfill.jobs.v1.GetJobResponse
-	10, // 30: orderfill.jobs.v1.JobService.ListJobs:output_type -> orderfill.jobs.v1.ListJobsResponse
-	12, // 31: orderfill.jobs.v1.JobService.GetReport:output_type -> orderfill.jobs.v1.GetReportResponse
-	14, // 32: orderfill.jobs.v1.JobService.ListFiles:output_type -> orderfill.jobs.v1.ListFilesResponse
-	16, // 33: orderfill.jobs.v1.JobService.SubmitEdits:output_type -> orderfill.jobs.v1.SubmitEditsResponse
-	18, // 34: orderfill.jobs.v1.JobService.UpdateProgress:output_type -> orderfill.jobs.v1.UpdateProgressResponse
-	20, // 35: orderfill.jobs.v1.JobService.CompleteJob:output_type -> orderfill.jobs.v1.CompleteJobResponse
-	22, // 36: orderfill.jobs.v1.JobService.FailJob:output_type -> orderfill.jobs.v1.FailJobResponse
-	28, // [28:37] is the sub-list for method output_type
-	19, // [19:28] is the sub-list for method input_type
-	19, // [19:19] is the sub-list for extension type_name
-	19, // [19:19] is the sub-list for extension extendee
-	0,  // [0:19] is the sub-list for field type_name
+	15, // 15: orderfill.jobs.v1.SubmitEditsRequest.budget_pricing:type_name -> orderfill.jobs.v1.BudgetPricing
+	0,  // 16: orderfill.jobs.v1.SubmitEditsResponse.job:type_name -> orderfill.jobs.v1.Job
+	2,  // 17: orderfill.jobs.v1.CompleteJobRequest.summary:type_name -> orderfill.jobs.v1.ReportSummary
+	3,  // 18: orderfill.jobs.v1.CompleteJobRequest.rows:type_name -> orderfill.jobs.v1.ReportRow
+	1,  // 19: orderfill.jobs.v1.CompleteJobRequest.files:type_name -> orderfill.jobs.v1.FileRef
+	5,  // 20: orderfill.jobs.v1.JobService.CreateJob:input_type -> orderfill.jobs.v1.CreateJobRequest
+	7,  // 21: orderfill.jobs.v1.JobService.GetJob:input_type -> orderfill.jobs.v1.GetJobRequest
+	9,  // 22: orderfill.jobs.v1.JobService.ListJobs:input_type -> orderfill.jobs.v1.ListJobsRequest
+	11, // 23: orderfill.jobs.v1.JobService.GetReport:input_type -> orderfill.jobs.v1.GetReportRequest
+	13, // 24: orderfill.jobs.v1.JobService.ListFiles:input_type -> orderfill.jobs.v1.ListFilesRequest
+	16, // 25: orderfill.jobs.v1.JobService.SubmitEdits:input_type -> orderfill.jobs.v1.SubmitEditsRequest
+	18, // 26: orderfill.jobs.v1.JobService.UpdateProgress:input_type -> orderfill.jobs.v1.UpdateProgressRequest
+	20, // 27: orderfill.jobs.v1.JobService.CompleteJob:input_type -> orderfill.jobs.v1.CompleteJobRequest
+	22, // 28: orderfill.jobs.v1.JobService.FailJob:input_type -> orderfill.jobs.v1.FailJobRequest
+	6,  // 29: orderfill.jobs.v1.JobService.CreateJob:output_type -> orderfill.jobs.v1.CreateJobResponse
+	8,  // 30: orderfill.jobs.v1.JobService.GetJob:output_type -> orderfill.jobs.v1.GetJobResponse
+	10, // 31: orderfill.jobs.v1.JobService.ListJobs:output_type -> orderfill.jobs.v1.ListJobsResponse
+	12, // 32: orderfill.jobs.v1.JobService.GetReport:output_type -> orderfill.jobs.v1.GetReportResponse
+	14, // 33: orderfill.jobs.v1.JobService.ListFiles:output_type -> orderfill.jobs.v1.ListFilesResponse
+	17, // 34: orderfill.jobs.v1.JobService.SubmitEdits:output_type -> orderfill.jobs.v1.SubmitEditsResponse
+	19, // 35: orderfill.jobs.v1.JobService.UpdateProgress:output_type -> orderfill.jobs.v1.UpdateProgressResponse
+	21, // 36: orderfill.jobs.v1.JobService.CompleteJob:output_type -> orderfill.jobs.v1.CompleteJobResponse
+	23, // 37: orderfill.jobs.v1.JobService.FailJob:output_type -> orderfill.jobs.v1.FailJobResponse
+	29, // [29:38] is the sub-list for method output_type
+	20, // [20:29] is the sub-list for method input_type
+	20, // [20:20] is the sub-list for extension type_name
+	20, // [20:20] is the sub-list for extension extendee
+	0,  // [0:20] is the sub-list for field type_name
 }
 
 func init() { file_orderfill_jobs_v1_jobs_proto_init() }
@@ -1563,7 +1686,7 @@ func file_orderfill_jobs_v1_jobs_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_orderfill_jobs_v1_jobs_proto_rawDesc), len(file_orderfill_jobs_v1_jobs_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   23,
+			NumMessages:   24,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

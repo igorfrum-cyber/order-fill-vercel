@@ -8,7 +8,7 @@ import (
 	"order-fill/backend/services/job-service/internal/queue"
 )
 
-func (s *Service) Create(ctx context.Context, actor domain.Actor, jobType domain.Type, fileIDs []string, brand string) (domain.Job, error) {
+func (s *Service) Create(ctx context.Context, actor domain.Actor, jobType domain.Type, fileIDs []string, brand string, orderMonths ...string) (domain.Job, error) {
 	if !domain.CanCreateJob(actor) {
 		return domain.Job{}, domain.ErrUnauthorized
 	}
@@ -47,6 +47,10 @@ func (s *Service) Create(ctx context.Context, actor domain.Actor, jobType domain
 	if err := s.store.Create(ctx, job); err != nil {
 		return domain.Job{}, err
 	}
+	orderMonth := ""
+	if len(orderMonths) > 0 {
+		orderMonth = orderMonths[0]
+	}
 	if err := s.publisher.Publish(ctx, queue.Message{
 		Version:      queue.Version,
 		JobID:        job.ID,
@@ -55,6 +59,7 @@ func (s *Service) Create(ctx context.Context, actor domain.Actor, jobType domain
 		MatchingMode: string(job.MatchingMode),
 		CompanyID:    job.CompanyID,
 		Brand:        brand,
+		OrderMonth:   orderMonth,
 		OrderProfile: queueOrderProfile(profile),
 		Inputs:       queueInputs(files),
 	}); err != nil {

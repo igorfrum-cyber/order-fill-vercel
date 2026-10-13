@@ -8,7 +8,7 @@
 
 - Frontend: React 19 + Vite 7, served by nginx in Docker.
 - Public backend: `backend/services/gateway-service` over HTTP.
-- Internal backend: independent Go 1.26.7 modules communicating over gRPC.
+- Internal backend: independent Go 1.26.9 modules communicating over gRPC.
 - Async work: Redis Stream `order-fill:jobs`, consumed by `document-worker`.
 - Durable state: PostgreSQL and S3-compatible object storage.
 - Local infrastructure: PostgreSQL 18, Redis 8, and MinIO through Docker Compose.

@@ -43,6 +43,7 @@ type OrderRow struct {
 	HasWarehouseStock bool                   `protobuf:"varint,17,opt,name=has_warehouse_stock,json=hasWarehouseStock,proto3" json:"has_warehouse_stock,omitempty"`
 	BoxSize           float64                `protobuf:"fixed64,18,opt,name=box_size,json=boxSize,proto3" json:"box_size,omitempty"`
 	HasBoxSize        bool                   `protobuf:"varint,19,opt,name=has_box_size,json=hasBoxSize,proto3" json:"has_box_size,omitempty"`
+	MonthlyNeed       float64                `protobuf:"fixed64,20,opt,name=monthly_need,json=monthlyNeed,proto3" json:"monthly_need,omitempty"`
 	unknownFields     protoimpl.UnknownFields
 	sizeCache         protoimpl.SizeCache
 }
@@ -210,6 +211,13 @@ func (x *OrderRow) GetHasBoxSize() bool {
 	return false
 }
 
+func (x *OrderRow) GetMonthlyNeed() float64 {
+	if x != nil {
+		return x.MonthlyNeed
+	}
+	return 0
+}
+
 type CalculateOrderRecommendationsRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Meta          *v1.RequestMeta        `protobuf:"bytes,1,opt,name=meta,proto3" json:"meta,omitempty"`
@@ -341,6 +349,7 @@ type CalculateAdjustedQuantityRequest struct {
 	QuantityMultiple        int32                  `protobuf:"varint,7,opt,name=quantity_multiple,json=quantityMultiple,proto3" json:"quantity_multiple,omitempty"`
 	AdjustmentComment       string                 `protobuf:"bytes,8,opt,name=adjustment_comment,json=adjustmentComment,proto3" json:"adjustment_comment,omitempty"`
 	AllowSmallPositiveOrder bool                   `protobuf:"varint,9,opt,name=allow_small_positive_order,json=allowSmallPositiveOrder,proto3" json:"allow_small_positive_order,omitempty"`
+	SupplierUnitSize        float64                `protobuf:"fixed64,10,opt,name=supplier_unit_size,json=supplierUnitSize,proto3" json:"supplier_unit_size,omitempty"`
 	unknownFields           protoimpl.UnknownFields
 	sizeCache               protoimpl.SizeCache
 }
@@ -438,6 +447,13 @@ func (x *CalculateAdjustedQuantityRequest) GetAllowSmallPositiveOrder() bool {
 	return false
 }
 
+func (x *CalculateAdjustedQuantityRequest) GetSupplierUnitSize() float64 {
+	if x != nil {
+		return x.SupplierUnitSize
+	}
+	return 0
+}
+
 type CalculateAdjustedQuantityResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Qty           float64                `protobuf:"fixed64,1,opt,name=qty,proto3" json:"qty,omitempty"`
@@ -515,12 +531,17 @@ func (x *CalculateAdjustedQuantityResponse) GetInserted() bool {
 }
 
 type NorthCityNeed struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	City          string                 `protobuf:"bytes,1,opt,name=city,proto3" json:"city,omitempty"`
-	Article       string                 `protobuf:"bytes,2,opt,name=article,proto3" json:"article,omitempty"`
-	Qty           float64                `protobuf:"fixed64,3,opt,name=qty,proto3" json:"qty,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	state            protoimpl.MessageState `protogen:"open.v1"`
+	City             string                 `protobuf:"bytes,1,opt,name=city,proto3" json:"city,omitempty"`
+	Article          string                 `protobuf:"bytes,2,opt,name=article,proto3" json:"article,omitempty"`
+	Qty              float64                `protobuf:"fixed64,3,opt,name=qty,proto3" json:"qty,omitempty"`
+	Name             string                 `protobuf:"bytes,4,opt,name=name,proto3" json:"name,omitempty"`
+	SupplierUnitSize float64                `protobuf:"fixed64,5,opt,name=supplier_unit_size,json=supplierUnitSize,proto3" json:"supplier_unit_size,omitempty"`
+	Minimum          float64                `protobuf:"fixed64,6,opt,name=minimum,proto3" json:"minimum,omitempty"`
+	BoxSize          float64                `protobuf:"fixed64,7,opt,name=box_size,json=boxSize,proto3" json:"box_size,omitempty"`
+	HasBoxSize       bool                   `protobuf:"varint,8,opt,name=has_box_size,json=hasBoxSize,proto3" json:"has_box_size,omitempty"`
+	unknownFields    protoimpl.UnknownFields
+	sizeCache        protoimpl.SizeCache
 }
 
 func (x *NorthCityNeed) Reset() {
@@ -572,6 +593,41 @@ func (x *NorthCityNeed) GetQty() float64 {
 		return x.Qty
 	}
 	return 0
+}
+
+func (x *NorthCityNeed) GetName() string {
+	if x != nil {
+		return x.Name
+	}
+	return ""
+}
+
+func (x *NorthCityNeed) GetSupplierUnitSize() float64 {
+	if x != nil {
+		return x.SupplierUnitSize
+	}
+	return 0
+}
+
+func (x *NorthCityNeed) GetMinimum() float64 {
+	if x != nil {
+		return x.Minimum
+	}
+	return 0
+}
+
+func (x *NorthCityNeed) GetBoxSize() float64 {
+	if x != nil {
+		return x.BoxSize
+	}
+	return 0
+}
+
+func (x *NorthCityNeed) GetHasBoxSize() bool {
+	if x != nil {
+		return x.HasBoxSize
+	}
+	return false
 }
 
 type NorthPlanRow struct {
@@ -1225,9 +1281,10 @@ type BudgetRow struct {
 	// and ignored on input.
 	BasePrice float64 `protobuf:"fixed64,19,opt,name=base_price,json=basePrice,proto3" json:"base_price,omitempty"`
 	// box_size is the blank box/multiple hint for brand order rules.
-	BoxSize       float64 `protobuf:"fixed64,20,opt,name=box_size,json=boxSize,proto3" json:"box_size,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	BoxSize          float64  `protobuf:"fixed64,20,opt,name=box_size,json=boxSize,proto3" json:"box_size,omitempty"`
+	DiscountOverride *float64 `protobuf:"fixed64,21,opt,name=discount_override,json=discountOverride,proto3,oneof" json:"discount_override,omitempty"`
+	unknownFields    protoimpl.UnknownFields
+	sizeCache        protoimpl.SizeCache
 }
 
 func (x *BudgetRow) Reset() {
@@ -1400,6 +1457,13 @@ func (x *BudgetRow) GetBoxSize() float64 {
 	return 0
 }
 
+func (x *BudgetRow) GetDiscountOverride() float64 {
+	if x != nil && x.DiscountOverride != nil {
+		return *x.DiscountOverride
+	}
+	return 0
+}
+
 type PlanBudgetRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Rows          []*BudgetRow           `protobuf:"bytes,1,rep,name=rows,proto3" json:"rows,omitempty"`
@@ -1414,6 +1478,7 @@ type PlanBudgetRequest struct {
 	DeliveryWeeks float64 `protobuf:"fixed64,7,opt,name=delivery_weeks,json=deliveryWeeks,proto3" json:"delivery_weeks,omitempty"`
 	// christina_proff_mode selects the PROFF cost oracle. UNSPECIFIED is standard.
 	ChristinaProffMode v1.ChristinaProffMode `protobuf:"varint,8,opt,name=christina_proff_mode,json=christinaProffMode,proto3,enum=orderfill.common.v1.ChristinaProffMode" json:"christina_proff_mode,omitempty"`
+	QuoteOnly          bool                  `protobuf:"varint,9,opt,name=quote_only,json=quoteOnly,proto3" json:"quote_only,omitempty"`
 	unknownFields      protoimpl.UnknownFields
 	sizeCache          protoimpl.SizeCache
 }
@@ -1504,6 +1569,13 @@ func (x *PlanBudgetRequest) GetChristinaProffMode() v1.ChristinaProffMode {
 	return v1.ChristinaProffMode(0)
 }
 
+func (x *PlanBudgetRequest) GetQuoteOnly() bool {
+	if x != nil {
+		return x.QuoteOnly
+	}
+	return false
+}
+
 type PlannedBudgetRow struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Key           string                 `protobuf:"bytes,1,opt,name=key,proto3" json:"key,omitempty"`
@@ -1512,6 +1584,8 @@ type PlannedBudgetRow struct {
 	Quantity      float64                `protobuf:"fixed64,4,opt,name=quantity,proto3" json:"quantity,omitempty"`
 	Comment       string                 `protobuf:"bytes,5,opt,name=comment,proto3" json:"comment,omitempty"`
 	Category      string                 `protobuf:"bytes,6,opt,name=category,proto3" json:"category,omitempty"`
+	Price         float64                `protobuf:"fixed64,7,opt,name=price,proto3" json:"price,omitempty"`
+	Discount      float64                `protobuf:"fixed64,8,opt,name=discount,proto3" json:"discount,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1586,6 +1660,20 @@ func (x *PlannedBudgetRow) GetCategory() string {
 		return x.Category
 	}
 	return ""
+}
+
+func (x *PlannedBudgetRow) GetPrice() float64 {
+	if x != nil {
+		return x.Price
+	}
+	return 0
+}
+
+func (x *PlannedBudgetRow) GetDiscount() float64 {
+	if x != nil {
+		return x.Discount
+	}
+	return 0
 }
 
 // PlannedLineStep is one accepted CHRISTINA PROFF set-completion step (rubles).
@@ -2164,7 +2252,7 @@ var File_orderfill_calculation_v1_calculation_proto protoreflect.FileDescriptor
 
 const file_orderfill_calculation_v1_calculation_proto_rawDesc = "" +
 	"\n" +
-	"*orderfill/calculation/v1/calculation.proto\x12\x18orderfill.calculation.v1\x1a orderfill/common/v1/common.proto\"\x96\x05\n" +
+	"*orderfill/calculation/v1/calculation.proto\x12\x18orderfill.calculation.v1\x1a orderfill/common/v1/common.proto\"\xb9\x05\n" +
 	"\bOrderRow\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x18\n" +
 	"\aarticle\x18\x02 \x01(\tR\aarticle\x12\x12\n" +
@@ -2187,7 +2275,8 @@ const file_orderfill_calculation_v1_calculation_proto_rawDesc = "" +
 	"\x13has_warehouse_stock\x18\x11 \x01(\bR\x11hasWarehouseStock\x12\x19\n" +
 	"\bbox_size\x18\x12 \x01(\x01R\aboxSize\x12 \n" +
 	"\fhas_box_size\x18\x13 \x01(\bR\n" +
-	"hasBoxSize\"\xee\x01\n" +
+	"hasBoxSize\x12!\n" +
+	"\fmonthly_need\x18\x14 \x01(\x01R\vmonthlyNeed\"\xee\x01\n" +
 	"$CalculateOrderRecommendationsRequest\x124\n" +
 	"\x04meta\x18\x01 \x01(\v2 .orderfill.common.v1.RequestMetaR\x04meta\x12\x14\n" +
 	"\x05brand\x18\x02 \x01(\tR\x05brand\x126\n" +
@@ -2195,7 +2284,7 @@ const file_orderfill_calculation_v1_calculation_proto_rawDesc = "" +
 	"\x0edelivery_weeks\x18\x04 \x01(\x01R\rdeliveryWeeks\x12\x1b\n" +
 	"\tcity_rule\x18\x05 \x01(\tR\bcityRule\"_\n" +
 	"%CalculateOrderRecommendationsResponse\x126\n" +
-	"\x04rows\x18\x01 \x03(\v2\".orderfill.calculation.v1.OrderRowR\x04rows\"\x82\x03\n" +
+	"\x04rows\x18\x01 \x03(\v2\".orderfill.calculation.v1.OrderRowR\x04rows\"\xb0\x03\n" +
 	" CalculateAdjustedQuantityRequest\x12\x14\n" +
 	"\x05brand\x18\x01 \x01(\tR\x05brand\x12'\n" +
 	"\x0frecommended_qty\x18\x02 \x01(\x01R\x0erecommendedQty\x12!\n" +
@@ -2207,17 +2296,25 @@ const file_orderfill_calculation_v1_calculation_proto_rawDesc = "" +
 	"adjustment\x12+\n" +
 	"\x11quantity_multiple\x18\a \x01(\x05R\x10quantityMultiple\x12-\n" +
 	"\x12adjustment_comment\x18\b \x01(\tR\x11adjustmentComment\x12;\n" +
-	"\x1aallow_small_positive_order\x18\t \x01(\bR\x17allowSmallPositiveOrder\"\xb1\x01\n" +
+	"\x1aallow_small_positive_order\x18\t \x01(\bR\x17allowSmallPositiveOrder\x12,\n" +
+	"\x12supplier_unit_size\x18\n" +
+	" \x01(\x01R\x10supplierUnitSize\"\xb1\x01\n" +
 	"!CalculateAdjustedQuantityResponse\x12\x10\n" +
 	"\x03qty\x18\x01 \x01(\x01R\x03qty\x12\x18\n" +
 	"\arounded\x18\x02 \x01(\x05R\arounded\x12!\n" +
 	"\fauto_comment\x18\x03 \x01(\tR\vautoComment\x12!\n" +
 	"\fbox_adjusted\x18\x04 \x01(\bR\vboxAdjusted\x12\x1a\n" +
-	"\binserted\x18\x05 \x01(\bR\binserted\"O\n" +
+	"\binserted\x18\x05 \x01(\bR\binserted\"\xe8\x01\n" +
 	"\rNorthCityNeed\x12\x12\n" +
 	"\x04city\x18\x01 \x01(\tR\x04city\x12\x18\n" +
 	"\aarticle\x18\x02 \x01(\tR\aarticle\x12\x10\n" +
-	"\x03qty\x18\x03 \x01(\x01R\x03qty\"\xc9\x04\n" +
+	"\x03qty\x18\x03 \x01(\x01R\x03qty\x12\x12\n" +
+	"\x04name\x18\x04 \x01(\tR\x04name\x12,\n" +
+	"\x12supplier_unit_size\x18\x05 \x01(\x01R\x10supplierUnitSize\x12\x18\n" +
+	"\aminimum\x18\x06 \x01(\x01R\aminimum\x12\x19\n" +
+	"\bbox_size\x18\a \x01(\x01R\aboxSize\x12 \n" +
+	"\fhas_box_size\x18\b \x01(\bR\n" +
+	"hasBoxSize\"\xc9\x04\n" +
 	"\fNorthPlanRow\x12\x18\n" +
 	"\aarticle\x18\x01 \x01(\tR\aarticle\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12\x1d\n" +
@@ -2268,7 +2365,7 @@ const file_orderfill_calculation_v1_calculation_proto_rawDesc = "" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12\x18\n" +
 	"\aarticle\x18\x03 \x01(\tR\aarticle\x12\x1a\n" +
-	"\brequired\x18\x04 \x03(\tR\brequired\"\x9a\x04\n" +
+	"\brequired\x18\x04 \x03(\tR\brequired\"\xe2\x04\n" +
 	"\tBudgetRow\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12\x1a\n" +
@@ -2291,7 +2388,9 @@ const file_orderfill_calculation_v1_calculation_proto_rawDesc = "" +
 	"\x04line\x18\x12 \x01(\v2'.orderfill.calculation.v1.ChristinaLineR\x04line\x12\x1d\n" +
 	"\n" +
 	"base_price\x18\x13 \x01(\x01R\tbasePrice\x12\x19\n" +
-	"\bbox_size\x18\x14 \x01(\x01R\aboxSize\"\xe6\x02\n" +
+	"\bbox_size\x18\x14 \x01(\x01R\aboxSize\x120\n" +
+	"\x11discount_override\x18\x15 \x01(\x01H\x00R\x10discountOverride\x88\x01\x01B\x14\n" +
+	"\x12_discount_override\"\x85\x03\n" +
 	"\x11PlanBudgetRequest\x127\n" +
 	"\x04rows\x18\x01 \x03(\v2#.orderfill.calculation.v1.BudgetRowR\x04rows\x12\x16\n" +
 	"\x06target\x18\x02 \x01(\x01R\x06target\x12$\n" +
@@ -2300,14 +2399,18 @@ const file_orderfill_calculation_v1_calculation_proto_rawDesc = "" +
 	"\x05brand\x18\x05 \x01(\tR\x05brand\x12\x1a\n" +
 	"\bdiscount\x18\x06 \x01(\x01R\bdiscount\x12%\n" +
 	"\x0edelivery_weeks\x18\a \x01(\x01R\rdeliveryWeeks\x12Y\n" +
-	"\x14christina_proff_mode\x18\b \x01(\x0e2'.orderfill.common.v1.ChristinaProffModeR\x12christinaProffMode\"\xa2\x01\n" +
+	"\x14christina_proff_mode\x18\b \x01(\x0e2'.orderfill.common.v1.ChristinaProffModeR\x12christinaProffMode\x12\x1d\n" +
+	"\n" +
+	"quote_only\x18\t \x01(\bR\tquoteOnly\"\xd4\x01\n" +
 	"\x10PlannedBudgetRow\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12\x16\n" +
 	"\x06before\x18\x03 \x01(\x01R\x06before\x12\x1a\n" +
 	"\bquantity\x18\x04 \x01(\x01R\bquantity\x12\x18\n" +
 	"\acomment\x18\x05 \x01(\tR\acomment\x12\x1a\n" +
-	"\bcategory\x18\x06 \x01(\tR\bcategory\"u\n" +
+	"\bcategory\x18\x06 \x01(\tR\bcategory\x12\x14\n" +
+	"\x05price\x18\a \x01(\x01R\x05price\x12\x1a\n" +
+	"\bdiscount\x18\b \x01(\x01R\bdiscount\"u\n" +
 	"\x0fPlannedLineStep\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12\x12\n" +
@@ -2463,6 +2566,7 @@ func file_orderfill_calculation_v1_calculation_proto_init() {
 	if File_orderfill_calculation_v1_calculation_proto != nil {
 		return
 	}
+	file_orderfill_calculation_v1_calculation_proto_msgTypes[15].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{

@@ -29,6 +29,7 @@ func Dial(ctx context.Context, addr string) (*GRPC, error) {
 
 func (c *GRPC) Match(ctx context.Context, blank, source []orderfill.MatchItem, opts orderfill.MatchOptions) ([]orderfill.MatchResult, error) {
 	req := &matchingv1.MatchRowsRequest{
+		Brand:          opts.Brand,
 		MatchingMode:   matchingMode(opts.Mode),
 		PrefixAliases:  opts.PrefixAliases,
 		PreserveHyphen: opts.PreserveHyphen,
@@ -90,7 +91,7 @@ func (c *GRPC) MergeChz(ctx context.Context, items []orderfill.MatchItem, opts o
 func protoItem(item orderfill.MatchItem) *matchingv1.Item {
 	return &matchingv1.Item{
 		Id: item.ID, Article: item.Article, Name: item.Name, Volume: item.Volume,
-		Form: item.Form, ChestnyZnak: item.ChestnyZnak, Rounded: int32Clamp(item.Rounded),
+		Form: item.Form, ChestnyZnak: item.ChestnyZnak, Rounded: int32Clamp(item.Rounded), Recommended: item.Recommended,
 	}
 }
 

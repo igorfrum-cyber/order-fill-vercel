@@ -1,9 +1,12 @@
 package domain
 
 type CityNeed struct {
-	City    string
-	Article string
-	Qty     float64
+	Name                               string
+	SupplierUnitSize, Minimum, BoxSize float64
+	HasBoxSize                         bool
+	City                               string
+	Article                            string
+	Qty                                float64
 }
 
 type PlanRow struct {

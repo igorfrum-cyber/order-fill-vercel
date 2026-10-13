@@ -1182,6 +1182,30 @@ paths:
                   type: array
                   items:
                     $ref: "#/components/schemas/ManualEdit"
+                budget_pricing:
+                  type: array
+                  description: Selected supplier prices and discounts for the exported workbook.
+                  items:
+                    type: object
+                    required: [row_key, price_column, base_price, discount, price]
+                    properties:
+                      row_key:
+                        type: string
+                      price_column:
+                        type: integer
+                        minimum: 1
+                      base_price:
+                        type: number
+                      discount:
+                        type: number
+                        minimum: 0
+                        maximum: 100
+                      price:
+                        type: number
+                include_blank_stocks:
+                  type: boolean
+                  default: false
+                  description: Add unambiguous source stock values to the generated supplier blank.
       responses:
         "202":
           description: Edits accepted and finalization queued.
@@ -1706,6 +1730,9 @@ components:
         base_price:
           type: number
           description: Blank price before the main discount.
+        discount_override:
+          type: number
+          description: Optional per-blank discount; otherwise uses request discount.
         demand:
           type: number
         stock:
@@ -1728,12 +1755,16 @@ components:
           $ref: "#/components/schemas/ChristinaLine"
     BudgetPlanRequest:
       type: object
-      required: [target, rows]
+      required: [rows]
       properties:
         brand:
           type: string
+        quote_only:
+          type: boolean
+          description: Returns current procurement price without changing quantities.
         target:
           type: number
+          description: Required unless quote_only is true.
         discount:
           type: number
           description: Main discount percent applied to base_price (0..99.99).
@@ -1759,6 +1790,11 @@ components:
         before:
           type: number
         quantity:
+          type: number
+        price:
+          type: number
+          description: Authoritative per-unit price after the main discount.
+        discount:
           type: number
         comment:
           type: string
@@ -2207,7 +2243,7 @@ components:
       enum: [queued, processing, needs_review, finalizing, completed, failed]
     OrderFillRequest:
       type: object
-      required: [source_file, blank_files]
+      required: [source_file]
       properties:
         brand:
           type: string
@@ -2217,6 +2253,10 @@ components:
           type: string
           pattern: "^\\d{4}-\\d{2}$"
           description: Optional. The worker reconstructs the order month from the 1C period captions.
+        mode:
+          type: string
+          enum: [recalculate]
+          description: Optional standalone table recalculation; blank_files must be absent. Otherwise blank_files is required.
         source_file:
           type: string
           format: binary

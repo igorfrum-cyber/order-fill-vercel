@@ -18,6 +18,7 @@ import (
 	brandclient "order-fill/backend/services/document-service/internal/clients/brand"
 	"order-fill/backend/services/document-service/internal/clients/calculation"
 	"order-fill/backend/services/document-service/internal/domain/brand"
+	"order-fill/backend/services/document-service/internal/domain/normalize"
 	"order-fill/backend/services/document-service/internal/domain/orderfill"
 	"order-fill/backend/services/document-service/internal/domain/preview"
 	"order-fill/backend/services/document-service/internal/domain/spreadsheet"
@@ -120,6 +121,9 @@ func (u *ProcessJob) process(ctx context.Context, message port.JobMessage) error
 	if message.Type == "north_merge" {
 		return u.processNorth(ctx, message, progress)
 	}
+	if message.Type == "table_recalculate" {
+		return u.processTable(ctx, message, progress)
+	}
 	if message.Type != "order_fill" {
 		return fmt.Errorf("%w: тип задачи %q пока не поддерживается сервисом", orderfill.ErrInvalidInput, message.Type)
 	}
@@ -220,7 +224,7 @@ func (u *ProcessJob) process(ctx context.Context, message port.JobMessage) error
 	}
 	if warehouseInput.StorageKey != "" {
 		progress.Set(ctx, 0.59, "Объединяю офис и склад доставки")
-		sourceLoaded.workbook, err = orderfill.MergeTyumenSources(sourceLoaded.workbook, warehouseLoaded.workbook, orderMonth, rule)
+		sourceLoaded.workbook, err = orderfill.MergeTyumenSources(sourceLoaded.workbook, warehouseLoaded.workbook, orderMonth, rule, orderfill.TyumenMergeOptions{Chz: chzMerger(u.match), MatchingMode: message.MatchingMode, Context: ctx})
 		if err != nil {
 			return err
 		}
@@ -235,6 +239,16 @@ func (u *ProcessJob) process(ctx context.Context, message port.JobMessage) error
 		return err
 	}
 
+	if detectedBrand == "christina" && len(plans) == 2 {
+		groups := map[string]bool{}
+		for _, plan := range plans {
+			label := orderfill.LabelChristinaBlank(blanksLoaded[plan.Index].workbook, blankInputs[plan.Index].Name)
+			if (label != "HOME" && label != "PROFF") || groups[label] {
+				return fmt.Errorf("%w: загрузите по одному бланку HOME и PROFF", orderfill.ErrInvalidInput)
+			}
+			groups[label] = true
+		}
+	}
 	outputs := make([]port.OutputFile, 0, len(blankInputs)+1)
 	rows := make([]orderfill.ReportRow, 0)
 	summary := orderfill.Summary{}
@@ -242,7 +256,7 @@ func (u *ProcessJob) process(ctx context.Context, message port.JobMessage) error
 	for _, plan := range plans {
 		progress.Set(ctx, 0.60, "Сверяю с бланком")
 		result, err := orderfill.Fill(orderfill.FillCommand{
-			Source:       sourceLoaded.workbook,
+			Source: sourceLoaded.workbook, SourceFileName: sourceInput.Name,
 			Blank:        blanksLoaded[plan.Index].workbook,
 			OrderMonth:   orderMonth,
 			Brand:        detectedBrand,
@@ -274,6 +288,9 @@ func (u *ProcessJob) process(ctx context.Context, message port.JobMessage) error
 			},
 			u.now(),
 		)
+		if err := orderfill.RefreshBudgetData(blanksLoaded[plan.Index].workbook, rule, result.Rows); err != nil {
+			return err
+		}
 		rows = append(rows, result.Rows...)
 		summary = mergeSummary(summary, result.Summary)
 	}
@@ -283,6 +300,14 @@ func (u *ProcessJob) process(ctx context.Context, message port.JobMessage) error
 	saveGroup, saveCtx := errgroup.WithContext(ctx)
 	for index, blankInput := range blankInputs {
 		saveGroup.Go(func() error {
+			baseline, err := blanksLoaded[index].workbook.Save()
+			if err != nil {
+				return fmt.Errorf("save review blank: %w", err)
+			}
+			baselineKey := fmt.Sprintf("jobs/%s/review/%s", message.JobID, orderfill.BlankOutputFileName(blankInput.Name, ""))
+			if err := u.storage.Put(saveCtx, baselineKey, workbookContentType, baseline); err != nil {
+				return fmt.Errorf("store review blank: %w", err)
+			}
 			output, err := u.saveWorkbook(saveCtx, message.JobID, blanksLoaded[index].workbook, orderfill.BlankOutputFileName(blankInput.Name, ""), "Скачать заполненный бланк")
 			if err != nil {
 				return err
@@ -376,12 +401,33 @@ func (u *ProcessJob) finalize(ctx context.Context, message port.JobMessage) erro
 		rule = loaded
 	}
 
+	pricingByKey := map[string]orderfill.BudgetPricing{}
+	if !message.ReplaceBudgetPricing {
+		for _, row := range rows {
+			if row.AgreedPricing != nil {
+				pricingByKey[row.Key] = *row.AgreedPricing
+			}
+		}
+	}
+	for _, entry := range message.BudgetPricing {
+		pricingByKey[entry.RowKey] = entry
+	}
+	effectivePricing := make([]orderfill.BudgetPricing, 0, len(pricingByKey))
+	for _, row := range rows {
+		if entry, ok := pricingByKey[row.Key]; ok {
+			effectivePricing = append(effectivePricing, entry)
+		}
+	}
 	outputs := make([]port.OutputFile, 0, len(blankInputs)+1)
 	workbooks := make([]spreadsheet.Workbook, 0, len(blankInputs)+1)
 	for index, blankInput := range blankInputs {
 		progress.Set(ctx, 0.25+0.4*float64(index)/float64(max(len(blankInputs), 1)), "Вношу правки в бланк")
 		name := orderfill.BlankOutputFileName(blankInput.Name, "")
-		blankWorkbook, err := u.loadStoredOutput(ctx, previousOutputs, name, nil)
+		blankWorkbook, err := u.loadWorkbook(ctx, fmt.Sprintf("jobs/%s/review/%s", message.JobID, name), nil)
+		fromBaseline := err == nil
+		if err != nil {
+			blankWorkbook, err = u.loadStoredOutput(ctx, previousOutputs, name, nil)
+		}
 		if err != nil {
 			return err
 		}
@@ -395,15 +441,64 @@ func (u *ProcessJob) finalize(ctx context.Context, message port.JobMessage) erro
 			brandKey = detected
 			blankRule = detectedRule
 		}
+
+		if fromBaseline {
+			detection, err := orderfill.DetectOrderBlank(blankWorkbook, blankRule)
+			if err != nil {
+				return err
+			}
+			for _, row := range rowsForBlank(rows, blankID(index)) {
+				if row.BlankRow <= detection.HeaderRow || row.BlankQuantityColumn <= 0 {
+					continue
+				}
+				if row.Inserted == nil {
+					detection.Sheet.ClearValue(row.BlankRow, row.BlankQuantityColumn)
+				} else {
+					detection.Sheet.SetNumber(row.BlankRow, row.BlankQuantityColumn, *row.Inserted)
+				}
+			}
+		}
 		if err := orderfill.ApplyFinalEdits(orderfill.FinalizeCommand{
-			Source: sourceWorkbook,
-			Blank:  blankWorkbook,
-			Rows:   rowsForBlank(rows, blankID(index)),
-			Edits:  edits,
-			Brand:  brandKey,
-			Rule:   blankRule,
+			Source:             sourceWorkbook,
+			Blank:              blankWorkbook,
+			Rows:               rowsForBlank(rows, blankID(index)),
+			Edits:              edits,
+			Brand:              brandKey,
+			Rule:               blankRule,
+			IncludeBlankStocks: false,
 		}); err != nil {
 			return err
+		}
+
+		detection, err := orderfill.DetectOrderBlank(blankWorkbook, blankRule)
+		if err != nil {
+			return err
+		}
+		if err := orderfill.ApplyBudgetPricing(detection.Sheet, detection.HeaderRow, brandKey, rowsForBlank(rows, blankID(index)), effectivePricing); err != nil {
+			return err
+		}
+		orderfill.RefreshBudgetCaches(detection.Sheet)
+		if message.IncludeBlankStocks {
+			if err := orderfill.AddOrderBlankStocks(blankWorkbook, rowsForBlank(rows, blankID(index)), blankRule, brandKey); err != nil {
+				return err
+			}
+		}
+
+		agreed := map[string]*orderfill.BudgetPricing{}
+		for _, entry := range effectivePricing {
+			agreed[entry.RowKey] = new(entry)
+		}
+		for i := range rows {
+			row := &rows[i]
+			if row.BlankID != blankID(index) || row.BlankQuantityColumn <= 0 {
+				continue
+			}
+			qty, ok := normalize.ParseNumber(detection.Sheet.Value(row.BlankRow, row.BlankQuantityColumn))
+			row.Inserted = nil
+			if ok && qty > 0 {
+				row.Inserted = new(qty)
+			}
+			row.AgreedPricing = agreed[row.Key]
 		}
 		output, err := u.saveWorkbook(ctx, message.JobID, blankWorkbook, name, "Скачать заполненный бланк")
 		if err != nil {
@@ -427,6 +522,25 @@ func (u *ProcessJob) finalize(ctx context.Context, message port.JobMessage) erro
 		return err
 	}
 
+	sourceDetection, err := orderfill.DetectSourceColumns(sourceWorkbook)
+	if err != nil {
+		return err
+	}
+	for i := range rows {
+		row := &rows[i]
+		if row.SourceRow == nil {
+			continue
+		}
+		raw := sourceDetection.Sheet.Value(*row.SourceRow, sourceDetection.Columns[orderfill.ColumnOrderedFact])
+		fact, ok := normalize.ParseNumber(raw)
+		row.HasOrderedFact = strings.TrimSpace(raw) != "" && ok
+		row.OrderedFact = nil
+		if row.HasOrderedFact {
+			row.OrderedFact = new(fact)
+		}
+		row.SourceComment = sourceDetection.Sheet.Value(*row.SourceRow, sourceDetection.Columns[orderfill.ColumnComment])
+	}
+	summary.IncludeBlankStocks = message.IncludeBlankStocks
 	if err := u.reports.Save(ctx, message.JobID, summary, rows, u.now()); err != nil {
 		return fmt.Errorf("save report: %w", err)
 	}

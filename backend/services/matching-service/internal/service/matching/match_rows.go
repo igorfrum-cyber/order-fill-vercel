@@ -28,6 +28,7 @@ const (
 var digitsPattern = regexp.MustCompile(`^\d+$`)
 
 type Options struct {
+	Brand          string
 	Mode           domain.Mode
 	PrefixAliases  []string
 	PreserveHyphen bool
@@ -41,6 +42,10 @@ func (s *Service) Match(blank, source []domain.Item, opts Options) []domain.Resu
 	index := indexSource(source, opts)
 	out := make([]domain.Result, 0, len(blank))
 	for _, item := range blank {
+		if opts.Brand == "novacutan" {
+			out = append(out, resolveNovacutan(item, source))
+			continue
+		}
 		out = append(out, resolve(item, index, opts))
 	}
 	return out
@@ -97,13 +102,20 @@ func resolve(blank domain.Item, index sourceIndex, opts Options) domain.Result {
 	candidates := uniqueItems(lookup(index.byArticle, articleKeys(article, opts.PrefixAliases)))
 	if len(candidates) == 0 {
 		fallback, ok := chooseNameFallback(index.noArticle, blank.Name, blank.Volume)
+		if opts.Brand == "sothys" {
+			fallback, ok = chooseSothysFallback(index.noArticle, blank.Name, blank.Volume)
+		}
 		if !ok {
 			return domain.Result{BlankItemID: blank.ID, Category: domain.CategoryNotInSource, Reasons: domain.Reasons{Source: reasonNone}}
+		}
+		category := domain.CategoryNeedsDecision
+		if fallback.item.Rounded <= 0 {
+			category = domain.CategoryOrderNotNeeded
 		}
 		return domain.Result{
 			BlankItemID:  blank.ID,
 			SourceItemID: fallback.item.ID,
-			Category:     domain.CategoryNeedsDecision,
+			Category:     category,
 			Score:        fallback.score,
 			Reasons:      domain.Reasons{Article: reasonMissing, Name: reasonSimilar, Source: reasonName},
 			CandidateIDs: []string{fallback.item.ID},
@@ -137,7 +149,7 @@ func resolve(blank domain.Item, index sourceIndex, opts Options) domain.Result {
 			return result
 		}
 	}
-	if volumesConflict(blank, chosen.item) || formsConflict(blank, chosen.item) || chosen.score < nameMatchThreshold {
+	if (opts.Mode == domain.ModeSmart && (volumesConflict(blank, chosen.item) || formsConflict(blank, chosen.item))) || chosen.score < nameMatchThreshold {
 		result.Category = domain.CategoryCheckNameOrVolume
 		if volumesConflict(blank, chosen.item) {
 			result.Reasons.Volume = reasonConflict
@@ -151,6 +163,9 @@ func resolve(blank domain.Item, index sourceIndex, opts Options) domain.Result {
 		return result
 	}
 	result.Category = domain.CategoryToOrder
+	if opts.Brand != "" && chosen.item.Rounded <= 0 {
+		result.Category = domain.CategoryOrderNotNeeded
+	}
 	return result
 }
 

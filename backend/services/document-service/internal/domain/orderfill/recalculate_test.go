@@ -167,3 +167,18 @@ func TestChzMergeLeavesNoDuplicateArticles(t *testing.T) {
 		}
 	}
 }
+
+func TestStandaloneRecalculatePreservesActualOrders(t *testing.T) {
+	t.Parallel()
+	grid := chzSourceGrid()
+	grid[4][16] = "7"
+	grid[4][17] = "согласовано"
+	book := newFakeWorkbook("Заказ", grid)
+	source, err := RecalculateTable(FillCommand{Source: book, OrderMonth: "2026-09", Brand: "angiopharm"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(source.Items) == 0 || source.Items[0].OrderedFact != 7 || source.Items[0].SourceComment != "согласовано" {
+		t.Fatalf("actual order lost: %+v", source.Items)
+	}
+}

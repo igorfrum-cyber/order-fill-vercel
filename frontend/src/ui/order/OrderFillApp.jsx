@@ -47,6 +47,7 @@ export function OrderFillApp({ companyId, canSelectCompany = false, resumeJob, o
   const [stage, setStage] = useState(resumeStage(resumeJob));
   const [brand, setBrand] = useState(resumeJob?.brand || "");
   const [month, setMonth] = useState(resumeJob?.month || "");
+  const [recalculate, setRecalculate] = useState(false);
   const [sourceFile, setSourceFile] = useState(null);
   const [warehouseFile, setWarehouseFile] = useState(null);
   const [blankFiles, setBlankFiles] = useState({});
@@ -66,6 +67,9 @@ export function OrderFillApp({ companyId, canSelectCompany = false, resumeJob, o
   const [banner, setBanner] = useState("");
   const [outputFiles, setOutputFiles] = useState(resumeJob?.outputFiles || []);
   const [finalized, setFinalized] = useState(Boolean(resumeJob?.finalized));
+  const [budgetPricing, setBudgetPricing] = useState(() => resumeJob?.budgetPricing || []);
+  const [includeBlankStocks, setIncludeBlankStocks] = useState(() => resumeJob?.includeBlankStocks || false);
+  const [finalizedIncludeBlankStocks, setFinalizedIncludeBlankStocks] = useState(() => resumeJob?.includeBlankStocks || false);
   const [editsDirty, setEditsDirty] = useState(false);
   const [previewEpoch, setPreviewEpoch] = useState(0);
   const [leaveUploadConfirm, setLeaveUploadConfirm] = useState(false);
@@ -101,10 +105,13 @@ export function OrderFillApp({ companyId, canSelectCompany = false, resumeJob, o
     setRows([]);
     setResults([]);
     setEdits(new Map());
+    setBudgetPricing([]);
     setInvalidKeys(new Set());
     setCommentGateKeys(null);
     setOutputFiles([]);
     setFinalized(false);
+    setIncludeBlankStocks(false);
+    setFinalizedIncludeBlankStocks(false);
     setEditsDirty(false);
     setPreviewEpoch(0);
     setError("");
@@ -116,7 +123,7 @@ export function OrderFillApp({ companyId, canSelectCompany = false, resumeJob, o
 
   async function processFiles() {
     const blanks = uploadSlots.map((slot) => blankFiles[slot.id]).filter(Boolean);
-    if (!sourceFile || blanks.length < 1) return;
+    if (!sourceFile || (!recalculate && blanks.length < 1)) return;
     if (sameSelectedFile(sourceFile, warehouseFile)) {
       setError("Один файл нельзя использовать и для офиса, и для склада доставки.");
       return;
@@ -136,7 +143,9 @@ export function OrderFillApp({ companyId, canSelectCompany = false, resumeJob, o
         command: {
           sourceFile,
           warehouseFile,
-          blankFiles: blanks,
+          blankFiles: recalculate ? [] : blanks,
+          recalculate,
+          orderMonth: month,
           companyId,
         },
         onStatus: (text, job) => {
@@ -154,7 +163,12 @@ export function OrderFillApp({ companyId, canSelectCompany = false, resumeJob, o
       setResults(result.results);
       setEdits(initialEditState(result.rows));
       setEditsDirty(false);
-      setStage("fill");
+      if (recalculate) {
+        const files = await listJobFiles(result.jobId);
+        setOutputFiles(files.files || []);
+        setFinalized(true);
+        setStage("preview");
+      } else setStage("fill");
       setStatus("");
       setProgress(1);
     } catch (err) {
@@ -167,7 +181,8 @@ export function OrderFillApp({ companyId, canSelectCompany = false, resumeJob, o
   }
 
   function updateEdit(key, patch) {
-    setEdits((prev) => patchEdit(prev, key, patch));
+    const reviewedPatch=Object.hasOwn(patch,"value") && !Object.hasOwn(patch,"budgetApplied") ? {...patch,budgetApplied:false} : patch;
+    setEdits((prev) => patchEdit(prev, key, reviewedPatch));
     setEditsDirty(true);
     setInvalidKeys((prev) => {
       if (!prev.has(key)) return prev;
@@ -250,12 +265,12 @@ export function OrderFillApp({ companyId, canSelectCompany = false, resumeJob, o
       finalized,
       dirty: editsDirty,
       hasDeviations: hasManualDeviations(rows, edits),
-    })) {
+    }) && includeBlankStocks === finalizedIncludeBlankStocks) {
       return false;
     }
     setStatus("Сохраняю правки...");
     const payload = collectReviewEdits(rows, edits);
-    const editedJob = await submitJobEdits(jobId, payload);
+    const editedJob = await submitJobEdits(jobId, payload, { includeBlankStocks, budgetPricing });
     const finalJob = await pollJob(editedJob.id, {
       until: FINALIZE_DONE_STATUSES,
       onUpdate: (job) => setStatus(jobStatusText(job)),
@@ -265,6 +280,7 @@ export function OrderFillApp({ companyId, canSelectCompany = false, resumeJob, o
     }
     setEditsDirty(false);
     setFinalized(true);
+    setFinalizedIncludeBlankStocks(includeBlankStocks);
     setPreviewEpoch((epoch) => epoch + 1);
     return true;
   }
@@ -373,6 +389,10 @@ export function OrderFillApp({ companyId, canSelectCompany = false, resumeJob, o
         )}
         {(stage === "upload" || stage === "processing") && (
           <UploadStage
+            recalculate={recalculate}
+            onRecalculate={(value) => { setRecalculate(value); if (value && !month) setMonth(new Date().toISOString().slice(0, 7)); resetResult(); }}
+            orderMonth={month}
+            onOrderMonth={(value) => { setMonth(value); resetResult(); }}
             sourceFile={sourceFile}
             warehouseFile={warehouseFile}
             blankFiles={blankFiles}
@@ -418,12 +438,16 @@ export function OrderFillApp({ companyId, canSelectCompany = false, resumeJob, o
             rows={rows}
             edits={edits}
             onEdit={updateEdit}
+            pricing={budgetPricing}
+            onPricingChange={(pricing) => { setBudgetPricing(pricing); setEditsDirty(true); }}
             invalidKeys={invalidKeys}
             summary={summary}
             status={status}
             busy={busy}
             banner={banner}
             onDownloadFiles={openPreview}
+            includeBlankStocks={includeBlankStocks}
+            onIncludeBlankStocksChange={setIncludeBlankStocks}
             onIssueReport={downloadIssueReport}
             acknowledgedDuplicates={acknowledgedDuplicates}
             onAcknowledgedDuplicates={(next) => {
@@ -460,6 +484,8 @@ export function OrderFillApp({ companyId, canSelectCompany = false, resumeJob, o
               rows={rows}
               edits={edits}
               onEdit={updateEdit}
+            pricing={budgetPricing}
+            onPricingChange={(pricing) => { setBudgetPricing(pricing); setEditsDirty(true); }}
               refreshKey={previewEpoch}
               onBack={backToFill}
               onReady={() => setStatus("")}

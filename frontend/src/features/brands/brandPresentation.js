@@ -81,8 +81,8 @@ export function looksLikeChristinaSource(fileName) {
   return value.includes("кристин") || value.includes("christina");
 }
 
-export function blankSlotsForSource(_fileName) {
-  return [
+export function blankSlotsForSource(fileName) {
+  const slots = [
     {
       id: "main",
       label: "Бланк",
@@ -90,4 +90,6 @@ export function blankSlotsForSource(_fileName) {
       accept: ".xlsx,.xlsm",
     },
   ];
+  if(looksLikeChristinaSource(fileName)) slots.push({id:"second",label:"Второй бланк CHRISTINA",hint:"HOME и PROFF можно загрузить вместе",accept:".xlsx,.xlsm",optional:true});
+  return slots;
 }

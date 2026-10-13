@@ -504,6 +504,9 @@ func (x *IngestWebhookRequest) GetRawPayload() []byte {
 	return nil
 }
 
+// IngestWebhookResponse reports durable ingest outcome so gateway can audit
+// without putting audit-service on the inbound hot path. Duplicate deliveries
+// leave status unspecified.
 type IngestWebhookResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	CompanyId     string                 `protobuf:"bytes,1,opt,name=company_id,json=companyId,proto3" json:"company_id,omitempty"`

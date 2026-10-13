@@ -240,7 +240,9 @@ func pickUpStage(rows []domain.BudgetRow, candidates []budgetCand) string {
 	for _, cat := range budgetCats {
 		norm := budgetNorms[cat]
 		for _, c := range candidates {
-			if rows[c.idx].Category == cat && c.months < norm+rows[c.idx].Delivery-1e-8 {
+			if rows[c.idx].Category == cat &&
+				c.months < norm+rows[c.idx].Delivery-1e-8 &&
+				c.nextMonths <= norm+rows[c.idx].Delivery+1e-8 {
 				return cat
 			}
 		}
@@ -255,7 +257,9 @@ func filterStage(rows []domain.BudgetRow, candidates []budgetCand, stage string)
 	norm := budgetNorms[stage]
 	var out []budgetCand
 	for _, c := range candidates {
-		if rows[c.idx].Category == stage && c.months < norm+rows[c.idx].Delivery-1e-8 {
+		if rows[c.idx].Category == stage &&
+			c.months < norm+rows[c.idx].Delivery-1e-8 &&
+			c.nextMonths <= norm+rows[c.idx].Delivery+1e-8 {
 			out = append(out, c)
 		}
 	}
@@ -283,11 +287,15 @@ func filterCategory(rows []domain.BudgetRow, candidates []budgetCand, cat string
 	return out
 }
 
-func sortBudgetUp(rows []domain.BudgetRow, candidates []budgetCand, goal, amount int64) {
-	slices.SortFunc(candidates, func(a, b budgetCand) int {
+func sortBudgetUp(rows []domain.BudgetRow, candidates []budgetCand, stage string, goal, amount int64) {
+	slices.SortStableFunc(candidates, func(a, b budgetCand) int {
+		ca, cb := a.months, b.months
+		if stage == "" {
+			ca, cb = a.nextMonths, b.nextMonths
+		}
 		na := budgetNorms[rows[a.idx].Category] + rows[a.idx].Delivery
 		nb := budgetNorms[rows[b.idx].Category] + rows[b.idx].Delivery
-		if d := cmp.Compare(a.months/na, b.months/nb); d != 0 {
+		if d := cmp.Compare(ca/na, cb/nb); d != 0 {
 			return d
 		}
 		return cmp.Compare(math.Abs(float64(goal-amount-a.cost)), math.Abs(float64(goal-amount-b.cost)))
@@ -295,7 +303,7 @@ func sortBudgetUp(rows []domain.BudgetRow, candidates []budgetCand, goal, amount
 }
 
 func sortBudgetDown(candidates []budgetCand, goal, amount int64) {
-	slices.SortFunc(candidates, func(a, b budgetCand) int {
+	slices.SortStableFunc(candidates, func(a, b budgetCand) int {
 		if d := cmp.Compare(b.months, a.months); d != 0 {
 			return d
 		}
@@ -351,7 +359,6 @@ func planBudgetCore(input []domain.BudgetRow, target float64, opts domain.Budget
 				reason = "overSix"
 				break
 			}
-			candidates = filterStage(rows, candidates, pickUpStage(rows, candidates))
 			cap := int64(math.Floor(float64(goal)*1.05 + 1e-8))
 			var within []budgetCand
 			for _, c := range candidates {
@@ -360,7 +367,9 @@ func planBudgetCore(input []domain.BudgetRow, target float64, opts domain.Budget
 				}
 			}
 			candidates = within
-			sortBudgetUp(rows, candidates, goal, amount)
+			stage := pickUpStage(rows, candidates)
+			candidates = filterStage(rows, candidates, stage)
+			sortBudgetUp(rows, candidates, stage, goal, amount)
 		} else {
 			var protectedRows []budgetCand
 			for _, c := range candidates {
@@ -391,7 +400,7 @@ func planBudgetCore(input []domain.BudgetRow, target float64, opts domain.Budget
 		for i := range rows {
 			idx[i] = i
 		}
-		slices.SortFunc(idx, func(a, b int) int {
+		slices.SortStableFunc(idx, func(a, b int) int {
 			return cmp.Compare(slices.Index(budgetCats, rows[b].Category), slices.Index(budgetCats, rows[a].Category))
 		})
 		lines := proffLineMembers(rows)
@@ -642,12 +651,19 @@ func planBudgetRun(input []domain.BudgetRow, target float64, opts domain.BudgetO
 // multiples or the CHRISTINA set discount. Mirrors origin/main
 // budgetRowsFromReport + planBudget.
 func PlanReportBudget(req domain.BudgetRequest) (domain.BudgetPlan, error) {
-	factor := 1 - req.Discount/100
 	rows := make([]domain.BudgetRow, len(req.Rows))
 	for i, r := range req.Rows {
+		discount := req.Discount
+		if r.DiscountOverride != nil {
+			discount = *r.DiscountOverride
+		}
+		if !finiteNumber(discount) || discount < 0 || discount >= 100 {
+			return domain.BudgetPlan{}, errors.New("скидка должна быть от 0 до 99,99%")
+		}
+		factor := 1 - discount/100
 		unit, step, minimum := BudgetOrderRules(req.Brand, r.Name, r.BoxSize)
 		rows[i] = domain.BudgetRow{
-			Key: r.Key, Name: r.Name, Category: r.Category, Quantity: r.Quantity,
+			Key: r.Key, Name: r.Name, Category: r.Category, Quantity: r.Quantity, Discount: discount,
 			Price:    math.Round(r.BasePrice*factor*100) / 100,
 			Demand:   r.Demand,
 			Delivery: req.DeliveryWeeks * 0.25,
@@ -656,6 +672,9 @@ func PlanReportBudget(req domain.BudgetRequest) (domain.BudgetPlan, error) {
 			Locked: r.Locked, Excluded: r.Excluded, Unsafe: r.Unsafe,
 			Group: r.Group, Line: r.Line,
 		}
+	}
+	if req.QuoteOnly {
+		return planBudgetCore(rows, float64(ProcurementTotalCents(rows))/100, req.Options)
 	}
 	return PlanBudget(rows, req.Target, req.Options)
 }

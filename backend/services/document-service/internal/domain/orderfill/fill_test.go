@@ -181,7 +181,7 @@ func TestFillWritesRecommendedQuantityIntoBlank(t *testing.T) {
 
 func TestFillCarriesBudgetInputsFromSourceAndBlank(t *testing.T) {
 	source := chzSourceGrid()
-	source[4][9] = "B"
+	source[4][9] = "B/New"
 	source[4][10] = "11"
 	blank := chzBlankGrid()
 	blank[0] = append(blank[0], "Закупочная цена")
@@ -189,18 +189,19 @@ func TestFillCarriesBudgetInputsFromSourceAndBlank(t *testing.T) {
 	blank[2] = append(blank[2], "100")
 
 	result, err := testFill(FillCommand{
-		Source:     newFakeWorkbook("Заказ", source),
-		Blank:      newFakeWorkbook("Бланк", blank),
-		OrderMonth: "2026-09",
-		Brand:      "angiopharm",
-		BlankID:    "blank-1",
-		BlankLabel: "Бланк",
+		Source:      newFakeWorkbook("Заказ", source),
+		Blank:       newFakeWorkbook("Бланк", blank),
+		OrderMonth:  "2026-09",
+		Brand:       "angiopharm",
+		BlankID:     "blank-1",
+		BlankLabel:  "Бланк",
+		Recommender: budgetForecastStub{},
 	})
 	if err != nil {
 		t.Fatalf("fill failed: %v", err)
 	}
 	row := rowByKey(t, result, "blank-1:2")
-	if !row.HasBudgetData || row.BudgetCategory != "B" || row.BudgetDemand != 11 || row.BudgetPrice != 250.5 {
+	if !row.HasBudgetData || row.BudgetCategory != "B" || row.BudgetDemand != 18 || row.BudgetPrice != 250.5 {
 		t.Fatalf("budget inputs = enabled:%v category:%q demand:%v price:%v", row.HasBudgetData, row.BudgetCategory, row.BudgetDemand, row.BudgetPrice)
 	}
 }
@@ -215,12 +216,13 @@ func TestFillUsesDiscountedPriceWhenBlankAlsoHasRetailPrice(t *testing.T) {
 	blank[2] = append(blank[2], "100", "154", "100")
 
 	result, err := testFill(FillCommand{
-		Source:     newFakeWorkbook("Заказ", source),
-		Blank:      newFakeWorkbook("Бланк", blank),
-		OrderMonth: "2026-09",
-		Brand:      "angiopharm",
-		BlankID:    "blank-1",
-		BlankLabel: "Бланк",
+		Source:      newFakeWorkbook("Заказ", source),
+		Blank:       newFakeWorkbook("Бланк", blank),
+		OrderMonth:  "2026-09",
+		Brand:       "angiopharm",
+		BlankID:     "blank-1",
+		BlankLabel:  "Бланк",
+		Recommender: budgetForecastStub{},
 	})
 	if err != nil {
 		t.Fatalf("fill failed: %v", err)
@@ -241,12 +243,13 @@ func TestFillNormalizesCyrillicBudgetCategory(t *testing.T) {
 	blank[2] = append(blank[2], "100")
 
 	result, err := testFill(FillCommand{
-		Source:     newFakeWorkbook("Заказ", source),
-		Blank:      newFakeWorkbook("Бланк", blank),
-		OrderMonth: "2026-09",
-		Brand:      "angiopharm",
-		BlankID:    "blank-1",
-		BlankLabel: "Бланк",
+		Source:      newFakeWorkbook("Заказ", source),
+		Blank:       newFakeWorkbook("Бланк", blank),
+		OrderMonth:  "2026-09",
+		Brand:       "angiopharm",
+		BlankID:     "blank-1",
+		BlankLabel:  "Бланк",
+		Recommender: budgetForecastStub{},
 	})
 	if err != nil {
 		t.Fatalf("fill failed: %v", err)
@@ -440,7 +443,7 @@ func TestFillRejectsExportBuiltForAnotherMonth(t *testing.T) {
 	}
 }
 
-func TestFillRejectsUnsupportedBlankLayout(t *testing.T) {
+func TestFillRejectsMalformedSpecializedBlank(t *testing.T) {
 	t.Parallel()
 	for _, brandKey := range []string{"novacutan", "sothys"} {
 		t.Run(brandKey, func(t *testing.T) {
@@ -711,4 +714,13 @@ func TestFillRequiresMatcher(t *testing.T) {
 	if err == nil {
 		t.Fatal("fill without matching-service must fail")
 	}
+}
+
+type budgetForecastStub struct{}
+
+func (budgetForecastStub) Recommend(_ context.Context, _ string, _ string, _ float64, rows []RecommendRow) ([]RecommendRow, error) {
+	for i := range rows {
+		rows[i].MonthlyNeed = 18
+	}
+	return rows, nil
 }

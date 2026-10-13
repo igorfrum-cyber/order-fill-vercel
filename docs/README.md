@@ -26,3 +26,5 @@
 - [QA и AI exploratory](../qa/README.md)
 
 Локальный рантайм: frontend → `gateway-service` → gRPC-сервисы в `backend/`. Excel считает `document-worker`.
+
+- [Сверка алгоритмов с main](main-parity.md) — источник эталонов, перенос и команды проверки.

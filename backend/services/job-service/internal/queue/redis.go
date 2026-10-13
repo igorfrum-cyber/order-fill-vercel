@@ -8,6 +8,7 @@ import (
 	"sync"
 
 	"github.com/redis/go-redis/v9"
+	"order-fill/backend/services/job-service/internal/domain"
 )
 
 const Version = "v1"
@@ -47,16 +48,20 @@ type BrandTerms struct {
 }
 
 type Message struct {
-	Version      string       `json:"version"`
-	JobID        string       `json:"job_id"`
-	Type         string       `json:"type"`
-	Stage        string       `json:"stage"`
-	Brand        string       `json:"brand,omitempty"`
-	MatchingMode string       `json:"matching_mode"`
-	CompanyID    string       `json:"company_id,omitempty"`
-	OrderProfile OrderProfile `json:"order_profile,omitzero"`
-	Inputs       []Input      `json:"inputs"`
-	Edits        []Edit       `json:"edits,omitempty"`
+	ReplaceBudgetPricing bool                   `json:"replace_budget_pricing,omitempty"`
+	OrderMonth           string                 `json:"order_month,omitempty"`
+	BudgetPricing        []domain.BudgetPricing `json:"budget_pricing,omitempty"`
+	Version              string                 `json:"version"`
+	JobID                string                 `json:"job_id"`
+	Type                 string                 `json:"type"`
+	Stage                string                 `json:"stage"`
+	Brand                string                 `json:"brand,omitempty"`
+	MatchingMode         string                 `json:"matching_mode"`
+	CompanyID            string                 `json:"company_id,omitempty"`
+	OrderProfile         OrderProfile           `json:"order_profile,omitzero"`
+	Inputs               []Input                `json:"inputs"`
+	Edits                []Edit                 `json:"edits,omitempty"`
+	IncludeBlankStocks   bool                   `json:"include_blank_stocks,omitempty"`
 }
 
 type Publisher struct {

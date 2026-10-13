@@ -10,8 +10,9 @@ import (
 type Type string
 
 const (
-	TypeOrderFill  Type = "order_fill"
-	TypeNorthMerge Type = "north_merge"
+	TypeOrderFill        Type = "order_fill"
+	TypeNorthMerge       Type = "north_merge"
+	TypeTableRecalculate Type = "table_recalculate"
 )
 
 type Status string
@@ -94,7 +95,7 @@ type BrandTerms struct {
 
 func ParseType(raw string) (Type, error) {
 	switch Type(raw) {
-	case TypeOrderFill, TypeNorthMerge:
+	case TypeOrderFill, TypeNorthMerge, TypeTableRecalculate:
 		return Type(raw), nil
 	default:
 		return "", fmt.Errorf("%w: unsupported job type %q", ErrInvalid, raw)
@@ -105,7 +106,7 @@ func NewJob(id string, jobType Type, ownerUserID, companyID string, mode Matchin
 	if strings.TrimSpace(id) == "" {
 		return Job{}, fmt.Errorf("%w: job id is required", ErrInvalid)
 	}
-	if jobType != TypeOrderFill && jobType != TypeNorthMerge {
+	if jobType != TypeOrderFill && jobType != TypeNorthMerge && jobType != TypeTableRecalculate {
 		return Job{}, fmt.Errorf("%w: unsupported job type %q", ErrInvalid, jobType)
 	}
 	if strings.TrimSpace(ownerUserID) == "" || strings.TrimSpace(companyID) == "" {
@@ -182,6 +183,10 @@ func ValidateUploads(jobType Type, uploads []UploadMeta) error {
 		if sources != 1 {
 			return fmt.Errorf("%w: exactly one source_file is required", ErrInvalid)
 		}
+	case TypeTableRecalculate:
+		if sources != 1 || blanks != 0 {
+			return fmt.Errorf("%w: пересчёт принимает одну таблицу продаж и необязательный склад без бланка", ErrInvalid)
+		}
 	case TypeNorthMerge:
 		if blanks == 0 {
 			return fmt.Errorf("%w: blank_files is required", ErrInvalid)
@@ -207,6 +212,9 @@ func hasWorkbookExtension(name string) bool {
 }
 
 func (j Job) CanAcceptEdits() bool {
+	if j.Type == TypeTableRecalculate {
+		return false
+	}
 	return j.Status == StatusNeedsReview || j.Status == StatusCompleted
 }
 

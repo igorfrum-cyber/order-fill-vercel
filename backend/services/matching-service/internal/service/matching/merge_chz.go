@@ -2,6 +2,7 @@ package matching
 
 import (
 	"regexp"
+	"slices"
 	"strings"
 
 	"order-fill/backend/services/matching-service/internal/domain"
@@ -11,9 +12,9 @@ import (
 const chzNameThreshold = 0.9
 
 var (
-	chzPrefixPattern = regexp.MustCompile(`^чз\s+`)
+	chzPrefixPattern = regexp.MustCompile(`^чз[\s\p{Z}\x{000B}\x{FEFF}]+`)
 	chzWordPattern   = regexp.MustCompile(`\bчз\b`)
-	chzPlusPattern   = regexp.MustCompile(`^чз\s*\+`)
+	chzPlusPattern   = regexp.MustCompile(`(?i)^[\s\p{Z}\x{000B}\x{FEFF}]*чз[\s\p{Z}\x{000B}\x{FEFF}]*\+`)
 )
 
 type ChzMerge struct {
@@ -29,6 +30,11 @@ func (s *Service) MergeChz(items []domain.Item, opts Options) []ChzMerge {
 		article := normalize.NormalizeArticle(item.Article, normalize.ArticleOptions{PreserveHyphen: opts.PreserveHyphen})
 		if article == "" {
 			continue
+		}
+		if slices.Contains(opts.PrefixAliases, "MT") {
+			if rest, ok := strings.CutPrefix(article, "MT"); ok && regexp.MustCompile(`^\d+$`).MatchString(rest) {
+				article = rest
+			}
 		}
 		item.Article = article
 		if _, seen := grouped[article]; !seen {
@@ -52,6 +58,9 @@ func mergeArticleChz(group []domain.Item, opts Options) []ChzMerge {
 			continue
 		}
 		normals = append(normals, item)
+	}
+	if slices.Contains(opts.PrefixAliases, "MT") {
+		return mergeLevissime(normals, clones)
 	}
 	if len(normals) == 0 || len(clones) == 0 {
 		return nil
@@ -130,7 +139,7 @@ func chzAttachOK(target, clone domain.Item) bool {
 
 func isChzName(value string) bool {
 	header := normalize.NormalizeHeader(value)
-	return strings.HasPrefix(header, "чз ") && !chzPlusPattern.MatchString(header)
+	return strings.HasPrefix(header, "чз ") && !chzPlusPattern.MatchString(value)
 }
 
 func comparableChzName(value string) string {

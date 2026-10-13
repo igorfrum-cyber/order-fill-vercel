@@ -34,7 +34,7 @@ func protoItem(item *matchingv1.Item) domain.Item {
 	return domain.Item{
 		ID: item.GetId(), Article: item.GetArticle(), Name: item.GetName(),
 		Volume: item.GetVolume(), Form: item.GetForm(), ChestnyZnak: item.GetChestnyZnak(),
-		Rounded: int(item.GetRounded()),
+		Rounded: int(item.GetRounded()), Recommended: item.GetRecommended(),
 	}
 }
 
@@ -71,8 +71,8 @@ func (s *Server) MatchRows(_ context.Context, req *matchingv1.MatchRowsRequest) 
 		mode = domain.ModeSmart
 	}
 	results := s.svc.Match(blank, source, matching.Options{
-		Mode:           mode,
-		PrefixAliases:  req.GetPrefixAliases(),
+		Mode:          mode,
+		PrefixAliases: req.GetPrefixAliases(), Brand: req.GetBrand(),
 		PreserveHyphen: req.GetPreserveHyphen(),
 	})
 	out := make([]*matchingv1.MatchResult, 0, len(results))

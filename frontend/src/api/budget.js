@@ -47,6 +47,8 @@ function mapPlannedRow(row) {
     before: Number(row.before || 0),
     quantity: Number(row.quantity || 0),
     comment: row.comment || "",
+    price: Number(row.price || 0),
+    discount: Number(row.discount || 0),
   };
 }
 

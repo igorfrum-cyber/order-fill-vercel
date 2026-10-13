@@ -52,8 +52,8 @@ test("looksLikeChristinaSource reads the 1C file name", () => {
   assert.equal(looksLikeChristinaSource("Ангио Тюмень .xlsx"), false);
 });
 
-test("blankSlotsForSource asks for one blank when the sales table is Christina", () => {
-  assert.deepEqual(blankSlotsForSource("Кристина Тюмень .xlsx").map((slot) => slot.id), ["main"]);
+test("blankSlotsForSource makes a second Christina blank optional", () => {
+  assert.deepEqual(blankSlotsForSource("Кристина Тюмень .xlsx").filter((slot) => !slot.optional).map((slot) => slot.id), ["main"]);
   const other = blankSlotsForSource("Ангио Тюмень .xlsx");
   assert.deepEqual(other.map((slot) => slot.id), ["main"]);
 });

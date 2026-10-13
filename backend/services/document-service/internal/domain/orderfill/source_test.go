@@ -99,3 +99,14 @@ func TestReadSourceExtractsRows(t *testing.T) {
 		t.Fatalf("items = %d, want 4", len(source.Items))
 	}
 }
+
+func TestSourceCityUsesMainFilenameFallback(t *testing.T) {
+	t.Parallel()
+	source, err := readSource(FillCommand{Source: newFakeWorkbook("Заказ", sourceGrid()), SourceFileName: "Кристина Тюмень.xlsx", OrderMonth: "2026-09"}, brand.Rule("christina"), nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if source.SourceCity != "Тюмень" {
+		t.Fatalf("city=%q", source.SourceCity)
+	}
+}

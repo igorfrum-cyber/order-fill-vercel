@@ -92,6 +92,7 @@ func readSource(command FillCommand, rule brand.RuleConfig, report func(fraction
 		return Source{}, err
 	}
 
+	detection.BudgetDemands = make(map[int]float64)
 	deliveryWeeks := math.Max(1, detectDeliveryWeeks(workbook))
 	calculationColumns := detectCalculationColumns(detection)
 	var chzDecisions []ChzDecision
@@ -106,9 +107,10 @@ func readSource(command FillCommand, rule brand.RuleConfig, report func(fraction
 		chzDecisions = pending
 	}
 
+	sourceCity := detectSourceCity(workbook, command.SourceFileName)
 	urengoy := (*urengoyInfo)(nil)
 	cityRule := ""
-	if calculationColumns == nil && rule.Label != "ANGIOPHARM" && isUrengoySource(workbook) {
+	if calculationColumns == nil && rule.Label != "ANGIOPHARM" && sourceCity == "Уренгой" {
 		detected, err := detectUrengoyColumns(detection)
 		if err != nil {
 			return Source{}, err
@@ -141,6 +143,7 @@ func readSource(command FillCommand, rule brand.RuleConfig, report func(fraction
 		Items:        items,
 		PeriodInfo:   periodInfo,
 		CityRule:     cityRule,
+		SourceCity:   sourceCity,
 		Delivery:     deliveryWeeks,
 		ChzDecisions: chzDecisions,
 	}, nil
@@ -181,8 +184,8 @@ func collectSourceItems(detection Detection, rule brand.RuleConfig, calculation 
 		budgetCategory := ""
 		budgetDemand := 0.0
 		if calculation != nil {
-			budgetCategory = normalize.NormalizeCategory(detection.Sheet.Value(row, calculation.category))
-			budgetDemand, _ = normalize.ParseNumber(detection.Sheet.Value(row, calculation.averageMonthly))
+			budgetCategory = strings.Split(normalize.NormalizeCategory(detection.Sheet.Value(row, calculation.category)), "/")[0]
+			budgetDemand = detection.BudgetDemands[row]
 		}
 
 		if articleRaw == "" && name == "" && !hasRecommended {
@@ -388,20 +391,6 @@ func DeliveryWeeks(workbook spreadsheet.Workbook) float64 {
 	return math.Max(1, detectDeliveryWeeks(workbook))
 }
 
-func isUrengoySource(workbook spreadsheet.Workbook) bool {
-	for _, sheet := range workbook.Sheets() {
-		bounds := sheet.Bounds()
-		for row := 1; row <= min(bounds.MaxRow, 40); row++ {
-			for column := 1; column <= bounds.MaxColumn; column++ {
-				if strings.Contains(normalize.NormalizeHeader(sheet.Value(row, column)), "уренгой") {
-					return true
-				}
-			}
-		}
-	}
-	return false
-}
-
 func isMonthHeader(value string) bool {
 	header := normalize.NormalizeHeader(value)
 	if !regexp.MustCompile(`\b20\d{2}\b`).MatchString(header) {
@@ -426,4 +415,34 @@ func reportProgress(report func(float64, string), fraction float64, message stri
 		fraction = 1
 	}
 	report(fraction, message)
+}
+
+func detectSourceCity(workbook spreadsheet.Workbook, fileName string) string {
+	cityFromText := func(value string) string {
+		text := normalize.NormalizeHeader(value)
+		for _, city := range []struct {
+			label   string
+			aliases []string
+		}{{"Нижневартовск", []string{"нижневартовск", "вартовск"}}, {"Уренгой", []string{"новый уренгой", "уренгой"}}, {"Сургут", []string{"сургут"}}, {"Тюмень", []string{"тюмень", "склад доставка"}}} {
+			for _, alias := range city.aliases {
+				if strings.Contains(text, alias) {
+					return city.label
+				}
+			}
+		}
+		return ""
+	}
+	for _, sheet := range workbook.Sheets() {
+		if city := cityFromText(sheet.Name()); city != "" {
+			return city
+		}
+		for row := 1; row <= min(60, sheet.Bounds().MaxRow); row++ {
+			for col := 1; col <= sheet.Bounds().MaxColumn; col++ {
+				if city := cityFromText(sheet.Value(row, col)); city != "" {
+					return city
+				}
+			}
+		}
+	}
+	return cityFromText(fileName)
 }

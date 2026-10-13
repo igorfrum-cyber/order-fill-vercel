@@ -100,10 +100,13 @@ func TestPlanBlanksAcceptsOneChristinaFile(t *testing.T) {
 	}
 }
 
-func TestPlanBlanksRejectsTwoChristinaFiles(t *testing.T) {
-	_, err := PlanBlanks("christina", []string{"HOME.xlsx", "PROFF.xlsx"})
-	if !errors.Is(err, ErrInvalidInput) {
-		t.Fatalf("expected invalid input, got %v", err)
+func TestPlanBlanksAcceptsHomeAndProffLikeMain(t *testing.T) {
+	got, err := PlanBlanks("christina", []string{"HOME.xlsx", "PROFF.xlsx"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(got) != 2 || got[0].ID != "blank-1" || got[1].ID != "blank-2" {
+		t.Fatalf("plan %+v", got)
 	}
 }
 

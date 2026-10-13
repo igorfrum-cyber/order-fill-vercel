@@ -79,17 +79,24 @@ func Label(key string) string {
 }
 
 type Need struct {
+	Row, QuantityColumn, PriceColumn                      int
+	Prices                                                []orderfill.BudgetPrice
 	City, Article, BaseArticle, ArticleRaw, Name, Variant string
 	Qty, Price                                            float64
+	Minimum, SupplierUnitSize, BoxSize                    float64
+	HasBoxSize                                            bool
 	// Line is the CHRISTINA PROFF line this blank row belongs to (nil otherwise),
 	// so the budget planner can apply the set discount on the North flow too.
 	Line *orderfill.ChristinaLine
 }
 
 type Stock struct {
+	SourceRow                                                    int
 	Article, Name, Category                                      string
 	Stock, InTransit, Target, MonthlyDemand, Recommended, Actual float64
 	HasActual                                                    bool
+	WarehouseStock, WarehouseTransit                             float64
+	HasWarehouseStock                                            bool
 }
 
 func NeedsFromBlank(workbook spreadsheet.Workbook, rule brand.RuleConfig, city string, variants ...string) ([]Need, error) {
@@ -101,8 +108,12 @@ func NeedsFromBlank(workbook spreadsheet.Workbook, rule brand.RuleConfig, city s
 	if len(variants) > 0 {
 		variant = variants[0]
 	}
+	if rule.BlankLayout != "" {
+		return specializedNeeds(detection, rule, city, variant)
+	}
 	qtyCol := detection.Columns[orderfill.ColumnQuantity]
 	priceCol := northPriceColumn(detection)
+	boxCol := orderfill.BlankBoxColumn(detection, rule)
 	articleCol := detection.Columns[orderfill.ColumnArticle]
 	nameCol := detection.Columns[orderfill.ColumnName]
 	// Attach CHRISTINA PROFF line membership so PROFF rows earn the set discount
@@ -147,9 +158,10 @@ func NeedsFromBlank(workbook spreadsheet.Workbook, rule brand.RuleConfig, city s
 		}
 		price := 0.0
 		if priceCol > 0 {
-			price, _ = normalize.ParseNumber(detection.Sheet.Value(row, priceCol))
+			price, _ = orderfill.BudgetCellPrice(detection.Sheet, row, priceCol)
 		}
-		out = append(out, Need{City: city, Article: key, BaseArticle: base, ArticleRaw: articleRaw, Name: name, Variant: variant, Qty: qty, Price: price, Line: linesByRow[row]})
+		box, hasBox := normalize.ParseNumber(detection.Sheet.Value(row, boxCol))
+		out = append(out, Need{Row: row, QuantityColumn: qtyCol, PriceColumn: priceCol, Prices: orderfill.BudgetPrices(detection.Sheet, detection.HeaderRow, row, qtyCol), City: city, Article: key, BaseArticle: base, ArticleRaw: articleRaw, Name: name, Variant: variant, Qty: qty, Price: price, Line: linesByRow[row], BoxSize: box, HasBoxSize: hasBox, SupplierUnitSize: 1})
 	}
 	return out, nil
 }
@@ -190,6 +202,9 @@ func WriteSupplierQuantities(workbook spreadsheet.Workbook, rule brand.RuleConfi
 	detection, err := detectNorthBlank(workbook, rule)
 	if err != nil {
 		return err
+	}
+	if rule.BlankLayout != "" {
+		return writeSpecializedQuantities(detection, rule, variant, lines)
 	}
 	quantities := make(map[string]float64, len(lines))
 	byKey := make(map[string]SupplierLine, len(lines))
@@ -262,18 +277,27 @@ func ApplySupplierDiscount(workbook spreadsheet.Workbook, rule brand.RuleConfig,
 	if err != nil {
 		return err
 	}
+	if rule.BlankLayout != "" {
+		return discountSpecializedPrices(detection, rule, discount)
+	}
 	priceColumn := northPriceColumn(detection)
 	if priceColumn == 0 {
 		return fmt.Errorf("%w: не найдена закупочная цена для применения скидки", orderfill.ErrInvalidInput)
 	}
+	rows := []orderfill.ReportRow{}
+	entries := []orderfill.BudgetPricing{}
 	for row := detection.HeaderRow + 1; row <= detection.Sheet.Bounds().MaxRow; row++ {
-		price, ok := normalize.ParseNumber(detection.Sheet.Value(row, priceColumn))
-		if !ok || price <= 0 {
+		base, ok := orderfill.BudgetCellPrice(detection.Sheet, row, priceColumn)
+		if !ok || base <= 0 {
 			continue
 		}
-		detection.Sheet.SetNumber(row, priceColumn, math.Round(price*(1-discount/100)*100)/100)
+		qty, _ := normalize.ParseNumber(detection.Sheet.Value(row, detection.Columns[orderfill.ColumnQuantity]))
+		key := fmt.Sprintf("north:%d", row)
+		rows = append(rows, orderfill.ReportRow{Key: key, BlankRow: row, BlankQuantityColumn: detection.Columns[orderfill.ColumnQuantity], Inserted: new(qty), BlankName: detection.Sheet.Value(row, detection.Columns[orderfill.ColumnName])})
+		price := math.Floor(base*(1-discount/100)*100+0.5) / 100
+		entries = append(entries, orderfill.BudgetPricing{RowKey: key, PriceColumn: priceColumn, BasePrice: base, Discount: discount, Price: price})
 	}
-	return nil
+	return orderfill.ApplyBudgetPricing(detection.Sheet, detection.HeaderRow, rule.Key, rows, entries)
 }
 
 func BaseKey(key string) string {
@@ -285,6 +309,9 @@ func BaseKey(key string) string {
 }
 
 func detectNorthBlank(workbook spreadsheet.Workbook, rule brand.RuleConfig) (orderfill.Detection, error) {
+	if rule.BlankLayout != "" {
+		return orderfill.DetectOrderBlank(workbook, rule)
+	}
 	if detection, err := orderfill.DetectBlankColumns(workbook, rule); err == nil {
 		return detection, nil
 	}
@@ -340,8 +367,15 @@ func StockFromSource(workbook spreadsheet.Workbook, rules ...brand.RuleConfig) (
 	targetCol := 0
 	categoryCol := 0
 	demandCol := 0
+	warehouseStockCol, warehouseTransitCol := 0, 0
 	for column := 1; column <= bounds.MaxColumn; column++ {
 		header := normalize.NormalizeHeader(detection.Sheet.Value(detection.HeaderRow, column))
+		if header == "склад остаток" {
+			warehouseStockCol = column
+		}
+		if header == "склад в пути" {
+			warehouseTransitCol = column
+		}
 		if strings.Contains(header, "целевой") && strings.Contains(header, "запас") {
 			targetCol = column
 		}
@@ -354,16 +388,39 @@ func StockFromSource(workbook spreadsheet.Workbook, rules ...brand.RuleConfig) (
 	}
 	out := make([]Stock, 0)
 	for row := detection.HeaderRow + 1; row <= bounds.MaxRow; row++ {
+		total := false
+		for col := 1; col <= min(bounds.MaxColumn, max(1, nameCol-1)); col++ {
+			header := normalize.NormalizeHeader(detection.Sheet.Value(row, col))
+			if header == "итого" || header == "total" {
+				total = true
+			}
+		}
+		if total {
+			continue
+		}
 		article := normalize.NormalizeArticle(detection.Sheet.Value(row, articleCol), brand.ArticleNormalizeOptions(rule))
-		item := Stock{Article: article}
+		item := Stock{Article: article, SourceRow: row}
 		if nameCol > 0 {
 			item.Name = strings.TrimSpace(detection.Sheet.Value(row, nameCol))
+		}
+		if normalize.AsText(detection.Sheet.Value(row, articleCol)) == "" && item.Name == "" {
+			continue
+		}
+		if rule.Key == "novacutan" {
+			item.Article = orderfill.NovacutanProductKey(item.Name)
 		}
 		if item.Article == "" {
 			item.Article = nameKey(item.Name, "")
 		}
 		if item.Article == "" {
 			continue
+		}
+		if warehouseStockCol > 0 {
+			item.WarehouseStock, _ = normalize.ParseNumber(detection.Sheet.Value(row, warehouseStockCol))
+			item.HasWarehouseStock = true
+		}
+		if warehouseTransitCol > 0 {
+			item.WarehouseTransit, _ = normalize.ParseNumber(detection.Sheet.Value(row, warehouseTransitCol))
 		}
 		if stockCol > 0 {
 			item.Stock, _ = normalize.ParseNumber(detection.Sheet.Value(row, stockCol))
@@ -385,7 +442,7 @@ func StockFromSource(workbook spreadsheet.Workbook, rules ...brand.RuleConfig) (
 			item.Target = max(0, item.Stock+item.InTransit+item.Recommended)
 		}
 		if categoryCol > 0 {
-			item.Category = normalize.NormalizeCategory(detection.Sheet.Value(row, categoryCol))
+			item.Category = strings.Split(normalize.NormalizeCategory(detection.Sheet.Value(row, categoryCol)), "/")[0]
 		}
 		if demandCol > 0 {
 			item.MonthlyDemand, _ = normalize.ParseNumber(detection.Sheet.Value(row, demandCol))
@@ -393,4 +450,79 @@ func StockFromSource(workbook spreadsheet.Workbook, rules ...brand.RuleConfig) (
 		out = append(out, item)
 	}
 	return out, nil
+}
+
+// ApplySupplierPricing uses the selected summary template as the price source;
+// finalization loads that original template on every download.
+func ApplySupplierPricing(workbook spreadsheet.Workbook, rule brand.RuleConfig, variant string, plans []PlanRow) error {
+	detection, err := detectNorthBlank(workbook, rule)
+	if err != nil {
+		return err
+	}
+	needs, err := NeedsFromBlank(workbook, rule, "", variant)
+	if err != nil {
+		return err
+	}
+	byKey := map[string]PlanRow{}
+	for _, plan := range plans {
+		byKey[plan.Key] = plan
+	}
+	rows := []orderfill.ReportRow{}
+	entries := []orderfill.BudgetPricing{}
+	for _, need := range needs {
+		plan, found := byKey[need.Article]
+		if !found || plan.BudgetDiscount == 0 && plan.BudgetPriceColumn == 0 {
+			continue
+		}
+		column := plan.BudgetPriceColumn
+		if column == 0 {
+			column = plan.BudgetDefaultPriceColumn
+		}
+		selectedLabel := ""
+		selectedBase := 0.0
+		for _, price := range plan.BudgetPrices {
+			if price.Column == column {
+				selectedLabel = price.Label
+				selectedBase = price.Price
+				break
+			}
+		}
+		if selectedLabel != "" {
+			column = 0
+			for _, price := range need.Prices {
+				if price.Label == selectedLabel {
+					column = price.Column
+					break
+				}
+			}
+		} else if column == 0 {
+			column = need.PriceColumn
+		}
+		valid := false
+		for _, price := range need.Prices {
+			if price.Column == column {
+				valid = true
+			}
+		}
+		if !valid {
+			return fmt.Errorf("%w: выбранная колонка цены отсутствует в общем бланке: %s", orderfill.ErrInvalidInput, plan.Name)
+		}
+		base, ok := orderfill.BudgetCellPrice(detection.Sheet, need.Row, column)
+		if !ok || base <= 0 {
+			if plan.ActualSupplierOrder > 0 {
+				return fmt.Errorf("%w: не определена цена заказанной позиции: %s", orderfill.ErrInvalidInput, plan.Name)
+			}
+			continue
+		}
+		// Report price options were taken from this same selected template. Refuse a
+		// mismatch instead of exporting a different invoice from the budget preview.
+		if selectedLabel != "" && math.Abs(selectedBase-base) > 0.000001 {
+			return fmt.Errorf("%w: цена общего бланка изменилась: %s", orderfill.ErrInvalidInput, plan.Name)
+		}
+		key := fmt.Sprintf("north:%d:%d", need.Row, need.QuantityColumn)
+		rows = append(rows, orderfill.ReportRow{Key: key, BlankRow: need.Row, BlankQuantityColumn: need.QuantityColumn, BlankName: need.Name, Inserted: new(plan.ActualSupplierOrder)})
+		price := math.Floor((base*(1-plan.BudgetDiscount/100)+2.220446049250313e-16)*100+0.5) / 100
+		entries = append(entries, orderfill.BudgetPricing{RowKey: key, PriceColumn: column, BasePrice: base, Discount: plan.BudgetDiscount, Price: price})
+	}
+	return orderfill.ApplyBudgetPricing(detection.Sheet, detection.HeaderRow, rule.Key, rows, entries)
 }

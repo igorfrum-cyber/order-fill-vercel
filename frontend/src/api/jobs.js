@@ -13,9 +13,13 @@ export const DEFAULT_POLL_TIMEOUT_MS = 600000;
 
 const absoluteUrl = (path) => apiClient.absoluteUrl(path);
 
-export function createOrderFillJob({ sourceFile, blankFiles, warehouseFile = null, companyId }) {
+export function createOrderFillJob({ sourceFile, blankFiles, warehouseFile = null, companyId, recalculate = false, orderMonth = "" }) {
   const formData = new FormData();
   formData.append("source_file", sourceFile);
+  if (recalculate) {
+    formData.append("mode", "recalculate");
+    if (orderMonth) formData.append("order_month", orderMonth);
+  }
   if (warehouseFile) formData.append("warehouse_file", warehouseFile);
   for (const file of blankFiles) formData.append("blank_files", file);
   if (companyId) formData.append("company_id", companyId);
@@ -54,10 +58,10 @@ export function mapJobReportPayload(payload) {
   return mapReport(payload);
 }
 
-export function submitJobEdits(jobId, edits) {
+export function submitJobEdits(jobId, edits, { includeBlankStocks = false, budgetPricing = [] } = {}) {
   return apiClient.request(`/api/v1/jobs/${encodeURIComponent(jobId)}/edits`, {
     method: "POST",
-    body: JSON.stringify({ edits: edits.map(toManualEditPayload) }),
+    body: JSON.stringify({ edits: edits.map(toManualEditPayload), include_blank_stocks: includeBlankStocks, budget_pricing: budgetPricing }),
   });
 }
 

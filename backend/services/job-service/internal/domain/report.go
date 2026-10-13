@@ -39,3 +39,12 @@ type Edit struct {
 	Value   string
 	Comment string
 }
+
+// BudgetPricing is reviewed pricing passed to the workbook owner at finalize.
+type BudgetPricing struct {
+	RowKey      string  `json:"row_key"`
+	PriceColumn int     `json:"price_column"`
+	BasePrice   float64 `json:"base_price"`
+	Discount    float64 `json:"discount"`
+	Price       float64 `json:"price"`
+}

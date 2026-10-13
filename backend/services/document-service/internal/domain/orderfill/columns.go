@@ -13,10 +13,13 @@ import (
 // Detection is a recognised table: the sheet, its header row and the column
 // index of every field the rules need.
 type Detection struct {
-	Sheet     spreadsheet.Sheet
-	SheetName string
-	HeaderRow int
-	Columns   map[string]int
+	Sheet                 spreadsheet.Sheet
+	SheetName             string
+	HeaderRow             int
+	Columns               map[string]int
+	BudgetDemands         map[int]float64
+	LayoutBlocks          []SothysBlock
+	QuantityColumnCreated bool
 }
 
 // Column keys shared by the source and blank layouts.

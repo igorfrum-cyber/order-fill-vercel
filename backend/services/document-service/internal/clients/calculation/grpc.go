@@ -43,7 +43,7 @@ func (c *GRPC) AdjustQuantity(ctx context.Context, recommended, orderedFact floa
 		Adjustment:              string(rule.Adjustment),
 		QuantityMultiple:        int32Clamp(rule.Multiple),
 		AdjustmentComment:       rule.AdjustmentComment,
-		AllowSmallPositiveOrder: rule.AllowSmallPositiveOrder,
+		AllowSmallPositiveOrder: rule.AllowSmallPositiveOrder, SupplierUnitSize: rule.SupplierUnitSize,
 	})
 	if err != nil {
 		return brand.AdjustedQuantity{}, err
@@ -86,7 +86,7 @@ func (c *GRPC) Recommend(ctx context.Context, brandKey, cityRule string, weeks f
 			ID: row.GetId(), Category: row.GetAbcCategory(),
 			Recommended: row.GetRecommendedQty(), TargetStock: row.GetTargetStock(),
 			RevenuePercent: row.GetRevenuePercent(), CumulativePercent: row.GetCumulativePercent(),
-			AverageMonthly: row.GetAverageMonthly(), TotalQuantity: row.GetTotalQuantity(),
+			AverageMonthly: row.GetAverageMonthly(), MonthlyNeed: row.GetMonthlyNeed(), TotalQuantity: row.GetTotalQuantity(),
 		})
 	}
 	return out, nil
@@ -95,7 +95,7 @@ func (c *GRPC) Recommend(ctx context.Context, brandKey, cityRule string, weeks f
 func (c *GRPC) NorthPlan(ctx context.Context, brand string, needs []NorthNeed, stock []TyumenStock) ([]NorthRow, error) {
 	req := &calculationv1.CalculateNorthPlanRequest{Brand: brand}
 	for _, n := range needs {
-		req.Needs = append(req.Needs, &calculationv1.NorthCityNeed{City: n.City, Article: n.Article, Qty: n.Qty})
+		req.Needs = append(req.Needs, &calculationv1.NorthCityNeed{City: n.City, Article: n.Article, Qty: n.Qty, Name: n.Name, SupplierUnitSize: n.SupplierUnitSize, Minimum: n.Minimum, BoxSize: n.BoxSize, HasBoxSize: n.HasBoxSize})
 	}
 	for _, row := range stock {
 		req.TyumenStock = append(req.TyumenStock, &calculationv1.OrderRow{

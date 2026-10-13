@@ -1,0 +1,8033 @@
+{
+  "source": "origin/main commit 1e2baa1, src/budgetPlanner.js and src/christinaLines.js; synthetic public inputs; deterministic seed 137",
+  "cases": [
+    {
+      "name": "mixed-0",
+      "input": [
+        {
+          "key": "r0",
+          "name": "public synthetic 0",
+          "category": "A+",
+          "quantity": 22,
+          "price": 11.51,
+          "demand": 9,
+          "delivery": 0.25,
+          "stock": 4,
+          "transit": 0,
+          "outbound": 0,
+          "unit": 5,
+          "step": 6,
+          "minimum": 1,
+          "locked": false,
+          "excluded": false
+        },
+        {
+          "key": "r1",
+          "name": "public synthetic 1",
+          "category": "A+",
+          "quantity": 26,
+          "price": 37.55,
+          "demand": 9,
+          "delivery": 0.5,
+          "stock": 4,
+          "transit": 3,
+          "outbound": 0,
+          "unit": 1,
+          "step": 6,
+          "minimum": 1,
+          "locked": false,
+          "excluded": false
+        },
+        {
+          "key": "r2",
+          "name": "public synthetic 2",
+          "category": "A+",
+          "quantity": 22,
+          "price": 6.95,
+          "demand": 9,
+          "delivery": 0.5,
+          "stock": 8,
+          "transit": 1,
+          "outbound": 0,
+          "unit": 1,
+          "step": 6,
+          "minimum": 1,
+          "locked": false,
+          "excluded": false
+        },
+        {
+          "key": "r3",
+          "name": "public synthetic 3",
+          "category": "A+",
+          "quantity": 2,
+          "price": 29.79,
+          "demand": 17,
+          "delivery": 1,
+          "stock": 0,
+          "transit": 4,
+          "outbound": 0,
+          "unit": 1,
+          "step": 6,
+          "minimum": 1,
+          "locked": false,
+          "excluded": false
+        },
+        {
+          "key": "r4",
+          "name": "public synthetic 4",
+          "category": "A+",
+          "quantity": 30,
+          "price": 34.39,
+          "demand": 5,
+          "delivery": 0.25,
+          "stock": 2,
+          "transit": 1,
+          "outbound": 0,
+          "unit": 1,
+          "step": 6,
+          "minimum": 1,
+          "locked": false,
+          "excluded": false
+        }
+      ],
+      "target": 1508.96,
+      "options": {
+        "allowOverSix": true,
+        "allowBelowOne": true
+      },
+      "expected": {
+        "quantities": [
+          18,
+          18,
+          18,
+          2,
+          12
+        ],
+        "before": 2473.7,
+        "total": 1480.44,
+        "complete": true,
+        "reason": "",
+        "lineSteps": []
+      }
+    },
+    {
+      "name": "mixed-1",
+      "input": [
+        {
+          "key": "r0",
+          "name": "public synthetic 0",
+          "category": "B",
+          "quantity": 28,
+          "price": 29.65,
+          "demand": 3,
+          "delivery": 0.25,
+          "stock": 8,
+          "transit": 1,
+          "outbound": 2,
+          "unit": 1,
+          "step": 1,
+          "minimum": 1,
+          "locked": false,
+          "excluded": false
+        },
+        {
+          "key": "r1",
+          "name": "public synthetic 1",
+          "category": "B",
+          "quantity": 8,
+          "price": 1.93,
+          "demand": 11,
+          "delivery": 0.5,
+          "stock": 4,
+          "transit": 1,
+          "outbound": 2,
+          "unit": 1,
+          "step": 1,
+          "minimum": 1,
+          "locked": false,
+          "excluded": false
+        },
+        {
+          "key": "r2",
+          "name": "public synthetic 2",
+          "category": "B",
+          "quantity": 28,
+          "price": 15.49,
+          "demand": 3,
+          "delivery": 0.5,
+          "stock": 4,
+          "transit": 2,
+          "outbound": 2,
+          "unit": 1,
+          "step": 1,
+          "minimum": 1,
+          "locked": false,
+          "excluded": true
+        },
+        {
+          "key": "r3",
+          "name": "public synthetic 3",
+          "category": "B",
+          "quantity": 0,
+          "price": 27.77,
+          "demand": 3,
+          "delivery": 0.25,
+          "stock": 6,
+          "transit": 3,
+          "outbound": 2,
+          "unit": 5,
+          "step": 1,
+          "minimum": 1,
+          "locked": false,
+          "excluded": false
+        }
+      ],
+      "target": 2341.23,
+      "options": {
+        "allowOverSix": false,
+        "allowBelowOne": false
+      },
+      "expected": {
+        "quantities": [
+          28,
+          63,
+          28,
+          2
+        ],
+        "before": 1279.36,
+        "total": 1441.05,
+        "complete": false,
+        "reason": "overSix",
+        "lineSteps": []
+      }
+    },
+    {
+      "name": "mixed-2",
+      "input": [
+        {
+          "key": "r0",
+          "name": "public synthetic 0",
+          "category": "A+",
+          "quantity": 14,
+          "price": 15.83,
+          "demand": 17,
+          "delivery": 0.5,
+          "stock": 0,
+          "transit": 2,
+          "outbound": 0,
+          "unit": 5,
+          "step": 6,
+          "minimum": 1,
+          "locked": false,
+          "excluded": false
+        },
+        {
+          "key": "r1",
+          "name": "public synthetic 1",
+          "category": "A+",
+          "quantity": 34,
+          "price": 25.55,
+          "demand": 17,
+          "delivery": 1,
+          "stock": 2,
+          "transit": 0,
+          "outbound": 0,
+          "unit": 1,
+          "step": 6,
+          "minimum": 1,
+          "locked": false,
+          "excluded": false
+        },
+        {
+          "key": "r2",
+          "name": "public synthetic 2",
+          "category": "A+",
+          "quantity": 30,
+          "price": 19.59,
+          "demand": 5,
+          "delivery": 1,
+          "stock": 6,
+          "transit": 4,
+          "outbound": 0,
+          "unit": 1,
+          "step": 6,
+          "minimum": 1,
+          "locked": false,
+          "excluded": false
+        },
+        {
+          "key": "r3",
+          "name": "public synthetic 3",
+          "category": "A+",
+          "quantity": 10,
+          "price": 33.79,
+          "demand": 17,
+          "delivery": 1,
+          "stock": 6,
+          "transit": 4,
+          "outbound": 0,
+          "unit": 1,
+          "step": 6,
+          "minimum": 1,
+          "locked": false,
+          "excluded": false
+        },
+        {
+          "key": "r4",
+          "name": "public synthetic 4",
+          "category": "A+",
+          "quantity": 38,
+          "price": 25.27,
+          "demand": 9,
+          "delivery": 0.25,
+          "stock": 4,
+          "transit": 0,
+          "outbound": 0,
+          "unit": 1,
+          "step": 6,
+          "minimum": 1,
+          "locked": false,
+          "excluded": true
+        }
+      ],
+      "target": 2291.66,
+      "options": {
+        "allowOverSix": false,
+        "allowBelowOne": false
+      },
+      "expected": {
+        "quantities": [
+          6,
+          34,
+          0,
+          10,
+          38
+        ],
+        "before": 2976.18,
+        "total": 2261.84,
+        "complete": true,
+        "reason": "",
+        "lineSteps": []
+      }
+    },
+    {
+      "name": "mixed-3",
+      "input": [
+        {
+          "key": "r0",
+          "name": "public synthetic 0",
+          "category": "B",
+          "quantity": 28,
+          "price": 26.29,
+          "demand": 7,
+          "delivery": 1,
+          "stock": 4,
+          "transit": 0,
+          "outbound": 2,
+          "unit": 5,
+          "step": 1,
+          "minimum": 1,
+          "locked": false,
+          "excluded": false
+        },
+        {
+          "key": "r1",
+          "name": "public synthetic 1",
+          "category": "B",
+          "quantity": 8,
+          "price": 32.17,
+          "demand": 15,
+          "delivery": 0.5,
+          "stock": 2,
+          "transit": 2,
+          "outbound": 2,
+          "unit": 1,
+          "step": 1,
+          "minimum": 1,
+          "locked": false,
+          "excluded": false
+        },
+        {
+          "key": "r2",
+          "name": "public synthetic 2",
+          "category": "B",
+          "quantity": 20,
+          "price": 23.33,
+          "demand": 3,
+          "delivery": 0.5,
+          "stock": 4,
+          "transit": 1,
+          "outbound": 2,
+          "unit": 1,
+          "step": 1,
+          "minimum": 1,
+          "locked": false,
+          "excluded": false
+        }
+      ],
+      "target": 2263.12,
+      "options": {
+        "allowOverSix": false,
+        "allowBelowOne": true
+      },
+      "expected": {
+        "quantities": [
+          28,
+          33,
+          20
+        ],
+        "before": 1460.08,
+        "total": 2264.33,
+        "complete": true,
+        "reason": "",
+        "lineSteps": []
+      }
+    },
+    {
+      "name": "mixed-4",
+      "input": [
+        {
+          "key": "r0",
+          "name": "public synthetic 0",
+          "category": "A+",
+          "quantity": 34,
+          "price": 20.03,
+          "demand": 5,
+          "delivery": 1,
+          "stock": 0,
+          "transit": 2,
+          "outbound": 0,
+          "unit": 1,
+          "step": 6,
+          "minimum": 1,
+          "locked": false,
+          "excluded": true
+        },
+        {
+          "key": "r1",
+          "name": "public synthetic 1",
+          "category": "A+",
+          "quantity": 6,
+          "price": 24.95,
+          "demand": 13,
+          "delivery": 0.5,
+          "stock": 4,
+          "transit": 0,
+          "outbound": 0,
+          "unit": 1,
+          "step": 6,
+          "minimum": 1,
+          "locked": false,
+          "excluded": false
+        },
+        {
+          "key": "r2",
+          "name": "public synthetic 2",
+          "category": "A+",
+          "quantity": 18,
+          "price": 4.91,
+          "demand": 5,
+          "delivery": 0.25,
+          "stock": 0,
+          "transit": 1,
+          "outbound": 0,
+          "unit": 1,
+          "step": 6,
+          "minimum": 1,
+          "locked": false,
+          "excluded": false
+        },
+        {
+          "key": "r3",
+          "name": "public synthetic 3",
+          "category": "A+",
+          "quantity": 30,
+          "price": 2.15,
+          "demand": 17,
+          "delivery": 0.25,
+          "stock": 2,
+          "transit": 2,
+          "outbound": 0,
+          "unit": 5,
+          "step": 6,
+          "minimum": 1,
+          "locked": false,
+          "excluded": false
+        },
+        {
+          "key": "r4",
+          "name": "public synthetic 4",
+          "category": "A+",
+          "quantity": 34,
+          "price": 4.19,
+          "demand": 17,
+          "delivery": 1,
+          "stock": 4,
+          "transit": 3,
+          "outbound": 0,
+          "unit": 5,
+          "step": 6,
+          "minimum": 1,
+          "locked": false,
+          "excluded": false
+        },
+        {
+          "key": "r5",
+          "name": "public synthetic 5",
+          "category": "A+",
+          "quantity": 22,
+          "price": 3.03,
+          "demand": 1,
+          "delivery": 1,
+          "stock": 0,
+          "transit": 2,
+          "outbound": 0,
+          "unit": 5,
+          "step": 6,
+          "minimum": 1,
+          "locked": false,
+          "excluded": false
+        }
+      ],
+      "target": 2254.24,
+      "options": {
+        "allowOverSix": true,
+        "allowBelowOne": false
+      },
+      "expected": {
+        "quantities": [
+          34,
+          48,
+          24,
+          30,
+          34,
+          22
+        ],
+        "before": 1192.72,
+        "total": 2270.08,
+        "complete": true,
+        "reason": "",
+        "lineSteps": []
+      }
+    },
+    {
+      "name": "mixed-5",
+      "input": [
+        {
+          "key": "r0",
+          "name": "public synthetic 0",
+          "category": "B",
+          "quantity": 12,
+          "price": 4.69,
+          "demand": 3,
+          "delivery": 0.25,
+          "stock": 4,
+          "transit": 0,
+          "outbound": 2,
+          "unit": 1,
+          "step": 1,
+          "minimum": 1,
+          "locked": false,
+          "excluded": false
+        },
+        {
+          "key": "r1",
+          "name": "public synthetic 1",
+          "category": "B",
+          "quantity": 8,
+          "price": 15.05,
+          "demand": 3,
+          "delivery": 0.5,
+          "stock": 4,
+          "transit": 3,
+          "outbound": 2,
+          "unit": 1,
+          "step": 1,
+          "minimum": 1,
+          "locked": false,
+          "excluded": false
+        },
+        {
+          "key": "r2",
+          "name": "public synthetic 2",
+          "category": "B",
+          "quantity": 36,
+          "price": 28.61,
+          "demand": 15,
+          "delivery": 0.5,
+          "stock": 6,
+          "transit": 0,
+          "outbound": 2,
+          "unit": 1,
+          "step": 1,
+          "minimum": 1,
+          "locked": false,
+          "excluded": true
+        },
+        {
+          "key": "r3",
+          "name": "public synthetic 3",
+          "category": "B",
+          "quantity": 16,
+          "price": 8.25,
+          "demand": 11,
+          "delivery": 0.5,
+          "stock": 0,
+          "transit": 0,
+          "outbound": 2,
+          "unit": 5,
+          "step": 1,
+          "minimum": 1,
+          "locked": false,
+          "excluded": false
+        },
+        {
+          "key": "r4",
+          "name": "public synthetic 4",
+          "category": "B",
+          "quantity": 12,
+          "price": 15.41,
+          "demand": 7,
+          "delivery": 0.5,
+          "stock": 2,
+          "transit": 3,
+          "outbound": 2,
+          "unit": 1,
+          "step": 1,
+          "minimum": 1,
+          "locked": false,
+          "excluded": false
+        },
+        {
+          "key": "r5",
+          "name": "public synthetic 5",
+          "category": "B",
+          "quantity": 8,
+          "price": 1.13,
+          "demand": 19,
+          "delivery": 0.25,
+          "stock": 4,
+          "transit": 0,
+          "outbound": 2,
+          "unit": 1,
+          "step": 1,
+          "minimum": 1,
+          "locked": false,
+          "excluded": false
+        }
+      ],
+      "target": 1210.75,
+      "options": {
+        "allowOverSix": false,
+        "allowBelowOne": false
+      },
+      "expected": {
+        "quantities": [
+          3,
+          0,
+          36,
+          4,
+          8,
+          8
+        ],
+        "before": 1532.6,
+        "total": 1209.35,
+        "complete": true,
+        "reason": "",
+        "lineSteps": []
+      }
+    },
+    {
+      "name": "mixed-6",
+      "input": [
+        {
+          "key": "r0",
+          "name": "public synthetic 0",
+          "category": "A+",
+          "quantity": 22,
+          "price": 18.63,
+          "demand": 9,
+          "delivery": 1,
+          "stock": 6,
+          "transit": 1,
+          "outbound": 0,
+          "unit": 1,
+          "step": 6,
+          "minimum": 1,
+          "locked": false,
+          "excluded": true
+        },
+        {
+          "key": "r1",
+          "name": "public synthetic 1",
+          "category": "A+",
+          "quantity": 34,
+          "price": 23.55,
+          "demand": 17,
+          "delivery": 0.25,
+          "stock": 6,
+          "transit": 2,
+          "outbound": 0,
+          "unit": 5,
+          "step": 6,
+          "minimum": 1,
+          "locked": false,
+          "excluded": false
+        },
+        {
+          "key": "r2",
+          "name": "public synthetic 2",
+          "category": "A+",
+          "quantity": 38,
+          "price": 12.15,
+          "demand": 1,
+          "delivery": 1,
+          "stock": 0,
+          "transit": 0,
+          "outbound": 0,
+          "unit": 1,
+          "step": 6,
+          "minimum": 1,
+          "locked": false,
+          "excluded": false
+        }
+      ],
+      "target": 2893.01,
+      "options": {
+        "allowOverSix": false,
+        "allowBelowOne": true
+      },
+      "expected": {
+        "quantities": [
+          22,
+          34,
+          38
+        ],
+        "before": 1672.26,
+        "total": 1672.26,
+        "complete": false,
+        "reason": "overSix",
+        "lineSteps": []
+      }
+    },
+    {
+      "name": "mixed-7",
+      "input": [
+        {
+          "key": "r0",
+          "name": "public synthetic 0",
+          "category": "B",
+          "quantity": 4,
+          "price": 6.13,
+          "demand": 19,
+          "delivery": 0.5,
+          "stock": 0,
+          "transit": 1,
+          "outbound": 2,
+          "unit": 1,
+          "step": 1,
+          "minimum": 1,
+          "locked": false,
+          "excluded": false
+        },
+        {
+          "key": "r1",
+          "name": "public synthetic 1",
+          "category": "B",
+          "quantity": 0,
+          "price": 38.25,
+          "demand": 15,
+          "delivery": 1,
+          "stock": 6,
+          "transit": 0,
+          "outbound": 2,
+          "unit": 5,
+          "step": 1,
+          "minimum": 1,
+          "locked": false,
+          "excluded": false
+        },
+        {
+          "key": "r2",
+          "name": "public synthetic 2",
+          "category": "B",
+          "quantity": 20,
+          "price": 33.25,
+          "demand": 11,
+          "delivery": 0.25,
+          "stock": 6,
+          "transit": 4,
+          "outbound": 2,
+          "unit": 1,
+          "step": 1,
+          "minimum": 1,
+          "locked": false,
+          "excluded": false
+        }
+      ],
+      "target": 1068.76,
+      "options": {
+        "allowOverSix": false,
+        "allowBelowOne": false
+      },
+      "expected": {
+        "quantities": [
+          33,
+          6,
+          20
+        ],
+        "before": 689.52,
+        "total": 1096.79,
+        "complete": true,
+        "reason": "",
+        "lineSteps": []
+      }
+    },
+    {
+      "name": "mixed-8",
+      "input": [
+        {
+          "key": "r0",
+          "name": "public synthetic 0",
+          "category": "A+",
+          "quantity": 34,
+          "price": 4.35,
+          "demand": 1,
+          "delivery": 0.25,
+          "stock": 6,
+          "transit": 4,
+          "outbound": 0,
+          "unit": 1,
+          "step": 6,
+          "minimum": 1,
+          "locked": false,
+          "excluded": true
+        },
+        {
+          "key": "r1",
+          "name": "public synthetic 1",
+          "category": "A+",
+          "quantity": 30,
+          "price": 16.63,
+          "demand": 17,
+          "delivery": 0.5,
+          "stock": 0,
+          "transit": 1,
+          "outbound": 0,
+          "unit": 5,
+          "step": 6,
+          "minimum": 1,
+          "locked": false,
+          "excluded": false
+        },
+        {
+          "key": "r2",
+          "name": "public synthetic 2",
+          "category": "A+",
+          "quantity": 10,
+          "price": 27.63,
+          "demand": 9,
+          "delivery": 0.5,
+          "stock": 2,
+          "transit": 3,
+          "outbound": 0,
+          "unit": 1,
+          "step": 6,
+          "minimum": 1,
+          "locked": false,
+          "excluded": false
+        },
+        {
+          "key": "r3",
+          "name": "public synthetic 3",
+          "category": "A+",
+          "quantity": 30,
+          "price": 20.07,
+          "demand": 13,
+          "delivery": 1,
+          "stock": 8,
+          "transit": 2,
+          "outbound": 0,
+          "unit": 1,
+          "step": 6,
+          "minimum": 1,
+          "locked": false,
+          "excluded": false
+        }
+      ],
+      "target": 2516.58,
+      "options": {
+        "allowOverSix": true,
+        "allowBelowOne": false
+      },
+      "expected": {
+        "quantities": [
+          34,
+          30,
+          30,
+          54
+        ],
+        "before": 1525.2,
+        "total": 2559.48,
+        "complete": true,
+        "reason": "",
+        "lineSteps": []
+      }
+    },
+    {
+      "name": "mixed-9",
+      "input": [
+        {
+          "key": "r0",
+          "name": "public synthetic 0",
+          "category": "B",
+          "quantity": 36,
+          "price": 1.89,
+          "demand": 3,
+          "delivery": 0.5,
+          "stock": 0,
+          "transit": 1,
+          "outbound": 2,
+          "unit": 1,
+          "step": 1,
+          "minimum": 1,
+          "locked": false,
+          "excluded": false
+        },
+        {
+          "key": "r1",
+          "name": "public synthetic 1",
+          "category": "B",
+          "quantity": 16,
+          "price": 18.65,
+          "demand": 7,
+          "delivery": 0.25,
+          "stock": 8,
+          "transit": 4,
+          "outbound": 2,
+          "unit": 1,
+          "step": 1,
+          "minimum": 1,
+          "locked": false,
+          "excluded": false
+        },
+        {
+          "key": "r2",
+          "name": "public synthetic 2",
+          "category": "B",
+          "quantity": 4,
+          "price": 16.85,
+          "demand": 11,
+          "delivery": 0.25,
+          "stock": 6,
+          "transit": 2,
+          "outbound": 2,
+          "unit": 1,
+          "step": 1,
+          "minimum": 1,
+          "locked": false,
+          "excluded": false
+        },
+        {
+          "key": "r3",
+          "name": "public synthetic 3",
+          "category": "B",
+          "quantity": 32,
+          "price": 34.89,
+          "demand": 15,
+          "delivery": 0.5,
+          "stock": 6,
+          "transit": 2,
+          "outbound": 2,
+          "unit": 1,
+          "step": 1,
+          "minimum": 1,
+          "locked": false,
+          "excluded": false
+        }
+      ],
+      "target": 1968.91,
+      "options": {
+        "allowOverSix": false,
+        "allowBelowOne": true
+      },
+      "expected": {
+        "quantities": [
+          36,
+          16,
+          22,
+          36
+        ],
+        "before": 1550.32,
+        "total": 1993.18,
+        "complete": true,
+        "reason": "",
+        "lineSteps": []
+      }
+    },
+    {
+      "name": "mixed-10",
+      "input": [
+        {
+          "key": "r0",
+          "name": "public synthetic 0",
+          "category": "A+",
+          "quantity": 30,
+          "price": 34.79,
+          "demand": 1,
+          "delivery": 0.25,
+          "stock": 8,
+          "transit": 0,
+          "outbound": 0,
+          "unit": 5,
+          "step": 6,
+          "minimum": 1,
+          "locked": false,
+          "excluded": false
+        },
+        {
+          "key": "r1",
+          "name": "public synthetic 1",
+          "category": "A+",
+          "quantity": 26,
+          "price": 32.67,
+          "demand": 5,
+          "delivery": 0.25,
+          "stock": 2,
+          "transit": 2,
+          "outbound": 0,
+          "unit": 5,
+          "step": 6,
+          "minimum": 1,
+          "locked": false,
+          "excluded": false
+        },
+        {
+          "key": "r2",
+          "name": "public synthetic 2",
+          "category": "A+",
+          "quantity": 38,
+          "price": 16.47,
+          "demand": 9,
+          "delivery": 0.5,
+          "stock": 8,
+          "transit": 2,
+          "outbound": 0,
+          "unit": 1,
+          "step": 6,
+          "minimum": 1,
+          "locked": false,
+          "excluded": false
+        }
+      ],
+      "target": 2342.65,
+      "options": {
+        "allowOverSix": false,
+        "allowBelowOne": false
+      },
+      "expected": {
+        "quantities": [
+          24,
+          26,
+          38
+        ],
+        "before": 2518.98,
+        "total": 2310.24,
+        "complete": true,
+        "reason": "",
+        "lineSteps": []
+      }
+    },
+    {
+      "name": "mixed-11",
+      "input": [
+        {
+          "key": "r0",
+          "name": "public synthetic 0",
+          "category": "B",
+          "quantity": 20,
+          "price": 30.29,
+          "demand": 7,
+          "delivery": 0.25,
+          "stock": 6,
+          "transit": 2,
+          "outbound": 2,
+          "unit": 5,
+          "step": 1,
+          "minimum": 1,
+          "locked": false,
+          "excluded": false
+        },
+        {
+          "key": "r1",
+          "name": "public synthetic 1",
+          "category": "B",
+          "quantity": 24,
+          "price": 38.41,
+          "demand": 11,
+          "delivery": 1,
+          "stock": 0,
+          "transit": 3,
+          "outbound": 2,
+          "unit": 1,
+          "step": 1,
+          "minimum": 1,
+          "locked": false,
+          "excluded": false
+        }
+      ],
+      "target": 473.57,
+      "options": {
+        "allowOverSix": false,
+        "allowBelowOne": false
+      },
+      "expected": {
+        "quantities": [
+          1,
+          21
+        ],
+        "before": 1527.64,
+        "total": 836.9,
+        "complete": false,
+        "reason": "belowOne",
+        "lineSteps": []
+      }
+    },
+    {
+      "name": "mixed-12",
+      "input": [
+        {
+          "key": "r0",
+          "name": "public synthetic 0",
+          "category": "A+",
+          "quantity": 14,
+          "price": 23.59,
+          "demand": 17,
+          "delivery": 0.5,
+          "stock": 2,
+          "transit": 0,
+          "outbound": 0,
+          "unit": 5,
+          "step": 6,
+          "minimum": 1,
+          "locked": false,
+          "excluded": false
+        },
+        {
+          "key": "r1",
+          "name": "public synthetic 1",
+          "category": "A+",
+          "quantity": 2,
+          "price": 6.75,
+          "demand": 5,
+          "delivery": 0.5,
+          "stock": 4,
+          "transit": 4,
+          "outbound": 0,
+          "unit": 1,
+          "step": 6,
+          "minimum": 1,
+          "locked": false,
+          "excluded": false
+        },
+        {
+          "key": "r2",
+          "name": "public synthetic 2",
+          "category": "A+",
+          "quantity": 22,
+          "price": 27.67,
+          "demand": 17,
+          "delivery": 0.5,
+          "stock": 0,
+          "transit": 0,
+          "outbound": 0,
+          "unit": 1,
+          "step": 6,
+          "minimum": 1,
+          "locked": false,
+          "excluded": false
+        },
+        {
+          "key": "r3",
+          "name": "public synthetic 3",
+          "category": "A+",
+          "quantity": 18,
+          "price": 36.11,
+          "demand": 5,
+          "delivery": 0.25,
+          "stock": 6,
+          "transit": 1,
+          "outbound": 0,
+          "unit": 1,
+          "step": 6,
+          "minimum": 1,
+          "locked": false,
+          "excluded": false
+        },
+        {
+          "key": "r4",
+          "name": "public synthetic 4",
+          "category": "A+",
+          "quantity": 30,
+          "price": 0.71,
+          "demand": 9,
+          "delivery": 0.25,
+          "stock": 0,
+          "transit": 1,
+          "outbound": 0,
+          "unit": 5,
+          "step": 6,
+          "minimum": 1,
+          "locked": false,
+          "excluded": false
+        }
+      ],
+      "target": 2939.04,
+      "options": {
+        "allowOverSix": true,
+        "allowBelowOne": true
+      },
+      "expected": {
+        "quantities": [
+          14,
+          12,
+          72,
+          18,
+          30
+        ],
+        "before": 1623.78,
+        "total": 3074.78,
+        "complete": true,
+        "reason": "",
+        "lineSteps": []
+      }
+    },
+    {
+      "name": "mixed-13",
+      "input": [
+        {
+          "key": "r0",
+          "name": "public synthetic 0",
+          "category": "B",
+          "quantity": 36,
+          "price": 32.13,
+          "demand": 19,
+          "delivery": 0.5,
+          "stock": 2,
+          "transit": 3,
+          "outbound": 2,
+          "unit": 1,
+          "step": 1,
+          "minimum": 1,
+          "locked": false,
+          "excluded": false
+        },
+        {
+          "key": "r1",
+          "name": "public synthetic 1",
+          "category": "B",
+          "quantity": 0,
+          "price": 11.45,
+          "demand": 19,
+          "delivery": 0.25,
+          "stock": 2,
+          "transit": 3,
+          "outbound": 2,
+          "unit": 5,
+          "step": 1,
+          "minimum": 1,
+          "locked": false,
+          "excluded": false
+        },
+        {
+          "key": "r2",
+          "name": "public synthetic 2",
+          "category": "B",
+          "quantity": 12,
+          "price": 28.53,
+          "demand": 7,
+          "delivery": 0.5,
+          "stock": 0,
+          "transit": 2,
+          "outbound": 2,
+          "unit": 1,
+          "step": 1,
+          "minimum": 1,
+          "locked": false,
+          "excluded": false
+        },
+        {
+          "key": "r3",
+          "name": "public synthetic 3",
+          "category": "B",
+          "quantity": 16,
+          "price": 36.97,
+          "demand": 3,
+          "delivery": 0.25,
+          "stock": 0,
+          "transit": 3,
+          "outbound": 2,
+          "unit": 5,
+          "step": 1,
+          "minimum": 1,
+          "locked": false,
+          "excluded": false
+        },
+        {
+          "key": "r4",
+          "name": "public synthetic 4",
+          "category": "B",
+          "quantity": 28,
+          "price": 38.05,
+          "demand": 19,
+          "delivery": 0.25,
+          "stock": 8,
+          "transit": 2,
+          "outbound": 2,
+          "unit": 1,
+          "step": 1,
+          "minimum": 1,
+          "locked": false,
+          "excluded": false
+        },
+        {
+          "key": "r5",
+          "name": "public synthetic 5",
+          "category": "B",
+          "quantity": 0,
+          "price": 18.01,
+          "demand": 7,
+          "delivery": 0.5,
+          "stock": 0,
+          "transit": 3,
+          "outbound": 2,
+          "unit": 1,
+          "step": 1,
+          "minimum": 1,
+          "locked": false,
+          "excluded": false
+        }
+      ],
+      "target": 2240.73,
+      "options": {
+        "allowOverSix": false,
+        "allowBelowOne": false
+      },
+      "expected": {
+        "quantities": [
+          29,
+          0,
+          12,
+          1,
+          24,
+          0
+        ],
+        "before": 3155.96,
+        "total": 2224.3,
+        "complete": true,
+        "reason": "",
+        "lineSteps": []
+      }
+    },
+    {
+      "name": "mixed-14",
+      "input": [
+        {
+          "key": "r0",
+          "name": "public synthetic 0",
+          "category": "A+",
+          "quantity": 38,
+          "price": 25.27,
+          "demand": 9,
+          "delivery": 1,
+          "stock": 0,
+          "transit": 3,
+          "outbound": 0,
+          "unit": 1,
+          "step": 6,
+          "minimum": 1,
+          "locked": false,
+          "excluded": false
+        },
+        {
+          "key": "r1",
+          "name": "public synthetic 1",
+          "category": "A+",
+          "quantity": 2,
+          "price": 3.63,
+          "demand": 9,
+          "delivery": 0.25,
+          "stock": 2,
+          "transit": 4,
+          "outbound": 0,
+          "unit": 1,
+          "step": 6,
+          "minimum": 1,
+          "locked": false,
+          "excluded": false
+        },
+        {
+          "key": "r2",
+          "name": "public synthetic 2",
+          "category": "A+",
+          "quantity": 38,
+          "price": 31.59,
+          "demand": 1,
+          "delivery": 0.25,
+          "stock": 8,
+          "transit": 4,
+          "outbound": 0,
+          "unit": 1,
+          "step": 6,
+          "minimum": 1,
+          "locked": false,
+          "excluded": false
+        },
+        {
+          "key": "r3",
+          "name": "public synthetic 3",
+          "category": "A+",
+          "quantity": 18,
+          "price": 30.75,
+          "demand": 9,
+          "delivery": 0.25,
+          "stock": 2,
+          "transit": 0,
+          "outbound": 0,
+          "unit": 1,
+          "step": 6,
+          "minimum": 1,
+          "locked": false,
+          "excluded": false
+        }
+      ],
+      "target": 3946.09,
+      "options": {
+        "allowOverSix": false,
+        "allowBelowOne": false
+      },
+      "expected": {
+        "quantities": [
+          48,
+          42,
+          38,
+          48
+        ],
+        "before": 2721.44,
+        "total": 4041.84,
+        "complete": true,
+        "reason": "",
+        "lineSteps": []
+      }
+    },
+    {
+      "name": "mixed-15",
+      "input": [
+        {
+          "key": "r0",
+          "name": "public synthetic 0",
+          "category": "B",
+          "quantity": 8,
+          "price": 33.05,
+          "demand": 7,
+          "delivery": 1,
+          "stock": 6,
+          "transit": 4,
+          "outbound": 2,
+          "unit": 1,
+          "step": 1,
+          "minimum": 1,
+          "locked": false,
+          "excluded": false
+        },
+        {
+          "key": "r1",
+          "name": "public synthetic 1",
+          "category": "B",
+          "quantity": 12,
+          "price": 34.13,
+          "demand": 15,
+          "delivery": 1,
+          "stock": 4,
+          "transit": 4,
+          "outbound": 2,
+          "unit": 5,
+          "step": 1,
+          "minimum": 1,
+          "locked": false,
+          "excluded": false
+        },
+        {
+          "key": "r2",
+          "name": "public synthetic 2",
+          "category": "B",
+          "quantity": 32,
+          "price": 15.05,
+          "demand": 3,
+          "delivery": 1,
+          "stock": 6,
+          "transit": 1,
+          "outbound": 2,
+          "unit": 1,
+          "step": 1,
+          "minimum": 1,
+          "locked": false,
+          "excluded": false
+        },
+        {
+          "key": "r3",
+          "name": "public synthetic 3",
+          "category": "B",
+          "quantity": 4,
+          "price": 9.09,
+          "demand": 3,
+          "delivery": 0.5,
+          "stock": 6,
+          "transit": 1,
+          "outbound": 2,
+          "unit": 1,
+          "step": 1,
+          "minimum": 1,
+          "locked": false,
+          "excluded": false
+        },
+        {
+          "key": "r4",
+          "name": "public synthetic 4",
+          "category": "B",
+          "quantity": 32,
+          "price": 20.73,
+          "demand": 11,
+          "delivery": 0.25,
+          "stock": 8,
+          "transit": 2,
+          "outbound": 2,
+          "unit": 1,
+          "step": 1,
+          "minimum": 1,
+          "locked": false,
+          "excluded": false
+        }
+      ],
+      "target": 2207.78,
+      "options": {
+        "allowOverSix": false,
+        "allowBelowOne": true
+      },
+      "expected": {
+        "quantities": [
+          19,
+          12,
+          32,
+          4,
+          32
+        ],
+        "before": 1855.28,
+        "total": 2218.83,
+        "complete": true,
+        "reason": "",
+        "lineSteps": []
+      }
+    },
+    {
+      "name": "mixed-16",
+      "input": [
+        {
+          "key": "r0",
+          "name": "public synthetic 0",
+          "category": "A+",
+          "quantity": 30,
+          "price": 39.19,
+          "demand": 5,
+          "delivery": 1,
+          "stock": 4,
+          "transit": 2,
+          "outbound": 0,
+          "unit": 5,
+          "step": 6,
+          "minimum": 1,
+          "locked": false,
+          "excluded": false
+        },
+        {
+          "key": "r1",
+          "name": "public synthetic 1",
+          "category": "A+",
+          "quantity": 2,
+          "price": 20.43,
+          "demand": 5,
+          "delivery": 0.25,
+          "stock": 8,
+          "transit": 0,
+          "outbound": 0,
+          "unit": 5,
+          "step": 6,
+          "minimum": 1,
+          "locked": false,
+          "excluded": false
+        },
+        {
+          "key": "r2",
+          "name": "public synthetic 2",
+          "category": "A+",
+          "quantity": 30,
+          "price": 29.51,
+          "demand": 1,
+          "delivery": 0.5,
+          "stock": 6,
+          "transit": 4,
+          "outbound": 0,
+          "unit": 1,
+          "step": 6,
+          "minimum": 1,
+          "locked": false,
+          "excluded": true
+        },
+        {
+          "key": "r3",
+          "name": "public synthetic 3",
+          "category": "A+",
+          "quantity": 10,
+          "price": 10.11,
+          "demand": 17,
+          "delivery": 0.5,
+          "stock": 4,
+          "transit": 0,
+          "outbound": 0,
+          "unit": 5,
+          "step": 6,
+          "minimum": 1,
+          "locked": false,
+          "excluded": false
+        },
+        {
+          "key": "r4",
+          "name": "public synthetic 4",
+          "category": "A+",
+          "quantity": 14,
+          "price": 17.27,
+          "demand": 1,
+          "delivery": 0.25,
+          "stock": 8,
+          "transit": 1,
+          "outbound": 0,
+          "unit": 1,
+          "step": 6,
+          "minimum": 1,
+          "locked": false,
+          "excluded": false
+        }
+      ],
+      "target": 2664.77,
+      "options": {
+        "allowOverSix": true,
+        "allowBelowOne": false
+      },
+      "expected": {
+        "quantities": [
+          30,
+          6,
+          30,
+          24,
+          14
+        ],
+        "before": 2444.74,
+        "total": 2668,
+        "complete": true,
+        "reason": "",
+        "lineSteps": []
+      }
+    },
+    {
+      "name": "mixed-17",
+      "input": [
+        {
+          "key": "r0",
+          "name": "public synthetic 0",
+          "category": "B",
+          "quantity": 12,
+          "price": 26.93,
+          "demand": 7,
+          "delivery": 1,
+          "stock": 2,
+          "transit": 4,
+          "outbound": 2,
+          "unit": 1,
+          "step": 1,
+          "minimum": 1,
+          "locked": false,
+          "excluded": false
+        },
+        {
+          "key": "r1",
+          "name": "public synthetic 1",
+          "category": "B",
+          "quantity": 8,
+          "price": 40.17,
+          "demand": 19,
+          "delivery": 0.25,
+          "stock": 0,
+          "transit": 3,
+          "outbound": 2,
+          "unit": 1,
+          "step": 1,
+          "minimum": 1,
+          "locked": false,
+          "excluded": false
+        }
+      ],
+      "target": 302.92,
+      "options": {
+        "allowOverSix": false,
+        "allowBelowOne": false
+      },
+      "expected": {
+        "quantities": [
+          10,
+          8
+        ],
+        "before": 644.52,
+        "total": 590.66,
+        "complete": false,
+        "reason": "belowOne",
+        "lineSteps": []
+      }
+    },
+    {
+      "name": "mixed-18",
+      "input": [
+        {
+          "key": "r0",
+          "name": "public synthetic 0",
+          "category": "A+",
+          "quantity": 38,
+          "price": 5.19,
+          "demand": 9,
+          "delivery": 0.5,
+          "stock": 2,
+          "transit": 0,
+          "outbound": 0,
+          "unit": 1,
+          "step": 6,
+          "minimum": 1,
+          "locked": false,
+          "excluded": false
+        },
+        {
+          "key": "r1",
+          "name": "public synthetic 1",
+          "category": "A+",
+          "quantity": 26,
+          "price": 29.95,
+          "demand": 17,
+          "delivery": 0.5,
+          "stock": 4,
+          "transit": 3,
+          "outbound": 0,
+          "unit": 1,
+          "step": 6,
+          "minimum": 1,
+          "locked": false,
+          "excluded": false
+        },
+        {
+          "key": "r2",
+          "name": "public synthetic 2",
+          "category": "A+",
+          "quantity": 14,
+          "price": 13.75,
+          "demand": 13,
+          "delivery": 1,
+          "stock": 8,
+          "transit": 4,
+          "outbound": 0,
+          "unit": 1,
+          "step": 6,
+          "minimum": 1,
+          "locked": false,
+          "excluded": true
+        }
+      ],
+      "target": 525.79,
+      "options": {
+        "allowOverSix": false,
+        "allowBelowOne": true
+      },
+      "expected": {
+        "quantities": [
+          24,
+          6,
+          14
+        ],
+        "before": 1168.42,
+        "total": 496.76,
+        "complete": true,
+        "reason": "",
+        "lineSteps": []
+      }
+    },
+    {
+      "name": "mixed-19",
+      "input": [
+        {
+          "key": "r0",
+          "name": "public synthetic 0",
+          "category": "B",
+          "quantity": 4,
+          "price": 1.01,
+          "demand": 15,
+          "delivery": 0.25,
+          "stock": 0,
+          "transit": 1,
+          "outbound": 2,
+          "unit": 1,
+          "step": 1,
+          "minimum": 1,
+          "locked": false,
+          "excluded": false
+        },
+        {
+          "key": "r1",
+          "name": "public synthetic 1",
+          "category": "B",
+          "quantity": 24,
+          "price": 36.33,
+          "demand": 11,
+          "delivery": 0.5,
+          "stock": 0,
+          "transit": 2,
+          "outbound": 2,
+          "unit": 1,
+          "step": 1,
+          "minimum": 1,
+          "locked": false,
+          "excluded": false
+        },
+        {
+          "key": "r2",
+          "name": "public synthetic 2",
+          "category": "B",
+          "quantity": 20,
+          "price": 22.69,
+          "demand": 3,
+          "delivery": 1,
+          "stock": 0,
+          "transit": 1,
+          "outbound": 2,
+          "unit": 1,
+          "step": 1,
+          "minimum": 1,
+          "locked": false,
+          "excluded": false
+        },
+        {
+          "key": "r3",
+          "name": "public synthetic 3",
+          "category": "B",
+          "quantity": 24,
+          "price": 3.61,
+          "demand": 11,
+          "delivery": 0.5,
+          "stock": 6,
+          "transit": 2,
+          "outbound": 2,
+          "unit": 1,
+          "step": 1,
+          "minimum": 1,
+          "locked": false,
+          "excluded": false
+        }
+      ],
+      "target": 1458.89,
+      "options": {
+        "allowOverSix": false,
+        "allowBelowOne": false
+      },
+      "expected": {
+        "quantities": [
+          31,
+          25,
+          20,
+          24
+        ],
+        "before": 1416.4,
+        "total": 1480,
+        "complete": true,
+        "reason": "",
+        "lineSteps": []
+      }
+    },
+    {
+      "name": "mixed-20",
+      "input": [
+        {
+          "key": "r0",
+          "name": "public synthetic 0",
+          "category": "A+",
+          "quantity": 30,
+          "price": 28.47,
+          "demand": 13,
+          "delivery": 0.25,
+          "stock": 2,
+          "transit": 0,
+          "outbound": 0,
+          "unit": 1,
+          "step": 6,
+          "minimum": 1,
+          "locked": false,
+          "excluded": false
+        },
+        {
+          "key": "r1",
+          "name": "public synthetic 1",
+          "category": "A+",
+          "quantity": 10,
+          "price": 8.11,
+          "demand": 13,
+          "delivery": 0.5,
+          "stock": 6,
+          "transit": 1,
+          "outbound": 0,
+          "unit": 5,
+          "step": 6,
+          "minimum": 1,
+          "locked": false,
+          "excluded": false
+        },
+        {
+          "key": "r2",
+          "name": "public synthetic 2",
+          "category": "A+",
+          "quantity": 38,
+          "price": 34.79,
+          "demand": 17,
+          "delivery": 0.25,
+          "stock": 2,
+          "transit": 0,
+          "outbound": 0,
+          "unit": 1,
+          "step": 6,
+          "minimum": 1,
+          "locked": false,
+          "excluded": true
+        }
+      ],
+      "target": 1557.48,
+      "options": {
+        "allowOverSix": true,
+        "allowBelowOne": false
+      },
+      "expected": {
+        "quantities": [
+          18,
+          6,
+          38
+        ],
+        "before": 2257.22,
+        "total": 1883.14,
+        "complete": false,
+        "reason": "belowOne",
+        "lineSteps": []
+      }
+    },
+    {
+      "name": "mixed-21",
+      "input": [
+        {
+          "key": "r0",
+          "name": "public synthetic 0",
+          "category": "B",
+          "quantity": 20,
+          "price": 39.97,
+          "demand": 11,
+          "delivery": 0.5,
+          "stock": 6,
+          "transit": 4,
+          "outbound": 2,
+          "unit": 1,
+          "step": 1,
+          "minimum": 1,
+          "locked": false,
+          "excluded": false
+        },
+        {
+          "key": "r1",
+          "name": "public synthetic 1",
+          "category": "B",
+          "quantity": 24,
+          "price": 18.33,
+          "demand": 19,
+          "delivery": 0.25,
+          "stock": 0,
+          "transit": 0,
+          "outbound": 2,
+          "unit": 1,
+          "step": 1,
+          "minimum": 1,
+          "locked": false,
+          "excluded": false
+        }
+      ],
+      "target": 879.92,
+      "options": {
+        "allowOverSix": false,
+        "allowBelowOne": true
+      },
+      "expected": {
+        "quantities": [
+          11,
+          24
+        ],
+        "before": 1239.32,
+        "total": 879.59,
+        "complete": true,
+        "reason": "",
+        "lineSteps": []
+      }
+    },
+    {
+      "name": "mixed-22",
+      "input": [
+        {
+          "key": "r0",
+          "name": "public synthetic 0",
+          "category": "A+",
+          "quantity": 6,
+          "price": 16.63,
+          "demand": 17,
+          "delivery": 0.5,
+          "stock": 8,
+          "transit": 4,
+          "outbound": 0,
+          "unit": 5,
+          "step": 6,
+          "minimum": 1,
+          "locked": false,
+          "excluded": false
+        },
+        {
+          "key": "r1",
+          "name": "public synthetic 1",
+          "category": "A+",
+          "quantity": 2,
+          "price": 16.11,
+          "demand": 13,
+          "delivery": 0.5,
+          "stock": 0,
+          "transit": 1,
+          "outbound": 0,
+          "unit": 1,
+          "step": 6,
+          "minimum": 1,
+          "locked": false,
+          "excluded": false
+        },
+        {
+          "key": "r2",
+          "name": "public synthetic 2",
+          "category": "A+",
+          "quantity": 30,
+          "price": 36.39,
+          "demand": 1,
+          "delivery": 0.25,
+          "stock": 6,
+          "transit": 4,
+          "outbound": 0,
+          "unit": 1,
+          "step": 6,
+          "minimum": 1,
+          "locked": false,
+          "excluded": false
+        },
+        {
+          "key": "r3",
+          "name": "public synthetic 3",
+          "category": "A+",
+          "quantity": 26,
+          "price": 11.55,
+          "demand": 9,
+          "delivery": 0.5,
+          "stock": 2,
+          "transit": 4,
+          "outbound": 0,
+          "unit": 1,
+          "step": 6,
+          "minimum": 1,
+          "locked": false,
+          "excluded": false
+        },
+        {
+          "key": "r4",
+          "name": "public synthetic 4",
+          "category": "A+",
+          "quantity": 30,
+          "price": 33.43,
+          "demand": 9,
+          "delivery": 0.5,
+          "stock": 0,
+          "transit": 2,
+          "outbound": 0,
+          "unit": 1,
+          "step": 6,
+          "minimum": 1,
+          "locked": false,
+          "excluded": true
+        }
+      ],
+      "target": 4775.84,
+      "options": {
+        "allowOverSix": false,
+        "allowBelowOne": false
+      },
+      "expected": {
+        "quantities": [
+          18,
+          72,
+          30,
+          48,
+          30
+        ],
+        "before": 2526.9,
+        "total": 4108.26,
+        "complete": false,
+        "reason": "overSix",
+        "lineSteps": []
+      }
+    },
+    {
+      "name": "mixed-23",
+      "input": [
+        {
+          "key": "r0",
+          "name": "public synthetic 0",
+          "category": "B",
+          "quantity": 12,
+          "price": 16.53,
+          "demand": 19,
+          "delivery": 0.5,
+          "stock": 8,
+          "transit": 0,
+          "outbound": 2,
+          "unit": 1,
+          "step": 1,
+          "minimum": 1,
+          "locked": false,
+          "excluded": false
+        },
+        {
+          "key": "r1",
+          "name": "public synthetic 1",
+          "category": "B",
+          "quantity": 32,
+          "price": 3.21,
+          "demand": 19,
+          "delivery": 0.25,
+          "stock": 4,
+          "transit": 4,
+          "outbound": 2,
+          "unit": 1,
+          "step": 1,
+          "minimum": 1,
+          "locked": false,
+          "excluded": false
+        },
+        {
+          "key": "r2",
+          "name": "public synthetic 2",
+          "category": "B",
+          "quantity": 4,
+          "price": 24.77,
+          "demand": 11,
+          "delivery": 0.5,
+          "stock": 6,
+          "transit": 3,
+          "outbound": 2,
+          "unit": 5,
+          "step": 1,
+          "minimum": 1,
+          "locked": false,
+          "excluded": false
+        },
+        {
+          "key": "r3",
+          "name": "public synthetic 3",
+          "category": "B",
+          "quantity": 8,
+          "price": 9.53,
+          "demand": 19,
+          "delivery": 1,
+          "stock": 8,
+          "transit": 3,
+          "outbound": 2,
+          "unit": 1,
+          "step": 1,
+          "minimum": 1,
+          "locked": false,
+          "excluded": false
+        }
+      ],
+      "target": 871.81,
+      "options": {
+        "allowOverSix": false,
+        "allowBelowOne": false
+      },
+      "expected": {
+        "quantities": [
+          25,
+          32,
+          4,
+          27
+        ],
+        "before": 476.4,
+        "total": 872.36,
+        "complete": true,
+        "reason": "",
+        "lineSteps": []
+      }
+    },
+    {
+      "name": "mixed-24",
+      "input": [
+        {
+          "key": "r0",
+          "name": "public synthetic 0",
+          "category": "A+",
+          "quantity": 38,
+          "price": 8.15,
+          "demand": 9,
+          "delivery": 0.5,
+          "stock": 2,
+          "transit": 3,
+          "outbound": 0,
+          "unit": 5,
+          "step": 6,
+          "minimum": 1,
+          "locked": false,
+          "excluded": false
+        },
+        {
+          "key": "r1",
+          "name": "public synthetic 1",
+          "category": "A+",
+          "quantity": 2,
+          "price": 29.07,
+          "demand": 9,
+          "delivery": 1,
+          "stock": 6,
+          "transit": 2,
+          "outbound": 0,
+          "unit": 1,
+          "step": 6,
+          "minimum": 1,
+          "locked": false,
+          "excluded": false
+        }
+      ],
+      "target": 503.94,
+      "options": {
+        "allowOverSix": true,
+        "allowBelowOne": true
+      },
+      "expected": {
+        "quantities": [
+          38,
+          6
+        ],
+        "before": 367.84,
+        "total": 484.12,
+        "complete": false,
+        "reason": "Нет допустимых изменений для достижения суммы с учетом цен, закреплений и партий.",
+        "lineSteps": []
+      }
+    },
+    {
+      "name": "mixed-25",
+      "input": [
+        {
+          "key": "r0",
+          "name": "public synthetic 0",
+          "category": "B",
+          "quantity": 32,
+          "price": 20.81,
+          "demand": 11,
+          "delivery": 0.5,
+          "stock": 8,
+          "transit": 0,
+          "outbound": 2,
+          "unit": 1,
+          "step": 1,
+          "minimum": 1,
+          "locked": false,
+          "excluded": false
+        },
+        {
+          "key": "r1",
+          "name": "public synthetic 1",
+          "category": "B",
+          "quantity": 4,
+          "price": 26.69,
+          "demand": 19,
+          "delivery": 1,
+          "stock": 6,
+          "transit": 2,
+          "outbound": 2,
+          "unit": 1,
+          "step": 1,
+          "minimum": 1,
+          "locked": false,
+          "excluded": false
+        },
+        {
+          "key": "r2",
+          "name": "public synthetic 2",
+          "category": "B",
+          "quantity": 16,
+          "price": 23.93,
+          "demand": 15,
+          "delivery": 1,
+          "stock": 6,
+          "transit": 3,
+          "outbound": 2,
+          "unit": 5,
+          "step": 1,
+          "minimum": 1,
+          "locked": false,
+          "excluded": false
+        }
+      ],
+      "target": 1744.9,
+      "options": {
+        "allowOverSix": false,
+        "allowBelowOne": false
+      },
+      "expected": {
+        "quantities": [
+          32,
+          27,
+          16
+        ],
+        "before": 1155.56,
+        "total": 1769.43,
+        "complete": true,
+        "reason": "",
+        "lineSteps": []
+      }
+    },
+    {
+      "name": "mixed-26",
+      "input": [
+        {
+          "key": "r0",
+          "name": "public synthetic 0",
+          "category": "A+",
+          "quantity": 22,
+          "price": 36.31,
+          "demand": 9,
+          "delivery": 0.25,
+          "stock": 0,
+          "transit": 1,
+          "outbound": 0,
+          "unit": 1,
+          "step": 6,
+          "minimum": 1,
+          "locked": false,
+          "excluded": false
+        },
+        {
+          "key": "r1",
+          "name": "public synthetic 1",
+          "category": "A+",
+          "quantity": 18,
+          "price": 6.99,
+          "demand": 9,
+          "delivery": 0.5,
+          "stock": 4,
+          "transit": 3,
+          "outbound": 0,
+          "unit": 1,
+          "step": 6,
+          "minimum": 1,
+          "locked": false,
+          "excluded": true
+        },
+        {
+          "key": "r2",
+          "name": "public synthetic 2",
+          "category": "A+",
+          "quantity": 14,
+          "price": 28.23,
+          "demand": 9,
+          "delivery": 1,
+          "stock": 0,
+          "transit": 1,
+          "outbound": 0,
+          "unit": 1,
+          "step": 6,
+          "minimum": 1,
+          "locked": false,
+          "excluded": false
+        }
+      ],
+      "target": 699.53,
+      "options": {
+        "allowOverSix": false,
+        "allowBelowOne": false
+      },
+      "expected": {
+        "quantities": [
+          12,
+          18,
+          14
+        ],
+        "before": 1319.86,
+        "total": 956.76,
+        "complete": false,
+        "reason": "belowOne",
+        "lineSteps": []
+      }
+    },
+    {
+      "name": "mixed-27",
+      "input": [
+        {
+          "key": "r0",
+          "name": "public synthetic 0",
+          "category": "B",
+          "quantity": 36,
+          "price": 13.89,
+          "demand": 11,
+          "delivery": 0.25,
+          "stock": 8,
+          "transit": 0,
+          "outbound": 2,
+          "unit": 1,
+          "step": 1,
+          "minimum": 1,
+          "locked": false,
+          "excluded": false
+        },
+        {
+          "key": "r1",
+          "name": "public synthetic 1",
+          "category": "B",
+          "quantity": 0,
+          "price": 3.45,
+          "demand": 3,
+          "delivery": 0.5,
+          "stock": 0,
+          "transit": 4,
+          "outbound": 2,
+          "unit": 1,
+          "step": 1,
+          "minimum": 1,
+          "locked": false,
+          "excluded": false
+        },
+        {
+          "key": "r2",
+          "name": "public synthetic 2",
+          "category": "B",
+          "quantity": 20,
+          "price": 24.69,
+          "demand": 15,
+          "delivery": 1,
+          "stock": 4,
+          "transit": 2,
+          "outbound": 2,
+          "unit": 1,
+          "step": 1,
+          "minimum": 1,
+          "locked": false,
+          "excluded": false
+        }
+      ],
+      "target": 665.87,
+      "options": {
+        "allowOverSix": false,
+        "allowBelowOne": true
+      },
+      "expected": {
+        "quantities": [
+          12,
+          0,
+          20
+        ],
+        "before": 993.84,
+        "total": 660.48,
+        "complete": true,
+        "reason": "",
+        "lineSteps": []
+      }
+    },
+    {
+      "name": "mixed-28",
+      "input": [
+        {
+          "key": "r0",
+          "name": "public synthetic 0",
+          "category": "A+",
+          "quantity": 10,
+          "price": 28.11,
+          "demand": 17,
+          "delivery": 0.25,
+          "stock": 0,
+          "transit": 3,
+          "outbound": 0,
+          "unit": 5,
+          "step": 6,
+          "minimum": 1,
+          "locked": false,
+          "excluded": true
+        },
+        {
+          "key": "r1",
+          "name": "public synthetic 1",
+          "category": "A+",
+          "quantity": 14,
+          "price": 1.67,
+          "demand": 1,
+          "delivery": 0.25,
+          "stock": 2,
+          "transit": 4,
+          "outbound": 0,
+          "unit": 5,
+          "step": 6,
+          "minimum": 1,
+          "locked": false,
+          "excluded": false
+        },
+        {
+          "key": "r2",
+          "name": "public synthetic 2",
+          "category": "A+",
+          "quantity": 10,
+          "price": 29.31,
+          "demand": 5,
+          "delivery": 0.5,
+          "stock": 8,
+          "transit": 0,
+          "outbound": 0,
+          "unit": 5,
+          "step": 6,
+          "minimum": 1,
+          "locked": false,
+          "excluded": false
+        },
+        {
+          "key": "r3",
+          "name": "public synthetic 3",
+          "category": "A+",
+          "quantity": 38,
+          "price": 18.87,
+          "demand": 5,
+          "delivery": 0.25,
+          "stock": 6,
+          "transit": 2,
+          "outbound": 0,
+          "unit": 1,
+          "step": 6,
+          "minimum": 1,
+          "locked": false,
+          "excluded": false
+        }
+      ],
+      "target": 591.59,
+      "options": {
+        "allowOverSix": true,
+        "allowBelowOne": false
+      },
+      "expected": {
+        "quantities": [
+          10,
+          12,
+          0,
+          12
+        ],
+        "before": 1314.64,
+        "total": 527.58,
+        "complete": true,
+        "reason": "",
+        "lineSteps": []
+      }
+    },
+    {
+      "name": "mixed-29",
+      "input": [
+        {
+          "key": "r0",
+          "name": "public synthetic 0",
+          "category": "B",
+          "quantity": 28,
+          "price": 13.17,
+          "demand": 3,
+          "delivery": 0.25,
+          "stock": 6,
+          "transit": 1,
+          "outbound": 2,
+          "unit": 1,
+          "step": 1,
+          "minimum": 1,
+          "locked": false,
+          "excluded": true
+        },
+        {
+          "key": "r1",
+          "name": "public synthetic 1",
+          "category": "B",
+          "quantity": 0,
+          "price": 9.13,
+          "demand": 3,
+          "delivery": 1,
+          "stock": 0,
+          "transit": 2,
+          "outbound": 2,
+          "unit": 1,
+          "step": 1,
+          "minimum": 1,
+          "locked": false,
+          "excluded": false
+        }
+      ],
+      "target": 527.33,
+      "options": {
+        "allowOverSix": false,
+        "allowBelowOne": false
+      },
+      "expected": {
+        "quantities": [
+          28,
+          18
+        ],
+        "before": 368.76,
+        "total": 533.1,
+        "complete": true,
+        "reason": "",
+        "lineSteps": []
+      }
+    },
+    {
+      "name": "mixed-30",
+      "input": [
+        {
+          "key": "r0",
+          "name": "public synthetic 0",
+          "category": "A+",
+          "quantity": 38,
+          "price": 15.43,
+          "demand": 9,
+          "delivery": 1,
+          "stock": 2,
+          "transit": 4,
+          "outbound": 0,
+          "unit": 1,
+          "step": 6,
+          "minimum": 1,
+          "locked": false,
+          "excluded": false
+        },
+        {
+          "key": "r1",
+          "name": "public synthetic 1",
+          "category": "A+",
+          "quantity": 2,
+          "price": 40.19,
+          "demand": 17,
+          "delivery": 0.5,
+          "stock": 2,
+          "transit": 2,
+          "outbound": 0,
+          "unit": 1,
+          "step": 6,
+          "minimum": 1,
+          "locked": false,
+          "excluded": false
+        },
+        {
+          "key": "r2",
+          "name": "public synthetic 2",
+          "category": "A+",
+          "quantity": 38,
+          "price": 36.15,
+          "demand": 13,
+          "delivery": 0.25,
+          "stock": 8,
+          "transit": 3,
+          "outbound": 0,
+          "unit": 1,
+          "step": 6,
+          "minimum": 1,
+          "locked": false,
+          "excluded": false
+        },
+        {
+          "key": "r3",
+          "name": "public synthetic 3",
+          "category": "A+",
+          "quantity": 34,
+          "price": 13.55,
+          "demand": 9,
+          "delivery": 1,
+          "stock": 0,
+          "transit": 2,
+          "outbound": 0,
+          "unit": 1,
+          "step": 6,
+          "minimum": 1,
+          "locked": false,
+          "excluded": false
+        },
+        {
+          "key": "r4",
+          "name": "public synthetic 4",
+          "category": "A+",
+          "quantity": 6,
+          "price": 24.87,
+          "demand": 9,
+          "delivery": 0.5,
+          "stock": 8,
+          "transit": 4,
+          "outbound": 0,
+          "unit": 1,
+          "step": 6,
+          "minimum": 1,
+          "locked": false,
+          "excluded": false
+        },
+        {
+          "key": "r5",
+          "name": "public synthetic 5",
+          "category": "A+",
+          "quantity": 34,
+          "price": 14.11,
+          "demand": 17,
+          "delivery": 0.25,
+          "stock": 8,
+          "transit": 1,
+          "outbound": 0,
+          "unit": 1,
+          "step": 6,
+          "minimum": 1,
+          "locked": false,
+          "excluded": false
+        }
+      ],
+      "target": 1533.74,
+      "options": {
+        "allowOverSix": false,
+        "allowBelowOne": true
+      },
+      "expected": {
+        "quantities": [
+          18,
+          2,
+          12,
+          18,
+          6,
+          24
+        ],
+        "before": 3130.08,
+        "total": 1523.68,
+        "complete": true,
+        "reason": "",
+        "lineSteps": []
+      }
+    },
+    {
+      "name": "mixed-31",
+      "input": [
+        {
+          "key": "r0",
+          "name": "public synthetic 0",
+          "category": "B",
+          "quantity": 8,
+          "price": 33.37,
+          "demand": 7,
+          "delivery": 1,
+          "stock": 2,
+          "transit": 0,
+          "outbound": 2,
+          "unit": 5,
+          "step": 1,
+          "minimum": 1,
+          "locked": false,
+          "excluded": false
+        },
+        {
+          "key": "r1",
+          "name": "public synthetic 1",
+          "category": "B",
+          "quantity": 28,
+          "price": 1.81,
+          "demand": 15,
+          "delivery": 1,
+          "stock": 4,
+          "transit": 3,
+          "outbound": 2,
+          "unit": 1,
+          "step": 1,
+          "minimum": 1,
+          "locked": false,
+          "excluded": false
+        },
+        {
+          "key": "r2",
+          "name": "public synthetic 2",
+          "category": "B",
+          "quantity": 8,
+          "price": 16.01,
+          "demand": 11,
+          "delivery": 1,
+          "stock": 0,
+          "transit": 4,
+          "outbound": 2,
+          "unit": 1,
+          "step": 1,
+          "minimum": 1,
+          "locked": false,
+          "excluded": false
+        },
+        {
+          "key": "r3",
+          "name": "public synthetic 3",
+          "category": "B",
+          "quantity": 12,
+          "price": 9.73,
+          "demand": 11,
+          "delivery": 0.5,
+          "stock": 0,
+          "transit": 1,
+          "outbound": 2,
+          "unit": 1,
+          "step": 1,
+          "minimum": 1,
+          "locked": false,
+          "excluded": false
+        }
+      ],
+      "target": 781.85,
+      "options": {
+        "allowOverSix": false,
+        "allowBelowOne": false
+      },
+      "expected": {
+        "quantities": [
+          8,
+          28,
+          18,
+          19
+        ],
+        "before": 562.48,
+        "total": 790.69,
+        "complete": true,
+        "reason": "",
+        "lineSteps": []
+      }
+    },
+    {
+      "name": "mixed-32",
+      "input": [
+        {
+          "key": "r0",
+          "name": "public synthetic 0",
+          "category": "A+",
+          "quantity": 2,
+          "price": 19.55,
+          "demand": 13,
+          "delivery": 1,
+          "stock": 8,
+          "transit": 1,
+          "outbound": 0,
+          "unit": 1,
+          "step": 6,
+          "minimum": 1,
+          "locked": false,
+          "excluded": false
+        },
+        {
+          "key": "r1",
+          "name": "public synthetic 1",
+          "category": "A+",
+          "quantity": 30,
+          "price": 38.87,
+          "demand": 17,
+          "delivery": 1,
+          "stock": 4,
+          "transit": 3,
+          "outbound": 0,
+          "unit": 5,
+          "step": 6,
+          "minimum": 1,
+          "locked": false,
+          "excluded": false
+        },
+        {
+          "key": "r2",
+          "name": "public synthetic 2",
+          "category": "A+",
+          "quantity": 2,
+          "price": 35.79,
+          "demand": 13,
+          "delivery": 0.25,
+          "stock": 0,
+          "transit": 2,
+          "outbound": 0,
+          "unit": 1,
+          "step": 6,
+          "minimum": 1,
+          "locked": false,
+          "excluded": false
+        },
+        {
+          "key": "r3",
+          "name": "public synthetic 3",
+          "category": "A+",
+          "quantity": 22,
+          "price": 12.87,
+          "demand": 5,
+          "delivery": 0.25,
+          "stock": 0,
+          "transit": 1,
+          "outbound": 0,
+          "unit": 1,
+          "step": 6,
+          "minimum": 1,
+          "locked": false,
+          "excluded": false
+        },
+        {
+          "key": "r4",
+          "name": "public synthetic 4",
+          "category": "A+",
+          "quantity": 18,
+          "price": 33.15,
+          "demand": 5,
+          "delivery": 0.25,
+          "stock": 6,
+          "transit": 1,
+          "outbound": 0,
+          "unit": 5,
+          "step": 6,
+          "minimum": 1,
+          "locked": false,
+          "excluded": false
+        }
+      ],
+      "target": 3472.16,
+      "options": {
+        "allowOverSix": true,
+        "allowBelowOne": false
+      },
+      "expected": {
+        "quantities": [
+          24,
+          30,
+          30,
+          22,
+          18
+        ],
+        "before": 2156.62,
+        "total": 3588.84,
+        "complete": true,
+        "reason": "",
+        "lineSteps": []
+      }
+    },
+    {
+      "name": "mixed-33",
+      "input": [
+        {
+          "key": "r0",
+          "name": "public synthetic 0",
+          "category": "B",
+          "quantity": 16,
+          "price": 11.77,
+          "demand": 11,
+          "delivery": 1,
+          "stock": 6,
+          "transit": 0,
+          "outbound": 2,
+          "unit": 1,
+          "step": 1,
+          "minimum": 1,
+          "locked": false,
+          "excluded": false
+        },
+        {
+          "key": "r1",
+          "name": "public synthetic 1",
+          "category": "B",
+          "quantity": 28,
+          "price": 10.61,
+          "demand": 7,
+          "delivery": 1,
+          "stock": 2,
+          "transit": 4,
+          "outbound": 2,
+          "unit": 1,
+          "step": 1,
+          "minimum": 1,
+          "locked": false,
+          "excluded": false
+        },
+        {
+          "key": "r2",
+          "name": "public synthetic 2",
+          "category": "B",
+          "quantity": 16,
+          "price": 7.53,
+          "demand": 19,
+          "delivery": 0.25,
+          "stock": 2,
+          "transit": 1,
+          "outbound": 2,
+          "unit": 1,
+          "step": 1,
+          "minimum": 1,
+          "locked": false,
+          "excluded": false
+        },
+        {
+          "key": "r3",
+          "name": "public synthetic 3",
+          "category": "B",
+          "quantity": 12,
+          "price": 25.89,
+          "demand": 11,
+          "delivery": 0.25,
+          "stock": 2,
+          "transit": 2,
+          "outbound": 2,
+          "unit": 1,
+          "step": 1,
+          "minimum": 1,
+          "locked": false,
+          "excluded": false
+        },
+        {
+          "key": "r4",
+          "name": "public synthetic 4",
+          "category": "B",
+          "quantity": 24,
+          "price": 9.69,
+          "demand": 15,
+          "delivery": 1,
+          "stock": 8,
+          "transit": 4,
+          "outbound": 2,
+          "unit": 1,
+          "step": 1,
+          "minimum": 1,
+          "locked": false,
+          "excluded": false
+        },
+        {
+          "key": "r5",
+          "name": "public synthetic 5",
+          "category": "B",
+          "quantity": 28,
+          "price": 22.93,
+          "demand": 15,
+          "delivery": 0.5,
+          "stock": 0,
+          "transit": 2,
+          "outbound": 2,
+          "unit": 5,
+          "step": 1,
+          "minimum": 1,
+          "locked": false,
+          "excluded": false
+        }
+      ],
+      "target": 2633.01,
+      "options": {
+        "allowOverSix": false,
+        "allowBelowOne": true
+      },
+      "expected": {
+        "quantities": [
+          30,
+          28,
+          45,
+          25,
+          37,
+          28
+        ],
+        "before": 1791.16,
+        "total": 2636.85,
+        "complete": true,
+        "reason": "",
+        "lineSteps": []
+      }
+    },
+    {
+      "name": "mixed-34",
+      "input": [
+        {
+          "key": "r0",
+          "name": "public synthetic 0",
+          "category": "A+",
+          "quantity": 18,
+          "price": 28.27,
+          "demand": 5,
+          "delivery": 0.25,
+          "stock": 4,
+          "transit": 3,
+          "outbound": 0,
+          "unit": 5,
+          "step": 6,
+          "minimum": 1,
+          "locked": false,
+          "excluded": false
+        },
+        {
+          "key": "r1",
+          "name": "public synthetic 1",
+          "category": "A+",
+          "quantity": 30,
+          "price": 36.07,
+          "demand": 1,
+          "delivery": 0.5,
+          "stock": 0,
+          "transit": 1,
+          "outbound": 0,
+          "unit": 1,
+          "step": 6,
+          "minimum": 1,
+          "locked": false,
+          "excluded": false
+        },
+        {
+          "key": "r2",
+          "name": "public synthetic 2",
+          "category": "A+",
+          "quantity": 2,
+          "price": 24.99,
+          "demand": 5,
+          "delivery": 0.5,
+          "stock": 6,
+          "transit": 3,
+          "outbound": 0,
+          "unit": 1,
+          "step": 6,
+          "minimum": 1,
+          "locked": false,
+          "excluded": false
+        },
+        {
+          "key": "r3",
+          "name": "public synthetic 3",
+          "category": "A+",
+          "quantity": 38,
+          "price": 23.51,
+          "demand": 17,
+          "delivery": 0.25,
+          "stock": 8,
+          "transit": 0,
+          "outbound": 0,
+          "unit": 1,
+          "step": 6,
+          "minimum": 1,
+          "locked": false,
+          "excluded": true
+        },
+        {
+          "key": "r4",
+          "name": "public synthetic 4",
+          "category": "A+",
+          "quantity": 26,
+          "price": 16.27,
+          "demand": 9,
+          "delivery": 0.5,
+          "stock": 4,
+          "transit": 4,
+          "outbound": 0,
+          "unit": 1,
+          "step": 6,
+          "minimum": 1,
+          "locked": false,
+          "excluded": false
+        },
+        {
+          "key": "r5",
+          "name": "public synthetic 5",
+          "category": "A+",
+          "quantity": 22,
+          "price": 1.67,
+          "demand": 5,
+          "delivery": 0.5,
+          "stock": 8,
+          "transit": 1,
+          "outbound": 0,
+          "unit": 1,
+          "step": 6,
+          "minimum": 1,
+          "locked": false,
+          "excluded": false
+        }
+      ],
+      "target": 5419.28,
+      "options": {
+        "allowOverSix": false,
+        "allowBelowOne": false
+      },
+      "expected": {
+        "quantities": [
+          18,
+          30,
+          18,
+          38,
+          42,
+          22
+        ],
+        "before": 2994.08,
+        "total": 3654.24,
+        "complete": false,
+        "reason": "overSix",
+        "lineSteps": []
+      }
+    },
+    {
+      "name": "mixed-35",
+      "input": [
+        {
+          "key": "r0",
+          "name": "public synthetic 0",
+          "category": "B",
+          "quantity": 12,
+          "price": 38.21,
+          "demand": 11,
+          "delivery": 0.25,
+          "stock": 4,
+          "transit": 3,
+          "outbound": 2,
+          "unit": 1,
+          "step": 1,
+          "minimum": 1,
+          "locked": false,
+          "excluded": false
+        },
+        {
+          "key": "r1",
+          "name": "public synthetic 1",
+          "category": "B",
+          "quantity": 24,
+          "price": 17.53,
+          "demand": 19,
+          "delivery": 0.25,
+          "stock": 6,
+          "transit": 1,
+          "outbound": 2,
+          "unit": 1,
+          "step": 1,
+          "minimum": 1,
+          "locked": false,
+          "excluded": false
+        },
+        {
+          "key": "r2",
+          "name": "public synthetic 2",
+          "category": "B",
+          "quantity": 36,
+          "price": 2.61,
+          "demand": 15,
+          "delivery": 1,
+          "stock": 8,
+          "transit": 0,
+          "outbound": 2,
+          "unit": 5,
+          "step": 1,
+          "minimum": 1,
+          "locked": false,
+          "excluded": false
+        },
+        {
+          "key": "r3",
+          "name": "public synthetic 3",
+          "category": "B",
+          "quantity": 8,
+          "price": 1.45,
+          "demand": 15,
+          "delivery": 0.5,
+          "stock": 2,
+          "transit": 4,
+          "outbound": 2,
+          "unit": 5,
+          "step": 1,
+          "minimum": 1,
+          "locked": false,
+          "excluded": false
+        },
+        {
+          "key": "r4",
+          "name": "public synthetic 4",
+          "category": "B",
+          "quantity": 4,
+          "price": 34.85,
+          "demand": 19,
+          "delivery": 0.5,
+          "stock": 6,
+          "transit": 4,
+          "outbound": 2,
+          "unit": 1,
+          "step": 1,
+          "minimum": 1,
+          "locked": false,
+          "excluded": false
+        }
+      ],
+      "target": 1382.77,
+      "options": {
+        "allowOverSix": false,
+        "allowBelowOne": false
+      },
+      "expected": {
+        "quantities": [
+          12,
+          24,
+          36,
+          8,
+          12
+        ],
+        "before": 1124.2,
+        "total": 1403,
+        "complete": true,
+        "reason": "",
+        "lineSteps": []
+      }
+    },
+    {
+      "name": "mixed-36",
+      "input": [
+        {
+          "key": "r0",
+          "name": "public synthetic 0",
+          "category": "A+",
+          "quantity": 2,
+          "price": 13.63,
+          "demand": 1,
+          "delivery": 1,
+          "stock": 0,
+          "transit": 0,
+          "outbound": 0,
+          "unit": 1,
+          "step": 6,
+          "minimum": 1,
+          "locked": false,
+          "excluded": false
+        },
+        {
+          "key": "r1",
+          "name": "public synthetic 1",
+          "category": "A+",
+          "quantity": 14,
+          "price": 23.03,
+          "demand": 1,
+          "delivery": 0.5,
+          "stock": 4,
+          "transit": 2,
+          "outbound": 0,
+          "unit": 1,
+          "step": 6,
+          "minimum": 1,
+          "locked": false,
+          "excluded": false
+        },
+        {
+          "key": "r2",
+          "name": "public synthetic 2",
+          "category": "A+",
+          "quantity": 18,
+          "price": 2.67,
+          "demand": 17,
+          "delivery": 0.25,
+          "stock": 2,
+          "transit": 2,
+          "outbound": 0,
+          "unit": 5,
+          "step": 6,
+          "minimum": 1,
+          "locked": false,
+          "excluded": true
+        },
+        {
+          "key": "r3",
+          "name": "public synthetic 3",
+          "category": "A+",
+          "quantity": 14,
+          "price": 29.67,
+          "demand": 9,
+          "delivery": 1,
+          "stock": 6,
+          "transit": 1,
+          "outbound": 0,
+          "unit": 1,
+          "step": 6,
+          "minimum": 1,
+          "locked": false,
+          "excluded": false
+        }
+      ],
+      "target": 561.05,
+      "options": {
+        "allowOverSix": true,
+        "allowBelowOne": true
+      },
+      "expected": {
+        "quantities": [
+          2,
+          0,
+          18,
+          14
+        ],
+        "before": 813.12,
+        "total": 490.7,
+        "complete": true,
+        "reason": "",
+        "lineSteps": []
+      }
+    },
+    {
+      "name": "mixed-37",
+      "input": [
+        {
+          "key": "r0",
+          "name": "public synthetic 0",
+          "category": "B",
+          "quantity": 12,
+          "price": 16.93,
+          "demand": 7,
+          "delivery": 1,
+          "stock": 8,
+          "transit": 1,
+          "outbound": 2,
+          "unit": 1,
+          "step": 1,
+          "minimum": 1,
+          "locked": false,
+          "excluded": false
+        },
+        {
+          "key": "r1",
+          "name": "public synthetic 1",
+          "category": "B",
+          "quantity": 24,
+          "price": 22.49,
+          "demand": 15,
+          "delivery": 0.5,
+          "stock": 4,
+          "transit": 2,
+          "outbound": 2,
+          "unit": 5,
+          "step": 1,
+          "minimum": 1,
+          "locked": false,
+          "excluded": false
+        },
+        {
+          "key": "r2",
+          "name": "public synthetic 2",
+          "category": "B",
+          "quantity": 36,
+          "price": 18.13,
+          "demand": 11,
+          "delivery": 0.5,
+          "stock": 0,
+          "transit": 4,
+          "outbound": 2,
+          "unit": 1,
+          "step": 1,
+          "minimum": 1,
+          "locked": false,
+          "excluded": true
+        },
+        {
+          "key": "r3",
+          "name": "public synthetic 3",
+          "category": "B",
+          "quantity": 0,
+          "price": 13.77,
+          "demand": 7,
+          "delivery": 0.25,
+          "stock": 2,
+          "transit": 4,
+          "outbound": 2,
+          "unit": 1,
+          "step": 1,
+          "minimum": 1,
+          "locked": false,
+          "excluded": false
+        },
+        {
+          "key": "r4",
+          "name": "public synthetic 4",
+          "category": "B",
+          "quantity": 4,
+          "price": 11.65,
+          "demand": 3,
+          "delivery": 0.25,
+          "stock": 6,
+          "transit": 0,
+          "outbound": 2,
+          "unit": 5,
+          "step": 1,
+          "minimum": 1,
+          "locked": false,
+          "excluded": false
+        },
+        {
+          "key": "r5",
+          "name": "public synthetic 5",
+          "category": "B",
+          "quantity": 24,
+          "price": 21.37,
+          "demand": 15,
+          "delivery": 0.5,
+          "stock": 4,
+          "transit": 2,
+          "outbound": 2,
+          "unit": 5,
+          "step": 1,
+          "minimum": 1,
+          "locked": false,
+          "excluded": true
+        }
+      ],
+      "target": 1700.92,
+      "options": {
+        "allowOverSix": false,
+        "allowBelowOne": false
+      },
+      "expected": {
+        "quantities": [
+          12,
+          13,
+          36,
+          0,
+          3,
+          24
+        ],
+        "before": 1955.08,
+        "total": 1696.04,
+        "complete": true,
+        "reason": "",
+        "lineSteps": []
+      }
+    },
+    {
+      "name": "mixed-38",
+      "input": [
+        {
+          "key": "r0",
+          "name": "public synthetic 0",
+          "category": "A+",
+          "quantity": 22,
+          "price": 38.55,
+          "demand": 1,
+          "delivery": 1,
+          "stock": 8,
+          "transit": 1,
+          "outbound": 0,
+          "unit": 1,
+          "step": 6,
+          "minimum": 1,
+          "locked": false,
+          "excluded": false
+        },
+        {
+          "key": "r1",
+          "name": "public synthetic 1",
+          "category": "A+",
+          "quantity": 18,
+          "price": 30.67,
+          "demand": 5,
+          "delivery": 0.5,
+          "stock": 6,
+          "transit": 0,
+          "outbound": 0,
+          "unit": 5,
+          "step": 6,
+          "minimum": 1,
+          "locked": false,
+          "excluded": false
+        },
+        {
+          "key": "r2",
+          "name": "public synthetic 2",
+          "category": "A+",
+          "quantity": 30,
+          "price": 36.55,
+          "demand": 13,
+          "delivery": 1,
+          "stock": 6,
+          "transit": 0,
+          "outbound": 0,
+          "unit": 1,
+          "step": 6,
+          "minimum": 1,
+          "locked": false,
+          "excluded": false
+        }
+      ],
+      "target": 3720.02,
+      "options": {
+        "allowOverSix": false,
+        "allowBelowOne": false
+      },
+      "expected": {
+        "quantities": [
+          22,
+          18,
+          66
+        ],
+        "before": 2496.66,
+        "total": 3812.46,
+        "complete": true,
+        "reason": "",
+        "lineSteps": []
+      }
+    },
+    {
+      "name": "mixed-39",
+      "input": [
+        {
+          "key": "r0",
+          "name": "public synthetic 0",
+          "category": "B",
+          "quantity": 12,
+          "price": 6.53,
+          "demand": 11,
+          "delivery": 0.25,
+          "stock": 4,
+          "transit": 0,
+          "outbound": 2,
+          "unit": 1,
+          "step": 1,
+          "minimum": 1,
+          "locked": false,
+          "excluded": false
+        },
+        {
+          "key": "r1",
+          "name": "public synthetic 1",
+          "category": "B",
+          "quantity": 8,
+          "price": 31.29,
+          "demand": 7,
+          "delivery": 1,
+          "stock": 4,
+          "transit": 0,
+          "outbound": 2,
+          "unit": 5,
+          "step": 1,
+          "minimum": 1,
+          "locked": false,
+          "excluded": false
+        },
+        {
+          "key": "r2",
+          "name": "public synthetic 2",
+          "category": "B",
+          "quantity": 28,
+          "price": 21.81,
+          "demand": 15,
+          "delivery": 0.5,
+          "stock": 4,
+          "transit": 2,
+          "outbound": 2,
+          "unit": 1,
+          "step": 1,
+          "minimum": 1,
+          "locked": false,
+          "excluded": false
+        },
+        {
+          "key": "r3",
+          "name": "public synthetic 3",
+          "category": "B",
+          "quantity": 8,
+          "price": 12.97,
+          "demand": 15,
+          "delivery": 1,
+          "stock": 0,
+          "transit": 4,
+          "outbound": 2,
+          "unit": 1,
+          "step": 1,
+          "minimum": 1,
+          "locked": false,
+          "excluded": false
+        }
+      ],
+      "target": 490.27,
+      "options": {
+        "allowOverSix": false,
+        "allowBelowOne": true
+      },
+      "expected": {
+        "quantities": [
+          10,
+          1,
+          13,
+          8
+        ],
+        "before": 1043.12,
+        "total": 483.88,
+        "complete": true,
+        "reason": "",
+        "lineSteps": []
+      }
+    },
+    {
+      "name": "mixed-40",
+      "input": [
+        {
+          "key": "r0",
+          "name": "public synthetic 0",
+          "category": "A+",
+          "quantity": 38,
+          "price": 30.47,
+          "demand": 13,
+          "delivery": 1,
+          "stock": 4,
+          "transit": 4,
+          "outbound": 0,
+          "unit": 5,
+          "step": 6,
+          "minimum": 1,
+          "locked": false,
+          "excluded": false
+        },
+        {
+          "key": "r1",
+          "name": "public synthetic 1",
+          "category": "A+",
+          "quantity": 26,
+          "price": 14.59,
+          "demand": 1,
+          "delivery": 0.25,
+          "stock": 2,
+          "transit": 1,
+          "outbound": 0,
+          "unit": 5,
+          "step": 6,
+          "minimum": 1,
+          "locked": false,
+          "excluded": false
+        },
+        {
+          "key": "r2",
+          "name": "public synthetic 2",
+          "category": "A+",
+          "quantity": 6,
+          "price": 27.51,
+          "demand": 9,
+          "delivery": 0.25,
+          "stock": 6,
+          "transit": 1,
+          "outbound": 0,
+          "unit": 5,
+          "step": 6,
+          "minimum": 1,
+          "locked": false,
+          "excluded": true
+        }
+      ],
+      "target": 1855.46,
+      "options": {
+        "allowOverSix": true,
+        "allowBelowOne": false
+      },
+      "expected": {
+        "quantities": [
+          42,
+          30,
+          6
+        ],
+        "before": 1702.26,
+        "total": 1882.5,
+        "complete": true,
+        "reason": "",
+        "lineSteps": []
+      }
+    },
+    {
+      "name": "mixed-41",
+      "input": [
+        {
+          "key": "r0",
+          "name": "public synthetic 0",
+          "category": "B",
+          "quantity": 4,
+          "price": 33.65,
+          "demand": 7,
+          "delivery": 0.5,
+          "stock": 8,
+          "transit": 2,
+          "outbound": 2,
+          "unit": 1,
+          "step": 1,
+          "minimum": 1,
+          "locked": false,
+          "excluded": false
+        },
+        {
+          "key": "r1",
+          "name": "public synthetic 1",
+          "category": "B",
+          "quantity": 8,
+          "price": 1.13,
+          "demand": 11,
+          "delivery": 0.25,
+          "stock": 6,
+          "transit": 2,
+          "outbound": 2,
+          "unit": 5,
+          "step": 1,
+          "minimum": 1,
+          "locked": false,
+          "excluded": false
+        },
+        {
+          "key": "r2",
+          "name": "public synthetic 2",
+          "category": "B",
+          "quantity": 36,
+          "price": 28.77,
+          "demand": 15,
+          "delivery": 0.25,
+          "stock": 8,
+          "transit": 3,
+          "outbound": 2,
+          "unit": 1,
+          "step": 1,
+          "minimum": 1,
+          "locked": false,
+          "excluded": false
+        },
+        {
+          "key": "r3",
+          "name": "public synthetic 3",
+          "category": "B",
+          "quantity": 16,
+          "price": 33.05,
+          "demand": 3,
+          "delivery": 1,
+          "stock": 4,
+          "transit": 3,
+          "outbound": 2,
+          "unit": 1,
+          "step": 1,
+          "minimum": 1,
+          "locked": false,
+          "excluded": true
+        }
+      ],
+      "target": 2852.63,
+      "options": {
+        "allowOverSix": false,
+        "allowBelowOne": false
+      },
+      "expected": {
+        "quantities": [
+          24,
+          8,
+          53,
+          16
+        ],
+        "before": 1708.16,
+        "total": 2870.25,
+        "complete": true,
+        "reason": "",
+        "lineSteps": []
+      }
+    },
+    {
+      "name": "mixed-42",
+      "input": [
+        {
+          "key": "r0",
+          "name": "public synthetic 0",
+          "category": "A+",
+          "quantity": 6,
+          "price": 18.87,
+          "demand": 9,
+          "delivery": 1,
+          "stock": 2,
+          "transit": 1,
+          "outbound": 0,
+          "unit": 5,
+          "step": 6,
+          "minimum": 1,
+          "locked": false,
+          "excluded": false
+        },
+        {
+          "key": "r1",
+          "name": "public synthetic 1",
+          "category": "A+",
+          "quantity": 10,
+          "price": 32.43,
+          "demand": 13,
+          "delivery": 1,
+          "stock": 0,
+          "transit": 4,
+          "outbound": 0,
+          "unit": 1,
+          "step": 6,
+          "minimum": 1,
+          "locked": false,
+          "excluded": true
+        },
+        {
+          "key": "r2",
+          "name": "public synthetic 2",
+          "category": "A+",
+          "quantity": 14,
+          "price": 19.75,
+          "demand": 5,
+          "delivery": 0.25,
+          "stock": 6,
+          "transit": 2,
+          "outbound": 0,
+          "unit": 1,
+          "step": 6,
+          "minimum": 1,
+          "locked": false,
+          "excluded": false
+        }
+      ],
+      "target": 492.67,
+      "options": {
+        "allowOverSix": false,
+        "allowBelowOne": true
+      },
+      "expected": {
+        "quantities": [
+          6,
+          10,
+          0
+        ],
+        "before": 714.02,
+        "total": 437.52,
+        "complete": true,
+        "reason": "",
+        "lineSteps": []
+      }
+    },
+    {
+      "name": "mixed-43",
+      "input": [
+        {
+          "key": "r0",
+          "name": "public synthetic 0",
+          "category": "B",
+          "quantity": 12,
+          "price": 12.45,
+          "demand": 3,
+          "delivery": 0.5,
+          "stock": 8,
+          "transit": 0,
+          "outbound": 2,
+          "unit": 5,
+          "step": 1,
+          "minimum": 1,
+          "locked": false,
+          "excluded": false
+        },
+        {
+          "key": "r1",
+          "name": "public synthetic 1",
+          "category": "B",
+          "quantity": 24,
+          "price": 13.53,
+          "demand": 19,
+          "delivery": 0.5,
+          "stock": 6,
+          "transit": 0,
+          "outbound": 2,
+          "unit": 5,
+          "step": 1,
+          "minimum": 1,
+          "locked": false,
+          "excluded": false
+        }
+      ],
+      "target": 184.91,
+      "options": {
+        "allowOverSix": false,
+        "allowBelowOne": false
+      },
+      "expected": {
+        "quantities": [
+          0,
+          13
+        ],
+        "before": 474.12,
+        "total": 175.89,
+        "complete": true,
+        "reason": "",
+        "lineSteps": []
+      }
+    },
+    {
+      "name": "mixed-44",
+      "input": [
+        {
+          "key": "r0",
+          "name": "public synthetic 0",
+          "category": "A+",
+          "quantity": 38,
+          "price": 30.71,
+          "demand": 1,
+          "delivery": 0.25,
+          "stock": 2,
+          "transit": 3,
+          "outbound": 0,
+          "unit": 5,
+          "step": 6,
+          "minimum": 1,
+          "locked": false,
+          "excluded": false
+        },
+        {
+          "key": "r1",
+          "name": "public synthetic 1",
+          "category": "A+",
+          "quantity": 26,
+          "price": 18.67,
+          "demand": 1,
+          "delivery": 0.25,
+          "stock": 8,
+          "transit": 2,
+          "outbound": 0,
+          "unit": 5,
+          "step": 6,
+          "minimum": 1,
+          "locked": false,
+          "excluded": false
+        },
+        {
+          "key": "r2",
+          "name": "public synthetic 2",
+          "category": "A+",
+          "quantity": 14,
+          "price": 6.31,
+          "demand": 13,
+          "delivery": 0.25,
+          "stock": 6,
+          "transit": 3,
+          "outbound": 0,
+          "unit": 1,
+          "step": 6,
+          "minimum": 1,
+          "locked": false,
+          "excluded": true
+        },
+        {
+          "key": "r3",
+          "name": "public synthetic 3",
+          "category": "A+",
+          "quantity": 26,
+          "price": 32.03,
+          "demand": 17,
+          "delivery": 1,
+          "stock": 8,
+          "transit": 0,
+          "outbound": 0,
+          "unit": 1,
+          "step": 6,
+          "minimum": 1,
+          "locked": false,
+          "excluded": false
+        },
+        {
+          "key": "r4",
+          "name": "public synthetic 4",
+          "category": "A+",
+          "quantity": 30,
+          "price": 16.79,
+          "demand": 17,
+          "delivery": 0.5,
+          "stock": 6,
+          "transit": 3,
+          "outbound": 0,
+          "unit": 1,
+          "step": 6,
+          "minimum": 1,
+          "locked": false,
+          "excluded": false
+        },
+        {
+          "key": "r5",
+          "name": "public synthetic 5",
+          "category": "A+",
+          "quantity": 26,
+          "price": 38.03,
+          "demand": 9,
+          "delivery": 0.25,
+          "stock": 2,
+          "transit": 2,
+          "outbound": 0,
+          "unit": 1,
+          "step": 6,
+          "minimum": 1,
+          "locked": false,
+          "excluded": false
+        }
+      ],
+      "target": 6871.54,
+      "options": {
+        "allowOverSix": true,
+        "allowBelowOne": false
+      },
+      "expected": {
+        "quantities": [
+          38,
+          26,
+          14,
+          84,
+          72,
+          36
+        ],
+        "before": 4066,
+        "total": 7009.22,
+        "complete": true,
+        "reason": "",
+        "lineSteps": []
+      }
+    },
+    {
+      "name": "mixed-45",
+      "input": [
+        {
+          "key": "r0",
+          "name": "public synthetic 0",
+          "category": "B",
+          "quantity": 16,
+          "price": 2.57,
+          "demand": 19,
+          "delivery": 0.25,
+          "stock": 4,
+          "transit": 1,
+          "outbound": 2,
+          "unit": 1,
+          "step": 1,
+          "minimum": 1,
+          "locked": false,
+          "excluded": false
+        },
+        {
+          "key": "r1",
+          "name": "public synthetic 1",
+          "category": "B",
+          "quantity": 28,
+          "price": 15.81,
+          "demand": 11,
+          "delivery": 0.5,
+          "stock": 4,
+          "transit": 0,
+          "outbound": 2,
+          "unit": 1,
+          "step": 1,
+          "minimum": 1,
+          "locked": false,
+          "excluded": false
+        },
+        {
+          "key": "r2",
+          "name": "public synthetic 2",
+          "category": "B",
+          "quantity": 8,
+          "price": 7.29,
+          "demand": 11,
+          "delivery": 0.5,
+          "stock": 8,
+          "transit": 1,
+          "outbound": 2,
+          "unit": 1,
+          "step": 1,
+          "minimum": 1,
+          "locked": false,
+          "excluded": false
+        }
+      ],
+      "target": 818.6,
+      "options": {
+        "allowOverSix": false,
+        "allowBelowOne": true
+      },
+      "expected": {
+        "quantities": [
+          50,
+          32,
+          27
+        ],
+        "before": 542.12,
+        "total": 831.25,
+        "complete": true,
+        "reason": "",
+        "lineSteps": []
+      }
+    },
+    {
+      "name": "mixed-46",
+      "input": [
+        {
+          "key": "r0",
+          "name": "public synthetic 0",
+          "category": "A+",
+          "quantity": 14,
+          "price": 20.95,
+          "demand": 1,
+          "delivery": 0.25,
+          "stock": 6,
+          "transit": 2,
+          "outbound": 0,
+          "unit": 5,
+          "step": 6,
+          "minimum": 1,
+          "locked": false,
+          "excluded": false
+        },
+        {
+          "key": "r1",
+          "name": "public synthetic 1",
+          "category": "A+",
+          "quantity": 34,
+          "price": 32.27,
+          "demand": 1,
+          "delivery": 0.25,
+          "stock": 6,
+          "transit": 4,
+          "outbound": 0,
+          "unit": 1,
+          "step": 6,
+          "minimum": 1,
+          "locked": false,
+          "excluded": false
+        },
+        {
+          "key": "r2",
+          "name": "public synthetic 2",
+          "category": "A+",
+          "quantity": 30,
+          "price": 20.87,
+          "demand": 1,
+          "delivery": 0.25,
+          "stock": 0,
+          "transit": 4,
+          "outbound": 0,
+          "unit": 1,
+          "step": 6,
+          "minimum": 1,
+          "locked": false,
+          "excluded": false
+        },
+        {
+          "key": "r3",
+          "name": "public synthetic 3",
+          "category": "A+",
+          "quantity": 26,
+          "price": 1.15,
+          "demand": 17,
+          "delivery": 1,
+          "stock": 8,
+          "transit": 4,
+          "outbound": 0,
+          "unit": 5,
+          "step": 6,
+          "minimum": 1,
+          "locked": false,
+          "excluded": false
+        },
+        {
+          "key": "r4",
+          "name": "public synthetic 4",
+          "category": "A+",
+          "quantity": 6,
+          "price": 2.87,
+          "demand": 17,
+          "delivery": 1,
+          "stock": 6,
+          "transit": 0,
+          "outbound": 0,
+          "unit": 5,
+          "step": 6,
+          "minimum": 1,
+          "locked": false,
+          "excluded": true
+        }
+      ],
+      "target": 2249.43,
+      "options": {
+        "allowOverSix": false,
+        "allowBelowOne": false
+      },
+      "expected": {
+        "quantities": [
+          14,
+          34,
+          30,
+          26,
+          6
+        ],
+        "before": 2063.7,
+        "total": 2063.7,
+        "complete": false,
+        "reason": "overSix",
+        "lineSteps": []
+      }
+    },
+    {
+      "name": "mixed-47",
+      "input": [
+        {
+          "key": "r0",
+          "name": "public synthetic 0",
+          "category": "B",
+          "quantity": 20,
+          "price": 6.77,
+          "demand": 11,
+          "delivery": 0.5,
+          "stock": 2,
+          "transit": 4,
+          "outbound": 2,
+          "unit": 5,
+          "step": 1,
+          "minimum": 1,
+          "locked": false,
+          "excluded": false
+        },
+        {
+          "key": "r1",
+          "name": "public synthetic 1",
+          "category": "B",
+          "quantity": 16,
+          "price": 28.65,
+          "demand": 15,
+          "delivery": 0.25,
+          "stock": 8,
+          "transit": 0,
+          "outbound": 2,
+          "unit": 1,
+          "step": 1,
+          "minimum": 1,
+          "locked": false,
+          "excluded": false
+        }
+      ],
+      "target": 279.09,
+      "options": {
+        "allowOverSix": false,
+        "allowBelowOne": false
+      },
+      "expected": {
+        "quantities": [
+          3,
+          13
+        ],
+        "before": 593.8,
+        "total": 392.76,
+        "complete": false,
+        "reason": "belowOne",
+        "lineSteps": []
+      }
+    },
+    {
+      "name": "mixed-48",
+      "input": [
+        {
+          "key": "r0",
+          "name": "public synthetic 0",
+          "category": "A+",
+          "quantity": 14,
+          "price": 25.03,
+          "demand": 1,
+          "delivery": 0.5,
+          "stock": 6,
+          "transit": 2,
+          "outbound": 0,
+          "unit": 1,
+          "step": 6,
+          "minimum": 1,
+          "locked": false,
+          "excluded": false
+        },
+        {
+          "key": "r1",
+          "name": "public synthetic 1",
+          "category": "A+",
+          "quantity": 18,
+          "price": 18.43,
+          "demand": 17,
+          "delivery": 0.25,
+          "stock": 0,
+          "transit": 2,
+          "outbound": 0,
+          "unit": 5,
+          "step": 6,
+          "minimum": 1,
+          "locked": false,
+          "excluded": false
+        },
+        {
+          "key": "r2",
+          "name": "public synthetic 2",
+          "category": "A+",
+          "quantity": 38,
+          "price": 15.03,
+          "demand": 9,
+          "delivery": 0.5,
+          "stock": 8,
+          "transit": 1,
+          "outbound": 0,
+          "unit": 5,
+          "step": 6,
+          "minimum": 1,
+          "locked": false,
+          "excluded": false
+        },
+        {
+          "key": "r3",
+          "name": "public synthetic 3",
+          "category": "A+",
+          "quantity": 10,
+          "price": 36.59,
+          "demand": 5,
+          "delivery": 0.5,
+          "stock": 4,
+          "transit": 0,
+          "outbound": 0,
+          "unit": 1,
+          "step": 6,
+          "minimum": 1,
+          "locked": false,
+          "excluded": false
+        }
+      ],
+      "target": 922.94,
+      "options": {
+        "allowOverSix": true,
+        "allowBelowOne": true
+      },
+      "expected": {
+        "quantities": [
+          0,
+          18,
+          12,
+          10
+        ],
+        "before": 1619.2,
+        "total": 878,
+        "complete": true,
+        "reason": "",
+        "lineSteps": []
+      }
+    },
+    {
+      "name": "mixed-49",
+      "input": [
+        {
+          "key": "r0",
+          "name": "public synthetic 0",
+          "category": "B",
+          "quantity": 8,
+          "price": 32.81,
+          "demand": 7,
+          "delivery": 1,
+          "stock": 2,
+          "transit": 3,
+          "outbound": 2,
+          "unit": 1,
+          "step": 1,
+          "minimum": 1,
+          "locked": false,
+          "excluded": false
+        },
+        {
+          "key": "r1",
+          "name": "public synthetic 1",
+          "category": "B",
+          "quantity": 28,
+          "price": 7.33,
+          "demand": 11,
+          "delivery": 0.5,
+          "stock": 2,
+          "transit": 4,
+          "outbound": 2,
+          "unit": 5,
+          "step": 1,
+          "minimum": 1,
+          "locked": false,
+          "excluded": true
+        },
+        {
+          "key": "r2",
+          "name": "public synthetic 2",
+          "category": "B",
+          "quantity": 32,
+          "price": 20.89,
+          "demand": 3,
+          "delivery": 0.25,
+          "stock": 2,
+          "transit": 4,
+          "outbound": 2,
+          "unit": 5,
+          "step": 1,
+          "minimum": 1,
+          "locked": false,
+          "excluded": false
+        }
+      ],
+      "target": 1897.45,
+      "options": {
+        "allowOverSix": false,
+        "allowBelowOne": false
+      },
+      "expected": {
+        "quantities": [
+          32,
+          28,
+          32
+        ],
+        "before": 1136.2,
+        "total": 1923.64,
+        "complete": true,
+        "reason": "",
+        "lineSteps": []
+      }
+    },
+    {
+      "name": "mixed-50",
+      "input": [
+        {
+          "key": "r0",
+          "name": "public synthetic 0",
+          "category": "A+",
+          "quantity": 6,
+          "price": 39.35,
+          "demand": 13,
+          "delivery": 0.5,
+          "stock": 6,
+          "transit": 3,
+          "outbound": 0,
+          "unit": 1,
+          "step": 6,
+          "minimum": 1,
+          "locked": false,
+          "excluded": false
+        },
+        {
+          "key": "r1",
+          "name": "public synthetic 1",
+          "category": "A+",
+          "quantity": 34,
+          "price": 15.47,
+          "demand": 5,
+          "delivery": 0.25,
+          "stock": 8,
+          "transit": 3,
+          "outbound": 0,
+          "unit": 5,
+          "step": 6,
+          "minimum": 1,
+          "locked": false,
+          "excluded": false
+        }
+      ],
+      "target": 678.25,
+      "options": {
+        "allowOverSix": false,
+        "allowBelowOne": false
+      },
+      "expected": {
+        "quantities": [
+          6,
+          24
+        ],
+        "before": 762.08,
+        "total": 607.38,
+        "complete": true,
+        "reason": "",
+        "lineSteps": []
+      }
+    },
+    {
+      "name": "mixed-51",
+      "input": [
+        {
+          "key": "r0",
+          "name": "public synthetic 0",
+          "category": "B",
+          "quantity": 16,
+          "price": 16.81,
+          "demand": 15,
+          "delivery": 0.25,
+          "stock": 6,
+          "transit": 3,
+          "outbound": 2,
+          "unit": 1,
+          "step": 1,
+          "minimum": 1,
+          "locked": false,
+          "excluded": false
+        },
+        {
+          "key": "r1",
+          "name": "public synthetic 1",
+          "category": "B",
+          "quantity": 4,
+          "price": 17.25,
+          "demand": 15,
+          "delivery": 1,
+          "stock": 8,
+          "transit": 3,
+          "outbound": 2,
+          "unit": 1,
+          "step": 1,
+          "minimum": 1,
+          "locked": false,
+          "excluded": false
+        },
+        {
+          "key": "r2",
+          "name": "public synthetic 2",
+          "category": "B",
+          "quantity": 16,
+          "price": 25.69,
+          "demand": 19,
+          "delivery": 0.25,
+          "stock": 8,
+          "transit": 3,
+          "outbound": 2,
+          "unit": 1,
+          "step": 1,
+          "minimum": 1,
+          "locked": false,
+          "excluded": false
+        },
+        {
+          "key": "r3",
+          "name": "public synthetic 3",
+          "category": "B",
+          "quantity": 28,
+          "price": 25.49,
+          "demand": 11,
+          "delivery": 1,
+          "stock": 2,
+          "transit": 2,
+          "outbound": 2,
+          "unit": 5,
+          "step": 1,
+          "minimum": 1,
+          "locked": false,
+          "excluded": false
+        },
+        {
+          "key": "r4",
+          "name": "public synthetic 4",
+          "category": "B",
+          "quantity": 0,
+          "price": 16.97,
+          "demand": 7,
+          "delivery": 0.5,
+          "stock": 0,
+          "transit": 0,
+          "outbound": 2,
+          "unit": 1,
+          "step": 1,
+          "minimum": 1,
+          "locked": false,
+          "excluded": false
+        },
+        {
+          "key": "r5",
+          "name": "public synthetic 5",
+          "category": "B",
+          "quantity": 36,
+          "price": 16.77,
+          "demand": 11,
+          "delivery": 0.25,
+          "stock": 6,
+          "transit": 4,
+          "outbound": 2,
+          "unit": 1,
+          "step": 1,
+          "minimum": 1,
+          "locked": false,
+          "excluded": false
+        }
+      ],
+      "target": 3533.61,
+      "options": {
+        "allowOverSix": false,
+        "allowBelowOne": true
+      },
+      "expected": {
+        "quantities": [
+          27,
+          34,
+          34,
+          28,
+          19,
+          36
+        ],
+        "before": 2066.44,
+        "total": 3553.7,
+        "complete": true,
+        "reason": "",
+        "lineSteps": []
+      }
+    },
+    {
+      "name": "mixed-52",
+      "input": [
+        {
+          "key": "r0",
+          "name": "public synthetic 0",
+          "category": "A+",
+          "quantity": 10,
+          "price": 31.39,
+          "demand": 1,
+          "delivery": 0.5,
+          "stock": 2,
+          "transit": 4,
+          "outbound": 0,
+          "unit": 5,
+          "step": 6,
+          "minimum": 1,
+          "locked": false,
+          "excluded": false
+        },
+        {
+          "key": "r1",
+          "name": "public synthetic 1",
+          "category": "A+",
+          "quantity": 14,
+          "price": 20.63,
+          "demand": 17,
+          "delivery": 0.5,
+          "stock": 6,
+          "transit": 4,
+          "outbound": 0,
+          "unit": 1,
+          "step": 6,
+          "minimum": 1,
+          "locked": false,
+          "excluded": true
+        },
+        {
+          "key": "r2",
+          "name": "public synthetic 2",
+          "category": "A+",
+          "quantity": 10,
+          "price": 10.51,
+          "demand": 1,
+          "delivery": 0.25,
+          "stock": 0,
+          "transit": 1,
+          "outbound": 0,
+          "unit": 1,
+          "step": 6,
+          "minimum": 1,
+          "locked": false,
+          "excluded": false
+        },
+        {
+          "key": "r3",
+          "name": "public synthetic 3",
+          "category": "A+",
+          "quantity": 6,
+          "price": 38.47,
+          "demand": 1,
+          "delivery": 0.5,
+          "stock": 4,
+          "transit": 3,
+          "outbound": 0,
+          "unit": 1,
+          "step": 6,
+          "minimum": 1,
+          "locked": false,
+          "excluded": false
+        },
+        {
+          "key": "r4",
+          "name": "public synthetic 4",
+          "category": "A+",
+          "quantity": 2,
+          "price": 18.43,
+          "demand": 17,
+          "delivery": 0.25,
+          "stock": 0,
+          "transit": 0,
+          "outbound": 0,
+          "unit": 5,
+          "step": 6,
+          "minimum": 1,
+          "locked": false,
+          "excluded": false
+        }
+      ],
+      "target": 1570.56,
+      "options": {
+        "allowOverSix": true,
+        "allowBelowOne": false
+      },
+      "expected": {
+        "quantities": [
+          10,
+          14,
+          10,
+          6,
+          36
+        ],
+        "before": 975.5,
+        "total": 1602.12,
+        "complete": true,
+        "reason": "",
+        "lineSteps": []
+      }
+    },
+    {
+      "name": "mixed-53",
+      "input": [
+        {
+          "key": "r0",
+          "name": "public synthetic 0",
+          "category": "B",
+          "quantity": 16,
+          "price": 5.69,
+          "demand": 3,
+          "delivery": 1,
+          "stock": 0,
+          "transit": 3,
+          "outbound": 2,
+          "unit": 5,
+          "step": 1,
+          "minimum": 1,
+          "locked": false,
+          "excluded": true
+        },
+        {
+          "key": "r1",
+          "name": "public synthetic 1",
+          "category": "B",
+          "quantity": 4,
+          "price": 5.49,
+          "demand": 11,
+          "delivery": 0.5,
+          "stock": 8,
+          "transit": 0,
+          "outbound": 2,
+          "unit": 1,
+          "step": 1,
+          "minimum": 1,
+          "locked": false,
+          "excluded": false
+        },
+        {
+          "key": "r2",
+          "name": "public synthetic 2",
+          "category": "B",
+          "quantity": 8,
+          "price": 35.05,
+          "demand": 19,
+          "delivery": 0.25,
+          "stock": 2,
+          "transit": 3,
+          "outbound": 2,
+          "unit": 5,
+          "step": 1,
+          "minimum": 1,
+          "locked": false,
+          "excluded": false
+        }
+      ],
+      "target": 310.79,
+      "options": {
+        "allowOverSix": false,
+        "allowBelowOne": false
+      },
+      "expected": {
+        "quantities": [
+          16,
+          4,
+          5
+        ],
+        "before": 393.4,
+        "total": 288.25,
+        "complete": true,
+        "reason": "",
+        "lineSteps": []
+      }
+    },
+    {
+      "name": "mixed-54",
+      "input": [
+        {
+          "key": "r0",
+          "name": "public synthetic 0",
+          "category": "A+",
+          "quantity": 14,
+          "price": 2.31,
+          "demand": 17,
+          "delivery": 0.5,
+          "stock": 0,
+          "transit": 0,
+          "outbound": 0,
+          "unit": 1,
+          "step": 6,
+          "minimum": 1,
+          "locked": false,
+          "excluded": false
+        },
+        {
+          "key": "r1",
+          "name": "public synthetic 1",
+          "category": "A+",
+          "quantity": 34,
+          "price": 18.75,
+          "demand": 17,
+          "delivery": 1,
+          "stock": 0,
+          "transit": 3,
+          "outbound": 0,
+          "unit": 1,
+          "step": 6,
+          "minimum": 1,
+          "locked": false,
+          "excluded": false
+        },
+        {
+          "key": "r2",
+          "name": "public synthetic 2",
+          "category": "A+",
+          "quantity": 6,
+          "price": 31.03,
+          "demand": 1,
+          "delivery": 0.25,
+          "stock": 0,
+          "transit": 0,
+          "outbound": 0,
+          "unit": 1,
+          "step": 6,
+          "minimum": 1,
+          "locked": false,
+          "excluded": true
+        },
+        {
+          "key": "r3",
+          "name": "public synthetic 3",
+          "category": "A+",
+          "quantity": 10,
+          "price": 20.91,
+          "demand": 1,
+          "delivery": 0.5,
+          "stock": 4,
+          "transit": 0,
+          "outbound": 0,
+          "unit": 1,
+          "step": 6,
+          "minimum": 1,
+          "locked": false,
+          "excluded": true
+        }
+      ],
+      "target": 947.96,
+      "options": {
+        "allowOverSix": false,
+        "allowBelowOne": true
+      },
+      "expected": {
+        "quantities": [
+          14,
+          24,
+          6,
+          10
+        ],
+        "before": 1065.12,
+        "total": 877.62,
+        "complete": true,
+        "reason": "",
+        "lineSteps": []
+      }
+    },
+    {
+      "name": "mixed-55",
+      "input": [
+        {
+          "key": "r0",
+          "name": "public synthetic 0",
+          "category": "B",
+          "quantity": 24,
+          "price": 3.05,
+          "demand": 3,
+          "delivery": 1,
+          "stock": 0,
+          "transit": 4,
+          "outbound": 2,
+          "unit": 1,
+          "step": 1,
+          "minimum": 1,
+          "locked": false,
+          "excluded": true
+        },
+        {
+          "key": "r1",
+          "name": "public synthetic 1",
+          "category": "B",
+          "quantity": 36,
+          "price": 20.13,
+          "demand": 19,
+          "delivery": 0.5,
+          "stock": 0,
+          "transit": 1,
+          "outbound": 2,
+          "unit": 1,
+          "step": 1,
+          "minimum": 1,
+          "locked": false,
+          "excluded": true
+        },
+        {
+          "key": "r2",
+          "name": "public synthetic 2",
+          "category": "B",
+          "quantity": 0,
+          "price": 5.21,
+          "demand": 11,
+          "delivery": 1,
+          "stock": 6,
+          "transit": 3,
+          "outbound": 2,
+          "unit": 1,
+          "step": 1,
+          "minimum": 1,
+          "locked": false,
+          "excluded": false
+        }
+      ],
+      "target": 1077.14,
+      "options": {
+        "allowOverSix": false,
+        "allowBelowOne": false
+      },
+      "expected": {
+        "quantities": [
+          24,
+          36,
+          54
+        ],
+        "before": 797.88,
+        "total": 1079.22,
+        "complete": true,
+        "reason": "",
+        "lineSteps": []
+      }
+    },
+    {
+      "name": "mixed-56",
+      "input": [
+        {
+          "key": "r0",
+          "name": "public synthetic 0",
+          "category": "A+",
+          "quantity": 6,
+          "price": 26.23,
+          "demand": 17,
+          "delivery": 1,
+          "stock": 2,
+          "transit": 1,
+          "outbound": 0,
+          "unit": 1,
+          "step": 6,
+          "minimum": 1,
+          "locked": false,
+          "excluded": false
+        },
+        {
+          "key": "r1",
+          "name": "public synthetic 1",
+          "category": "A+",
+          "quantity": 26,
+          "price": 3.95,
+          "demand": 9,
+          "delivery": 0.5,
+          "stock": 8,
+          "transit": 4,
+          "outbound": 0,
+          "unit": 1,
+          "step": 6,
+          "minimum": 1,
+          "locked": false,
+          "excluded": true
+        },
+        {
+          "key": "r2",
+          "name": "public synthetic 2",
+          "category": "A+",
+          "quantity": 14,
+          "price": 24.87,
+          "demand": 5,
+          "delivery": 0.5,
+          "stock": 6,
+          "transit": 3,
+          "outbound": 0,
+          "unit": 5,
+          "step": 6,
+          "minimum": 1,
+          "locked": false,
+          "excluded": false
+        }
+      ],
+      "target": 1003.63,
+      "options": {
+        "allowOverSix": true,
+        "allowBelowOne": false
+      },
+      "expected": {
+        "quantities": [
+          18,
+          26,
+          14
+        ],
+        "before": 608.26,
+        "total": 923.02,
+        "complete": false,
+        "reason": "Нет допустимых изменений для достижения суммы с учетом цен, закреплений и партий.",
+        "lineSteps": []
+      }
+    },
+    {
+      "name": "mixed-57",
+      "input": [
+        {
+          "key": "r0",
+          "name": "public synthetic 0",
+          "category": "B",
+          "quantity": 28,
+          "price": 30.69,
+          "demand": 3,
+          "delivery": 0.5,
+          "stock": 8,
+          "transit": 1,
+          "outbound": 2,
+          "unit": 1,
+          "step": 1,
+          "minimum": 1,
+          "locked": false,
+          "excluded": false
+        },
+        {
+          "key": "r1",
+          "name": "public synthetic 1",
+          "category": "B",
+          "quantity": 16,
+          "price": 39.45,
+          "demand": 7,
+          "delivery": 0.25,
+          "stock": 8,
+          "transit": 0,
+          "outbound": 2,
+          "unit": 1,
+          "step": 1,
+          "minimum": 1,
+          "locked": false,
+          "excluded": false
+        },
+        {
+          "key": "r2",
+          "name": "public synthetic 2",
+          "category": "B",
+          "quantity": 36,
+          "price": 27.73,
+          "demand": 11,
+          "delivery": 0.25,
+          "stock": 8,
+          "transit": 4,
+          "outbound": 2,
+          "unit": 5,
+          "step": 1,
+          "minimum": 1,
+          "locked": false,
+          "excluded": false
+        },
+        {
+          "key": "r3",
+          "name": "public synthetic 3",
+          "category": "B",
+          "quantity": 0,
+          "price": 27.85,
+          "demand": 19,
+          "delivery": 1,
+          "stock": 6,
+          "transit": 0,
+          "outbound": 2,
+          "unit": 1,
+          "step": 1,
+          "minimum": 1,
+          "locked": false,
+          "excluded": false
+        },
+        {
+          "key": "r4",
+          "name": "public synthetic 4",
+          "category": "B",
+          "quantity": 12,
+          "price": 14.53,
+          "demand": 19,
+          "delivery": 0.5,
+          "stock": 0,
+          "transit": 1,
+          "outbound": 2,
+          "unit": 5,
+          "step": 1,
+          "minimum": 1,
+          "locked": false,
+          "excluded": false
+        }
+      ],
+      "target": 2849.58,
+      "options": {
+        "allowOverSix": false,
+        "allowBelowOne": true
+      },
+      "expected": {
+        "quantities": [
+          28,
+          16,
+          36,
+          7,
+          12
+        ],
+        "before": 2663.16,
+        "total": 2858.11,
+        "complete": true,
+        "reason": "",
+        "lineSteps": []
+      }
+    },
+    {
+      "name": "mixed-58",
+      "input": [
+        {
+          "key": "r0",
+          "name": "public synthetic 0",
+          "category": "A+",
+          "quantity": 2,
+          "price": 15.07,
+          "demand": 1,
+          "delivery": 0.25,
+          "stock": 2,
+          "transit": 4,
+          "outbound": 0,
+          "unit": 1,
+          "step": 6,
+          "minimum": 1,
+          "locked": false,
+          "excluded": false
+        },
+        {
+          "key": "r1",
+          "name": "public synthetic 1",
+          "category": "A+",
+          "quantity": 22,
+          "price": 40.47,
+          "demand": 17,
+          "delivery": 0.5,
+          "stock": 6,
+          "transit": 0,
+          "outbound": 0,
+          "unit": 1,
+          "step": 6,
+          "minimum": 1,
+          "locked": false,
+          "excluded": false
+        },
+        {
+          "key": "r2",
+          "name": "public synthetic 2",
+          "category": "A+",
+          "quantity": 10,
+          "price": 0.91,
+          "demand": 17,
+          "delivery": 1,
+          "stock": 4,
+          "transit": 1,
+          "outbound": 0,
+          "unit": 1,
+          "step": 6,
+          "minimum": 1,
+          "locked": false,
+          "excluded": false
+        },
+        {
+          "key": "r3",
+          "name": "public synthetic 3",
+          "category": "A+",
+          "quantity": 30,
+          "price": 30.15,
+          "demand": 1,
+          "delivery": 0.25,
+          "stock": 4,
+          "transit": 0,
+          "outbound": 0,
+          "unit": 1,
+          "step": 6,
+          "minimum": 1,
+          "locked": false,
+          "excluded": true
+        }
+      ],
+      "target": 1558.97,
+      "options": {
+        "allowOverSix": false,
+        "allowBelowOne": false
+      },
+      "expected": {
+        "quantities": [
+          0,
+          22,
+          10,
+          30
+        ],
+        "before": 1834.08,
+        "total": 1803.94,
+        "complete": false,
+        "reason": "belowOne",
+        "lineSteps": []
+      }
+    },
+    {
+      "name": "mixed-59",
+      "input": [
+        {
+          "key": "r0",
+          "name": "public synthetic 0",
+          "category": "B",
+          "quantity": 28,
+          "price": 31.17,
+          "demand": 11,
+          "delivery": 1,
+          "stock": 4,
+          "transit": 0,
+          "outbound": 2,
+          "unit": 1,
+          "step": 1,
+          "minimum": 1,
+          "locked": false,
+          "excluded": false
+        },
+        {
+          "key": "r1",
+          "name": "public synthetic 1",
+          "category": "B",
+          "quantity": 0,
+          "price": 2.81,
+          "demand": 3,
+          "delivery": 0.25,
+          "stock": 8,
+          "transit": 0,
+          "outbound": 2,
+          "unit": 5,
+          "step": 1,
+          "minimum": 1,
+          "locked": false,
+          "excluded": false
+        },
+        {
+          "key": "r2",
+          "name": "public synthetic 2",
+          "category": "B",
+          "quantity": 36,
+          "price": 5.49,
+          "demand": 3,
+          "delivery": 0.25,
+          "stock": 6,
+          "transit": 2,
+          "outbound": 2,
+          "unit": 1,
+          "step": 1,
+          "minimum": 1,
+          "locked": false,
+          "excluded": false
+        }
+      ],
+      "target": 1059.7,
+      "options": {
+        "allowOverSix": false,
+        "allowBelowOne": false
+      },
+      "expected": {
+        "quantities": [
+          28,
+          0,
+          34
+        ],
+        "before": 1070.4,
+        "total": 1059.42,
+        "complete": true,
+        "reason": "",
+        "lineSteps": []
+      }
+    },
+    {
+      "name": "mixed-60",
+      "input": [
+        {
+          "key": "r0",
+          "name": "public synthetic 0",
+          "category": "A+",
+          "quantity": 26,
+          "price": 14.35,
+          "demand": 17,
+          "delivery": 0.5,
+          "stock": 2,
+          "transit": 2,
+          "outbound": 0,
+          "unit": 1,
+          "step": 6,
+          "minimum": 1,
+          "locked": false,
+          "excluded": false
+        },
+        {
+          "key": "r1",
+          "name": "public synthetic 1",
+          "category": "A+",
+          "quantity": 30,
+          "price": 1.67,
+          "demand": 13,
+          "delivery": 0.5,
+          "stock": 6,
+          "transit": 3,
+          "outbound": 0,
+          "unit": 5,
+          "step": 6,
+          "minimum": 1,
+          "locked": false,
+          "excluded": false
+        }
+      ],
+      "target": 630.57,
+      "options": {
+        "allowOverSix": true,
+        "allowBelowOne": true
+      },
+      "expected": {
+        "quantities": [
+          42,
+          30
+        ],
+        "before": 423.2,
+        "total": 652.8,
+        "complete": true,
+        "reason": "",
+        "lineSteps": []
+      }
+    },
+    {
+      "name": "mixed-61",
+      "input": [
+        {
+          "key": "r0",
+          "name": "public synthetic 0",
+          "category": "B",
+          "quantity": 4,
+          "price": 7.81,
+          "demand": 11,
+          "delivery": 0.5,
+          "stock": 4,
+          "transit": 1,
+          "outbound": 2,
+          "unit": 1,
+          "step": 1,
+          "minimum": 1,
+          "locked": false,
+          "excluded": true
+        },
+        {
+          "key": "r1",
+          "name": "public synthetic 1",
+          "category": "B",
+          "quantity": 24,
+          "price": 22.33,
+          "demand": 3,
+          "delivery": 1,
+          "stock": 2,
+          "transit": 0,
+          "outbound": 2,
+          "unit": 1,
+          "step": 1,
+          "minimum": 1,
+          "locked": false,
+          "excluded": false
+        },
+        {
+          "key": "r2",
+          "name": "public synthetic 2",
+          "category": "B",
+          "quantity": 36,
+          "price": 3.25,
+          "demand": 3,
+          "delivery": 0.5,
+          "stock": 0,
+          "transit": 2,
+          "outbound": 2,
+          "unit": 5,
+          "step": 1,
+          "minimum": 1,
+          "locked": false,
+          "excluded": false
+        },
+        {
+          "key": "r3",
+          "name": "public synthetic 3",
+          "category": "B",
+          "quantity": 32,
+          "price": 21.61,
+          "demand": 11,
+          "delivery": 0.25,
+          "stock": 6,
+          "transit": 4,
+          "outbound": 2,
+          "unit": 1,
+          "step": 1,
+          "minimum": 1,
+          "locked": false,
+          "excluded": false
+        }
+      ],
+      "target": 1967.22,
+      "options": {
+        "allowOverSix": false,
+        "allowBelowOne": false
+      },
+      "expected": {
+        "quantities": [
+          4,
+          24,
+          36,
+          58
+        ],
+        "before": 1375.68,
+        "total": 1937.54,
+        "complete": false,
+        "reason": "overSix",
+        "lineSteps": []
+      }
+    },
+    {
+      "name": "mixed-62",
+      "input": [
+        {
+          "key": "r0",
+          "name": "public synthetic 0",
+          "category": "A+",
+          "quantity": 30,
+          "price": 2.31,
+          "demand": 13,
+          "delivery": 0.25,
+          "stock": 4,
+          "transit": 1,
+          "outbound": 0,
+          "unit": 1,
+          "step": 6,
+          "minimum": 1,
+          "locked": false,
+          "excluded": false
+        },
+        {
+          "key": "r1",
+          "name": "public synthetic 1",
+          "category": "A+",
+          "quantity": 34,
+          "price": 31.55,
+          "demand": 9,
+          "delivery": 0.5,
+          "stock": 6,
+          "transit": 0,
+          "outbound": 0,
+          "unit": 1,
+          "step": 6,
+          "minimum": 1,
+          "locked": false,
+          "excluded": true
+        },
+        {
+          "key": "r2",
+          "name": "public synthetic 2",
+          "category": "A+",
+          "quantity": 22,
+          "price": 32.95,
+          "demand": 17,
+          "delivery": 1,
+          "stock": 8,
+          "transit": 3,
+          "outbound": 0,
+          "unit": 5,
+          "step": 6,
+          "minimum": 1,
+          "locked": false,
+          "excluded": false
+        },
+        {
+          "key": "r3",
+          "name": "public synthetic 3",
+          "category": "A+",
+          "quantity": 18,
+          "price": 16.11,
+          "demand": 9,
+          "delivery": 0.25,
+          "stock": 0,
+          "transit": 1,
+          "outbound": 0,
+          "unit": 1,
+          "step": 6,
+          "minimum": 1,
+          "locked": false,
+          "excluded": true
+        },
+        {
+          "key": "r4",
+          "name": "public synthetic 4",
+          "category": "A+",
+          "quantity": 38,
+          "price": 5.03,
+          "demand": 17,
+          "delivery": 1,
+          "stock": 0,
+          "transit": 0,
+          "outbound": 0,
+          "unit": 1,
+          "step": 6,
+          "minimum": 1,
+          "locked": false,
+          "excluded": false
+        },
+        {
+          "key": "r5",
+          "name": "public synthetic 5",
+          "category": "A+",
+          "quantity": 26,
+          "price": 28.83,
+          "demand": 1,
+          "delivery": 0.5,
+          "stock": 6,
+          "transit": 2,
+          "outbound": 0,
+          "unit": 1,
+          "step": 6,
+          "minimum": 1,
+          "locked": false,
+          "excluded": false
+        }
+      ],
+      "target": 4491.52,
+      "options": {
+        "allowOverSix": false,
+        "allowBelowOne": false
+      },
+      "expected": {
+        "quantities": [
+          72,
+          34,
+          22,
+          18,
+          102,
+          26
+        ],
+        "before": 3097.6,
+        "total": 3516.54,
+        "complete": false,
+        "reason": "overSix",
+        "lineSteps": []
+      }
+    },
+    {
+      "name": "mixed-63",
+      "input": [
+        {
+          "key": "r0",
+          "name": "public synthetic 0",
+          "category": "B",
+          "quantity": 32,
+          "price": 23.45,
+          "demand": 15,
+          "delivery": 0.25,
+          "stock": 8,
+          "transit": 2,
+          "outbound": 2,
+          "unit": 1,
+          "step": 1,
+          "minimum": 1,
+          "locked": false,
+          "excluded": false
+        },
+        {
+          "key": "r1",
+          "name": "public synthetic 1",
+          "category": "B",
+          "quantity": 12,
+          "price": 33.49,
+          "demand": 3,
+          "delivery": 1,
+          "stock": 4,
+          "transit": 1,
+          "outbound": 2,
+          "unit": 1,
+          "step": 1,
+          "minimum": 1,
+          "locked": false,
+          "excluded": false
+        },
+        {
+          "key": "r2",
+          "name": "public synthetic 2",
+          "category": "B",
+          "quantity": 8,
+          "price": 28.49,
+          "demand": 15,
+          "delivery": 0.5,
+          "stock": 4,
+          "transit": 2,
+          "outbound": 2,
+          "unit": 5,
+          "step": 1,
+          "minimum": 1,
+          "locked": false,
+          "excluded": false
+        },
+        {
+          "key": "r3",
+          "name": "public synthetic 3",
+          "category": "B",
+          "quantity": 20,
+          "price": 11.01,
+          "demand": 15,
+          "delivery": 0.5,
+          "stock": 0,
+          "transit": 4,
+          "outbound": 2,
+          "unit": 5,
+          "step": 1,
+          "minimum": 1,
+          "locked": false,
+          "excluded": true
+        },
+        {
+          "key": "r4",
+          "name": "public synthetic 4",
+          "category": "B",
+          "quantity": 32,
+          "price": 18.49,
+          "demand": 3,
+          "delivery": 0.5,
+          "stock": 8,
+          "transit": 4,
+          "outbound": 2,
+          "unit": 1,
+          "step": 1,
+          "minimum": 1,
+          "locked": false,
+          "excluded": false
+        },
+        {
+          "key": "r5",
+          "name": "public synthetic 5",
+          "category": "B",
+          "quantity": 28,
+          "price": 19.25,
+          "demand": 19,
+          "delivery": 0.5,
+          "stock": 6,
+          "transit": 3,
+          "outbound": 2,
+          "unit": 1,
+          "step": 1,
+          "minimum": 1,
+          "locked": false,
+          "excluded": false
+        }
+      ],
+      "target": 1829.82,
+      "options": {
+        "allowOverSix": false,
+        "allowBelowOne": true
+      },
+      "expected": {
+        "quantities": [
+          31,
+          4,
+          7,
+          20,
+          0,
+          28
+        ],
+        "before": 2731.08,
+        "total": 1819.54,
+        "complete": true,
+        "reason": "",
+        "lineSteps": []
+      }
+    },
+    {
+      "name": "proff-0",
+      "input": [
+        {
+          "key": "MUSE:01",
+          "name": "synthetic MUSE 01",
+          "group": "proff",
+          "category": "A+",
+          "quantity": 18,
+          "price": 100,
+          "demand": 10,
+          "stock": 0,
+          "transit": 0,
+          "unit": 1,
+          "step": 3,
+          "minimum": 3,
+          "delivery": 0.25,
+          "line": {
+            "id": "MUSE",
+            "name": "MUSE",
+            "article": "01",
+            "required": [
+              "01",
+              "02",
+              "03",
+              "04"
+            ]
+          }
+        },
+        {
+          "key": "MUSE:02",
+          "name": "synthetic MUSE 02",
+          "group": "proff",
+          "category": "A",
+          "quantity": 18,
+          "price": 73.27,
+          "demand": 10,
+          "stock": 0,
+          "transit": 0,
+          "unit": 1,
+          "step": 3,
+          "minimum": 3,
+          "delivery": 0.25,
+          "line": {
+            "id": "MUSE",
+            "name": "MUSE",
+            "article": "02",
+            "required": [
+              "01",
+              "02",
+              "03",
+              "04"
+            ]
+          }
+        },
+        {
+          "key": "MUSE:03",
+          "name": "synthetic MUSE 03",
+          "group": "proff",
+          "category": "B",
+          "quantity": 18,
+          "price": 119.99,
+          "demand": 10,
+          "stock": 0,
+          "transit": 0,
+          "unit": 1,
+          "step": 3,
+          "minimum": 3,
+          "delivery": 0.25,
+          "line": {
+            "id": "MUSE",
+            "name": "MUSE",
+            "article": "03",
+            "required": [
+              "01",
+              "02",
+              "03",
+              "04"
+            ]
+          }
+        },
+        {
+          "key": "MUSE:04",
+          "name": "synthetic MUSE 04",
+          "group": "proff",
+          "category": "C",
+          "quantity": 0,
+          "price": 43.35,
+          "demand": 10,
+          "stock": 0,
+          "transit": 0,
+          "unit": 1,
+          "step": 3,
+          "minimum": 3,
+          "delivery": 0.25,
+          "line": {
+            "id": "MUSE",
+            "name": "MUSE",
+            "article": "04",
+            "required": [
+              "01",
+              "02",
+              "03",
+              "04"
+            ]
+          }
+        }
+      ],
+      "target": 4500,
+      "options": {
+        "allowBelowOne": true
+      },
+      "expected": {
+        "quantities": [
+          15,
+          15,
+          15,
+          0
+        ],
+        "before": 5278.68,
+        "total": 4398.9,
+        "complete": true,
+        "reason": "",
+        "lineSteps": []
+      }
+    },
+    {
+      "name": "proff-1",
+      "input": [
+        {
+          "key": "MUSE:01",
+          "name": "synthetic MUSE 01",
+          "group": "proff",
+          "category": "A+",
+          "quantity": 18,
+          "price": 100,
+          "demand": 10,
+          "stock": 0,
+          "transit": 0,
+          "unit": 1,
+          "step": 3,
+          "minimum": 3,
+          "delivery": 0.25,
+          "line": {
+            "id": "MUSE",
+            "name": "MUSE",
+            "article": "01",
+            "required": [
+              "01",
+              "02",
+              "03",
+              "04"
+            ]
+          }
+        },
+        {
+          "key": "MUSE:02",
+          "name": "synthetic MUSE 02",
+          "group": "proff",
+          "category": "A",
+          "quantity": 18,
+          "price": 73.27,
+          "demand": 10,
+          "stock": 0,
+          "transit": 0,
+          "unit": 1,
+          "step": 3,
+          "minimum": 3,
+          "delivery": 0.25,
+          "line": {
+            "id": "MUSE",
+            "name": "MUSE",
+            "article": "02",
+            "required": [
+              "01",
+              "02",
+              "03",
+              "04"
+            ]
+          }
+        },
+        {
+          "key": "MUSE:03",
+          "name": "synthetic MUSE 03",
+          "group": "proff",
+          "category": "B",
+          "quantity": 18,
+          "price": 119.99,
+          "demand": 10,
+          "stock": 0,
+          "transit": 0,
+          "unit": 1,
+          "step": 3,
+          "minimum": 3,
+          "delivery": 0.25,
+          "line": {
+            "id": "MUSE",
+            "name": "MUSE",
+            "article": "03",
+            "required": [
+              "01",
+              "02",
+              "03",
+              "04"
+            ]
+          }
+        },
+        {
+          "key": "MUSE:04",
+          "name": "synthetic MUSE 04",
+          "group": "proff",
+          "category": "C",
+          "quantity": 3,
+          "price": 43.35,
+          "demand": 10,
+          "stock": 0,
+          "transit": 0,
+          "unit": 1,
+          "step": 3,
+          "minimum": 3,
+          "delivery": 0.25,
+          "line": {
+            "id": "MUSE",
+            "name": "MUSE",
+            "article": "04",
+            "required": [
+              "01",
+              "02",
+              "03",
+              "04"
+            ]
+          }
+        }
+      ],
+      "target": 5500,
+      "options": {
+        "allowBelowOne": true
+      },
+      "expected": {
+        "quantities": [
+          18,
+          18,
+          18,
+          9
+        ],
+        "before": 5358.24,
+        "total": 5517.35,
+        "complete": true,
+        "reason": "",
+        "lineSteps": [
+          {
+            "id": "MUSE",
+            "name": "MUSE",
+            "sets": 6,
+            "addedCents": 13005,
+            "savedCents": 5050
+          },
+          {
+            "id": "MUSE",
+            "name": "MUSE",
+            "sets": 9,
+            "addedCents": 13005,
+            "savedCents": 5049
+          }
+        ]
+      }
+    },
+    {
+      "name": "proff-2",
+      "input": [
+        {
+          "key": "MUSE:01",
+          "name": "synthetic MUSE 01",
+          "group": "proff",
+          "category": "A+",
+          "quantity": 18,
+          "price": 100,
+          "demand": 10,
+          "stock": 0,
+          "transit": 0,
+          "unit": 1,
+          "step": 3,
+          "minimum": 3,
+          "delivery": 0.25,
+          "line": {
+            "id": "MUSE",
+            "name": "MUSE",
+            "article": "01",
+            "required": [
+              "01",
+              "02",
+              "03",
+              "04"
+            ]
+          }
+        },
+        {
+          "key": "MUSE:02",
+          "name": "synthetic MUSE 02",
+          "group": "proff",
+          "category": "A",
+          "quantity": 18,
+          "price": 73.27,
+          "demand": 10,
+          "stock": 0,
+          "transit": 0,
+          "unit": 1,
+          "step": 3,
+          "minimum": 3,
+          "delivery": 0.25,
+          "line": {
+            "id": "MUSE",
+            "name": "MUSE",
+            "article": "02",
+            "required": [
+              "01",
+              "02",
+              "03",
+              "04"
+            ]
+          }
+        },
+        {
+          "key": "MUSE:03",
+          "name": "synthetic MUSE 03",
+          "group": "proff",
+          "category": "B",
+          "quantity": 18,
+          "price": 119.99,
+          "demand": 10,
+          "stock": 0,
+          "transit": 0,
+          "unit": 1,
+          "step": 3,
+          "minimum": 3,
+          "delivery": 0.25,
+          "line": {
+            "id": "MUSE",
+            "name": "MUSE",
+            "article": "03",
+            "required": [
+              "01",
+              "02",
+              "03",
+              "04"
+            ]
+          }
+        },
+        {
+          "key": "MUSE:04",
+          "name": "synthetic MUSE 04",
+          "group": "proff",
+          "category": "C",
+          "quantity": 6,
+          "price": 43.35,
+          "demand": 10,
+          "stock": 0,
+          "transit": 0,
+          "unit": 1,
+          "step": 3,
+          "minimum": 3,
+          "delivery": 0.25,
+          "line": {
+            "id": "MUSE",
+            "name": "MUSE",
+            "article": "04",
+            "required": [
+              "01",
+              "02",
+              "03",
+              "04"
+            ]
+          }
+        }
+      ],
+      "target": 6100,
+      "options": {
+        "allowBelowOne": true
+      },
+      "expected": {
+        "quantities": [
+          18,
+          18,
+          21,
+          21
+        ],
+        "before": 5437.79,
+        "total": 6246.05,
+        "complete": true,
+        "reason": "",
+        "lineSteps": [
+          {
+            "id": "MUSE",
+            "name": "MUSE",
+            "sets": 9,
+            "addedCents": 13005,
+            "savedCents": 5049
+          },
+          {
+            "id": "MUSE",
+            "name": "MUSE",
+            "sets": 12,
+            "addedCents": 13005,
+            "savedCents": 5048
+          },
+          {
+            "id": "MUSE",
+            "name": "MUSE",
+            "sets": 15,
+            "addedCents": 13005,
+            "savedCents": 5049
+          },
+          {
+            "id": "MUSE",
+            "name": "MUSE",
+            "sets": 18,
+            "addedCents": 13005,
+            "savedCents": 5050
+          }
+        ]
+      }
+    },
+    {
+      "name": "proff-3",
+      "input": [
+        {
+          "key": "MUSE:01",
+          "name": "synthetic MUSE 01",
+          "group": "proff",
+          "category": "A+",
+          "quantity": 18,
+          "price": 100,
+          "demand": 10,
+          "stock": 0,
+          "transit": 0,
+          "unit": 1,
+          "step": 3,
+          "minimum": 3,
+          "delivery": 0.25,
+          "line": {
+            "id": "MUSE",
+            "name": "MUSE",
+            "article": "01",
+            "required": [
+              "01",
+              "02",
+              "03",
+              "04"
+            ]
+          }
+        },
+        {
+          "key": "MUSE:02",
+          "name": "synthetic MUSE 02",
+          "group": "proff",
+          "category": "A",
+          "quantity": 18,
+          "price": 73.27,
+          "demand": 10,
+          "stock": 0,
+          "transit": 0,
+          "unit": 1,
+          "step": 3,
+          "minimum": 3,
+          "delivery": 0.25,
+          "line": {
+            "id": "MUSE",
+            "name": "MUSE",
+            "article": "02",
+            "required": [
+              "01",
+              "02",
+              "03",
+              "04"
+            ]
+          }
+        },
+        {
+          "key": "MUSE:03",
+          "name": "synthetic MUSE 03",
+          "group": "proff",
+          "category": "B",
+          "quantity": 18,
+          "price": 119.99,
+          "demand": 10,
+          "stock": 0,
+          "transit": 0,
+          "unit": 1,
+          "step": 3,
+          "minimum": 3,
+          "delivery": 0.25,
+          "line": {
+            "id": "MUSE",
+            "name": "MUSE",
+            "article": "03",
+            "required": [
+              "01",
+              "02",
+              "03",
+              "04"
+            ]
+          }
+        },
+        {
+          "key": "MUSE:04",
+          "name": "synthetic MUSE 04",
+          "group": "proff",
+          "category": "C",
+          "quantity": 9,
+          "price": 43.35,
+          "demand": 10,
+          "stock": 0,
+          "transit": 0,
+          "unit": 1,
+          "step": 3,
+          "minimum": 3,
+          "delivery": 0.25,
+          "line": {
+            "id": "MUSE",
+            "name": "MUSE",
+            "article": "04",
+            "required": [
+              "01",
+              "02",
+              "03",
+              "04"
+            ]
+          }
+        }
+      ],
+      "target": 8000,
+      "options": {
+        "allowBelowOne": true
+      },
+      "expected": {
+        "quantities": [
+          21,
+          30,
+          27,
+          21
+        ],
+        "before": 5517.35,
+        "total": 8094.74,
+        "complete": true,
+        "reason": "",
+        "lineSteps": [
+          {
+            "id": "MUSE",
+            "name": "MUSE",
+            "sets": 12,
+            "addedCents": 13005,
+            "savedCents": 5048
+          },
+          {
+            "id": "MUSE",
+            "name": "MUSE",
+            "sets": 15,
+            "addedCents": 13005,
+            "savedCents": 5049
+          },
+          {
+            "id": "MUSE",
+            "name": "MUSE",
+            "sets": 18,
+            "addedCents": 13005,
+            "savedCents": 5050
+          }
+        ]
+      }
+    },
+    {
+      "name": "proff-4",
+      "input": [
+        {
+          "key": "MUSE:01",
+          "name": "synthetic MUSE 01",
+          "group": "proff",
+          "category": "A+",
+          "quantity": 18,
+          "price": 100,
+          "demand": 10,
+          "stock": 0,
+          "transit": 0,
+          "unit": 1,
+          "step": 3,
+          "minimum": 3,
+          "delivery": 0.25,
+          "line": {
+            "id": "MUSE",
+            "name": "MUSE",
+            "article": "01",
+            "required": [
+              "01",
+              "02",
+              "03",
+              "04"
+            ]
+          }
+        },
+        {
+          "key": "MUSE:02",
+          "name": "synthetic MUSE 02",
+          "group": "proff",
+          "category": "A",
+          "quantity": 18,
+          "price": 73.27,
+          "demand": 10,
+          "stock": 0,
+          "transit": 0,
+          "unit": 1,
+          "step": 3,
+          "minimum": 3,
+          "delivery": 0.25,
+          "line": {
+            "id": "MUSE",
+            "name": "MUSE",
+            "article": "02",
+            "required": [
+              "01",
+              "02",
+              "03",
+              "04"
+            ]
+          }
+        },
+        {
+          "key": "MUSE:03",
+          "name": "synthetic MUSE 03",
+          "group": "proff",
+          "category": "B",
+          "quantity": 18,
+          "price": 119.99,
+          "demand": 10,
+          "stock": 0,
+          "transit": 0,
+          "unit": 1,
+          "step": 3,
+          "minimum": 3,
+          "delivery": 0.25,
+          "line": {
+            "id": "MUSE",
+            "name": "MUSE",
+            "article": "03",
+            "required": [
+              "01",
+              "02",
+              "03",
+              "04"
+            ]
+          }
+        },
+        {
+          "key": "MUSE:04",
+          "name": "synthetic MUSE 04",
+          "group": "proff",
+          "category": "C",
+          "quantity": 0,
+          "price": 43.35,
+          "demand": 10,
+          "stock": 0,
+          "transit": 0,
+          "unit": 1,
+          "step": 3,
+          "minimum": 3,
+          "delivery": 0.25,
+          "line": {
+            "id": "MUSE",
+            "name": "MUSE",
+            "article": "04",
+            "required": [
+              "01",
+              "02",
+              "03",
+              "04"
+            ]
+          }
+        }
+      ],
+      "target": 4500,
+      "options": {
+        "allowBelowOne": true
+      },
+      "expected": {
+        "quantities": [
+          15,
+          15,
+          15,
+          0
+        ],
+        "before": 5278.68,
+        "total": 4398.9,
+        "complete": true,
+        "reason": "",
+        "lineSteps": []
+      }
+    },
+    {
+      "name": "proff-5",
+      "input": [
+        {
+          "key": "MUSE:01",
+          "name": "synthetic MUSE 01",
+          "group": "proff",
+          "category": "A+",
+          "quantity": 18,
+          "price": 100,
+          "demand": 10,
+          "stock": 0,
+          "transit": 0,
+          "unit": 1,
+          "step": 3,
+          "minimum": 3,
+          "delivery": 0.25,
+          "line": {
+            "id": "MUSE",
+            "name": "MUSE",
+            "article": "01",
+            "required": [
+              "01",
+              "02",
+              "03",
+              "04"
+            ]
+          }
+        },
+        {
+          "key": "MUSE:02",
+          "name": "synthetic MUSE 02",
+          "group": "proff",
+          "category": "A",
+          "quantity": 18,
+          "price": 73.27,
+          "demand": 10,
+          "stock": 0,
+          "transit": 0,
+          "unit": 1,
+          "step": 3,
+          "minimum": 3,
+          "delivery": 0.25,
+          "line": {
+            "id": "MUSE",
+            "name": "MUSE",
+            "article": "02",
+            "required": [
+              "01",
+              "02",
+              "03",
+              "04"
+            ]
+          }
+        },
+        {
+          "key": "MUSE:03",
+          "name": "synthetic MUSE 03",
+          "group": "proff",
+          "category": "B",
+          "quantity": 18,
+          "price": 119.99,
+          "demand": 10,
+          "stock": 0,
+          "transit": 0,
+          "unit": 1,
+          "step": 3,
+          "minimum": 3,
+          "delivery": 0.25,
+          "line": {
+            "id": "MUSE",
+            "name": "MUSE",
+            "article": "03",
+            "required": [
+              "01",
+              "02",
+              "03",
+              "04"
+            ]
+          }
+        },
+        {
+          "key": "MUSE:04",
+          "name": "synthetic MUSE 04",
+          "group": "proff",
+          "category": "C",
+          "quantity": 3,
+          "price": 43.35,
+          "demand": 10,
+          "stock": 0,
+          "transit": 0,
+          "unit": 1,
+          "step": 3,
+          "minimum": 3,
+          "delivery": 0.25,
+          "line": {
+            "id": "MUSE",
+            "name": "MUSE",
+            "article": "04",
+            "required": [
+              "01",
+              "02",
+              "03",
+              "04"
+            ]
+          }
+        }
+      ],
+      "target": 5500,
+      "options": {
+        "allowBelowOne": true
+      },
+      "expected": {
+        "quantities": [
+          18,
+          18,
+          18,
+          9
+        ],
+        "before": 5358.24,
+        "total": 5517.35,
+        "complete": true,
+        "reason": "",
+        "lineSteps": [
+          {
+            "id": "MUSE",
+            "name": "MUSE",
+            "sets": 6,
+            "addedCents": 13005,
+            "savedCents": 5050
+          },
+          {
+            "id": "MUSE",
+            "name": "MUSE",
+            "sets": 9,
+            "addedCents": 13005,
+            "savedCents": 5049
+          }
+        ]
+      }
+    },
+    {
+      "name": "proff-6",
+      "input": [
+        {
+          "key": "MUSE:01",
+          "name": "synthetic MUSE 01",
+          "group": "proff",
+          "category": "A+",
+          "quantity": 18,
+          "price": 100,
+          "demand": 10,
+          "stock": 0,
+          "transit": 0,
+          "unit": 1,
+          "step": 3,
+          "minimum": 3,
+          "delivery": 0.25,
+          "line": {
+            "id": "MUSE",
+            "name": "MUSE",
+            "article": "01",
+            "required": [
+              "01",
+              "02",
+              "03",
+              "04"
+            ]
+          }
+        },
+        {
+          "key": "MUSE:02",
+          "name": "synthetic MUSE 02",
+          "group": "proff",
+          "category": "A",
+          "quantity": 18,
+          "price": 73.27,
+          "demand": 10,
+          "stock": 0,
+          "transit": 0,
+          "unit": 1,
+          "step": 3,
+          "minimum": 3,
+          "delivery": 0.25,
+          "line": {
+            "id": "MUSE",
+            "name": "MUSE",
+            "article": "02",
+            "required": [
+              "01",
+              "02",
+              "03",
+              "04"
+            ]
+          }
+        },
+        {
+          "key": "MUSE:03",
+          "name": "synthetic MUSE 03",
+          "group": "proff",
+          "category": "B",
+          "quantity": 18,
+          "price": 119.99,
+          "demand": 10,
+          "stock": 0,
+          "transit": 0,
+          "unit": 1,
+          "step": 3,
+          "minimum": 3,
+          "delivery": 0.25,
+          "line": {
+            "id": "MUSE",
+            "name": "MUSE",
+            "article": "03",
+            "required": [
+              "01",
+              "02",
+              "03",
+              "04"
+            ]
+          }
+        },
+        {
+          "key": "MUSE:04",
+          "name": "synthetic MUSE 04",
+          "group": "proff",
+          "category": "C",
+          "quantity": 6,
+          "price": 43.35,
+          "demand": 10,
+          "stock": 0,
+          "transit": 0,
+          "unit": 1,
+          "step": 3,
+          "minimum": 3,
+          "delivery": 0.25,
+          "line": {
+            "id": "MUSE",
+            "name": "MUSE",
+            "article": "04",
+            "required": [
+              "01",
+              "02",
+              "03",
+              "04"
+            ]
+          }
+        }
+      ],
+      "target": 6100,
+      "options": {
+        "allowBelowOne": true
+      },
+      "expected": {
+        "quantities": [
+          18,
+          18,
+          21,
+          21
+        ],
+        "before": 5437.79,
+        "total": 6246.05,
+        "complete": true,
+        "reason": "",
+        "lineSteps": [
+          {
+            "id": "MUSE",
+            "name": "MUSE",
+            "sets": 9,
+            "addedCents": 13005,
+            "savedCents": 5049
+          },
+          {
+            "id": "MUSE",
+            "name": "MUSE",
+            "sets": 12,
+            "addedCents": 13005,
+            "savedCents": 5048
+          },
+          {
+            "id": "MUSE",
+            "name": "MUSE",
+            "sets": 15,
+            "addedCents": 13005,
+            "savedCents": 5049
+          },
+          {
+            "id": "MUSE",
+            "name": "MUSE",
+            "sets": 18,
+            "addedCents": 13005,
+            "savedCents": 5050
+          }
+        ]
+      }
+    },
+    {
+      "name": "proff-7",
+      "input": [
+        {
+          "key": "MUSE:01",
+          "name": "synthetic MUSE 01",
+          "group": "proff",
+          "category": "A+",
+          "quantity": 18,
+          "price": 100,
+          "demand": 10,
+          "stock": 0,
+          "transit": 0,
+          "unit": 1,
+          "step": 3,
+          "minimum": 3,
+          "delivery": 0.25,
+          "line": {
+            "id": "MUSE",
+            "name": "MUSE",
+            "article": "01",
+            "required": [
+              "01",
+              "02",
+              "03",
+              "04"
+            ]
+          }
+        },
+        {
+          "key": "MUSE:02",
+          "name": "synthetic MUSE 02",
+          "group": "proff",
+          "category": "A",
+          "quantity": 18,
+          "price": 73.27,
+          "demand": 10,
+          "stock": 0,
+          "transit": 0,
+          "unit": 1,
+          "step": 3,
+          "minimum": 3,
+          "delivery": 0.25,
+          "line": {
+            "id": "MUSE",
+            "name": "MUSE",
+            "article": "02",
+            "required": [
+              "01",
+              "02",
+              "03",
+              "04"
+            ]
+          }
+        },
+        {
+          "key": "MUSE:03",
+          "name": "synthetic MUSE 03",
+          "group": "proff",
+          "category": "B",
+          "quantity": 18,
+          "price": 119.99,
+          "demand": 10,
+          "stock": 0,
+          "transit": 0,
+          "unit": 1,
+          "step": 3,
+          "minimum": 3,
+          "delivery": 0.25,
+          "line": {
+            "id": "MUSE",
+            "name": "MUSE",
+            "article": "03",
+            "required": [
+              "01",
+              "02",
+              "03",
+              "04"
+            ]
+          }
+        },
+        {
+          "key": "MUSE:04",
+          "name": "synthetic MUSE 04",
+          "group": "proff",
+          "category": "C",
+          "quantity": 9,
+          "price": 43.35,
+          "demand": 10,
+          "stock": 0,
+          "transit": 0,
+          "unit": 1,
+          "step": 3,
+          "minimum": 3,
+          "delivery": 0.25,
+          "line": {
+            "id": "MUSE",
+            "name": "MUSE",
+            "article": "04",
+            "required": [
+              "01",
+              "02",
+              "03",
+              "04"
+            ]
+          }
+        }
+      ],
+      "target": 8000,
+      "options": {
+        "allowBelowOne": true
+      },
+      "expected": {
+        "quantities": [
+          21,
+          30,
+          27,
+          21
+        ],
+        "before": 5517.35,
+        "total": 8094.74,
+        "complete": true,
+        "reason": "",
+        "lineSteps": [
+          {
+            "id": "MUSE",
+            "name": "MUSE",
+            "sets": 12,
+            "addedCents": 13005,
+            "savedCents": 5048
+          },
+          {
+            "id": "MUSE",
+            "name": "MUSE",
+            "sets": 15,
+            "addedCents": 13005,
+            "savedCents": 5049
+          },
+          {
+            "id": "MUSE",
+            "name": "MUSE",
+            "sets": 18,
+            "addedCents": 13005,
+            "savedCents": 5050
+          }
+        ]
+      }
+    },
+    {
+      "name": "proff-8",
+      "input": [
+        {
+          "key": "MUSE:01",
+          "name": "synthetic MUSE 01",
+          "group": "proff",
+          "category": "A+",
+          "quantity": 18,
+          "price": 100,
+          "demand": 10,
+          "stock": 0,
+          "transit": 0,
+          "unit": 1,
+          "step": 3,
+          "minimum": 3,
+          "delivery": 0.25,
+          "line": {
+            "id": "MUSE",
+            "name": "MUSE",
+            "article": "01",
+            "required": [
+              "01",
+              "02",
+              "03",
+              "04"
+            ]
+          }
+        },
+        {
+          "key": "MUSE:02",
+          "name": "synthetic MUSE 02",
+          "group": "proff",
+          "category": "A",
+          "quantity": 18,
+          "price": 73.27,
+          "demand": 10,
+          "stock": 0,
+          "transit": 0,
+          "unit": 1,
+          "step": 3,
+          "minimum": 3,
+          "delivery": 0.25,
+          "line": {
+            "id": "MUSE",
+            "name": "MUSE",
+            "article": "02",
+            "required": [
+              "01",
+              "02",
+              "03",
+              "04"
+            ]
+          }
+        },
+        {
+          "key": "MUSE:03",
+          "name": "synthetic MUSE 03",
+          "group": "proff",
+          "category": "B",
+          "quantity": 18,
+          "price": 119.99,
+          "demand": 10,
+          "stock": 0,
+          "transit": 0,
+          "unit": 1,
+          "step": 3,
+          "minimum": 3,
+          "delivery": 0.25,
+          "line": {
+            "id": "MUSE",
+            "name": "MUSE",
+            "article": "03",
+            "required": [
+              "01",
+              "02",
+              "03",
+              "04"
+            ]
+          }
+        },
+        {
+          "key": "MUSE:04",
+          "name": "synthetic MUSE 04",
+          "group": "proff",
+          "category": "C",
+          "quantity": 0,
+          "price": 43.35,
+          "demand": 10,
+          "stock": 0,
+          "transit": 0,
+          "unit": 1,
+          "step": 3,
+          "minimum": 3,
+          "delivery": 0.25,
+          "line": {
+            "id": "MUSE",
+            "name": "MUSE",
+            "article": "04",
+            "required": [
+              "01",
+              "02",
+              "03",
+              "04"
+            ]
+          }
+        }
+      ],
+      "target": 4500,
+      "options": {
+        "allowBelowOne": true
+      },
+      "expected": {
+        "quantities": [
+          15,
+          15,
+          15,
+          0
+        ],
+        "before": 5278.68,
+        "total": 4398.9,
+        "complete": true,
+        "reason": "",
+        "lineSteps": []
+      }
+    },
+    {
+      "name": "proff-9",
+      "input": [
+        {
+          "key": "MUSE:01",
+          "name": "synthetic MUSE 01",
+          "group": "proff",
+          "category": "A+",
+          "quantity": 18,
+          "price": 100,
+          "demand": 10,
+          "stock": 0,
+          "transit": 0,
+          "unit": 1,
+          "step": 3,
+          "minimum": 3,
+          "delivery": 0.25,
+          "line": {
+            "id": "MUSE",
+            "name": "MUSE",
+            "article": "01",
+            "required": [
+              "01",
+              "02",
+              "03",
+              "04"
+            ]
+          }
+        },
+        {
+          "key": "MUSE:02",
+          "name": "synthetic MUSE 02",
+          "group": "proff",
+          "category": "A",
+          "quantity": 18,
+          "price": 73.27,
+          "demand": 10,
+          "stock": 0,
+          "transit": 0,
+          "unit": 1,
+          "step": 3,
+          "minimum": 3,
+          "delivery": 0.25,
+          "line": {
+            "id": "MUSE",
+            "name": "MUSE",
+            "article": "02",
+            "required": [
+              "01",
+              "02",
+              "03",
+              "04"
+            ]
+          }
+        },
+        {
+          "key": "MUSE:03",
+          "name": "synthetic MUSE 03",
+          "group": "proff",
+          "category": "B",
+          "quantity": 18,
+          "price": 119.99,
+          "demand": 10,
+          "stock": 0,
+          "transit": 0,
+          "unit": 1,
+          "step": 3,
+          "minimum": 3,
+          "delivery": 0.25,
+          "line": {
+            "id": "MUSE",
+            "name": "MUSE",
+            "article": "03",
+            "required": [
+              "01",
+              "02",
+              "03",
+              "04"
+            ]
+          }
+        },
+        {
+          "key": "MUSE:04",
+          "name": "synthetic MUSE 04",
+          "group": "proff",
+          "category": "C",
+          "quantity": 3,
+          "price": 43.35,
+          "demand": 10,
+          "stock": 0,
+          "transit": 0,
+          "unit": 1,
+          "step": 3,
+          "minimum": 3,
+          "delivery": 0.25,
+          "line": {
+            "id": "MUSE",
+            "name": "MUSE",
+            "article": "04",
+            "required": [
+              "01",
+              "02",
+              "03",
+              "04"
+            ]
+          }
+        }
+      ],
+      "target": 5500,
+      "options": {
+        "allowBelowOne": true
+      },
+      "expected": {
+        "quantities": [
+          18,
+          18,
+          18,
+          9
+        ],
+        "before": 5358.24,
+        "total": 5517.35,
+        "complete": true,
+        "reason": "",
+        "lineSteps": [
+          {
+            "id": "MUSE",
+            "name": "MUSE",
+            "sets": 6,
+            "addedCents": 13005,
+            "savedCents": 5050
+          },
+          {
+            "id": "MUSE",
+            "name": "MUSE",
+            "sets": 9,
+            "addedCents": 13005,
+            "savedCents": 5049
+          }
+        ]
+      }
+    },
+    {
+      "name": "proff-10",
+      "input": [
+        {
+          "key": "MUSE:01",
+          "name": "synthetic MUSE 01",
+          "group": "proff",
+          "category": "A+",
+          "quantity": 18,
+          "price": 100,
+          "demand": 10,
+          "stock": 0,
+          "transit": 0,
+          "unit": 1,
+          "step": 3,
+          "minimum": 3,
+          "delivery": 0.25,
+          "line": {
+            "id": "MUSE",
+            "name": "MUSE",
+            "article": "01",
+            "required": [
+              "01",
+              "02",
+              "03",
+              "04"
+            ]
+          }
+        },
+        {
+          "key": "MUSE:02",
+          "name": "synthetic MUSE 02",
+          "group": "proff",
+          "category": "A",
+          "quantity": 18,
+          "price": 73.27,
+          "demand": 10,
+          "stock": 0,
+          "transit": 0,
+          "unit": 1,
+          "step": 3,
+          "minimum": 3,
+          "delivery": 0.25,
+          "line": {
+            "id": "MUSE",
+            "name": "MUSE",
+            "article": "02",
+            "required": [
+              "01",
+              "02",
+              "03",
+              "04"
+            ]
+          }
+        },
+        {
+          "key": "MUSE:03",
+          "name": "synthetic MUSE 03",
+          "group": "proff",
+          "category": "B",
+          "quantity": 18,
+          "price": 119.99,
+          "demand": 10,
+          "stock": 0,
+          "transit": 0,
+          "unit": 1,
+          "step": 3,
+          "minimum": 3,
+          "delivery": 0.25,
+          "line": {
+            "id": "MUSE",
+            "name": "MUSE",
+            "article": "03",
+            "required": [
+              "01",
+              "02",
+              "03",
+              "04"
+            ]
+          }
+        },
+        {
+          "key": "MUSE:04",
+          "name": "synthetic MUSE 04",
+          "group": "proff",
+          "category": "C",
+          "quantity": 6,
+          "price": 43.35,
+          "demand": 10,
+          "stock": 0,
+          "transit": 0,
+          "unit": 1,
+          "step": 3,
+          "minimum": 3,
+          "delivery": 0.25,
+          "line": {
+            "id": "MUSE",
+            "name": "MUSE",
+            "article": "04",
+            "required": [
+              "01",
+              "02",
+              "03",
+              "04"
+            ]
+          }
+        }
+      ],
+      "target": 6100,
+      "options": {
+        "allowBelowOne": true
+      },
+      "expected": {
+        "quantities": [
+          18,
+          18,
+          21,
+          21
+        ],
+        "before": 5437.79,
+        "total": 6246.05,
+        "complete": true,
+        "reason": "",
+        "lineSteps": [
+          {
+            "id": "MUSE",
+            "name": "MUSE",
+            "sets": 9,
+            "addedCents": 13005,
+            "savedCents": 5049
+          },
+          {
+            "id": "MUSE",
+            "name": "MUSE",
+            "sets": 12,
+            "addedCents": 13005,
+            "savedCents": 5048
+          },
+          {
+            "id": "MUSE",
+            "name": "MUSE",
+            "sets": 15,
+            "addedCents": 13005,
+            "savedCents": 5049
+          },
+          {
+            "id": "MUSE",
+            "name": "MUSE",
+            "sets": 18,
+            "addedCents": 13005,
+            "savedCents": 5050
+          }
+        ]
+      }
+    },
+    {
+      "name": "proff-11",
+      "input": [
+        {
+          "key": "MUSE:01",
+          "name": "synthetic MUSE 01",
+          "group": "proff",
+          "category": "A+",
+          "quantity": 18,
+          "price": 100,
+          "demand": 10,
+          "stock": 0,
+          "transit": 0,
+          "unit": 1,
+          "step": 3,
+          "minimum": 3,
+          "delivery": 0.25,
+          "line": {
+            "id": "MUSE",
+            "name": "MUSE",
+            "article": "01",
+            "required": [
+              "01",
+              "02",
+              "03",
+              "04"
+            ]
+          }
+        },
+        {
+          "key": "MUSE:02",
+          "name": "synthetic MUSE 02",
+          "group": "proff",
+          "category": "A",
+          "quantity": 18,
+          "price": 73.27,
+          "demand": 10,
+          "stock": 0,
+          "transit": 0,
+          "unit": 1,
+          "step": 3,
+          "minimum": 3,
+          "delivery": 0.25,
+          "line": {
+            "id": "MUSE",
+            "name": "MUSE",
+            "article": "02",
+            "required": [
+              "01",
+              "02",
+              "03",
+              "04"
+            ]
+          }
+        },
+        {
+          "key": "MUSE:03",
+          "name": "synthetic MUSE 03",
+          "group": "proff",
+          "category": "B",
+          "quantity": 18,
+          "price": 119.99,
+          "demand": 10,
+          "stock": 0,
+          "transit": 0,
+          "unit": 1,
+          "step": 3,
+          "minimum": 3,
+          "delivery": 0.25,
+          "line": {
+            "id": "MUSE",
+            "name": "MUSE",
+            "article": "03",
+            "required": [
+              "01",
+              "02",
+              "03",
+              "04"
+            ]
+          }
+        },
+        {
+          "key": "MUSE:04",
+          "name": "synthetic MUSE 04",
+          "group": "proff",
+          "category": "C",
+          "quantity": 9,
+          "price": 43.35,
+          "demand": 10,
+          "stock": 0,
+          "transit": 0,
+          "unit": 1,
+          "step": 3,
+          "minimum": 3,
+          "delivery": 0.25,
+          "line": {
+            "id": "MUSE",
+            "name": "MUSE",
+            "article": "04",
+            "required": [
+              "01",
+              "02",
+              "03",
+              "04"
+            ]
+          }
+        }
+      ],
+      "target": 8000,
+      "options": {
+        "allowBelowOne": true
+      },
+      "expected": {
+        "quantities": [
+          21,
+          30,
+          27,
+          21
+        ],
+        "before": 5517.35,
+        "total": 8094.74,
+        "complete": true,
+        "reason": "",
+        "lineSteps": [
+          {
+            "id": "MUSE",
+            "name": "MUSE",
+            "sets": 12,
+            "addedCents": 13005,
+            "savedCents": 5048
+          },
+          {
+            "id": "MUSE",
+            "name": "MUSE",
+            "sets": 15,
+            "addedCents": 13005,
+            "savedCents": 5049
+          },
+          {
+            "id": "MUSE",
+            "name": "MUSE",
+            "sets": 18,
+            "addedCents": 13005,
+            "savedCents": 5050
+          }
+        ]
+      }
+    },
+    {
+      "name": "proff-12",
+      "input": [
+        {
+          "key": "MUSE:01",
+          "name": "synthetic MUSE 01",
+          "group": "proff",
+          "category": "A+",
+          "quantity": 18,
+          "price": 100,
+          "demand": 10,
+          "stock": 0,
+          "transit": 0,
+          "unit": 1,
+          "step": 3,
+          "minimum": 3,
+          "delivery": 0.25,
+          "line": {
+            "id": "MUSE",
+            "name": "MUSE",
+            "article": "01",
+            "required": [
+              "01",
+              "02",
+              "03",
+              "04"
+            ]
+          }
+        },
+        {
+          "key": "MUSE:02",
+          "name": "synthetic MUSE 02",
+          "group": "proff",
+          "category": "A",
+          "quantity": 18,
+          "price": 73.27,
+          "demand": 10,
+          "stock": 0,
+          "transit": 0,
+          "unit": 1,
+          "step": 3,
+          "minimum": 3,
+          "delivery": 0.25,
+          "line": {
+            "id": "MUSE",
+            "name": "MUSE",
+            "article": "02",
+            "required": [
+              "01",
+              "02",
+              "03",
+              "04"
+            ]
+          }
+        },
+        {
+          "key": "MUSE:03",
+          "name": "synthetic MUSE 03",
+          "group": "proff",
+          "category": "B",
+          "quantity": 18,
+          "price": 119.99,
+          "demand": 10,
+          "stock": 0,
+          "transit": 0,
+          "unit": 1,
+          "step": 3,
+          "minimum": 3,
+          "delivery": 0.25,
+          "line": {
+            "id": "MUSE",
+            "name": "MUSE",
+            "article": "03",
+            "required": [
+              "01",
+              "02",
+              "03",
+              "04"
+            ]
+          }
+        },
+        {
+          "key": "MUSE:04",
+          "name": "synthetic MUSE 04",
+          "group": "proff",
+          "category": "C",
+          "quantity": 0,
+          "price": 43.35,
+          "demand": 10,
+          "stock": 0,
+          "transit": 0,
+          "unit": 1,
+          "step": 3,
+          "minimum": 3,
+          "delivery": 0.25,
+          "line": {
+            "id": "MUSE",
+            "name": "MUSE",
+            "article": "04",
+            "required": [
+              "01",
+              "02",
+              "03",
+              "04"
+            ]
+          }
+        }
+      ],
+      "target": 4500,
+      "options": {
+        "allowBelowOne": true
+      },
+      "expected": {
+        "quantities": [
+          15,
+          15,
+          15,
+          0
+        ],
+        "before": 5278.68,
+        "total": 4398.9,
+        "complete": true,
+        "reason": "",
+        "lineSteps": []
+      }
+    },
+    {
+      "name": "proff-13",
+      "input": [
+        {
+          "key": "MUSE:01",
+          "name": "synthetic MUSE 01",
+          "group": "proff",
+          "category": "A+",
+          "quantity": 18,
+          "price": 100,
+          "demand": 10,
+          "stock": 0,
+          "transit": 0,
+          "unit": 1,
+          "step": 3,
+          "minimum": 3,
+          "delivery": 0.25,
+          "line": {
+            "id": "MUSE",
+            "name": "MUSE",
+            "article": "01",
+            "required": [
+              "01",
+              "02",
+              "03",
+              "04"
+            ]
+          }
+        },
+        {
+          "key": "MUSE:02",
+          "name": "synthetic MUSE 02",
+          "group": "proff",
+          "category": "A",
+          "quantity": 18,
+          "price": 73.27,
+          "demand": 10,
+          "stock": 0,
+          "transit": 0,
+          "unit": 1,
+          "step": 3,
+          "minimum": 3,
+          "delivery": 0.25,
+          "line": {
+            "id": "MUSE",
+            "name": "MUSE",
+            "article": "02",
+            "required": [
+              "01",
+              "02",
+              "03",
+              "04"
+            ]
+          }
+        },
+        {
+          "key": "MUSE:03",
+          "name": "synthetic MUSE 03",
+          "group": "proff",
+          "category": "B",
+          "quantity": 18,
+          "price": 119.99,
+          "demand": 10,
+          "stock": 0,
+          "transit": 0,
+          "unit": 1,
+          "step": 3,
+          "minimum": 3,
+          "delivery": 0.25,
+          "line": {
+            "id": "MUSE",
+            "name": "MUSE",
+            "article": "03",
+            "required": [
+              "01",
+              "02",
+              "03",
+              "04"
+            ]
+          }
+        },
+        {
+          "key": "MUSE:04",
+          "name": "synthetic MUSE 04",
+          "group": "proff",
+          "category": "C",
+          "quantity": 3,
+          "price": 43.35,
+          "demand": 10,
+          "stock": 0,
+          "transit": 0,
+          "unit": 1,
+          "step": 3,
+          "minimum": 3,
+          "delivery": 0.25,
+          "line": {
+            "id": "MUSE",
+            "name": "MUSE",
+            "article": "04",
+            "required": [
+              "01",
+              "02",
+              "03",
+              "04"
+            ]
+          }
+        }
+      ],
+      "target": 5500,
+      "options": {
+        "allowBelowOne": true
+      },
+      "expected": {
+        "quantities": [
+          18,
+          18,
+          18,
+          9
+        ],
+        "before": 5358.24,
+        "total": 5517.35,
+        "complete": true,
+        "reason": "",
+        "lineSteps": [
+          {
+            "id": "MUSE",
+            "name": "MUSE",
+            "sets": 6,
+            "addedCents": 13005,
+            "savedCents": 5050
+          },
+          {
+            "id": "MUSE",
+            "name": "MUSE",
+            "sets": 9,
+            "addedCents": 13005,
+            "savedCents": 5049
+          }
+        ]
+      }
+    },
+    {
+      "name": "proff-14",
+      "input": [
+        {
+          "key": "MUSE:01",
+          "name": "synthetic MUSE 01",
+          "group": "proff",
+          "category": "A+",
+          "quantity": 18,
+          "price": 100,
+          "demand": 10,
+          "stock": 0,
+          "transit": 0,
+          "unit": 1,
+          "step": 3,
+          "minimum": 3,
+          "delivery": 0.25,
+          "line": {
+            "id": "MUSE",
+            "name": "MUSE",
+            "article": "01",
+            "required": [
+              "01",
+              "02",
+              "03",
+              "04"
+            ]
+          }
+        },
+        {
+          "key": "MUSE:02",
+          "name": "synthetic MUSE 02",
+          "group": "proff",
+          "category": "A",
+          "quantity": 18,
+          "price": 73.27,
+          "demand": 10,
+          "stock": 0,
+          "transit": 0,
+          "unit": 1,
+          "step": 3,
+          "minimum": 3,
+          "delivery": 0.25,
+          "line": {
+            "id": "MUSE",
+            "name": "MUSE",
+            "article": "02",
+            "required": [
+              "01",
+              "02",
+              "03",
+              "04"
+            ]
+          }
+        },
+        {
+          "key": "MUSE:03",
+          "name": "synthetic MUSE 03",
+          "group": "proff",
+          "category": "B",
+          "quantity": 18,
+          "price": 119.99,
+          "demand": 10,
+          "stock": 0,
+          "transit": 0,
+          "unit": 1,
+          "step": 3,
+          "minimum": 3,
+          "delivery": 0.25,
+          "line": {
+            "id": "MUSE",
+            "name": "MUSE",
+            "article": "03",
+            "required": [
+              "01",
+              "02",
+              "03",
+              "04"
+            ]
+          }
+        },
+        {
+          "key": "MUSE:04",
+          "name": "synthetic MUSE 04",
+          "group": "proff",
+          "category": "C",
+          "quantity": 6,
+          "price": 43.35,
+          "demand": 10,
+          "stock": 0,
+          "transit": 0,
+          "unit": 1,
+          "step": 3,
+          "minimum": 3,
+          "delivery": 0.25,
+          "line": {
+            "id": "MUSE",
+            "name": "MUSE",
+            "article": "04",
+            "required": [
+              "01",
+              "02",
+              "03",
+              "04"
+            ]
+          }
+        }
+      ],
+      "target": 6100,
+      "options": {
+        "allowBelowOne": true
+      },
+      "expected": {
+        "quantities": [
+          18,
+          18,
+          21,
+          21
+        ],
+        "before": 5437.79,
+        "total": 6246.05,
+        "complete": true,
+        "reason": "",
+        "lineSteps": [
+          {
+            "id": "MUSE",
+            "name": "MUSE",
+            "sets": 9,
+            "addedCents": 13005,
+            "savedCents": 5049
+          },
+          {
+            "id": "MUSE",
+            "name": "MUSE",
+            "sets": 12,
+            "addedCents": 13005,
+            "savedCents": 5048
+          },
+          {
+            "id": "MUSE",
+            "name": "MUSE",
+            "sets": 15,
+            "addedCents": 13005,
+            "savedCents": 5049
+          },
+          {
+            "id": "MUSE",
+            "name": "MUSE",
+            "sets": 18,
+            "addedCents": 13005,
+            "savedCents": 5050
+          }
+        ]
+      }
+    },
+    {
+      "name": "proff-15",
+      "input": [
+        {
+          "key": "MUSE:01",
+          "name": "synthetic MUSE 01",
+          "group": "home",
+          "category": "A+",
+          "quantity": 18,
+          "price": 100,
+          "demand": 10,
+          "stock": 0,
+          "transit": 0,
+          "unit": 1,
+          "step": 3,
+          "minimum": 3,
+          "delivery": 0.25,
+          "line": {
+            "id": "MUSE",
+            "name": "MUSE",
+            "article": "01",
+            "required": [
+              "01",
+              "02",
+              "03",
+              "04"
+            ]
+          }
+        },
+        {
+          "key": "MUSE:02",
+          "name": "synthetic MUSE 02",
+          "group": "home",
+          "category": "A",
+          "quantity": 18,
+          "price": 73.27,
+          "demand": 10,
+          "stock": 0,
+          "transit": 0,
+          "unit": 1,
+          "step": 3,
+          "minimum": 3,
+          "delivery": 0.25,
+          "line": {
+            "id": "MUSE",
+            "name": "MUSE",
+            "article": "02",
+            "required": [
+              "01",
+              "02",
+              "03",
+              "04"
+            ]
+          }
+        },
+        {
+          "key": "MUSE:03",
+          "name": "synthetic MUSE 03",
+          "group": "home",
+          "category": "B",
+          "quantity": 18,
+          "price": 119.99,
+          "demand": 10,
+          "stock": 0,
+          "transit": 0,
+          "unit": 1,
+          "step": 3,
+          "minimum": 3,
+          "delivery": 0.25,
+          "line": {
+            "id": "MUSE",
+            "name": "MUSE",
+            "article": "03",
+            "required": [
+              "01",
+              "02",
+              "03",
+              "04"
+            ]
+          }
+        },
+        {
+          "key": "MUSE:04",
+          "name": "synthetic MUSE 04",
+          "group": "home",
+          "category": "C",
+          "quantity": 9,
+          "price": 43.35,
+          "demand": 10,
+          "stock": 0,
+          "transit": 0,
+          "unit": 1,
+          "step": 3,
+          "minimum": 3,
+          "delivery": 0.25,
+          "line": {
+            "id": "MUSE",
+            "name": "MUSE",
+            "article": "04",
+            "required": [
+              "01",
+              "02",
+              "03",
+              "04"
+            ]
+          }
+        }
+      ],
+      "target": 8000,
+      "options": {
+        "allowBelowOne": true
+      },
+      "expected": {
+        "quantities": [
+          18,
+          30,
+          27,
+          21
+        ],
+        "before": 5668.83,
+        "total": 8148.18,
+        "complete": true,
+        "reason": "",
+        "lineSteps": []
+      }
+    }
+  ]
+}

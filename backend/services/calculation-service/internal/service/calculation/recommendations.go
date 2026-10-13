@@ -2,6 +2,7 @@ package calculation
 
 import (
 	"math"
+	"order-fill/backend/pkg/numberjs"
 	"sort"
 	"strings"
 
@@ -69,6 +70,10 @@ func (s *Service) RecommendWithWeeks(brand string, rows []domain.OrderRow, deliv
 		if len(row.MonthlySales) > 0 {
 			average = totalQty / float64(len(row.MonthlySales))
 		}
+		row.MonthlyNeed = monthlyNeed
+		if novelty != nil {
+			row.MonthlyNeed = novelty.monthlyNeed
+		}
 		row.ABCCategory = category
 		row.TargetStock = roundTo2(targetStock)
 		row.Recommended = roundTo2(recommended)
@@ -97,6 +102,7 @@ func (s *Service) RecommendUrengoy(brand string, rows []domain.OrderRow, deliver
 
 type noveltyCalculation struct {
 	targetStock float64
+	monthlyNeed float64
 }
 
 func newProductCalculation(values []float64, deliveryWeeks float64) *noveltyCalculation {
@@ -124,7 +130,7 @@ func newProductCalculation(values []float64, deliveryWeeks float64) *noveltyCalc
 		return nil
 	}
 	deliveryCoefficient := 0.25 * math.Max(1, deliveryWeeks)
-	return &noveltyCalculation{targetStock: maxMonth*1.5 + maxMonth*deliveryCoefficient}
+	return &noveltyCalculation{monthlyNeed: maxMonth * 1.5, targetStock: maxMonth*1.5 + maxMonth*deliveryCoefficient}
 }
 
 func calculateTargetNew(values []float64) float64 {
@@ -184,7 +190,8 @@ func categoryFromCumulative(percent float64) string {
 }
 
 func categoryCoefficient(category, brand string) float64 {
-	base, _ := strings.CutSuffix(category, "/New")
+	base := strings.ToUpper(strings.Join(strings.Fields(category), ""))
+	base = strings.NewReplacer("А", "A", "В", "B", "С", "C").Replace(base)
 	if brand == "novacutan" {
 		if base == "C" {
 			return 1.5
@@ -205,9 +212,7 @@ func categoryCoefficient(category, brand string) float64 {
 	}
 }
 
-func roundTo2(value float64) float64 {
-	return math.Round(value*100) / 100
-}
+func roundTo2(value float64) float64 { return numberjs.Fixed2(value) }
 
 func CategoryFromCumulative(percent float64) string { return categoryFromCumulative(percent) }
 func DeliveryCoefficient(weeks float64) float64     { return 0.25 * math.Max(1, weeks) }

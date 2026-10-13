@@ -20,24 +20,26 @@ type budgetLineJSON struct {
 }
 
 type budgetPlanRowJSON struct {
-	Key       string          `json:"key"`
-	Name      string          `json:"name"`
-	Category  string          `json:"category"`
-	Quantity  float64         `json:"quantity"`
-	BasePrice float64         `json:"base_price"`
-	Demand    float64         `json:"demand"`
-	Stock     float64         `json:"stock"`
-	Transit   float64         `json:"transit"`
-	Outbound  float64         `json:"outbound"`
-	BoxSize   float64         `json:"box_size"`
-	Group     string          `json:"group"`
-	Locked    bool            `json:"locked"`
-	Excluded  bool            `json:"excluded"`
-	Unsafe    bool            `json:"unsafe"`
-	Line      *budgetLineJSON `json:"line"`
+	DiscountOverride *float64        `json:"discount_override,omitempty"`
+	Key              string          `json:"key"`
+	Name             string          `json:"name"`
+	Category         string          `json:"category"`
+	Quantity         float64         `json:"quantity"`
+	BasePrice        float64         `json:"base_price"`
+	Demand           float64         `json:"demand"`
+	Stock            float64         `json:"stock"`
+	Transit          float64         `json:"transit"`
+	Outbound         float64         `json:"outbound"`
+	BoxSize          float64         `json:"box_size"`
+	Group            string          `json:"group"`
+	Locked           bool            `json:"locked"`
+	Excluded         bool            `json:"excluded"`
+	Unsafe           bool            `json:"unsafe"`
+	Line             *budgetLineJSON `json:"line"`
 }
 
 type budgetPlanRequestJSON struct {
+	QuoteOnly     bool                `json:"quote_only"`
 	Brand         string              `json:"brand"`
 	Target        float64             `json:"target"`
 	Discount      float64             `json:"discount"`
@@ -48,6 +50,8 @@ type budgetPlanRequestJSON struct {
 }
 
 type plannedBudgetRowJSON struct {
+	Price    float64 `json:"price"`
+	Discount float64 `json:"discount"`
 	Key      string  `json:"key"`
 	Name     string  `json:"name"`
 	Category string  `json:"category"`
@@ -122,9 +126,13 @@ func (a *API) planOrderBudget(w http.ResponseWriter, r *http.Request) {
 	}
 	rows := make([]*calculationv1.BudgetRow, 0, len(payload.Rows))
 	for _, row := range payload.Rows {
+		if row.DiscountOverride != nil && (*row.DiscountOverride < 0 || *row.DiscountOverride >= 100) {
+			writeError(w, http.StatusBadRequest, "bad_request", "скидка должна быть от 0 до 99,99%")
+			return
+		}
 		rows = append(rows, &calculationv1.BudgetRow{
 			Key: row.Key, Name: row.Name, Category: row.Category, Quantity: row.Quantity,
-			BasePrice: row.BasePrice, Demand: row.Demand, Stock: row.Stock, Transit: row.Transit,
+			BasePrice: row.BasePrice, DiscountOverride: row.DiscountOverride, Demand: row.Demand, Stock: row.Stock, Transit: row.Transit,
 			Outbound: row.Outbound, BoxSize: row.BoxSize, Group: row.Group,
 			Locked: row.Locked, Excluded: row.Excluded, Unsafe: row.Unsafe,
 			Line: budgetLineProto(row.Line),
@@ -132,7 +140,7 @@ func (a *API) planOrderBudget(w http.ResponseWriter, r *http.Request) {
 	}
 	mode := a.actorChristinaProffMode(r, user)
 	resp, err := a.Clients.Calculation.PlanBudget(a.jobCtx(r, user), &calculationv1.PlanBudgetRequest{
-		Brand: payload.Brand, Target: payload.Target, Discount: payload.Discount,
+		Brand: payload.Brand, Target: payload.Target, Discount: payload.Discount, QuoteOnly: payload.QuoteOnly,
 		DeliveryWeeks: payload.DeliveryWeeks, AllowOverSix: payload.AllowOverSix,
 		AllowBelowOne: payload.AllowBelowOne, Rows: rows,
 		ChristinaProffMode: protoChristinaProffMode(mode),
@@ -206,7 +214,7 @@ func plannedRowsJSON(rows []*calculationv1.PlannedBudgetRow) []plannedBudgetRowJ
 	for _, row := range rows {
 		out = append(out, plannedBudgetRowJSON{
 			Key: row.GetKey(), Name: row.GetName(), Category: row.GetCategory(),
-			Before: row.GetBefore(), Quantity: row.GetQuantity(), Comment: row.GetComment(),
+			Before: row.GetBefore(), Quantity: row.GetQuantity(), Comment: row.GetComment(), Price: row.GetPrice(), Discount: row.GetDiscount(),
 		})
 	}
 	return out

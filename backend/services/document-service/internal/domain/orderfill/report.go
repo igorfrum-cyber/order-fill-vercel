@@ -11,6 +11,7 @@ import (
 
 // Summary carries the aggregate numbers shown above the review table.
 type Summary struct {
+	IncludeBlankStocks     bool    `json:"include_blank_stocks,omitempty"`
 	Brand                  string  `json:"brand"`
 	OrderMonthLabel        string  `json:"order_month_label"`
 	AdjustmentLabel        string  `json:"adjustment_label"`
@@ -41,6 +42,7 @@ type Summary struct {
 
 // ReportRow is one reviewable line of the result.
 type ReportRow struct {
+	AgreedPricing       *BudgetPricing       `json:"agreed_pricing,omitempty"`
 	Key                 string               `json:"key"`
 	Status              string               `json:"status"`
 	Category            string               `json:"category,omitempty"`
@@ -64,6 +66,7 @@ type ReportRow struct {
 	HasBudgetData       bool                 `json:"has_budget_data"`
 	BudgetCategory      string               `json:"budget_category,omitempty"`
 	BudgetDemand        float64              `json:"budget_demand,omitempty"`
+	BudgetPrices        []BudgetPrice        `json:"budget_prices,omitempty"`
 	BudgetPrice         float64              `json:"budget_price,omitempty"`
 	Recommended         *float64             `json:"recommended"`
 	Rounded             *int                 `json:"rounded"`
@@ -82,7 +85,7 @@ type ReportRow struct {
 }
 
 func unmatchedRow(position blankPosition, command FillCommand, rule brand.RuleConfig) ReportRow {
-	return ReportRow{
+	row := ReportRow{
 		Key:                 position.key,
 		Status:              StatusNotInSource,
 		Category:            CategoryNotInSource,
@@ -100,6 +103,14 @@ func unmatchedRow(position blankPosition, command FillCommand, rule brand.RuleCo
 		DuplicateCandidates: emptyCandidates(position.duplicateCandidates),
 		Editable:            false,
 	}
+	if rule.Key == "christina" && position.christinaLine != nil {
+		row.Editable = true
+		row.ChristinaLine = position.christinaLine
+		row.BudgetPrice = position.budgetPrice
+		row.BudgetPrices = position.budgetPrices
+		row.HasBudgetData = len(position.budgetPrices) > 0
+	}
+	return row
 }
 
 func matchedRow(
@@ -137,10 +148,11 @@ func matchedRow(
 		SourceComment:       selected.SourceComment,
 		Stock:               selected.Stock,
 		InTransit:           selected.InTransit,
-		HasBudgetData:       position.budgetPrice > 0 && selected.BudgetDemand > 0 && budgetCategorySupported(selected.BudgetCategory),
+		HasBudgetData:       len(position.budgetPrices) > 0 && selected.BudgetDemand > 0 && budgetCategorySupported(selected.BudgetCategory),
 		BudgetCategory:      selected.BudgetCategory,
 		BudgetDemand:        selected.BudgetDemand,
 		BudgetPrice:         position.budgetPrice,
+		BudgetPrices:        position.budgetPrices,
 		Recommended:         &recommended,
 		Rounded:             &rounded,
 		BaseRounded:         &baseRounded,

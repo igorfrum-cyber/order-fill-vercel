@@ -56,6 +56,7 @@ test("order upload, budget recalculation and both workbook previews stay editabl
           source_row: 2, source_article: "A1", source_name: "Крем", stock: "0", in_transit: "0",
           recommended: 3, rounded: 3, inserted: 3, editable: true,
           has_budget_data: true, budget_category: "B", budget_demand: 10, budget_price: 100,
+          budget_prices:[{column:3,label:"Цена",price:100}],
         }],
       } });
       return;
@@ -99,9 +100,14 @@ test("order upload, budget recalculation and both workbook previews stay editabl
       return;
     }
     if (path === "/api/v1/order/budget-plan") {
+      const payload=JSON.parse(request.postData() || "{}");
+      if(payload.quote_only){
+        const row=payload.rows[0];const price=row.discount_override===10 ? 90 : 100;
+        await route.fulfill({json:{before:row.quantity*price,total:row.quantity*price,complete:true,rows:[{key:row.key,before:row.quantity,quantity:row.quantity,price,discount:row.discount_override}]}});return;
+      }
       await route.fulfill({ json: {
         before: 270, total: 540, target: 540, reason: "", complete: true,
-        rows: [{ key: "blank-1:2", name: "Крем", category: "B", before: 3, quantity: 6, comment: "Добавилось 3 шт. Для закупа до суммы." }],
+        rows: [{ key: "blank-1:2", name: "Крем", category: "B", before: 3, quantity: 6, price:90,discount:10,comment: "Добавилось 3 шт. Для закупа до суммы." }],
         line_steps: [], line_groups: [],
       } });
       return;

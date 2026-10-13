@@ -36,6 +36,7 @@ message OrderRow {
   bool has_warehouse_stock = 17;
   double box_size = 18;
   bool has_box_size = 19;
+  double monthly_need = 20;
 }
 
 message CalculateOrderRecommendationsRequest {
@@ -60,6 +61,7 @@ message CalculateAdjustedQuantityRequest {
   int32 quantity_multiple = 7;
   string adjustment_comment = 8;
   bool allow_small_positive_order = 9;
+  double supplier_unit_size = 10;
 }
 
 message CalculateAdjustedQuantityResponse {
@@ -74,6 +76,11 @@ message NorthCityNeed {
   string city = 1;
   string article = 2;
   double qty = 3;
+  string name = 4;
+  double supplier_unit_size = 5;
+  double minimum = 6;
+  double box_size = 7;
+  bool has_box_size = 8;
 }
 
 message NorthPlanRow {
@@ -171,6 +178,7 @@ message BudgetRow {
   double base_price = 19;
   // box_size is the blank box/multiple hint for brand order rules.
   double box_size = 20;
+  optional double discount_override = 21;
 }
 
 message PlanBudgetRequest {
@@ -186,6 +194,7 @@ message PlanBudgetRequest {
   double delivery_weeks = 7;
   // christina_proff_mode selects the PROFF cost oracle. UNSPECIFIED is standard.
   orderfill.common.v1.ChristinaProffMode christina_proff_mode = 8;
+  bool quote_only = 9;
 }
 
 message PlannedBudgetRow {
@@ -195,6 +204,8 @@ message PlannedBudgetRow {
   double quantity = 4;
   string comment = 5;
   string category = 6;
+  double price = 7;
+  double discount = 8;
 }
 
 // PlannedLineStep is one accepted CHRISTINA PROFF set-completion step (rubles).

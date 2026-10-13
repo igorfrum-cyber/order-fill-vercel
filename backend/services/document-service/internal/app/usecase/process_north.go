@@ -72,7 +72,7 @@ func (u *ProcessJob) processNorth(ctx context.Context, message port.JobMessage, 
 		}
 		needs = append(needs, extracted...)
 		for _, need := range extracted {
-			calcNeeds = append(calcNeeds, calculation.NorthNeed{City: need.City, Article: need.Article, Name: need.Name, Qty: need.Qty})
+			calcNeeds = append(calcNeeds, calculation.NorthNeed{City: need.City, Article: need.Article, Name: need.Name, Qty: need.Qty, Minimum: need.Minimum, SupplierUnitSize: need.SupplierUnitSize, BoxSize: need.BoxSize, HasBoxSize: need.HasBoxSize})
 		}
 		label := orderfill.LabelChristinaBlank(workbook, blank.Name)
 		if variant != "" {
@@ -90,8 +90,11 @@ func (u *ProcessJob) processNorth(ctx context.Context, message port.JobMessage, 
 	var stock []north.Stock
 	var calcStock []calculation.TyumenStock
 	deliveryWeeks := 1.0
+	if warehouse.StorageKey != "" && source.StorageKey == "" {
+		return fmt.Errorf("%w: для двух складов нужна исходная таблица офиса Тюмени", orderfill.ErrInvalidInput)
+	}
 	if source.StorageKey != "" {
-		progress.Set(ctx, 0.45, "Читаю таблицу Тюмени")
+		progress.Set(ctx, .45, "Читаю таблицу Тюмени")
 		workbook, err := u.loadWorkbook(ctx, source.StorageKey, nil)
 		if err != nil {
 			return err
@@ -100,24 +103,44 @@ func (u *ProcessJob) processNorth(ctx context.Context, message port.JobMessage, 
 			return fmt.Errorf("%w: в поле таблицы Тюмени нужна именно тюменская таблица", orderfill.ErrInvalidInput)
 		}
 		deliveryWeeks = orderfill.DeliveryWeeks(workbook)
+		demands := map[int]float64{}
+		if warehouse.StorageKey != "" {
+			progress.Set(ctx, .55, "Объединяю историю офиса и склада доставки")
+			other, err := u.loadWorkbook(ctx, warehouse.StorageKey, nil)
+			if err != nil {
+				return err
+			}
+			month, _, err := orderfill.InferOrderMonth(workbook)
+			if err != nil {
+				return err
+			}
+			workbook, err = orderfill.MergeTyumenSources(workbook, other, month, rule, orderfill.TyumenMergeOptions{Chz: chzMerger(u.match), MatchingMode: message.MatchingMode, Context: ctx})
+			if err != nil {
+				return err
+			}
+			recalculated, err := orderfill.RecalculateTable(orderfill.FillCommand{Source: workbook, Brand: brandKey, OrderMonth: month, Rule: rule, Chz: chzMerger(u.match), Recommender: sourceRecommender(u.calc), Context: ctx, MatchingMode: message.MatchingMode})
+			if err != nil {
+				return err
+			}
+			for _, item := range recalculated.Items {
+				demands[item.RowIndex] = item.BudgetDemand
+			}
+		} else {
+			var err error
+			demands, err = orderfill.BudgetForecast(orderfill.FillCommand{Source: workbook, Brand: brandKey, Rule: rule, Recommender: sourceRecommender(u.calc), Context: ctx})
+			if err != nil {
+				return err
+			}
+		}
 		stock, err = north.StockFromSource(workbook, rule)
 		if err != nil {
 			return err
 		}
-	}
-	var warehouseStock []north.Stock
-	if warehouse.StorageKey != "" {
-		progress.Set(ctx, 0.55, "Читаю таблицу склада доставки")
-		workbook, err := u.loadWorkbook(ctx, warehouse.StorageKey, nil)
-		if err != nil {
-			return err
-		}
-		warehouseStock, err = north.StockFromSource(workbook, rule)
-		if err != nil {
-			return err
+		for i := range stock {
+			stock[i].MonthlyDemand = demands[stock[i].SourceRow]
 		}
 	}
-	stock, calcStock = combineTyumenLocations(stock, warehouseStock)
+	stock, calcStock = combineTyumenLocations(stock, nil)
 	stockKeys := make(map[string]bool, len(stock))
 	for _, item := range stock {
 		stockKeys[item.Article] = true
@@ -232,6 +255,11 @@ func combineTyumenLocations(office, warehouse []north.Stock) ([]north.Stock, []c
 	for _, article := range articles {
 		item := byArticle[article]
 		warehouseItem, hasWarehouse := warehouseByArticle[article]
+		if !hasWarehouse && item.HasWarehouseStock {
+			warehouseItem.Stock = item.WarehouseStock
+			warehouseItem.InTransit = item.WarehouseTransit
+			hasWarehouse = true
+		}
 		combined = append(combined, item)
 		calculationRows = append(calculationRows, calculation.TyumenStock{
 			Article: item.Article, Name: item.Name, Stock: item.Stock, InTransit: item.InTransit, Target: item.Target,
@@ -381,16 +409,10 @@ func (u *ProcessJob) buildNorthOutputs(ctx context.Context, message port.JobMess
 		if err := north.WriteSupplierQuantities(candidate.workbook, rule, variant, lines); err != nil {
 			return nil, nil, err
 		}
-		discount := 0.0
-		for _, row := range report.PlanRows {
-			if row.Variant == variant && row.BudgetDiscount > 0 {
-				discount = row.BudgetDiscount
-				break
-			}
-		}
-		if err := north.ApplySupplierDiscount(candidate.workbook, rule, discount); err != nil {
+		if err := north.ApplySupplierPricing(candidate.workbook, rule, variant, report.PlanRows); err != nil {
 			return nil, nil, err
 		}
+
 		variantLabel := ""
 		if variant != "" {
 			variantLabel = " " + strings.ToUpper(variant)

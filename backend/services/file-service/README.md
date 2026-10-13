@@ -60,7 +60,7 @@ HTTP-интерфейс:
 
 ## Зависимости и взаимодействия
 
-- Go `1.26.7`;
+- Go `1.26.9`;
 - `google.golang.org/grpc` `v1.83.2` и локальный `backend/proto` для контракта;
 - локальный `backend/pkg` для gRPC transport, health и JSON-логов;
 - `github.com/minio/minio-go/v7` `v7.3.0` для S3-compatible object storage;
@@ -96,7 +96,7 @@ HTTP-интерфейс:
 
 ## Локальный запуск
 
-Требуется Go `1.26.7`. Самый простой непостоянный режим не требует PostgreSQL или MinIO:
+Требуется Go `1.26.9`. Самый простой непостоянный режим не требует PostgreSQL или MinIO:
 
 ```bash
 cd backend/services/file-service

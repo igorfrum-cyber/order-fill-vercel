@@ -25,20 +25,21 @@ const (
 
 // FillCommand is the input of the order-fill engine.
 type FillCommand struct {
-	Source       spreadsheet.Workbook
-	Blank        spreadsheet.Workbook
-	OrderMonth   string
-	Brand        string
-	BlankID      string
-	BlankLabel   string
-	MatchingMode string
-	Matcher      Matcher
-	Chz          ChzMerger
-	Adjuster     QuantityAdjuster
-	Recommender  SourceRecommender
-	Rule         brand.RuleConfig
-	Context      context.Context
-	OnProgress   func(fraction float64, message string)
+	SourceFileName string
+	Source         spreadsheet.Workbook
+	Blank          spreadsheet.Workbook
+	OrderMonth     string
+	Brand          string
+	BlankID        string
+	BlankLabel     string
+	MatchingMode   string
+	Matcher        Matcher
+	Chz            ChzMerger
+	Adjuster       QuantityAdjuster
+	Recommender    SourceRecommender
+	Rule           brand.RuleConfig
+	Context        context.Context
+	OnProgress     func(fraction float64, message string)
 }
 
 func (c FillCommand) ctx() context.Context {
@@ -81,6 +82,8 @@ type blankPosition struct {
 	name                string
 	unit                string
 	boxSize             string
+	budgetPrices        []BudgetPrice
+	supplierUnitSize    float64
 	budgetPrice         float64
 	christinaLine       *ChristinaLine
 	duplicate           bool
@@ -97,9 +100,7 @@ func Fill(command FillCommand) (Result, error) {
 	if command.Matcher == nil {
 		return Result{}, fmt.Errorf("matching-service is required")
 	}
-	if rule.BlankLayout != "" {
-		return Result{}, fmt.Errorf("%w: раскладка бланка %q для бренда %s пока не поддерживается сервисом", ErrInvalidInput, rule.BlankLayout, rule.Label)
-	}
+
 	if command.Brand == "christina" {
 		command.BlankLabel = LabelChristinaBlank(command.Blank, command.BlankLabel)
 	}
@@ -113,11 +114,11 @@ func Fill(command FillCommand) (Result, error) {
 	}
 	context := BuildSourceContext(source, rule)
 
-	blank, err := DetectBlankColumns(command.Blank, rule)
+	blank, err := DetectOrderBlank(command.Blank, rule)
 	if err != nil {
 		return Result{}, err
 	}
-	positions := blankPositions(blank, command.BlankID, rule)
+	positions := orderBlankPositions(blank, command.BlankID, rule)
 
 	summary := Summary{
 		Brand:                  rule.Label,
@@ -212,11 +213,12 @@ func matchPositions(positions []blankPosition, source Source, command FillComman
 	byID := make(map[string]SourceItem, len(source.Items))
 	for i, item := range source.Items {
 		id := strconv.Itoa(item.RowIndex)
-		sourceItems[i] = MatchItem{ID: id, Article: item.Article, Name: item.Name, Rounded: item.Rounded}
+		sourceItems[i] = MatchItem{ID: id, Article: item.Article, Name: item.Name, Rounded: item.Rounded, Recommended: item.Recommended}
 		byID[id] = item
 	}
 	results, err := command.Matcher.Match(command.ctx(), blankItems, sourceItems, MatchOptions{
 		Mode:           command.MatchingMode,
+		Brand:          rule.Key,
 		PrefixAliases:  rule.ArticlePrefixAliases,
 		PreserveHyphen: rule.PreserveArticleHyphen,
 	})
@@ -241,6 +243,7 @@ func matchPositions(positions []blankPosition, source Source, command FillComman
 }
 
 func applyMatch(position blankPosition, result MatchResult, byID map[string]SourceItem, command FillCommand, rule brand.RuleConfig) (positionMatch, error) {
+	rule.SupplierUnitSize = position.supplierUnitSize
 	if len(result.CandidateIDs) > 1 {
 		position.duplicate = true
 		items := make([]SourceItem, 0, len(result.CandidateIDs))
@@ -285,7 +288,7 @@ func applyMatch(position blankPosition, result MatchResult, byID map[string]Sour
 		status = StatusWarningNameDiffers
 		match.suspicious = 1
 	}
-	if result.Reasons.Source == "name" {
+	if result.Reasons.Source == "name" && (rule.Key != "novacutan" || result.Category != CategoryCheckNameOrVolume) {
 		status = StatusMatchedByName
 	}
 	order, err := orderForItem(selected, rule, position.boxSize, command)
@@ -337,6 +340,7 @@ func blankPositions(blank Detection, blankID string, rule brand.RuleConfig) []bl
 			unit:                normalize.AsText(blank.Sheet.Value(row, blank.Columns[ColumnUnit])),
 			boxSize:             boxSize,
 			budgetPrice:         budgetPriceAt(blank.Sheet, row, priceColumn),
+			budgetPrices:        BudgetPrices(blank.Sheet, blank.HeaderRow, row, blank.Columns[ColumnQuantity]),
 			christinaLine:       linesByRow[row],
 		})
 	}
@@ -390,6 +394,9 @@ func budgetPriceAt(sheet spreadsheet.Sheet, row, column int) float64 {
 	}
 	value := sheet.Value(row, column)
 	number, _ := normalize.ParseNumber(value)
+	if evaluated, ok := BudgetCellPrice(sheet, row, column); ok {
+		return evaluated
+	}
 	return number
 }
 
@@ -418,5 +425,8 @@ func orderForItem(item SourceItem, rule brand.RuleConfig, boxSize string, comman
 	}
 	order := brand.CalculateAdjustedQuantity(item.OrderedFact, rule, boxSize)
 	order.AutoComment = ""
+	if rule.SupplierUnitSize > 1 && order.Inserted != nil {
+		order.AutoComment = "коробки по 5 шт."
+	}
 	return order, nil
 }

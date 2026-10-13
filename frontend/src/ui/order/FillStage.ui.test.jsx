@@ -40,6 +40,29 @@ function NameOnlyHarness() {
   );
 }
 
+function StockOptionHarness() {
+  const [include, setInclude] = useState(false);
+  return (
+    <FillStage
+      brand="angiopharm"
+      rows={[]}
+      edits={new Map()}
+      onEdit={() => {}}
+      invalidKeys={new Set()}
+      summary={{}}
+      status=""
+      busy={false}
+      banner=""
+      onDownloadFiles={() => {}}
+      onIssueReport={() => {}}
+      acknowledgedDuplicates={new Set()}
+      onAcknowledgedDuplicates={() => {}}
+      includeBlankStocks={include}
+      onIncludeBlankStocksChange={setInclude}
+    />
+  );
+}
+
 test("name-only rows can be acknowledged so files can be checked", async () => {
   const user = userEvent.setup();
   render(<NameOnlyHarness />);
@@ -47,4 +70,14 @@ test("name-only rows can be acknowledged so files can be checked", async () => {
   expect(screen.getByRole("button", { name: "Проверить файлы" })).toBeDisabled();
   await user.click(screen.getByRole("checkbox", { name: /оставляю/i }));
   expect(screen.getByRole("button", { name: "Проверить файлы" })).toBeEnabled();
+});
+
+test("blank stock export is an explicit opt-in", async () => {
+  const user = userEvent.setup();
+  render(<StockOptionHarness />);
+
+  const checkbox = screen.getByRole("checkbox", { name: "Добавить остатки в бланк" });
+  expect(checkbox).not.toBeChecked();
+  await user.click(checkbox);
+  expect(checkbox).toBeChecked();
 });

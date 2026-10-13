@@ -216,11 +216,18 @@ func TestCompletedJobAcceptsEdits(t *testing.T) {
 	if err := svc.Complete(t.Context(), job.ID, domain.Report{}, nil); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := svc.SubmitEdits(t.Context(), actor, job.ID, nil); err != nil {
+	if _, err := svc.SubmitEdits(t.Context(), actor, job.ID, nil, true, domain.BudgetPricing{RowKey: "main:2", PriceColumn: 2, BasePrice: 100, Discount: 30, Price: 70}); err != nil {
 		t.Fatal(err)
 	}
-	if len(pub.Messages()) != 2 {
+	messages := pub.Messages()
+	if len(messages) != 2 {
 		t.Fatalf("messages=%d", len(pub.Messages()))
+	}
+	if len(messages[1].BudgetPricing) != 1 || messages[1].BudgetPricing[0].Price != 70 {
+		t.Fatal("finalization pricing was lost")
+	}
+	if !messages[1].IncludeBlankStocks {
+		t.Fatal("finalization message must carry the stock export option")
 	}
 }
 
@@ -240,7 +247,7 @@ func TestSubmitEditsRejectsConcurrentFinalize(t *testing.T) {
 	errs := make(chan error, 2)
 	for range 2 {
 		go func() {
-			_, err := svc.SubmitEdits(t.Context(), actor, job.ID, nil)
+			_, err := svc.SubmitEdits(t.Context(), actor, job.ID, nil, false)
 			errs <- err
 		}()
 	}

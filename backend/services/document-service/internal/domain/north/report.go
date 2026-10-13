@@ -43,39 +43,42 @@ type Transfer struct {
 }
 
 type PlanRow struct {
-	Key                 string                   `json:"key"`
-	Article             string                   `json:"article"`
-	ArticleRaw          string                   `json:"articleRaw,omitempty"`
-	Name                string                   `json:"name"`
-	Cities              []CityQty                `json:"cities"`
-	SupplierParts       []CityQty                `json:"supplierParts"`
-	TyumenParts         []CityQty                `json:"tyumenParts"`
-	TyumenStock         float64                  `json:"tyumenStock"`
-	TyumenInTransit     float64                  `json:"tyumenInTransit"`
-	TyumenTarget        float64                  `json:"tyumenTarget"`
-	TyumenPlannedOrder  float64                  `json:"tyumenPlannedOrder"`
-	TyumenFree          float64                  `json:"tyumenFree"`
-	FromTyumen          float64                  `json:"fromTyumen"`
-	SupplierNeed        float64                  `json:"supplierNeed"`
-	SupplierUnitSize    float64                  `json:"supplierUnitSize"`
-	NovacutanMinimum    float64                  `json:"novacutanMinimum,omitzero"`
-	BlankBoxSize        float64                  `json:"blankBoxSize,omitzero"`
-	HasBoxSize          bool                     `json:"hasBoxSize,omitzero"`
-	Variant             string                   `json:"variant,omitempty"`
-	ChristinaLine       *orderfill.ChristinaLine `json:"christinaLine,omitempty"`
-	HasBudgetData       bool                     `json:"hasBudgetData,omitzero"`
-	BudgetCategory      string                   `json:"budgetCategory,omitempty"`
-	BudgetDemand        float64                  `json:"budgetDemand,omitzero"`
-	BudgetPrice         float64                  `json:"budgetPrice,omitzero"`
-	BudgetDiscount      float64                  `json:"budgetDiscount,omitzero"`
-	BudgetComment       string                   `json:"budgetComment,omitempty"`
-	ActualSupplierOrder float64                  `json:"actualSupplierOrder"`
-	NorthNeed           float64                  `json:"northNeed"`
-	Comment             string                   `json:"comment"`
-	HasTyumenSource     bool                     `json:"hasTyumenSource"`
-	WarehouseStock      float64                  `json:"warehouseStock"`
-	WarehouseTransit    float64                  `json:"warehouseTransit"`
-	HasWarehouseStock   bool                     `json:"hasWarehouseStock"`
+	Key                      string                   `json:"key"`
+	Article                  string                   `json:"article"`
+	ArticleRaw               string                   `json:"articleRaw,omitempty"`
+	Name                     string                   `json:"name"`
+	Cities                   []CityQty                `json:"cities"`
+	SupplierParts            []CityQty                `json:"supplierParts"`
+	TyumenParts              []CityQty                `json:"tyumenParts"`
+	TyumenStock              float64                  `json:"tyumenStock"`
+	TyumenInTransit          float64                  `json:"tyumenInTransit"`
+	TyumenTarget             float64                  `json:"tyumenTarget"`
+	TyumenPlannedOrder       float64                  `json:"tyumenPlannedOrder"`
+	TyumenFree               float64                  `json:"tyumenFree"`
+	FromTyumen               float64                  `json:"fromTyumen"`
+	SupplierNeed             float64                  `json:"supplierNeed"`
+	SupplierUnitSize         float64                  `json:"supplierUnitSize"`
+	NovacutanMinimum         float64                  `json:"novacutanMinimum,omitzero"`
+	BlankBoxSize             float64                  `json:"blankBoxSize,omitzero"`
+	HasBoxSize               bool                     `json:"hasBoxSize,omitzero"`
+	Variant                  string                   `json:"variant,omitempty"`
+	ChristinaLine            *orderfill.ChristinaLine `json:"christinaLine,omitempty"`
+	HasBudgetData            bool                     `json:"hasBudgetData,omitzero"`
+	BudgetCategory           string                   `json:"budgetCategory,omitempty"`
+	BudgetDemand             float64                  `json:"budgetDemand,omitzero"`
+	BudgetPrices             []orderfill.BudgetPrice  `json:"budgetPrices,omitempty"`
+	BudgetPriceColumn        int                      `json:"budgetPriceColumn,omitzero"`
+	BudgetDefaultPriceColumn int                      `json:"budgetDefaultPriceColumn,omitzero"`
+	BudgetPrice              float64                  `json:"budgetPrice,omitzero"`
+	BudgetDiscount           float64                  `json:"budgetDiscount,omitzero"`
+	BudgetComment            string                   `json:"budgetComment,omitempty"`
+	ActualSupplierOrder      float64                  `json:"actualSupplierOrder"`
+	NorthNeed                float64                  `json:"northNeed"`
+	Comment                  string                   `json:"comment"`
+	HasTyumenSource          bool                     `json:"hasTyumenSource"`
+	WarehouseStock           float64                  `json:"warehouseStock"`
+	WarehouseTransit         float64                  `json:"warehouseTransit"`
+	HasWarehouseStock        bool                     `json:"hasWarehouseStock"`
 }
 
 type Summary struct {
@@ -101,6 +104,9 @@ func BuildReport(brand string, needs []Need, stock []Stock, planned []Planned, g
 	names := map[string]string{}
 	rawArticles := map[string]string{}
 	prices := map[string]float64{}
+	priceOptions := map[string][]orderfill.BudgetPrice{}
+	priceColumns := map[string]int{}
+	priceCities := map[string]string{}
 	lines := map[string]*orderfill.ChristinaLine{}
 	uploaded := make([]string, 0)
 	for _, need := range needs {
@@ -117,8 +123,11 @@ func BuildReport(brand string, needs []Need, stock []Stock, planned []Planned, g
 		if rawArticles[need.Article] == "" {
 			rawArticles[need.Article] = need.ArticleRaw
 		}
-		if prices[need.Article] == 0 && need.Price > 0 {
+		if _, found := priceCities[need.Article]; !found || need.City == "tyumen" && priceCities[need.Article] != "tyumen" {
 			prices[need.Article] = need.Price
+			priceOptions[need.Article] = need.Prices
+			priceColumns[need.Article] = need.PriceColumn
+			priceCities[need.Article] = need.City
 		}
 		label := Label(need.City)
 		if !slices.Contains(uploaded, label) {
@@ -158,35 +167,37 @@ func BuildReport(brand string, needs []Need, stock []Stock, planned []Planned, g
 			cities = append(cities, CityQty{Key: city.key, Label: city.label, Quantity: qty})
 		}
 		row := PlanRow{
-			Key:                 article,
-			Article:             article,
-			ArticleRaw:          rawArticles[article],
-			Name:                name,
-			Cities:              cities,
-			TyumenStock:         src.Stock,
-			TyumenInTransit:     src.InTransit,
-			TyumenTarget:        src.Target,
-			TyumenPlannedOrder:  plan.TyumenQty,
-			TyumenFree:          max(0, src.Stock+src.InTransit-src.Target),
-			FromTyumen:          plan.TransferQty,
-			SupplierNeed:        plan.SupplierQty,
-			SupplierUnitSize:    cmp.Or(plan.UnitSize, 1),
-			NovacutanMinimum:    plan.NovacutanMin,
-			BlankBoxSize:        plan.BoxSize,
-			HasBoxSize:          plan.HasBoxSize,
-			Variant:             plan.Variant,
-			ChristinaLine:       lines[article],
-			HasBudgetData:       prices[article] > 0 && src.MonthlyDemand > 0 && slices.Contains([]string{"A+", "A", "B", "C"}, src.Category),
-			BudgetCategory:      src.Category,
-			BudgetDemand:        src.MonthlyDemand,
-			BudgetPrice:         prices[article],
-			ActualSupplierOrder: plan.SupplierQty,
-			NorthNeed:           northNeed,
-			Comment:             plan.Comment,
-			HasTyumenSource:     inStock,
-			WarehouseStock:      plan.WarehouseStock,
-			WarehouseTransit:    plan.WarehouseTransit,
-			HasWarehouseStock:   plan.HasWarehouseStock,
+			Key:                      article,
+			Article:                  article,
+			ArticleRaw:               rawArticles[article],
+			Name:                     name,
+			Cities:                   cities,
+			TyumenStock:              src.Stock,
+			TyumenInTransit:          src.InTransit,
+			TyumenTarget:             src.Target,
+			TyumenPlannedOrder:       plan.TyumenQty,
+			TyumenFree:               max(0, src.Stock+src.InTransit-src.Target),
+			FromTyumen:               plan.TransferQty,
+			SupplierNeed:             plan.SupplierQty,
+			SupplierUnitSize:         cmp.Or(plan.UnitSize, 1),
+			NovacutanMinimum:         plan.NovacutanMin,
+			BlankBoxSize:             plan.BoxSize,
+			HasBoxSize:               plan.HasBoxSize,
+			Variant:                  plan.Variant,
+			ChristinaLine:            lines[article],
+			HasBudgetData:            prices[article] > 0 && src.MonthlyDemand > 0 && slices.Contains([]string{"A+", "A", "B", "C"}, src.Category),
+			BudgetCategory:           src.Category,
+			BudgetDemand:             src.MonthlyDemand,
+			BudgetPrice:              prices[article],
+			BudgetPrices:             priceOptions[article],
+			BudgetDefaultPriceColumn: priceColumns[article],
+			ActualSupplierOrder:      plan.SupplierQty,
+			NorthNeed:                northNeed,
+			Comment:                  plan.Comment,
+			HasTyumenSource:          inStock,
+			WarehouseStock:           plan.WarehouseStock,
+			WarehouseTransit:         plan.WarehouseTransit,
+			HasWarehouseStock:        plan.HasWarehouseStock,
 		}
 		PopulateAllocation(&row)
 		rows = append(rows, row)
@@ -228,6 +239,7 @@ func ApplyEdits(report *Report, edits []Edit) error {
 			var payload struct {
 				Cities        map[string]float64 `json:"cities"`
 				Discount      float64            `json:"discount"`
+				PriceColumn   int                `json:"price_column"`
 				BudgetComment string             `json:"budgetComment"`
 			}
 			if err := json.Unmarshal([]byte(edit.Comment), &payload); err != nil {
@@ -249,6 +261,31 @@ func ApplyEdits(report *Report, edits []Edit) error {
 				return fmt.Errorf("%w: скидка должна быть от 0 до 99,99%%", orderfill.ErrInvalidInput)
 			}
 			report.PlanRows[i].BudgetDiscount = payload.Discount
+			if payload.PriceColumn < 0 {
+				return fmt.Errorf("%w: неверная колонка цены", orderfill.ErrInvalidInput)
+			}
+			report.PlanRows[i].BudgetPriceColumn = payload.PriceColumn
+			if payload.PriceColumn == 0 {
+				for _, price := range report.PlanRows[i].BudgetPrices {
+					if price.Column == report.PlanRows[i].BudgetDefaultPriceColumn {
+						report.PlanRows[i].BudgetPrice = price.Price
+						break
+					}
+				}
+			}
+			if payload.PriceColumn > 0 {
+				found := false
+				for _, price := range report.PlanRows[i].BudgetPrices {
+					if price.Column == payload.PriceColumn {
+						report.PlanRows[i].BudgetPrice = price.Price
+						found = true
+						break
+					}
+				}
+				if !found {
+					return fmt.Errorf("%w: выбранная колонка цены отсутствует в бланке", orderfill.ErrInvalidInput)
+				}
+			}
 			if len([]rune(payload.BudgetComment)) > 500 {
 				return fmt.Errorf("%w: комментарий бюджетного расчёта слишком длинный", orderfill.ErrInvalidInput)
 			}

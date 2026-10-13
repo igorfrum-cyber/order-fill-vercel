@@ -27,16 +27,19 @@ const (
 
 // JobMessage is the queue contract published by job-service.
 type JobMessage struct {
-	JobID        string        `json:"job_id"`
-	Type         string        `json:"type"`
-	Stage        Stage         `json:"stage"`
-	Brand        string        `json:"brand"`
-	OrderMonth   string        `json:"order_month"`
-	MatchingMode string        `json:"matching_mode,omitempty"`
-	CompanyID    string        `json:"company_id,omitempty"`
-	OrderProfile OrderProfile  `json:"order_profile,omitzero"`
-	Inputs       []MessageFile `json:"inputs"`
-	Edits        []MessageEdit `json:"edits,omitempty"`
+	ReplaceBudgetPricing bool                      `json:"replace_budget_pricing,omitempty"`
+	BudgetPricing        []orderfill.BudgetPricing `json:"budget_pricing,omitempty"`
+	JobID                string                    `json:"job_id"`
+	Type                 string                    `json:"type"`
+	Stage                Stage                     `json:"stage"`
+	Brand                string                    `json:"brand"`
+	OrderMonth           string                    `json:"order_month"`
+	MatchingMode         string                    `json:"matching_mode,omitempty"`
+	CompanyID            string                    `json:"company_id,omitempty"`
+	OrderProfile         OrderProfile              `json:"order_profile,omitzero"`
+	Inputs               []MessageFile             `json:"inputs"`
+	Edits                []MessageEdit             `json:"edits,omitempty"`
+	IncludeBlankStocks   bool                      `json:"include_blank_stocks,omitempty"`
 }
 
 type OrderProfile struct {

@@ -2,7 +2,7 @@ package orderfill
 
 import (
 	"fmt"
-	"math"
+	"order-fill/backend/pkg/numberjs"
 	"sort"
 	"strconv"
 	"strings"
@@ -122,6 +122,9 @@ func applyChestnyZnak(command FillCommand, detection Detection, rule brand.RuleC
 	refs := readSourceRowRefs(detection, rule)
 	items := make([]MatchItem, 0, len(refs))
 	for _, ref := range refs {
+		if strings.Contains(detection.Sheet.Value(ref.row, detection.Columns[ColumnComment]), "Проверить: неоднозначная позиция") {
+			continue
+		}
 		items = append(items, MatchItem{ID: strconv.Itoa(ref.row), Article: ref.article, Name: ref.name})
 	}
 	report(0.05)
@@ -166,9 +169,16 @@ func applyChestnyZnak(command FillCommand, detection Detection, rule brand.RuleC
 			continue
 		}
 		targetName := normalize.AsText(detection.Sheet.Value(targetRow, detection.Columns[ColumnName]))
-		mergedName := "ЧЗ + " + targetName
+		mergedName := targetName
+		hasChz := hasChzPrefix(targetName)
+		for _, row := range matched {
+			hasChz = hasChz || hasChzPrefix(detection.Sheet.Value(row, detection.Columns[ColumnName]))
+		}
+		if hasChz {
+			mergedName = "ЧЗ + " + stripLocationChz(targetName)
+		}
 		detection.Sheet.SetText(targetRow, detection.Columns[ColumnName], mergedName)
-		if detection.Columns[ColumnName] != 1 {
+		if detection.Columns[ColumnName] != 1 && detection.Columns[ColumnArticle] != 1 {
 			detection.Sheet.SetText(targetRow, 1, mergedName)
 		}
 		sumInto(detection.Sheet, targetRow, append([]int{targetRow}, matched...), append(append([]int{}, columns.salesColumns...),
@@ -220,6 +230,9 @@ func applyRecommendations(command FillCommand, detection Detection, rule brand.R
 		if err != nil {
 			continue
 		}
+		if detection.BudgetDemands != nil {
+			detection.BudgetDemands[target] = row.MonthlyNeed
+		}
 		detection.Sheet.SetNumber(target, detection.Columns[ColumnRecommended], roundTo2(row.Recommended))
 		if cityRule == "urengoy" {
 			continue
@@ -242,6 +255,9 @@ func applyRecommendations(command FillCommand, detection Detection, rule brand.R
 		if columns.targetStock > 0 {
 			detection.Sheet.SetNumber(target, columns.targetStock, roundTo2(row.TargetStock))
 		}
+	}
+	if cityRule != "urengoy" {
+		refreshLocationTotals(detection, columns, refs)
 	}
 	return nil
 }
@@ -312,5 +328,50 @@ func mergeFactAndComment(detection Detection, rows []int) (*float64, string) {
 }
 
 func roundTo2(value float64) float64 {
-	return math.Round(value*100) / 100
+	return numberjs.Fixed2(value)
+}
+
+// RecalculateTable updates recommendations while retaining actual orders and comments.
+func RecalculateTable(command FillCommand) (Source, error) {
+	rule := command.Rule
+	if rule.Label == "" {
+		rule = brand.Rule(command.Brand)
+	}
+	detection, err := DetectSourceColumns(command.Source)
+	if err != nil {
+		return Source{}, err
+	}
+	if detectCalculationColumns(detection) == nil {
+		return Source{}, fmt.Errorf("%w: для пересчёта нужна полная таблица с месячными продажами и ABC-анализом", ErrInvalidInput)
+	}
+	return readSource(command, rule, command.OnProgress)
+}
+
+// BudgetForecast asks the calculation owner for main's demand metric without changing the workbook.
+func BudgetForecast(command FillCommand) (map[int]float64, error) {
+	detection, err := DetectSourceColumns(command.Source)
+	if err != nil {
+		return nil, err
+	}
+	columns := detectCalculationColumns(detection)
+	if columns == nil || command.Recommender == nil {
+		return map[int]float64{}, nil
+	}
+	rows := []RecommendRow{}
+	for _, ref := range readSourceRowRefs(detection, command.Rule) {
+		rows = append(rows, RecommendRow{ID: strconv.Itoa(ref.row), MonthlySales: monthlyValues(detection.Sheet, ref.row, columns.salesColumns)})
+	}
+	out, err := command.Recommender.Recommend(command.ctx(), command.Brand, "", max(1, detectDeliveryWeeks(command.Source)), rows)
+	if err != nil {
+		return nil, err
+	}
+	demands := map[int]float64{}
+	for _, row := range out {
+		index, err := strconv.Atoi(row.ID)
+		if err != nil {
+			return nil, fmt.Errorf("budget forecast row: %w", err)
+		}
+		demands[index] = row.MonthlyNeed
+	}
+	return demands, nil
 }

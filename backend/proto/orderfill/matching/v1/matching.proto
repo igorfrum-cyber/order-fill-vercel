@@ -24,6 +24,7 @@ message Item {
   string form = 5;
   bool chestny_znak = 6;
   int32 rounded = 7;
+  double recommended = 8;
 }
 
 message MatchReasons {
@@ -51,6 +52,7 @@ message MatchRowsRequest {
   repeated Item blank_items = 4;
   repeated string prefix_aliases = 5;
   bool preserve_hyphen = 6;
+  string brand = 7;
 }
 
 message MatchRowsResponse {

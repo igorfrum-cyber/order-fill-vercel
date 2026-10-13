@@ -7,7 +7,7 @@ import (
 	"order-fill/backend/services/job-service/internal/queue"
 )
 
-func (s *Service) SubmitEdits(ctx context.Context, actor domain.Actor, jobID string, edits []domain.Edit) (domain.Job, error) {
+func (s *Service) SubmitEditsWithPricing(ctx context.Context, actor domain.Actor, jobID string, edits []domain.Edit, includeBlankStocks bool, replacePricing bool, pricing ...domain.BudgetPricing) (domain.Job, error) {
 	job, err := s.Get(ctx, actor, jobID)
 	if err != nil {
 		return domain.Job{}, err
@@ -27,17 +27,23 @@ func (s *Service) SubmitEdits(ctx context.Context, actor domain.Actor, jobID str
 		queueEdits = append(queueEdits, queue.Edit{Key: edit.RowKey, Value: edit.Value, Comment: edit.Comment})
 	}
 	if err := s.publisher.Publish(ctx, queue.Message{
-		Version:      queue.Version,
-		JobID:        job.ID,
-		Type:         string(job.Type),
-		Stage:        "finalize",
-		MatchingMode: string(job.MatchingMode),
-		CompanyID:    job.CompanyID,
-		Inputs:       queueInputs(append(append([]domain.FileRef{}, job.InputFiles...), job.OutputFiles...)),
-		Edits:        queueEdits,
+		Version:            queue.Version,
+		JobID:              job.ID,
+		Type:               string(job.Type),
+		Stage:              "finalize",
+		MatchingMode:       string(job.MatchingMode),
+		CompanyID:          job.CompanyID,
+		Inputs:             queueInputs(append(append([]domain.FileRef{}, job.InputFiles...), job.OutputFiles...)),
+		Edits:              queueEdits,
+		IncludeBlankStocks: includeBlankStocks,
+		BudgetPricing:      pricing, ReplaceBudgetPricing: replacePricing,
 	}); err != nil {
 		_ = s.store.CompareAndSwapStatus(ctx, job.ID, domain.StatusFinalizing, from, s.now().UTC())
 		return domain.Job{}, err
 	}
 	return job, nil
+}
+
+func (s *Service) SubmitEdits(ctx context.Context, actor domain.Actor, jobID string, edits []domain.Edit, includeBlankStocks bool, pricing ...domain.BudgetPricing) (domain.Job, error) {
+	return s.SubmitEditsWithPricing(ctx, actor, jobID, edits, includeBlankStocks, len(pricing) > 0, pricing...)
 }

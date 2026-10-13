@@ -146,6 +146,55 @@ func TestPlanBudgetStagesAndPermissions(t *testing.T) {
 	}
 }
 
+func TestPlanBudgetFullBoxMustFitCategoryCoverageStage(t *testing.T) {
+	t.Parallel()
+
+	slowC := budgetRow("slow-c", "C")
+	slowC.Quantity = 0
+	slowC.Demand = 6
+	slowC.Step = 20
+	slowC.Minimum = 20
+
+	fastAPlus := budgetRow("fast-a+", "A+")
+	fastAPlus.Quantity = 160
+	fastAPlus.Demand = 100
+	fastAPlus.Step = 20
+	fastAPlus.Minimum = 20
+
+	plan, err := calculation.PlanBudget([]domain.BudgetRow{slowC, fastAPlus}, 18000, domain.BudgetOptions{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if plan.Rows[0].Quantity != 0 || plan.Rows[1].Quantity != 180 || !plan.Complete {
+		t.Fatalf("plan should defer the C box and fill A+: %+v", plan)
+	}
+}
+
+func TestPlanBudgetStageUsesCandidatesWithinBudgetCap(t *testing.T) {
+	t.Parallel()
+
+	tooExpensiveA := budgetRow("too-expensive-a", "A")
+	tooExpensiveA.Quantity = 0
+	tooExpensiveA.Price = 2000
+	tooExpensiveA.Demand = 6
+	tooExpensiveA.Step = 2
+	tooExpensiveA.Minimum = 2
+
+	withinCapAPlus := budgetRow("within-cap-a+", "A+")
+	withinCapAPlus.Quantity = 160
+	withinCapAPlus.Demand = 100
+	withinCapAPlus.Step = 20
+	withinCapAPlus.Minimum = 20
+
+	plan, err := calculation.PlanBudget([]domain.BudgetRow{tooExpensiveA, withinCapAPlus}, 18000, domain.BudgetOptions{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if plan.Rows[0].Quantity != 0 || plan.Rows[1].Quantity != 180 || !plan.Complete {
+		t.Fatalf("stage selection should ignore candidates above the budget cap: %+v", plan)
+	}
+}
+
 func TestPlanBudgetUnitsAndInputIsolation(t *testing.T) {
 	t.Parallel()
 	u, step, min := calculation.BudgetOrderRules("novacutan", "Novacutan SBIO, 2 мл", 0)
@@ -242,5 +291,32 @@ func TestPlanBudgetRejectsBadTarget(t *testing.T) {
 	_, err := calculation.PlanBudget(nil, -1, domain.BudgetOptions{})
 	if err == nil || err.Error() != "введите неотрицательную сумму" {
 		t.Fatalf("%v", err)
+	}
+}
+
+func TestQuoteBudgetPreservesRowsAndSeparatePriceDiscounts(t *testing.T) {
+	t.Parallel()
+	got, err := calculation.PlanReportBudget(domain.BudgetRequest{Brand: "christina", QuoteOnly: true, Rows: []domain.BudgetInputRow{{Key: "home", Name: "HOME", Quantity: 3, BasePrice: 100, DiscountOverride: new(10.0), Group: "home"}, {Key: "proff", Name: "PROFF", Quantity: 3, BasePrice: 100, DiscountOverride: new(20.0), Group: "proff"}}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.Before != 510 || got.Total != 510 || got.Rows[0].Quantity != 3 || got.Rows[1].Quantity != 3 {
+		t.Fatalf("quote=%+v", got)
+	}
+}
+
+func TestQuoteDoesNotCompleteMissingProffSet(t *testing.T) {
+	t.Parallel()
+	rows := []domain.BudgetInputRow{}
+	required := []string{"0", "1", "2", "3"}
+	for i, qty := range []float64{18, 18, 18, 0} {
+		rows = append(rows, domain.BudgetInputRow{Key: required[i], Name: "MUSE", Quantity: qty, BasePrice: 100, Demand: 10, Category: "A+", Group: "proff", Line: &domain.ChristinaLine{ID: "MUSE", Name: "MUSE", Article: required[i], Required: required}})
+	}
+	got, err := calculation.PlanReportBudget(domain.BudgetRequest{Brand: "christina", QuoteOnly: true, DeliveryWeeks: 1, Rows: rows})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.Total != 5400 || got.Before != 5400 || got.Rows[3].Quantity != 0 {
+		t.Fatalf("quote modified order: %+v", got)
 	}
 }

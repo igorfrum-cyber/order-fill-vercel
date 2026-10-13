@@ -41,8 +41,11 @@ func (a *API) createJob(w http.ResponseWriter, r *http.Request, jobType string) 
 		writeError(w, http.StatusBadRequest, "bad_request", err.Error())
 		return
 	}
+	if jobType == "order_fill" && r.FormValue("mode") == "recalculate" {
+		jobType = "table_recalculate"
+	}
 	ids := make([]string, 0)
-	if jobType == "order_fill" {
+	if jobType == "order_fill" || jobType == "table_recalculate" {
 		uploaded, err := a.uploadParts(r, "source_file", "source", true)
 		if err != nil {
 			writeError(w, http.StatusBadRequest, "bad_request", err.Error())
@@ -63,7 +66,7 @@ func (a *API) createJob(w http.ResponseWriter, r *http.Request, jobType string) 
 		return
 	}
 	ids = append(ids, warehouse...)
-	requireDefaultBlanks := jobType != "north_merge" || (len(r.MultipartForm.File["blank_home_files"]) == 0 && len(r.MultipartForm.File["blank_proff_files"]) == 0)
+	requireDefaultBlanks := jobType != "table_recalculate" && (jobType != "north_merge" || (len(r.MultipartForm.File["blank_home_files"]) == 0 && len(r.MultipartForm.File["blank_proff_files"]) == 0))
 	blanks, err := a.uploadParts(r, "blank_files", "blank", requireDefaultBlanks)
 	if err != nil {
 		writeError(w, http.StatusBadRequest, "bad_request", err.Error())
@@ -85,7 +88,7 @@ func (a *API) createJob(w http.ResponseWriter, r *http.Request, jobType string) 
 		ids = append(ids, proff...)
 	}
 	resp, err := a.Clients.Jobs.CreateJob(a.jobCtx(r, user), &jobsv1.CreateJobRequest{
-		Meta: a.meta(user), Type: jobType, InputFileIds: ids, Brand: r.FormValue("brand"),
+		Meta: a.meta(user), Type: jobType, InputFileIds: ids, Brand: r.FormValue("brand"), OrderMonth: r.FormValue("order_month"),
 	})
 	if err != nil {
 		writeGRPCError(w, "create_job_failed", err)
@@ -195,6 +198,14 @@ func (a *API) submitEdits(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var payload struct {
+		IncludeBlankStocks bool `json:"include_blank_stocks"`
+		BudgetPricing      *[]struct {
+			RowKey      string  `json:"row_key"`
+			PriceColumn int32   `json:"price_column"`
+			BasePrice   float64 `json:"base_price"`
+			Discount    float64 `json:"discount"`
+			Price       float64 `json:"price"`
+		} `json:"budget_pricing"`
 		Edits []struct {
 			Key, Value, Comment string
 		} `json:"edits"`
@@ -206,8 +217,14 @@ func (a *API) submitEdits(w http.ResponseWriter, r *http.Request) {
 	for _, edit := range payload.Edits {
 		edits = append(edits, &jobsv1.Edit{RowKey: edit.Key, Value: edit.Value, Comment: edit.Comment})
 	}
+	pricing := make([]*jobsv1.BudgetPricing, 0)
+	if payload.BudgetPricing != nil {
+		for _, entry := range *payload.BudgetPricing {
+			pricing = append(pricing, &jobsv1.BudgetPricing{RowKey: entry.RowKey, PriceColumn: entry.PriceColumn, BasePrice: entry.BasePrice, Discount: entry.Discount, Price: entry.Price})
+		}
+	}
 	resp, err := a.Clients.Jobs.SubmitEdits(a.jobCtx(r, user), &jobsv1.SubmitEditsRequest{
-		Meta: a.meta(user), JobId: job.GetId(), Edits: edits,
+		Meta: a.meta(user), JobId: job.GetId(), Edits: edits, IncludeBlankStocks: payload.IncludeBlankStocks, BudgetPricing: pricing, ReplaceBudgetPricing: payload.BudgetPricing != nil,
 	})
 	if err != nil {
 		writeGRPCError(w, "submit_edits_failed", err)

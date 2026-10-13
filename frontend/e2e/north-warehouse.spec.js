@@ -3,6 +3,7 @@ import { expect, test } from "@playwright/test";
 test("North uploads office and delivery warehouse as distinct inputs", async ({ page }) => {
   let multipartBody = "";
   let submittedEdits = null;
+  let budgetRequest = null;
   await page.route("**/api/v1/**", async (route) => {
     const request = route.request();
     const path = new URL(request.url()).pathname;
@@ -51,6 +52,7 @@ test("North uploads office and delivery warehouse as distinct inputs", async ({ 
           budgetCategory: "A",
           budgetDemand: 100,
           budgetPrice: 100,
+          budgetPrices: [{column: 3,label: "Цена розничная",price:200},{column:4,label:"Цена со скидкой",price:100}],
           hasTyumenSource: true,
           warehouseStock: 10,
           warehouseTransit: 0,
@@ -78,6 +80,7 @@ test("North uploads office and delivery warehouse as distinct inputs", async ({ 
       return;
     }
     if (path === "/api/v1/order/budget-plan") {
+      budgetRequest=JSON.parse(request.postData() || "{}");
       await route.fulfill({ json: {
         before: 500, total: 700, target: 700, reason: "", complete: true,
         rows: [{ key: "A1", name: "Крем", category: "A", before: 5, quantity: 7, comment: "Добавилось 2 шт. Для закупа до суммы." }],
@@ -109,6 +112,8 @@ test("North uploads office and delivery warehouse as distinct inputs", async ({ 
   await expect(page.getByRole("spinbutton", { name: "Фактический заказ у поставщика для Крем" })).toHaveValue("5");
   await page.getByRole("button", { name: "Заказ до суммы" }).click();
   await page.getByLabel("Целевая сумма, ₽").fill("700");
+  await page.getByLabel("Колонка цены").selectOption("3");
+  await page.getByLabel("Скидка, %").fill("10");
   await page.getByRole("button", { name: "Рассчитать" }).click();
   await expect(page.getByLabel("Предпросмотр бюджета")).toContainText("5 → 7");
   await page.getByRole("button", { name: "Применить" }).click();
@@ -116,11 +121,14 @@ test("North uploads office and delivery warehouse as distinct inputs", async ({ 
   await expect(page.getByText("Добавилось 2 шт. Для закупа до суммы.")).toBeVisible();
   await page.getByRole("button", { name: "Скачать файлы" }).click();
   await expect(page.getByRole("link", { name: "Скачать общий бланк" })).toBeVisible();
+  expect(budgetRequest.rows[0].base_price).toBe(200);
+  expect(budgetRequest.discount).toBe(10);
   expect(submittedEdits.edits[0].key).toBe("A1");
   expect(submittedEdits.edits[0].value).toBe("7");
   expect(JSON.parse(submittedEdits.edits[0].comment)).toEqual({
     cities: { surgut: 15 },
-    discount: 0,
+    discount: 10,
+    price_column: 3,
     budgetComment: "Добавилось 2 шт. Для закупа до суммы.",
   });
 });

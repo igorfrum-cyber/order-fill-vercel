@@ -1,0 +1,1198 @@
+{
+  "source": "origin/main 1e2baa1 src/workbookProcessor.js; reference selectors executed in Node VM; public synthetic product names",
+  "cases": [
+    {
+      "name": "prefer-nonpositive-over-higher-positive",
+      "kind": "fallback",
+      "blankName": "Deep Hydrating Serum 50 ml",
+      "blankUnit": "",
+      "items": [
+        {
+          "id": "positive",
+          "name": "Deep Hydrating Serum 50 ml",
+          "rounded": 10,
+          "article": "",
+          "recommended": 10
+        },
+        {
+          "id": "zero",
+          "name": "Deep Hydrating Serum 50 ml extra",
+          "rounded": 0,
+          "article": "",
+          "recommended": 0
+        }
+      ],
+      "expected": {
+        "id": "zero",
+        "score": 0.9565517241379311,
+        "category": "order_not_needed"
+      }
+    },
+    {
+      "name": "nonpositive-bypasses-ambiguity",
+      "kind": "fallback",
+      "blankName": "Deep Hydrating Serum 50 ml",
+      "blankUnit": "",
+      "items": [
+        {
+          "id": "positive",
+          "name": "Deep Hydrating Serum 50 ml",
+          "rounded": 10,
+          "article": "",
+          "recommended": 10
+        },
+        {
+          "id": "zero",
+          "name": "Deep Hydrating Serum 50 ml x",
+          "rounded": 0,
+          "article": "",
+          "recommended": 0
+        }
+      ],
+      "expected": {
+        "id": "zero",
+        "score": 1,
+        "category": "order_not_needed"
+      }
+    },
+    {
+      "name": "positive-ambiguous",
+      "kind": "fallback",
+      "blankName": "Deep Hydrating Serum 50 ml",
+      "blankUnit": "",
+      "items": [
+        {
+          "id": "a",
+          "name": "Deep Hydrating Serum 50 ml",
+          "rounded": 10,
+          "article": "",
+          "recommended": 10
+        },
+        {
+          "id": "b",
+          "name": "Deep Hydrating Serum 50 ml x",
+          "rounded": 10,
+          "article": "",
+          "recommended": 10
+        }
+      ],
+      "expected": {
+        "id": "",
+        "score": 1,
+        "category": "not_in_source"
+      }
+    },
+    {
+      "name": "article-rows-not-fallback",
+      "kind": "fallback",
+      "blankName": "Deep Hydrating Serum 50 ml",
+      "blankUnit": "",
+      "items": [
+        {
+          "id": "article",
+          "name": "Deep Hydrating Serum 50 ml",
+          "rounded": 10,
+          "article": "X",
+          "recommended": 10
+        }
+      ],
+      "expected": {
+        "id": "",
+        "score": 0,
+        "category": "not_in_source"
+      }
+    },
+    {
+      "name": "volume-ml-50-50",
+      "kind": "candidate",
+      "blankName": "Deep Hydrating Serum 50 ml",
+      "blankUnit": "",
+      "items": [
+        {
+          "id": "a",
+          "name": "Deep Hydrating Serum 50 ml",
+          "rounded": 10,
+          "article": "",
+          "recommended": 10
+        },
+        {
+          "id": "b",
+          "name": "Other Hydrating Serum 50 ml",
+          "rounded": 10,
+          "article": "",
+          "recommended": 10
+        }
+      ],
+      "expected": {
+        "id": "a",
+        "score": 1,
+        "category": "to_order"
+      }
+    },
+    {
+      "name": "volume-ml-50-150",
+      "kind": "candidate",
+      "blankName": "Deep Hydrating Serum 50 ml",
+      "blankUnit": "",
+      "items": [
+        {
+          "id": "a",
+          "name": "Deep Hydrating Serum 150 ml",
+          "rounded": 10,
+          "article": "",
+          "recommended": 10
+        },
+        {
+          "id": "b",
+          "name": "Other Hydrating Serum 50 ml",
+          "rounded": 10,
+          "article": "",
+          "recommended": 10
+        }
+      ],
+      "expected": {
+        "id": "b",
+        "score": 0.9279245283018869,
+        "category": "to_order"
+      }
+    },
+    {
+      "name": "volume-g-50-50",
+      "kind": "candidate",
+      "blankName": "Deep Hydrating Serum 50 g",
+      "blankUnit": "",
+      "items": [
+        {
+          "id": "a",
+          "name": "Deep Hydrating Serum 50 g",
+          "rounded": 10,
+          "article": "",
+          "recommended": 10
+        },
+        {
+          "id": "b",
+          "name": "Other Hydrating Serum 50 g",
+          "rounded": 10,
+          "article": "",
+          "recommended": 10
+        }
+      ],
+      "expected": {
+        "id": "a",
+        "score": 1,
+        "category": "to_order"
+      }
+    },
+    {
+      "name": "volume-g-50-150",
+      "kind": "candidate",
+      "blankName": "Deep Hydrating Serum 50 g",
+      "blankUnit": "",
+      "items": [
+        {
+          "id": "a",
+          "name": "Deep Hydrating Serum 150 g",
+          "rounded": 10,
+          "article": "",
+          "recommended": 10
+        },
+        {
+          "id": "b",
+          "name": "Other Hydrating Serum 50 g",
+          "rounded": 10,
+          "article": "",
+          "recommended": 10
+        }
+      ],
+      "expected": {
+        "id": "b",
+        "score": 0.9227450980392158,
+        "category": "to_order"
+      }
+    },
+    {
+      "name": "volume-мл-50-50",
+      "kind": "candidate",
+      "blankName": "Deep Hydrating Serum 50 мл",
+      "blankUnit": "",
+      "items": [
+        {
+          "id": "a",
+          "name": "Deep Hydrating Serum 50 мл",
+          "rounded": 10,
+          "article": "",
+          "recommended": 10
+        },
+        {
+          "id": "b",
+          "name": "Other Hydrating Serum 50 мл",
+          "rounded": 10,
+          "article": "",
+          "recommended": 10
+        }
+      ],
+      "expected": {
+        "id": "a",
+        "score": 1,
+        "category": "to_order"
+      }
+    },
+    {
+      "name": "volume-мл-50-150",
+      "kind": "candidate",
+      "blankName": "Deep Hydrating Serum 50 мл",
+      "blankUnit": "",
+      "items": [
+        {
+          "id": "a",
+          "name": "Deep Hydrating Serum 150 мл",
+          "rounded": 10,
+          "article": "",
+          "recommended": 10
+        },
+        {
+          "id": "b",
+          "name": "Other Hydrating Serum 50 мл",
+          "rounded": 10,
+          "article": "",
+          "recommended": 10
+        }
+      ],
+      "expected": {
+        "id": "a",
+        "score": 0.9811320754716981,
+        "category": "to_order"
+      }
+    },
+    {
+      "name": "volume-г-50-50",
+      "kind": "candidate",
+      "blankName": "Deep Hydrating Serum 50 г",
+      "blankUnit": "",
+      "items": [
+        {
+          "id": "a",
+          "name": "Deep Hydrating Serum 50 г",
+          "rounded": 10,
+          "article": "",
+          "recommended": 10
+        },
+        {
+          "id": "b",
+          "name": "Other Hydrating Serum 50 г",
+          "rounded": 10,
+          "article": "",
+          "recommended": 10
+        }
+      ],
+      "expected": {
+        "id": "a",
+        "score": 1,
+        "category": "to_order"
+      }
+    },
+    {
+      "name": "volume-г-50-150",
+      "kind": "candidate",
+      "blankName": "Deep Hydrating Serum 50 г",
+      "blankUnit": "",
+      "items": [
+        {
+          "id": "a",
+          "name": "Deep Hydrating Serum 150 г",
+          "rounded": 10,
+          "article": "",
+          "recommended": 10
+        },
+        {
+          "id": "b",
+          "name": "Other Hydrating Serum 50 г",
+          "rounded": 10,
+          "article": "",
+          "recommended": 10
+        }
+      ],
+      "expected": {
+        "id": "a",
+        "score": 0.9803921568627451,
+        "category": "to_order"
+      }
+    },
+    {
+      "name": "volume-гр-50-50",
+      "kind": "candidate",
+      "blankName": "Deep Hydrating Serum 50 гр",
+      "blankUnit": "",
+      "items": [
+        {
+          "id": "a",
+          "name": "Deep Hydrating Serum 50 гр",
+          "rounded": 10,
+          "article": "",
+          "recommended": 10
+        },
+        {
+          "id": "b",
+          "name": "Other Hydrating Serum 50 гр",
+          "rounded": 10,
+          "article": "",
+          "recommended": 10
+        }
+      ],
+      "expected": {
+        "id": "a",
+        "score": 1,
+        "category": "to_order"
+      }
+    },
+    {
+      "name": "volume-гр-50-150",
+      "kind": "candidate",
+      "blankName": "Deep Hydrating Serum 50 гр",
+      "blankUnit": "",
+      "items": [
+        {
+          "id": "a",
+          "name": "Deep Hydrating Serum 150 гр",
+          "rounded": 10,
+          "article": "",
+          "recommended": 10
+        },
+        {
+          "id": "b",
+          "name": "Other Hydrating Serum 50 гр",
+          "rounded": 10,
+          "article": "",
+          "recommended": 10
+        }
+      ],
+      "expected": {
+        "id": "a",
+        "score": 0.9811320754716981,
+        "category": "to_order"
+      }
+    },
+    {
+      "name": "form-conflict-is-score-only",
+      "kind": "candidate",
+      "blankName": "Hydrating cream daily care 50 ml",
+      "blankUnit": "",
+      "items": [
+        {
+          "id": "a",
+          "name": "Hydrating serum daily care 50 ml",
+          "rounded": 10,
+          "article": "",
+          "recommended": 10
+        }
+      ],
+      "expected": {
+        "id": "a",
+        "score": 0.96625,
+        "category": "to_order"
+      }
+    },
+    {
+      "name": "cyrillic-form-conflict-score-only",
+      "kind": "candidate",
+      "blankName": "Крем увлажняющий для кожи лица 50 мл",
+      "blankUnit": "",
+      "items": [
+        {
+          "id": "a",
+          "name": "Сыворотка увлажняющая для кожи лица 50 мл",
+          "rounded": 10,
+          "article": "",
+          "recommended": 10
+        }
+      ],
+      "expected": {
+        "id": "a",
+        "score": 0.8051948051948052,
+        "category": "to_order"
+      }
+    },
+    {
+      "name": "exact-tie-keeps-source-order",
+      "kind": "candidate",
+      "blankName": "Hydrating Serum",
+      "blankUnit": "",
+      "items": [
+        {
+          "id": "first",
+          "name": "Hydrating Serum",
+          "rounded": 10,
+          "article": "",
+          "recommended": 10
+        },
+        {
+          "id": "second",
+          "name": "Hydrating Serum",
+          "rounded": 10,
+          "article": "",
+          "recommended": 10
+        }
+      ],
+      "expected": {
+        "id": "first",
+        "score": 1,
+        "category": "to_order"
+      }
+    },
+    {
+      "name": "sothys-unit-is-required-in-name",
+      "kind": "sothys",
+      "blankName": "Hydrating Cream",
+      "blankUnit": "50 ml",
+      "items": [
+        {
+          "id": "no-unit",
+          "name": "Hydrating Cream",
+          "rounded": 10,
+          "article": "",
+          "recommended": 10
+        },
+        {
+          "id": "unit",
+          "name": "Hydrating Cream 50 ml",
+          "rounded": 10,
+          "article": "",
+          "recommended": 10
+        }
+      ],
+      "expected": {
+        "id": "unit",
+        "score": 0.8933333333333333,
+        "category": "needs_decision"
+      }
+    },
+    {
+      "name": "sothys-no-nonpositive-exception",
+      "kind": "sothys",
+      "blankName": "Deep Hydrating Serum 50 ml",
+      "blankUnit": "",
+      "items": [
+        {
+          "id": "positive",
+          "name": "Deep Hydrating Serum 50 ml",
+          "rounded": 10,
+          "article": "",
+          "recommended": 10
+        },
+        {
+          "id": "zero",
+          "name": "Deep Hydrating Serum 50 ml x",
+          "rounded": 0,
+          "article": "",
+          "recommended": 0
+        }
+      ],
+      "expected": {
+        "id": "",
+        "score": 1,
+        "category": "not_in_source"
+      }
+    },
+    {
+      "name": "sothys-cyrillic-unit-filter",
+      "kind": "sothys",
+      "blankName": "Увлажняющий крем",
+      "blankUnit": "50 мл",
+      "items": [
+        {
+          "id": "wrong",
+          "name": "Увлажняющий крем 150 мл",
+          "rounded": 10,
+          "article": "",
+          "recommended": 10
+        },
+        {
+          "id": "correct",
+          "name": "Увлажняющий крем 50 мл",
+          "rounded": 10,
+          "article": "",
+          "recommended": 10
+        }
+      ],
+      "expected": {
+        "id": "",
+        "score": 0.8421052631578947,
+        "category": "not_in_source"
+      }
+    },
+    {
+      "name": "nova-positive-preference-SBIO",
+      "kind": "novacutan",
+      "blankName": "NOVACUTAN SBIO 2 ml",
+      "blankUnit": "шт",
+      "items": [
+        {
+          "id": "zero",
+          "name": "NOVACUTAN SBIO 2 ml",
+          "rounded": 0,
+          "article": "N1",
+          "recommended": 0
+        },
+        {
+          "id": "positive",
+          "name": "Different SBIO stock 10 ml",
+          "rounded": 10,
+          "article": "N2",
+          "recommended": 10
+        }
+      ],
+      "expected": {
+        "id": "positive",
+        "score": 0.92,
+        "category": "to_order"
+      }
+    },
+    {
+      "name": "nova-nonbonus-SBIO",
+      "kind": "novacutan",
+      "blankName": "NOVACUTAN SBIO 2 ml",
+      "blankUnit": "шт",
+      "items": [
+        {
+          "id": "bonus",
+          "name": "NOVACUTAN SBIO 2 ml бонус",
+          "rounded": 10,
+          "article": "N1",
+          "recommended": 10
+        },
+        {
+          "id": "regular",
+          "name": "NOVACUTAN SBIO 2 ml",
+          "rounded": 0,
+          "article": "N2",
+          "recommended": 0
+        }
+      ],
+      "expected": {
+        "id": "regular",
+        "score": 1,
+        "category": "order_not_needed"
+      }
+    },
+    {
+      "name": "nova-positive-preference-YBIO",
+      "kind": "novacutan",
+      "blankName": "NOVACUTAN YBIO 2 ml",
+      "blankUnit": "шт",
+      "items": [
+        {
+          "id": "zero",
+          "name": "NOVACUTAN YBIO 2 ml",
+          "rounded": 0,
+          "article": "N1",
+          "recommended": 0
+        },
+        {
+          "id": "positive",
+          "name": "Different YBIO stock 10 ml",
+          "rounded": 10,
+          "article": "N2",
+          "recommended": 10
+        }
+      ],
+      "expected": {
+        "id": "positive",
+        "score": 0.92,
+        "category": "to_order"
+      }
+    },
+    {
+      "name": "nova-nonbonus-YBIO",
+      "kind": "novacutan",
+      "blankName": "NOVACUTAN YBIO 2 ml",
+      "blankUnit": "шт",
+      "items": [
+        {
+          "id": "bonus",
+          "name": "NOVACUTAN YBIO 2 ml бонус",
+          "rounded": 10,
+          "article": "N1",
+          "recommended": 10
+        },
+        {
+          "id": "regular",
+          "name": "NOVACUTAN YBIO 2 ml",
+          "rounded": 0,
+          "article": "N2",
+          "recommended": 0
+        }
+      ],
+      "expected": {
+        "id": "regular",
+        "score": 1,
+        "category": "order_not_needed"
+      }
+    },
+    {
+      "name": "nova-positive-preference-BIOPRO",
+      "kind": "novacutan",
+      "blankName": "NOVACUTAN BIOPRO 2 ml",
+      "blankUnit": "шт",
+      "items": [
+        {
+          "id": "zero",
+          "name": "NOVACUTAN BIOPRO 2 ml",
+          "rounded": 0,
+          "article": "N1",
+          "recommended": 0
+        },
+        {
+          "id": "positive",
+          "name": "Different BIOPRO stock 10 ml",
+          "rounded": 10,
+          "article": "N2",
+          "recommended": 10
+        }
+      ],
+      "expected": {
+        "id": "positive",
+        "score": 0.92,
+        "category": "to_order"
+      }
+    },
+    {
+      "name": "nova-nonbonus-BIOPRO",
+      "kind": "novacutan",
+      "blankName": "NOVACUTAN BIOPRO 2 ml",
+      "blankUnit": "шт",
+      "items": [
+        {
+          "id": "bonus",
+          "name": "NOVACUTAN BIOPRO 2 ml бонус",
+          "rounded": 10,
+          "article": "N1",
+          "recommended": 10
+        },
+        {
+          "id": "regular",
+          "name": "NOVACUTAN BIOPRO 2 ml",
+          "rounded": 0,
+          "article": "N2",
+          "recommended": 0
+        }
+      ],
+      "expected": {
+        "id": "regular",
+        "score": 1,
+        "category": "order_not_needed"
+      }
+    },
+    {
+      "name": "nova-positive-preference-PRIMA",
+      "kind": "novacutan",
+      "blankName": "NOVACUTAN PRIMA 2 ml",
+      "blankUnit": "шт",
+      "items": [
+        {
+          "id": "zero",
+          "name": "NOVACUTAN PRIMA 2 ml",
+          "rounded": 0,
+          "article": "N1",
+          "recommended": 0
+        },
+        {
+          "id": "positive",
+          "name": "Different PRIMA stock 10 ml",
+          "rounded": 10,
+          "article": "N2",
+          "recommended": 10
+        }
+      ],
+      "expected": {
+        "id": "positive",
+        "score": 0.92,
+        "category": "to_order"
+      }
+    },
+    {
+      "name": "nova-nonbonus-PRIMA",
+      "kind": "novacutan",
+      "blankName": "NOVACUTAN PRIMA 2 ml",
+      "blankUnit": "шт",
+      "items": [
+        {
+          "id": "bonus",
+          "name": "NOVACUTAN PRIMA 2 ml бонус",
+          "rounded": 10,
+          "article": "N1",
+          "recommended": 10
+        },
+        {
+          "id": "regular",
+          "name": "NOVACUTAN PRIMA 2 ml",
+          "rounded": 0,
+          "article": "N2",
+          "recommended": 0
+        }
+      ],
+      "expected": {
+        "id": "regular",
+        "score": 1,
+        "category": "order_not_needed"
+      }
+    },
+    {
+      "name": "nova-positive-preference-MASTER",
+      "kind": "novacutan",
+      "blankName": "NOVACUTAN MASTER 2 ml",
+      "blankUnit": "шт",
+      "items": [
+        {
+          "id": "zero",
+          "name": "NOVACUTAN MASTER 2 ml",
+          "rounded": 0,
+          "article": "N1",
+          "recommended": 0
+        },
+        {
+          "id": "positive",
+          "name": "Different MASTER stock 10 ml",
+          "rounded": 10,
+          "article": "N2",
+          "recommended": 10
+        }
+      ],
+      "expected": {
+        "id": "positive",
+        "score": 0.92,
+        "category": "to_order"
+      }
+    },
+    {
+      "name": "nova-nonbonus-MASTER",
+      "kind": "novacutan",
+      "blankName": "NOVACUTAN MASTER 2 ml",
+      "blankUnit": "шт",
+      "items": [
+        {
+          "id": "bonus",
+          "name": "NOVACUTAN MASTER 2 ml бонус",
+          "rounded": 10,
+          "article": "N1",
+          "recommended": 10
+        },
+        {
+          "id": "regular",
+          "name": "NOVACUTAN MASTER 2 ml",
+          "rounded": 0,
+          "article": "N2",
+          "recommended": 0
+        }
+      ],
+      "expected": {
+        "id": "regular",
+        "score": 1,
+        "category": "order_not_needed"
+      }
+    },
+    {
+      "name": "nova-positive-preference-BRIGHT",
+      "kind": "novacutan",
+      "blankName": "NOVACUTAN BRIGHT 2 ml",
+      "blankUnit": "шт",
+      "items": [
+        {
+          "id": "zero",
+          "name": "NOVACUTAN BRIGHT 2 ml",
+          "rounded": 0,
+          "article": "N1",
+          "recommended": 0
+        },
+        {
+          "id": "positive",
+          "name": "Different BRIGHT stock 10 ml",
+          "rounded": 10,
+          "article": "N2",
+          "recommended": 10
+        }
+      ],
+      "expected": {
+        "id": "positive",
+        "score": 0.92,
+        "category": "to_order"
+      }
+    },
+    {
+      "name": "nova-nonbonus-BRIGHT",
+      "kind": "novacutan",
+      "blankName": "NOVACUTAN BRIGHT 2 ml",
+      "blankUnit": "шт",
+      "items": [
+        {
+          "id": "bonus",
+          "name": "NOVACUTAN BRIGHT 2 ml бонус",
+          "rounded": 10,
+          "article": "N1",
+          "recommended": 10
+        },
+        {
+          "id": "regular",
+          "name": "NOVACUTAN BRIGHT 2 ml",
+          "rounded": 0,
+          "article": "N2",
+          "recommended": 0
+        }
+      ],
+      "expected": {
+        "id": "regular",
+        "score": 1,
+        "category": "order_not_needed"
+      }
+    },
+    {
+      "name": "nova-positive-preference-GENTLE",
+      "kind": "novacutan",
+      "blankName": "NOVACUTAN GENTLE 2 ml",
+      "blankUnit": "шт",
+      "items": [
+        {
+          "id": "zero",
+          "name": "NOVACUTAN GENTLE 2 ml",
+          "rounded": 0,
+          "article": "N1",
+          "recommended": 0
+        },
+        {
+          "id": "positive",
+          "name": "Different GENTLE stock 10 ml",
+          "rounded": 10,
+          "article": "N2",
+          "recommended": 10
+        }
+      ],
+      "expected": {
+        "id": "positive",
+        "score": 0.92,
+        "category": "to_order"
+      }
+    },
+    {
+      "name": "nova-nonbonus-GENTLE",
+      "kind": "novacutan",
+      "blankName": "NOVACUTAN GENTLE 2 ml",
+      "blankUnit": "шт",
+      "items": [
+        {
+          "id": "bonus",
+          "name": "NOVACUTAN GENTLE 2 ml бонус",
+          "rounded": 10,
+          "article": "N1",
+          "recommended": 10
+        },
+        {
+          "id": "regular",
+          "name": "NOVACUTAN GENTLE 2 ml",
+          "rounded": 0,
+          "article": "N2",
+          "recommended": 0
+        }
+      ],
+      "expected": {
+        "id": "regular",
+        "score": 1,
+        "category": "order_not_needed"
+      }
+    },
+    {
+      "name": "nova-positive-preference-FBIO DVS LIGHT",
+      "kind": "novacutan",
+      "blankName": "NOVACUTAN FBIO DVS LIGHT 2 ml",
+      "blankUnit": "шт",
+      "items": [
+        {
+          "id": "zero",
+          "name": "NOVACUTAN FBIO DVS LIGHT 2 ml",
+          "rounded": 0,
+          "article": "N1",
+          "recommended": 0
+        },
+        {
+          "id": "positive",
+          "name": "Different FBIO DVS LIGHT stock 10 ml",
+          "rounded": 10,
+          "article": "N2",
+          "recommended": 10
+        }
+      ],
+      "expected": {
+        "id": "positive",
+        "score": 0.92,
+        "category": "to_order"
+      }
+    },
+    {
+      "name": "nova-nonbonus-FBIO DVS LIGHT",
+      "kind": "novacutan",
+      "blankName": "NOVACUTAN FBIO DVS LIGHT 2 ml",
+      "blankUnit": "шт",
+      "items": [
+        {
+          "id": "bonus",
+          "name": "NOVACUTAN FBIO DVS LIGHT 2 ml бонус",
+          "rounded": 10,
+          "article": "N1",
+          "recommended": 10
+        },
+        {
+          "id": "regular",
+          "name": "NOVACUTAN FBIO DVS LIGHT 2 ml",
+          "rounded": 0,
+          "article": "N2",
+          "recommended": 0
+        }
+      ],
+      "expected": {
+        "id": "regular",
+        "score": 1,
+        "category": "order_not_needed"
+      }
+    },
+    {
+      "name": "nova-positive-preference-FBIO MEDIUM",
+      "kind": "novacutan",
+      "blankName": "NOVACUTAN FBIO MEDIUM 2 ml",
+      "blankUnit": "шт",
+      "items": [
+        {
+          "id": "zero",
+          "name": "NOVACUTAN FBIO MEDIUM 2 ml",
+          "rounded": 0,
+          "article": "N1",
+          "recommended": 0
+        },
+        {
+          "id": "positive",
+          "name": "Different FBIO MEDIUM stock 10 ml",
+          "rounded": 10,
+          "article": "N2",
+          "recommended": 10
+        }
+      ],
+      "expected": {
+        "id": "positive",
+        "score": 0.92,
+        "category": "to_order"
+      }
+    },
+    {
+      "name": "nova-nonbonus-FBIO MEDIUM",
+      "kind": "novacutan",
+      "blankName": "NOVACUTAN FBIO MEDIUM 2 ml",
+      "blankUnit": "шт",
+      "items": [
+        {
+          "id": "bonus",
+          "name": "NOVACUTAN FBIO MEDIUM 2 ml бонус",
+          "rounded": 10,
+          "article": "N1",
+          "recommended": 10
+        },
+        {
+          "id": "regular",
+          "name": "NOVACUTAN FBIO MEDIUM 2 ml",
+          "rounded": 0,
+          "article": "N2",
+          "recommended": 0
+        }
+      ],
+      "expected": {
+        "id": "regular",
+        "score": 1,
+        "category": "order_not_needed"
+      }
+    },
+    {
+      "name": "nova-positive-preference-EYE FILLER MASK",
+      "kind": "novacutan",
+      "blankName": "NOVACUTAN EYE FILLER MASK 2 ml",
+      "blankUnit": "шт",
+      "items": [
+        {
+          "id": "zero",
+          "name": "NOVACUTAN EYE FILLER MASK 2 ml",
+          "rounded": 0,
+          "article": "N1",
+          "recommended": 0
+        },
+        {
+          "id": "positive",
+          "name": "Different EYE FILLER MASK stock 10 ml",
+          "rounded": 10,
+          "article": "N2",
+          "recommended": 10
+        }
+      ],
+      "expected": {
+        "id": "positive",
+        "score": 0.92,
+        "category": "to_order"
+      }
+    },
+    {
+      "name": "nova-nonbonus-EYE FILLER MASK",
+      "kind": "novacutan",
+      "blankName": "NOVACUTAN EYE FILLER MASK 2 ml",
+      "blankUnit": "шт",
+      "items": [
+        {
+          "id": "bonus",
+          "name": "NOVACUTAN EYE FILLER MASK 2 ml бонус",
+          "rounded": 10,
+          "article": "N1",
+          "recommended": 10
+        },
+        {
+          "id": "regular",
+          "name": "NOVACUTAN EYE FILLER MASK 2 ml",
+          "rounded": 0,
+          "article": "N2",
+          "recommended": 0
+        }
+      ],
+      "expected": {
+        "id": "regular",
+        "score": 1,
+        "category": "order_not_needed"
+      }
+    },
+    {
+      "name": "nova-beauty-alignment",
+      "kind": "novacutan",
+      "blankName": "NOVACUTAN SBIO Beauty Box",
+      "blankUnit": "шт",
+      "items": [
+        {
+          "id": "regular",
+          "name": "NOVACUTAN SBIO",
+          "rounded": 10,
+          "article": "N1",
+          "recommended": 10
+        },
+        {
+          "id": "beauty",
+          "name": "NOVACUTAN SBIO Beauty Box",
+          "rounded": 0,
+          "article": "N2",
+          "recommended": 0
+        }
+      ],
+      "expected": {
+        "id": "beauty",
+        "score": 1,
+        "category": "order_not_needed"
+      }
+    },
+    {
+      "name": "nova-fallback-without-key",
+      "kind": "novacutan",
+      "blankName": "Unknown Product 50 ml",
+      "blankUnit": "шт",
+      "items": [
+        {
+          "id": "a",
+          "name": "Unknown Product 50 ml",
+          "rounded": 10,
+          "article": "N1",
+          "recommended": 10
+        },
+        {
+          "id": "b",
+          "name": "Different 50 ml",
+          "rounded": 10,
+          "article": "N2",
+          "recommended": 10
+        }
+      ],
+      "expected": {
+        "id": "a",
+        "score": 1,
+        "category": "to_order"
+      }
+    },
+    {
+      "name": "nova-low-score-warning",
+      "kind": "novacutan",
+      "blankName": "Unknown Product 50 ml",
+      "blankUnit": "",
+      "items": [
+        {
+          "id": "only",
+          "name": "Unknown Product Repairing Gel 50 ml",
+          "rounded": 10,
+          "article": "X",
+          "recommended": 10
+        }
+      ],
+      "expected": {
+        "id": "only",
+        "score": 0.81,
+        "category": "check_name_or_volume"
+      }
+    },
+    {
+      "name": "nova-score-below-minimum",
+      "kind": "novacutan",
+      "blankName": "Unknown Product 50 ml",
+      "blankUnit": "",
+      "items": [
+        {
+          "id": "only",
+          "name": "Almost Unrelated Item",
+          "rounded": 10,
+          "article": "X",
+          "recommended": 10
+        }
+      ],
+      "expected": {
+        "id": "",
+        "score": 0,
+        "category": "not_in_source"
+      }
+    },
+    {
+      "name": "article-name-below-threshold",
+      "kind": "candidate",
+      "blankName": "Alpha Serum",
+      "blankUnit": "",
+      "items": [
+        {
+          "id": "only",
+          "name": "zzz",
+          "rounded": 10,
+          "article": "X",
+          "recommended": 10
+        }
+      ],
+      "expected": {
+        "id": "only",
+        "score": 0,
+        "category": "check_name_or_volume"
+      }
+    },
+    {
+      "name": "article-quantity-nonpositive",
+      "kind": "candidate",
+      "blankName": "Alpha Serum",
+      "blankUnit": "",
+      "items": [
+        {
+          "id": "only",
+          "name": "Alpha Serum",
+          "rounded": 0,
+          "article": "X",
+          "recommended": 0
+        }
+      ],
+      "expected": {
+        "id": "only",
+        "score": 1,
+        "category": "order_not_needed"
+      }
+    }
+  ]
+}

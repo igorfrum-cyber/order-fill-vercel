@@ -8,8 +8,10 @@ import (
 )
 
 type NorthNeed struct {
-	City, Article, Name string
-	Qty                 float64
+	SupplierUnitSize, Minimum, BoxSize float64
+	HasBoxSize                         bool
+	City, Article, Name                string
+	Qty                                float64
 }
 
 type TyumenStock struct {

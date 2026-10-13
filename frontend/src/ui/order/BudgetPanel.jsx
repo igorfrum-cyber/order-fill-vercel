@@ -1,7 +1,7 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { planOrderBudget } from "../../api/budget.js";
 import { budgetTargetValue, discountValue } from "../../features/order/budgetInput.js";
-import { budgetPatches, budgetRequestRows } from "../../features/order/budgetWorkflow.js";
+import { budgetPatches, budgetRequestRows, budgetPricingEntries, budgetGroup } from "../../features/order/budgetWorkflow.js";
 import { GhostButton, Modal } from "../widgets.jsx";
 import { ChristinaCompare } from "./ChristinaCompare.jsx";
 
@@ -9,99 +9,101 @@ const money = (value) => Number(value || 0).toLocaleString("ru-RU", { minimumFra
 const targetInput = (value) => /^\d{0,12}(?:[.,]\d{0,2})?$/.test(String(value).replace(/\s/g, ""));
 const discountInput = (value) => /^\d{0,2}(?:[.,]\d{0,2})?%?$/.test(String(value).trim());
 
-export function BudgetPanel({ brand, deliveryWeeks, rows, edits, onEdit }) {
+export function BudgetPanel({ sourceCity = "", brand, deliveryWeeks, rows, edits, onEdit, pricing = [], onPricingChange = () => {} }) {
   const [open, setOpen] = useState(false);
   const [target, setTarget] = useState("");
-  const [pricingMode, setPricingMode] = useState("net");
-  const [discount, setDiscount] = useState("30");
-  const [appliedDiscount, setAppliedDiscount] = useState(0);
+  const groups = useMemo(() => [...new Set(rows.filter((row) => row.editable !== false).map(budgetGroup))], [rows]);
+  const [appliedSettings, setAppliedSettings] = useState(() => initialSettings(rows, pricing, brand));
+  const [settings, setSettings] = useState(() => initialSettings(rows, pricing, brand));
+  const [separate, setSeparate] = useState(false);
+  const [groupTargets, setGroupTargets] = useState({});
   const [plan, setPlan] = useState(null);
   const [error, setError] = useState("");
   const [inputError, setInputError] = useState("");
   const [undo, setUndo] = useState(null);
   const [allowOverSix, setAllowOverSix] = useState(false);
   const [allowBelowOne, setAllowBelowOne] = useState(false);
-  const input = useMemo(() => budgetRequestRows(rows, edits), [edits, rows]);
+  const [calculating, setCalculating] = useState(false);
+  const [quote, setQuote] = useState(null);
+  const [lockedKeys,setLockedKeys]=useState(()=>new Set());
+  const input = useMemo(() => budgetRequestRows(rows, edits, open ? settings : appliedSettings, lockedKeys), [rows, edits, open, settings, appliedSettings, lockedKeys]);
+  const quoteKey = JSON.stringify({brand, deliveryWeeks, rows:input});
+  useEffect(() => {
+    let active=true;
+    const request=JSON.parse(quoteKey);
+    if (!request.rows.length) return;
+    planOrderBudget({brand:request.brand,delivery_weeks:request.deliveryWeeks || 0,rows:request.rows,discount:0,target:0,quote_only:true})
+      .then((result) => {if(active)setQuote({key:quoteKey,result});})
+      .catch((err) => {if(active)setQuote({key:quoteKey,error:err.message || "Не удалось получить сумму заказа."});});
+    return () => {active=false;};
+  },[quoteKey]);
   if (!input.length) return null;
-
-  const factor = 1 - (appliedDiscount || 0) / 100;
-  const total = input.reduce((sum, row) => sum + (Math.round(row.base_price * factor * 100) / 100) * row.quantity, 0);
+  const total = quote?.key === quoteKey ? quote.result?.total : null;
+  const quoteError = quote?.key === quoteKey ? quote.error : "";
+  const totalLabel = total == null ? "Считаю сумму…" : `${money(total)} ₽`;
+  const budgetAllowed = !sourceCity || /тюмен|tyumen/i.test(sourceCity) || brand === "angiopharm";
   const changed = plan?.rows.filter((row) => row.quantity !== row.before) || [];
 
-  function resetPreview() {
-    setPlan(null);
-    setError("");
-  }
-
-  function currentDraftDiscount() {
-    return pricingMode === "gross" ? discountValue(discount) : 0;
+  function resetPreview() {setPlan(null);setError("");}
+  function changeSettings(group,patch) {
+    setSettings((current) => ({...current,[group]:{...groupSettings(current,group),...patch}}));
+    setAllowOverSix(false);setAllowBelowOne(false);setInputError("");resetPreview();
   }
 
   async function calculate() {
+    setCalculating(true);
     try {
-      const value = budgetTargetValue(target);
-      const nextDiscount = currentDraftDiscount();
-      const next = await planOrderBudget({
-        brand,
-        target: value,
-        discount: nextDiscount,
-        delivery_weeks: deliveryWeeks || 0,
-        allow_over_six: allowOverSix,
-        allow_below_one: allowBelowOne,
-        rows: budgetRequestRows(rows, edits),
-      });
-      setPlan({ ...next, discount: nextDiscount });
-      setError(next.reason ? budgetReason(next.reason) : "");
-      setInputError("");
-    } catch (err) {
-      setPlan(null);
-      setError(err.message || "Не удалось пересчитать заказ.");
-    }
+      for(const group of groups) {const config=groupSettings(settings,group);if(config.pricingMode==="gross")discountValue(config.discount);}
+      const requestRows=budgetRequestRows(rows,edits,settings,lockedKeys);
+      const base={brand,discount:0,delivery_weeks:deliveryWeeks || 0,allow_over_six:allowOverSix,allow_below_one:allowBelowOne};
+      const requests=separate && groups.length>1 ? groups.map((group) => ({...base,target:budgetTargetValue(groupTargets[group] || ""),rows:requestRows.filter((row)=>row.group===group)})) : [{...base,target:budgetTargetValue(target),rows:requestRows}];
+      const plans=await Promise.all(requests.map((request)=>planOrderBudget(request)));
+      const next=combinePlans(plans, separate ? groups : []);
+      setPlan(next);setError(next.reason ? budgetReason(next.reason) : "");setInputError("");
+    } catch(err) {setPlan(null);setError(err.message || "Не удалось пересчитать заказ.");}
+    finally {setCalculating(false);}
   }
 
   function apply() {
-    const patches = budgetPatches(plan, edits);
-    if (!patches.length) return;
-    for (const patch of patches) onEdit(patch.key, patch.next);
-    setUndo({ patches, discount: appliedDiscount });
-    setAppliedDiscount(plan.discount);
-    setOpen(false);
-    resetPreview();
+    if (!plan.complete) return;
+    const patches=budgetPatches(plan,edits);
+    setUndo({patches,settings:appliedSettings,pricing});
+    for(const patch of patches)onEdit(patch.key,patch.next);
+    onPricingChange(budgetPricingEntries(rows,plan,0,settings));
+    setAppliedSettings(structuredClone(settings));setOpen(false);resetPreview();
   }
 
   function undoLast() {
-    for (const patch of undo?.patches || []) onEdit(patch.key, patch.previous);
-    setAppliedDiscount(undo?.discount || 0);
-    setUndo(null);
+    for(const patch of undo?.patches || [])onEdit(patch.key,patch.previous);
+    setAppliedSettings(undo?.settings || {});onPricingChange(undo?.pricing || []);setUndo(null);
   }
 
   function openDialog() {
-    setTarget(String(Math.round(total)));
-    setPricingMode(appliedDiscount > 0 ? "gross" : "net");
-    if (appliedDiscount > 0) setDiscount(String(appliedDiscount).replace(".", ","));
-    setAllowOverSix(false);
-    setAllowBelowOne(false);
-    setInputError("");
-    resetPreview();
-    setOpen(true);
+    setTarget(total == null ? "" : String(Math.round(total)));
+    setSettings(structuredClone(appliedSettings));setAllowOverSix(false);setAllowBelowOne(false);
+    setInputError("");resetPreview();setOpen(true);
   }
 
-  const canCalculate = validBudgetInputs(target, pricingMode, discount);
+  const canCalculate = !calculating && groups.every((group) => {
+    const config=groupSettings(settings,group);
+    const value=separate && groups.length>1 ? groupTargets[group] || "" : target;
+    return validBudgetInputs(value,config.pricingMode,config.discount);
+  });
 
   return (
     <div className="flex flex-wrap items-center gap-2">
       <span className="text-[13px] text-[var(--color-ink-soft)]">
-        Заказ: <strong className="font-mono text-[var(--color-ink)]">{money(total)} ₽</strong>
-        {appliedDiscount > 0 ? <span> · скидка {String(appliedDiscount).replace(".", ",")}%</span> : null}
+        Заказ: <strong className="font-mono text-[var(--color-ink)]">{totalLabel}</strong>
       </span>
-      <GhostButton onClick={openDialog}>Заказ до суммы</GhostButton>
-      {undo?.patches.length ? <button type="button" onClick={undoLast} className="cursor-pointer text-[13px] text-[var(--color-brand-strong)] hover:underline">Отменить перерасчёт</button> : null}
+      <GhostButton onClick={openDialog} disabled={!budgetAllowed}>Заказ до суммы</GhostButton>
+      {!budgetAllowed ? <span className="text-[13px] text-[var(--color-ink-soft)]">Расчёт до суммы доступен для Тюмени. Северные заказы — в «Соединить бланки».</span> : null}
+      {undo ? <button type="button" onClick={undoLast} className="cursor-pointer text-[13px] text-[var(--color-brand-strong)] hover:underline">Отменить перерасчёт</button> : null}
       {open ? (
         <Modal
           title="Заказ до суммы"
           cancelLabel="Закрыть"
           confirmLabel={plan ? "Применить" : "Рассчитать"}
-          confirmDisabled={plan ? !plan.complete || !changed.length : !canCalculate}
+          confirmDisabled={calculating || (plan ? !plan.complete : !canCalculate)}
           onCancel={() => setOpen(false)}
           onConfirm={plan ? apply : calculate}
           wide
@@ -109,70 +111,29 @@ export function BudgetPanel({ brand, deliveryWeeks, rows, edits, onEdit }) {
           <div className="grid gap-3 sm:grid-cols-2">
             <div className="rounded-xl border border-[var(--color-line)] bg-[var(--color-ground)] px-4 py-3">
               <span className="block text-[13px]">Текущий заказ</span>
-              <strong className="mt-1 block font-mono text-[20px] text-[var(--color-ink)]">{money(total)} ₽</strong>
+              <strong className="mt-1 block font-mono text-[20px] text-[var(--color-ink)]">{totalLabel}</strong>
             </div>
-            <label className="block rounded-xl border border-[var(--color-line)] bg-[var(--color-surface)] px-4 py-3 font-medium text-[var(--color-ink)]" htmlFor="budget-target">
-              Целевая сумма, ₽
-              <input
-                id="budget-target"
-                inputMode="decimal"
-                autoComplete="off"
-                aria-invalid={Boolean(inputError)}
-                className="input mt-2 font-mono"
-                value={target}
-                onChange={(event) => {
-                  const value = event.target.value;
-                  if (!targetInput(value)) {
-                    setInputError("Сумма: только цифры и не больше двух знаков после запятой.");
-                    return;
-                  }
-                  setTarget(value);
-                  setInputError("");
-                  resetPreview();
-                }}
-              />
-            </label>
+            {(!separate || groups.length<2) ? <TargetInput label="Целевая сумма, ₽" value={target} onChange={(value)=>{setTarget(value);setAllowOverSix(false);setAllowBelowOne(false);resetPreview();}} onInvalid={setInputError}/> : null}
           </div>
-
-          <fieldset className="mt-4">
-            <legend className="font-medium text-[var(--color-ink)]">Как указана цена в бланке</legend>
-            <div className="mt-2 grid gap-2 sm:grid-cols-2">
-              {[
-                ["net", "Цена уже со скидкой", "Использовать цену без изменений"],
-                ["gross", "Вычесть скидку", "Уменьшить цену для расчёта суммы"],
-              ].map(([value, label, hint]) => (
-                <label key={value} className={`flex min-h-16 cursor-pointer items-start gap-3 rounded-xl border px-4 py-3 transition-colors ${pricingMode === value ? "border-[var(--color-brand)] bg-[var(--color-brand-soft)]" : "border-[var(--color-line)] bg-[var(--color-surface)] hover:border-[var(--color-ink-faint)]"}`}>
-                  <input type="radio" name="budget-price-mode" value={value} checked={pricingMode === value} onChange={() => { setPricingMode(value); setInputError(""); resetPreview(); }} />
-                  <span><strong className="block font-medium text-[var(--color-ink)]">{label}</strong><span className="text-[13px]">{hint}</span></span>
-                </label>
-              ))}
-            </div>
-          </fieldset>
-
-          {pricingMode === "gross" ? (
-            <label className="mt-3 block max-w-xs font-medium text-[var(--color-ink)]" htmlFor="budget-discount">
-              Скидка, %
-              <input
-                id="budget-discount"
-                inputMode="decimal"
-                autoComplete="off"
-                aria-invalid={Boolean(inputError)}
-                className="input mt-2 font-mono"
-                value={discount}
-                onChange={(event) => {
-                  const value = event.target.value;
-                  if (!discountInput(value)) {
-                    setInputError("Скидка: число от 0 до 99,99 с двумя знаками после запятой.");
-                    return;
-                  }
-                  setDiscount(value);
-                  setInputError("");
-                  resetPreview();
-                }}
-              />
-            </label>
-          ) : null}
-          <p className="mt-2 text-[13px]">Скидка влияет на подбор количества. Исходные цены в Excel не меняются. Ручные правки остаются закреплёнными.</p>
+          {brand === "christina" && groups.length>1 ? <label className="mt-4 flex items-center gap-2 font-medium"><input type="checkbox" checked={separate} onChange={(event)=>{setSeparate(event.target.checked);setAllowOverSix(false);setAllowBelowOne(false);resetPreview();}}/>Отдельные суммы HOME и PROFF</label> : null}
+          {separate && groups.length>1 ? <div className="mt-3 grid gap-3 sm:grid-cols-2">{groups.map((group)=><TargetInput key={group} label={`Целевая сумма ${group.toUpperCase()}, ₽`} value={groupTargets[group] || ""} onChange={(value)=>{setGroupTargets((current)=>({...current,[group]:value}));setAllowOverSix(false);setAllowBelowOne(false);resetPreview();}} onInvalid={setInputError}/>)}</div> : null}
+          <div className="mt-4 grid gap-3 sm:grid-cols-2">{groups.map((group)=>{
+            const config=groupSettings(settings,group);
+            const prices=brand === "sothys" ? [] : [...new Map(rows.filter((row)=>budgetGroup(row)===group).flatMap((row)=>row.budgetPrices || []).map((price)=>[String(price.column),price])).values()];
+            const suffix=groups.length>1 ? ` ${group.toUpperCase()}` : "";
+            return <fieldset key={group} className="rounded-xl border border-[var(--color-line)] bg-[var(--color-surface)] px-4 py-3">
+              <legend className="font-medium">{groups.length>1 ? group.toUpperCase() : "Как указана цена в бланке"}</legend>
+              {prices.length>1 ? <label className="block font-medium">Колонка цены{suffix}<select className="input mt-2" value={config.priceColumn} onChange={(event)=>changeSettings(group,{priceColumn:event.target.value})}><option value="">Распознанная цена</option>{prices.map((price)=><option key={price.column} value={price.column}>{price.label}</option>)}</select></label> : null}
+              <div className="mt-2 space-y-2">{[["net","Цена уже со скидкой"],["gross","Вычесть скидку"]].map(([value,label])=><label key={value} className="flex items-center gap-2"><input type="radio" name={`budget-price-mode-${group}`} value={value} checked={config.pricingMode===value} onChange={()=>changeSettings(group,{pricingMode:value})}/>{label}{suffix}</label>)}</div>
+              {config.pricingMode==="gross" ? <label className="mt-3 block font-medium">Скидка{suffix}, %<input className="input mt-2 font-mono" inputMode="decimal" value={config.discount} onChange={(event)=>{const value=event.target.value;if(!discountInput(value)){setInputError("Скидка: число от 0 до 99,99 с двумя знаками после запятой.");return;}changeSettings(group,{discount:value});}}/></label> : null}
+            </fieldset>;
+          })}</div>
+          <p className="mt-2 text-[13px]">Согласованная цена попадёт в скачиваемый бланк. CHRISTINA сохраняет цены поставщика. Ручные правки остаются закреплёнными.</p>
+          <details className="mt-3 rounded-xl border border-[var(--color-line)] px-4 py-3"><summary className="cursor-pointer font-medium">Закрепить позиции</summary><div className="mt-2 space-y-2">{input.map((row)=>{
+            const manual=row.locked && !lockedKeys.has(row.key);
+            return <label key={row.key} className="flex items-center gap-2 text-[13px]"><input type="checkbox" aria-label={`Закрепить ${row.name}`} checked={row.locked} disabled={manual} onChange={(event)=>{const checked=event.target.checked;setLockedKeys((current)=>{const next=new Set(current);if(checked)next.add(row.key);else next.delete(row.key);return next;});setAllowOverSix(false);setAllowBelowOne(false);resetPreview();}}/>{row.name}{manual ? " · ручное количество закреплено" : ""}</label>;
+          })}</div></details>
+          {quoteError ? <p role="alert" className="mt-3 text-[var(--color-danger)]">{quoteError}</p> : null}
           {inputError ? <p role="alert" className="mt-3 text-[var(--color-danger)]">{inputError}</p> : null}
           {error ? <p role="alert" className="mt-3 text-[var(--color-danger)]">{error}</p> : null}
 
@@ -198,6 +159,7 @@ export function BudgetPanel({ brand, deliveryWeeks, rows, edits, onEdit }) {
                 </div>
                 <span className="text-[13px]">Изменено позиций: {changed.length}</span>
               </div>
+              {plan.groupPlans?.length>1 ? <div className="mt-2 grid gap-2 sm:grid-cols-2">{plan.groupPlans.map((groupPlan)=><div key={groupPlan.group} className="rounded-lg border border-[var(--color-line-soft)] px-3 py-2"><strong>{groupPlan.group.toUpperCase()}</strong><span className="ml-2 font-mono">{money(groupPlan.before)} ₽ → {money(groupPlan.total)} ₽</span></div>)}</div> : null}
               <ChristinaCompare plan={plan} />
               {plan.lineSteps?.length ? (
                 <details className="mt-2 rounded-xl border border-[var(--color-line)] bg-[var(--color-surface)] px-4 py-3">
@@ -293,4 +255,21 @@ function validBudgetInputs(target, pricingMode, discount) {
   } catch {
     return false;
   }
+}
+
+function groupSettings(settings,group) {return {priceColumn:"",pricingMode:"net",discount:"30",...settings[group]};}
+
+function initialSettings(rows,pricing,brand) {
+ const result={};const byKey=new Map(rows.map((row)=>[row.key,row]));
+ for(const entry of pricing){const row=byKey.get(entry.row_key);if(row)result[budgetGroup(row)]={priceColumn:brand === "sothys" ? "" : String(entry.price_column),pricingMode:entry.discount>0?"gross":"net",discount:String(entry.discount || 30)};}
+ return result;
+}
+
+function combinePlans(plans,groups) {
+ const result={...(plans.find((plan)=>plan.lineGroups?.length || plan.lineSteps?.length) || plans[0])};
+ return {...result,before:plans.reduce((sum,plan)=>sum+plan.before,0),total:plans.reduce((sum,plan)=>sum+plan.total,0),target:plans.reduce((sum,plan)=>sum+(plan.target || 0),0),complete:plans.every((plan)=>plan.complete),reason:plans.find((plan)=>!plan.complete)?.reason || "",rows:plans.flatMap((plan)=>plan.rows),lineSteps:plans.flatMap((plan)=>plan.lineSteps || []),lineGroups:plans.flatMap((plan)=>plan.lineGroups || []),groupPlans:groups.map((group,index)=>({group,...plans[index]}))};
+}
+
+function TargetInput({label,value,onChange,onInvalid}) {
+ return <label className="block rounded-xl border border-[var(--color-line)] bg-[var(--color-surface)] px-4 py-3 font-medium text-[var(--color-ink)]">{label}<input inputMode="decimal" autoComplete="off" className="input mt-2 font-mono" value={value} onChange={(event)=>{const next=event.target.value;if(!targetInput(next)){onInvalid("Сумма: только цифры и не больше двух знаков после запятой.");return;}onInvalid("");onChange(next);}}/></label>;
 }

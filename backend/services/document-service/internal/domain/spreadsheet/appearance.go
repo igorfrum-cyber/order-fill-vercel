@@ -47,3 +47,15 @@ type Formula struct {
 	Column int
 	Text   string
 }
+
+// FormulaWriter preserves formulas together with their numeric cached result.
+type FormulaWriter interface {
+	Formulated
+	SetFormula(row, column int, formula string, value float64)
+	SetFormulaCache(row, column int, value float64)
+}
+
+// CellStyleCopier preserves supplier formatting for a newly created order column.
+type CellStyleCopier interface {
+	CopyCellStyle(row, sourceColumn, targetColumn int)
+}

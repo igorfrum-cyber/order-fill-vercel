@@ -2,7 +2,9 @@ package calculation
 
 import (
 	"math"
+	"regexp"
 	"strconv"
+	"strings"
 )
 
 type Adjustment string
@@ -149,7 +151,7 @@ func nearestMultipleValue(value float64, multiple int) (float64, bool) {
 		return 0, false
 	}
 	if step <= 0 {
-		return math.Round(value*100) / 100, true
+		return roundTo2(value), true
 	}
 	lower := math.Floor(value/float64(step)) * float64(step)
 	upper := math.Ceil(value/float64(step)) * float64(step)
@@ -162,13 +164,42 @@ func nearestMultipleValue(value float64, multiple int) (float64, bool) {
 	return lower, true
 }
 
+var quantityNumber = regexp.MustCompile(`-?\d+(?:\.\d+)?`)
+
 func parseNumber(text string) (float64, bool) {
+	text = strings.Replace(strings.Join(strings.Fields(text), ""), ",", ".", 1)
 	if text == "" {
 		return 0, false
 	}
+	if len(text) > 2 && text[0] == '0' && strings.ContainsRune("xXbBoO", rune(text[1])) {
+		n, err := strconv.ParseUint(text, 0, 64)
+		if err == nil {
+			return float64(n), true
+		}
+	}
 	n, err := strconv.ParseFloat(text, 64)
-	if err != nil {
+	if err == nil && !math.IsNaN(n) && !math.IsInf(n, 0) {
+		return n, true
+	}
+	match := quantityNumber.FindString(text)
+	if match == "" {
 		return 0, false
 	}
-	return n, true
+	n, err = strconv.ParseFloat(match, 64)
+	return n, err == nil && !math.IsInf(n, 0)
+}
+
+// ConvertSupplierUnits mirrors main's NOVACUTAN piece-to-box conversion.
+func ConvertSupplierUnits(order AdjustedQuantity, size float64) AdjustedQuantity {
+	if math.IsNaN(size) || math.IsInf(size, 0) || size <= 1 {
+		return order
+	}
+	if order.Rounded > 0 {
+		order.Rounded = int(math.Ceil(float64(order.Rounded) / size))
+	}
+	if order.Inserted != nil && *order.Inserted > 0 {
+		order.Inserted = new(math.Ceil(*order.Inserted / size))
+		order.AutoComment = "коробки по 5 шт."
+	}
+	return order
 }

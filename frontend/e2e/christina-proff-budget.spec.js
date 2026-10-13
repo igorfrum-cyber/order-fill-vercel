@@ -101,6 +101,8 @@ test("Christina PROFF UI uploads real Tyumen + PROFF (1) and shows сверка 
       return;
     }
     if (routePath === "/api/v1/order/budget-plan") {
+      const payload=JSON.parse(request.postData() || "{}");
+      if(payload.quote_only){await route.fulfill({json:{before:5640,total:5640,complete:true,rows:payload.rows.map(row=>({key:row.key,before:row.quantity,quantity:row.quantity,price:row.base_price,discount:row.discount_override}))}});return;}
       await route.fulfill({
         json: {
           before: 5640,

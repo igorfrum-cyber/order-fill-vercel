@@ -21,14 +21,16 @@ type ManualEdit struct {
 
 // FinalizeCommand applies reviewer corrections to both workbooks.
 type FinalizeCommand struct {
-	Source spreadsheet.Workbook
-	Blank  spreadsheet.Workbook
-	Rows   []ReportRow
-	Edits  []ManualEdit
-	Brand  string
-	Rule   brand.RuleConfig
+	Source             spreadsheet.Workbook
+	Blank              spreadsheet.Workbook
+	Rows               []ReportRow
+	Edits              []ManualEdit
+	Brand              string
+	Rule               brand.RuleConfig
+	IncludeBlankStocks bool
 }
 
+var strictStock = regexp.MustCompile(`^-?\d+(?:\.\d+)?$`)
 var fileNamePattern = regexp.MustCompile(`[^\p{L}\p{N}_ .-]+`)
 
 // ParseEditValue reads a quantity typed by the reviewer. An empty value clears
@@ -55,10 +57,8 @@ func ApplyFinalEdits(command FinalizeCommand) error {
 	if rule.Key == "" {
 		rule = brand.Rule(command.Brand)
 	}
-	if rule.BlankLayout != "" {
-		return fmt.Errorf("%w: раскладка бланка %q для бренда %s пока не поддерживается сервисом", ErrInvalidInput, rule.BlankLayout, rule.Label)
-	}
-	blank, err := DetectBlankColumns(command.Blank, rule)
+
+	blank, err := DetectOrderBlank(command.Blank, rule)
 	if err != nil {
 		return err
 	}
@@ -85,7 +85,9 @@ func ApplyFinalEdits(command FinalizeCommand) error {
 		baseline := baselineQuantity(row, rule)
 		autoComment := normalize.AsText(row.AutoComment)
 
-		if !sameQuantity(quantity, baseline) && comment == "" {
+		stillAuto := autoComment != "" && strings.EqualFold(comment, autoComment)
+		autoAllowed := stillAuto && sameQuantity(quantity, row.Inserted)
+		if !sameQuantity(quantity, baseline) && (comment == "" || stillAuto && !autoAllowed) {
 			return fmt.Errorf("%w: если значение в колонке «Вставлено» изменено, нужно заполнить комментарий (строка %d)", ErrInvalidInput, row.BlankRow)
 		}
 
@@ -104,8 +106,7 @@ func ApplyFinalEdits(command FinalizeCommand) error {
 		if row.SourceRow == nil || *row.SourceRow <= source.HeaderRow {
 			continue
 		}
-		userComment := comment != "" && comment != autoComment
-		recordFact := !sameQuantity(quantity, baseline) || userComment
+		recordFact := !sameQuantity(quantity, baseline)
 		if recordFact {
 			value := 0.0
 			if quantity != nil {
@@ -118,7 +119,74 @@ func ApplyFinalEdits(command FinalizeCommand) error {
 		source.Sheet.ClearValue(*row.SourceRow, source.Columns[ColumnOrderedFact])
 		source.Sheet.SetText(*row.SourceRow, source.Columns[ColumnComment], "")
 	}
+	if command.IncludeBlankStocks {
+		addOrderBlankStocks(blank, command.Rows, rule, command.Brand)
+	}
 	return nil
+}
+
+func addOrderBlankStocks(blank Detection, rows []ReportRow, rule brand.RuleConfig, brandKey string) {
+	existingColumn := 0
+	for candidate := 1; candidate <= blank.Sheet.Bounds().MaxColumn; candidate++ {
+		if normalize.NormalizeHeader(blank.Sheet.Value(blank.HeaderRow, candidate)) == "остаток" {
+			existingColumn = candidate
+			break
+		}
+	}
+	angioColumn := 0
+	if brandKey == "angiopharm" {
+		header := normalize.NormalizeHeader(blank.Sheet.Value(blank.HeaderRow, 10))
+		available := header == "" || header == "остаток"
+		for _, row := range rows {
+			if !available || row.BlankRow <= blank.HeaderRow {
+				continue
+			}
+			cell := blank.Sheet.Value(row.BlankRow, 10)
+			if cell != "" {
+				_, available = normalize.ParseNumber(cell)
+			}
+		}
+		if available {
+			angioColumn = 10
+		}
+	}
+	column := angioColumn
+	if column == 0 {
+		column = existingColumn
+	}
+	if column == 0 {
+		column = blank.Sheet.Bounds().MaxColumn + 1
+	}
+	blanksByArticle := make(map[string]int, len(rows))
+	for _, row := range rows {
+		article := normalize.NormalizeArticle(row.BlankArticle, brand.ArticleNormalizeOptions(rule))
+		if article != "" {
+			blanksByArticle[article]++
+		}
+	}
+	if copier, ok := blank.Sheet.(spreadsheet.CellStyleCopier); ok {
+		copier.CopyCellStyle(blank.HeaderRow, blank.Columns[ColumnQuantity], column)
+	}
+	blank.Sheet.SetText(blank.HeaderRow, column, "Остаток")
+	for _, row := range rows {
+		if row.BlankRow <= blank.HeaderRow {
+			continue
+		}
+		blank.Sheet.ClearValue(row.BlankRow, column)
+		article := normalize.NormalizeArticle(row.BlankArticle, brand.ArticleNormalizeOptions(rule))
+		sourceArticle := normalize.NormalizeArticle(row.SourceArticle, brand.ArticleNormalizeOptions(rule))
+		sameItem := article != "" && article == sourceArticle && blanksByArticle[article] == 1
+		if article == "" {
+			sameItem = row.BlankName != "" && normalize.NormalizeName(row.BlankName) == normalize.NormalizeName(row.SourceName)
+		}
+		rawStock := strings.Replace(strings.Join(strings.Fields(row.Stock), ""), ",", ".", 1)
+		stock, parseErr := strconv.ParseFloat(rawStock, 64)
+		hasStock := strictStock.MatchString(rawStock) && parseErr == nil && !math.IsNaN(stock) && !math.IsInf(stock, 0)
+		reliable := row.SourceRow != nil && !row.Duplicate && !strings.HasPrefix(row.Status, "warning") && sameItem && hasStock
+		if reliable {
+			blank.Sheet.SetNumber(row.BlankRow, column, stock)
+		}
+	}
 }
 
 // baselineQuantity is the quantity the engine would insert without any manual
@@ -177,4 +245,14 @@ func outputExtension(fileName string) string {
 		return "xlsm"
 	}
 	return "xlsx"
+}
+
+// AddOrderBlankStocks adds reliable stock values to the generated export copy.
+func AddOrderBlankStocks(workbook spreadsheet.Workbook, rows []ReportRow, rule brand.RuleConfig, key string) error {
+	detection, err := DetectOrderBlank(workbook, rule)
+	if err != nil {
+		return err
+	}
+	addOrderBlankStocks(detection, rows, rule, key)
+	return nil
 }

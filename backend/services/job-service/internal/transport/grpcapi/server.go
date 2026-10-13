@@ -93,7 +93,7 @@ func (s *Server) CreateJob(ctx context.Context, req *jobsv1.CreateJobRequest) (*
 	if err != nil {
 		return nil, toStatus(err)
 	}
-	job, err := s.svc.Create(ctx, actor, jobType, req.GetInputFileIds(), req.GetBrand())
+	job, err := s.svc.Create(ctx, actor, jobType, req.GetInputFileIds(), req.GetBrand(), req.GetOrderMonth())
 	if err != nil {
 		return nil, toStatus(err)
 	}
@@ -178,7 +178,11 @@ func (s *Server) SubmitEdits(ctx context.Context, req *jobsv1.SubmitEditsRequest
 	for _, edit := range req.GetEdits() {
 		edits = append(edits, domain.Edit{RowKey: edit.GetRowKey(), Field: edit.GetField(), Value: edit.GetValue(), Comment: edit.GetComment()})
 	}
-	job, err := s.svc.SubmitEdits(ctx, actor, req.GetJobId(), edits)
+	pricing := make([]domain.BudgetPricing, 0, len(req.GetBudgetPricing()))
+	for _, entry := range req.GetBudgetPricing() {
+		pricing = append(pricing, domain.BudgetPricing{RowKey: entry.GetRowKey(), PriceColumn: int(entry.GetPriceColumn()), BasePrice: entry.GetBasePrice(), Discount: entry.GetDiscount(), Price: entry.GetPrice()})
+	}
+	job, err := s.svc.SubmitEditsWithPricing(ctx, actor, req.GetJobId(), edits, req.GetIncludeBlankStocks(), req.GetReplaceBudgetPricing(), pricing...)
 	if err != nil {
 		return nil, toStatus(err)
 	}

@@ -23,6 +23,7 @@ type MatchItem struct {
 	Form        string
 	ChestnyZnak bool
 	Rounded     int
+	Recommended float64
 }
 
 type MatchReasons struct {
@@ -44,6 +45,7 @@ type MatchResult struct {
 }
 
 type MatchOptions struct {
+	Brand          string
 	Mode           string
 	PrefixAliases  []string
 	PreserveHyphen bool
@@ -71,6 +73,7 @@ type RecommendRow struct {
 	Recommended, TargetStock          float64
 	RevenuePercent, CumulativePercent float64
 	AverageMonthly, TotalQuantity     float64
+	MonthlyNeed                       float64
 }
 
 type SourceRecommender interface {

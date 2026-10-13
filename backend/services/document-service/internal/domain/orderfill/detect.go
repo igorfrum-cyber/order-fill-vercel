@@ -54,13 +54,17 @@ type BlankPlan struct {
 	Label string
 }
 
-// PlanBlanks checks that the brand got exactly one supplier blank.
+// PlanBlanks accepts one blank, or separate HOME and PROFF blanks for CHRISTINA.
 func PlanBlanks(brandKey string, names []string) ([]BlankPlan, error) {
-	if len(names) != 1 {
+	if len(names) != 1 && (brandKey != "christina" || len(names) != 2) {
 		label := brand.Rule(brandKey).Label
 		return nil, fmt.Errorf("%w: для %s нужен один бланк поставщика. Сейчас загружено несколько файлов — оставьте один", ErrInvalidInput, label)
 	}
-	return []BlankPlan{{Index: 0, ID: blankPlanID(0), Label: names[0]}}, nil
+	plans := make([]BlankPlan, len(names))
+	for i, name := range names {
+		plans[i] = BlankPlan{Index: i, ID: blankPlanID(i), Label: name}
+	}
+	return plans, nil
 }
 
 func blankPlanID(index int) string {

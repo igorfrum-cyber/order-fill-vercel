@@ -14,6 +14,7 @@ import (
 	"time"
 	"unicode/utf8"
 
+	"order-fill/backend/services/document-service/internal/adapter/outbound/xlsx"
 	"order-fill/backend/services/document-service/internal/app/port"
 	"order-fill/backend/services/document-service/internal/clients/calculation"
 	"order-fill/backend/services/document-service/internal/domain/brand"
@@ -720,5 +721,88 @@ func TestUserMessageNonInvalidError(t *testing.T) {
 	const generic = "Не удалось обработать файлы. Попробуйте еще раз или обратитесь в поддержку."
 	if got != generic {
 		t.Fatalf("userMessage(non-invalid) = %q, want %q", got, generic)
+	}
+}
+
+func TestPartialRefinalizationKeepsPriorQuantities(t *testing.T) {
+	t.Parallel()
+	codec := xlsx.NewCodec()
+	store := newStorageWithInputs()
+	for name, grid := range testGrids() {
+		if name == "blank" {
+			grid[0] = append(grid[0], "Цена")
+			grid[1] = append(grid[1], "100")
+		}
+		rows := make([][]any, 0, len(grid)-1)
+		for _, cells := range grid[1:] {
+			row := make([]any, len(cells))
+			for i, value := range cells {
+				row[i] = value
+			}
+			rows = append(rows, row)
+		}
+		book, err := codec.(spreadsheet.TableCodec).NewTable("Лист1", grid[0], rows)
+		if err != nil {
+			t.Fatal(err)
+		}
+		raw, err := book.Save()
+		if err != nil {
+			t.Fatal(err)
+		}
+		key := "jobs/job-1/inputs/0-source.xlsx"
+		if name == "blank" {
+			key = "jobs/job-1/inputs/1-blank.xlsx"
+		}
+		store.objects[key] = raw
+	}
+	jobs, reports := &fakeJobStore{}, &fakeReportStore{}
+	processor := newProcessor(store, jobs, reports)
+	processor.codec = codec
+	msg := processMessage()
+	if err := processor.Handle(t.Context(), msg); err != nil {
+		t.Fatal(err)
+	}
+	msg.Stage = port.StageFinalize
+	msg.Edits = []port.MessageEdit{{Key: reports.rows[0].Key, Value: "7", Comment: "согласовано"}}
+	msg.BudgetPricing = []orderfill.BudgetPricing{{RowKey: reports.rows[0].Key, PriceColumn: 6, BasePrice: 100, Discount: 30, Price: 70}}
+	if err := processor.Handle(t.Context(), msg); err != nil {
+		t.Fatal(err)
+	}
+	msg.Edits = nil
+	msg.BudgetPricing = nil
+	msg.IncludeBlankStocks = true
+	if err := processor.Handle(t.Context(), msg); err != nil {
+		t.Fatal(err)
+	}
+	raw, err := store.Get(t.Context(), jobs.outputs[0].StorageKey)
+	if err != nil {
+		t.Fatal(err)
+	}
+	book, err := codec.Load(raw)
+	if err != nil {
+		t.Fatal(err)
+	}
+	sheet := book.Sheets()[0]
+	if sheet.Value(2, 4) != "7" {
+		t.Fatalf("prior quantity lost: %s", sheet.Value(2, 4))
+	}
+	if sheet.Value(2, 6) != "70" {
+		t.Fatalf("agreed price lost: %s", sheet.Value(2, 6))
+	}
+	msg.ReplaceBudgetPricing = true
+	if err := processor.Handle(t.Context(), msg); err != nil {
+		t.Fatal(err)
+	}
+	raw, err = store.Get(t.Context(), jobs.outputs[0].StorageKey)
+	if err != nil {
+		t.Fatal(err)
+	}
+	book, err = codec.Load(raw)
+	if err != nil {
+		t.Fatal(err)
+	}
+	sheet = book.Sheets()[0]
+	if sheet.Value(2, 6) != "100" || sheet.Value(2, 4) != "7" || reports.rows[0].AgreedPricing != nil {
+		t.Fatal("explicit empty pricing must reset discount without resetting quantity")
 	}
 }

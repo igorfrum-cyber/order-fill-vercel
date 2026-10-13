@@ -58,7 +58,7 @@ gateway-service
 | `ListJobs` | `/orderfill.jobs.v1.JobService/ListJobs` | Возвращает только задачи, разрешённые actor-у. PostgreSQL сортирует их по `created_at DESC`; memory store порядок не гарантирует. |
 | `GetReport` | `/orderfill.jobs.v1.JobService/GetReport` | Возвращает сохранённые summary и строки отчёта после проверки доступа к задаче. |
 | `ListFiles` | `/orderfill.jobs.v1.JobService/ListFiles` | Возвращает входные, затем выходные file references доступной задачи. |
-| `SubmitEdits` | `/orderfill.jobs.v1.JobService/SubmitEdits` | Для `needs_review` или `completed` атомарно переводит job в `finalizing` и публикует `stage=finalize`. Конкурентный повтор получает `conflict`. Поле protobuf `Edit.field` сейчас не попадает в queue message. |
+| `SubmitEdits` | `/orderfill.jobs.v1.JobService/SubmitEdits` | Для `needs_review` или `completed` атомарно переводит job в `finalizing` и публикует `stage=finalize`. Конкурентный повтор получает `conflict`. Поле protobuf `Edit.field` сейчас не попадает в queue message. `budget_pricing` передаёт выбранную колонку цены и согласованную скидку владельцу Excel. |
 | `UpdateProgress` | `/orderfill.jobs.v1.JobService/UpdateProgress` | Обновляет status/message/progress; предназначен для worker-а. Значения status/progress дополнительно не валидируются. |
 | `CompleteJob` | `/orderfill.jobs.v1.JobService/CompleteJob` | Сохраняет report и output files. После `finalizing`/`completed` ставит `completed`, иначе `needs_review`. |
 | `FailJob` | `/orderfill.jobs.v1.JobService/FailJob` | Переводит задачу в `failed` и записывает сообщение ошибки. |
@@ -85,7 +85,7 @@ HTTP-интерфейс:
 
 ## Зависимости и взаимодействия
 
-- Go `1.26.7`;
+- Go `1.26.9`;
 - `google.golang.org/grpc` `v1.83.2`, локальные `backend/proto` и `backend/pkg`;
 - `github.com/jackc/pgx/v5` `v5.10.0` для PostgreSQL;
 - `github.com/redis/go-redis/v9` `v9.22.0` для публикации в Redis Stream;
@@ -118,7 +118,7 @@ HTTP-интерфейс:
 
 ## Локальный запуск
 
-Требуется Go `1.26.7`. Для реально работающего создания задач также нужны запущенные `file-service`, `identity-service` и Redis; PostgreSQL нужен для сохранения состояния между рестартами.
+Требуется Go `1.26.9`. Для реально работающего создания задач также нужны запущенные `file-service`, `identity-service` и Redis; PostgreSQL нужен для сохранения состояния между рестартами.
 
 Пример запуска с инфраструктурой на localhost:
 

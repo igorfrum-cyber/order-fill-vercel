@@ -74,6 +74,8 @@ export async function loadOrderResume(jobId, api = { getJob, getJobReport, listJ
     results: report ? [{ summary: report.summary, reportRows: rows }] : [],
     edits: initialEditState(rows),
     outputFiles: files.files || [],
+    includeBlankStocks: report?.summary?.includeBlankStocks || false,
+    budgetPricing: rows.flatMap((row) => row.agreedPricing ? [row.agreedPricing] : []),
     finalized: job.status === "completed",
   };
 }

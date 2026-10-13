@@ -74,13 +74,13 @@ func TestNoveltyAndStableAverage(t *testing.T) {
 	novel := svc.RecommendWithWeeks("angiopharm", []domain.OrderRow{{
 		ID: "n1", Revenue: 10, MonthlySales: []float64{0, 0, 0, 10},
 	}}, 4)
-	if novel[0].ABCCategory != "A+/New" && novel[0].ABCCategory != "C/New" && novel[0].TargetStock <= 0 {
+	if novel[0].ABCCategory != "C/New" || novel[0].TargetStock != 25 || novel[0].Recommended != 25 {
 		t.Fatalf("%+v", novel[0])
 	}
 	stable := svc.RecommendWithWeeks("angiopharm", []domain.OrderRow{{
 		ID: "s1", Revenue: 10, MonthlySales: []float64{10, 10, 10, 10, 10, 10},
 	}}, 4)
-	if stable[0].TargetStock <= 0 {
+	if stable[0].ABCCategory != "C" || stable[0].TargetStock != 20 || stable[0].Recommended != 20 {
 		t.Fatalf("stable %+v", stable[0])
 	}
 }
@@ -100,7 +100,7 @@ func TestAdjustQuantityRules(t *testing.T) {
 		t.Fatalf("klapp %#v", klapp)
 	}
 	box := calculation.AdjustQuantity(11, "angiopharm", 0, false, "10")
-	if box.Inserted == nil || *box.Inserted != 10 && *box.Inserted != 11 {
+	if box.Inserted == nil || *box.Inserted != 11 || box.BoxAdjusted {
 		t.Fatalf("box %#v", box)
 	}
 	small := calculation.AdjustQuantity(1.2, "angiopharm", 0, false, "6")

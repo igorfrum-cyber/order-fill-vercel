@@ -57,7 +57,7 @@ func novacutanSupplierOrderQuantity(pos domain.NorthSupplierPosition, need float
 		unit = 1
 	}
 	if unit > 1 {
-		return math.Round(base*100) / 100
+		return roundTo2(base)
 	}
 	return roundSupplierPack10(base)
 }

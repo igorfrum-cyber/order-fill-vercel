@@ -58,6 +58,7 @@ func TestDecodeMessageFromJobService(t *testing.T) {
 		"order_month": "2026-09",
 		"matching_mode": "smart",
 		"company_id": "co-1",
+		"include_blank_stocks": true,
 		"inputs": [
 			{"role": "source", "name": "order.xlsx", "storage_key": "jobs/job-123/inputs/order.xlsx"},
 			{"role": "blank", "name": "blank.xlsx", "storage_key": "jobs/job-123/inputs/blank.xlsx"}
@@ -93,6 +94,9 @@ func TestDecodeMessageFromJobService(t *testing.T) {
 	}
 	if message.CompanyID != "co-1" {
 		t.Fatalf("company id: got %q", message.CompanyID)
+	}
+	if !message.IncludeBlankStocks {
+		t.Fatal("stock export option was not decoded")
 	}
 
 	if len(message.Inputs) != 2 {

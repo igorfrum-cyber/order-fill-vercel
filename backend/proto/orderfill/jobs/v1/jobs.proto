@@ -73,6 +73,7 @@ message CreateJobRequest {
   string type = 2;
   repeated string input_file_ids = 3;
   string brand = 4;
+  string order_month = 5;
 }
 
 message CreateJobResponse {
@@ -115,10 +116,22 @@ message ListFilesResponse {
   repeated FileRef files = 1;
 }
 
+// BudgetPricing snapshots the selected supplier base and agreed discount.
+message BudgetPricing {
+  string row_key = 1;
+  int32 price_column = 2;
+  double base_price = 3;
+  double discount = 4;
+  double price = 5;
+}
+
 message SubmitEditsRequest {
   orderfill.common.v1.RequestMeta meta = 1;
   string job_id = 2;
   repeated Edit edits = 3;
+  bool include_blank_stocks = 4;
+  repeated BudgetPricing budget_pricing = 5;
+  bool replace_budget_pricing = 6;
 }
 
 message SubmitEditsResponse {

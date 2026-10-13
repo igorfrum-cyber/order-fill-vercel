@@ -32,6 +32,7 @@ type Item struct {
 	Form          string                 `protobuf:"bytes,5,opt,name=form,proto3" json:"form,omitempty"`
 	ChestnyZnak   bool                   `protobuf:"varint,6,opt,name=chestny_znak,json=chestnyZnak,proto3" json:"chestny_znak,omitempty"`
 	Rounded       int32                  `protobuf:"varint,7,opt,name=rounded,proto3" json:"rounded,omitempty"`
+	Recommended   float64                `protobuf:"fixed64,8,opt,name=recommended,proto3" json:"recommended,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -111,6 +112,13 @@ func (x *Item) GetChestnyZnak() bool {
 func (x *Item) GetRounded() int32 {
 	if x != nil {
 		return x.Rounded
+	}
+	return 0
+}
+
+func (x *Item) GetRecommended() float64 {
+	if x != nil {
+		return x.Recommended
 	}
 	return 0
 }
@@ -291,6 +299,7 @@ type MatchRowsRequest struct {
 	BlankItems     []*Item                `protobuf:"bytes,4,rep,name=blank_items,json=blankItems,proto3" json:"blank_items,omitempty"`
 	PrefixAliases  []string               `protobuf:"bytes,5,rep,name=prefix_aliases,json=prefixAliases,proto3" json:"prefix_aliases,omitempty"`
 	PreserveHyphen bool                   `protobuf:"varint,6,opt,name=preserve_hyphen,json=preserveHyphen,proto3" json:"preserve_hyphen,omitempty"`
+	Brand          string                 `protobuf:"bytes,7,opt,name=brand,proto3" json:"brand,omitempty"`
 	unknownFields  protoimpl.UnknownFields
 	sizeCache      protoimpl.SizeCache
 }
@@ -365,6 +374,13 @@ func (x *MatchRowsRequest) GetPreserveHyphen() bool {
 		return x.PreserveHyphen
 	}
 	return false
+}
+
+func (x *MatchRowsRequest) GetBrand() string {
+	if x != nil {
+		return x.Brand
+	}
+	return ""
 }
 
 type MatchRowsResponse struct {
@@ -771,7 +787,7 @@ var File_orderfill_matching_v1_matching_proto protoreflect.FileDescriptor
 
 const file_orderfill_matching_v1_matching_proto_rawDesc = "" +
 	"\n" +
-	"$orderfill/matching/v1/matching.proto\x12\x15orderfill.matching.v1\x1a orderfill/common/v1/common.proto\"\xad\x01\n" +
+	"$orderfill/matching/v1/matching.proto\x12\x15orderfill.matching.v1\x1a orderfill/common/v1/common.proto\"\xcf\x01\n" +
 	"\x04Item\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x18\n" +
 	"\aarticle\x18\x02 \x01(\tR\aarticle\x12\x12\n" +
@@ -779,7 +795,8 @@ const file_orderfill_matching_v1_matching_proto_rawDesc = "" +
 	"\x06volume\x18\x04 \x01(\tR\x06volume\x12\x12\n" +
 	"\x04form\x18\x05 \x01(\tR\x04form\x12!\n" +
 	"\fchestny_znak\x18\x06 \x01(\bR\vchestnyZnak\x12\x18\n" +
-	"\arounded\x18\a \x01(\x05R\arounded\"\xa0\x01\n" +
+	"\arounded\x18\a \x01(\x05R\arounded\x12 \n" +
+	"\vrecommended\x18\b \x01(\x01R\vrecommended\"\xa0\x01\n" +
 	"\fMatchReasons\x12\x18\n" +
 	"\aarticle\x18\x01 \x01(\tR\aarticle\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12\x16\n" +
@@ -795,7 +812,7 @@ const file_orderfill_matching_v1_matching_proto_rawDesc = "" +
 	"\bcategory\x18\x03 \x01(\x0e2#.orderfill.common.v1.ReportCategoryR\bcategory\x12=\n" +
 	"\areasons\x18\x04 \x01(\v2#.orderfill.matching.v1.MatchReasonsR\areasons\x12\x14\n" +
 	"\x05score\x18\x05 \x01(\x01R\x05score\x12#\n" +
-	"\rcandidate_ids\x18\x06 \x03(\tR\fcandidateIds\"\xde\x02\n" +
+	"\rcandidate_ids\x18\x06 \x03(\tR\fcandidateIds\"\xf4\x02\n" +
 	"\x10MatchRowsRequest\x124\n" +
 	"\x04meta\x18\x01 \x01(\v2 .orderfill.common.v1.RequestMetaR\x04meta\x12F\n" +
 	"\rmatching_mode\x18\x02 \x01(\x0e2!.orderfill.common.v1.MatchingModeR\fmatchingMode\x12>\n" +
@@ -803,7 +820,8 @@ const file_orderfill_matching_v1_matching_proto_rawDesc = "" +
 	"\vblank_items\x18\x04 \x03(\v2\x1b.orderfill.matching.v1.ItemR\n" +
 	"blankItems\x12%\n" +
 	"\x0eprefix_aliases\x18\x05 \x03(\tR\rprefixAliases\x12'\n" +
-	"\x0fpreserve_hyphen\x18\x06 \x01(\bR\x0epreserveHyphen\"Q\n" +
+	"\x0fpreserve_hyphen\x18\x06 \x01(\bR\x0epreserveHyphen\x12\x14\n" +
+	"\x05brand\x18\a \x01(\tR\x05brand\"Q\n" +
 	"\x11MatchRowsResponse\x12<\n" +
 	"\aresults\x18\x01 \x03(\v2\".orderfill.matching.v1.MatchResultR\aresults\"\xe4\x01\n" +
 	"\x17MergeChestnyZnakRequest\x12F\n" +

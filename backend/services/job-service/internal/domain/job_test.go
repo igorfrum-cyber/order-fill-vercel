@@ -252,3 +252,25 @@ func TestSafeFileNameAndFail(t *testing.T) {
 		t.Fatalf("failed job = %+v", job)
 	}
 }
+
+func TestTableRecalculationAcceptsSourceWithoutBlank(t *testing.T) {
+	t.Parallel()
+	kind, err := ParseType("table_recalculate")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := ValidateUploads(kind, []UploadMeta{{Role: RoleSource, Name: "source.xlsx"}}); err != nil {
+		t.Fatal(err)
+	}
+	if err := ValidateUploads(kind, []UploadMeta{{Role: RoleSource, Name: "source.xlsx"}, {Role: RoleBlank, Name: "blank.xlsx"}}); err == nil {
+		t.Fatal("recalculation must reject supplier blanks")
+	}
+}
+
+func TestStandaloneTableCannotBeFinalizedWithReviewEdits(t *testing.T) {
+	t.Parallel()
+	job := Job{Type: TypeTableRecalculate, Status: StatusCompleted}
+	if job.CanAcceptEdits() {
+		t.Fatal("standalone output has no supplier blank to finalize")
+	}
+}

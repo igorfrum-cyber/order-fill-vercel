@@ -5,6 +5,10 @@ import { IconCheck, IconChevron, IconFile, IconUpload } from "../icons.jsx";
 import { PrimaryButton, ProgressBar, StageHeading } from "../widgets.jsx";
 
 export function UploadStage({
+  recalculate = false,
+  onRecalculate,
+  orderMonth = "",
+  onOrderMonth,
   sourceFile,
   warehouseFile,
   blankFiles,
@@ -21,13 +25,13 @@ export function UploadStage({
   const [twoLocations, setTwoLocations] = useState(Boolean(warehouseFile));
   const slots = blankSlotsForSource(sourceFile?.name);
   const steps = orderUploadSteps();
-  const ready = Boolean(sourceFile && (!twoLocations || warehouseFile) && slots.filter((slot) => !slot.optional).every((slot) => blankFiles[slot.id]));
+  const ready = Boolean(sourceFile && (!twoLocations || warehouseFile) && (recalculate || slots.filter((slot) => !slot.optional).every((slot) => blankFiles[slot.id])));
   const selectedCount = orderSelectedCount(sourceFile, blankFiles, warehouseFile);
   return (
     <div className="mx-auto flex h-full max-w-2xl flex-col justify-center px-6">
       <StageHeading index="01" kicker="Бланк закупки" title="Загрузите файлы">
         <ol className="mt-3 max-w-lg list-none text-[16px] leading-relaxed text-[var(--color-ink-soft)]">
-          {steps.map((step) => (
+          {(recalculate ? [steps[0]] : steps).map((step) => (
             <li key={step.n}>
               {step.n}. {step.title}
             </li>
@@ -39,6 +43,12 @@ export function UploadStage({
         </p>
       </StageHeading>
 
+      <label className="mt-5 flex cursor-pointer items-center gap-3 text-[15px]">
+        <input type="checkbox" checked={recalculate} disabled={processing} onChange={(event) => onRecalculate?.(event.target.checked)} />
+        Пересчёт таблицы без бланка поставщика
+      </label>
+      {recalculate ? <label className="mt-3 block text-[14px]">Месяц заказа<input type="month" aria-label="Месяц заказа" className="input mt-1" value={orderMonth} onChange={(event) => onOrderMonth?.(event.target.value)} disabled={processing} /></label> : null}
+      {recalculate ? <p className="mt-2 text-[13px] text-[var(--color-ink-soft)]">Обновим рекомендации, сохраним заказ по факту и комментарии.</p> : null}
       <label className="mt-7 flex min-h-11 cursor-pointer items-center gap-3 rounded-xl border border-[var(--color-line)] bg-[var(--color-surface)] px-4 py-3 text-[15px] font-medium transition-colors hover:border-[var(--color-ink-faint)]">
         <input
           type="checkbox"
@@ -74,7 +84,7 @@ export function UploadStage({
             onPick={onWarehouse}
           />
         ) : null}
-        {slots.map((slot, index) => (
+        {(recalculate ? [] : slots).map((slot, index) => (
           <Dropzone
             key={slot.id}
             title={`${index + (twoLocations ? 3 : 2)}. ${slot.optional ? `${slot.label} (необязательно)` : slot.label}`}

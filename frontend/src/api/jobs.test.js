@@ -158,6 +158,8 @@ test("submitJobEdits serializes contract edit values and downloadJobFile delegat
     assert.equal(stub.calls[0].options.method, "POST");
     assert.deepEqual(JSON.parse(stub.calls[0].options.body), {
       edits: [{ key: "r1", value: "4", comment: "" }],
+      include_blank_stocks: false,
+      budget_pricing: [],
     });
     assert.equal(stub.calls[1].url, "/api/v1/jobs/job%2F1/files/file%2F2");
     assert.equal(download.blob.size, 4);

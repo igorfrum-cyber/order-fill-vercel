@@ -24,6 +24,8 @@ export function FillStage({
   rows,
   edits,
   onEdit,
+  pricing,
+  onPricingChange,
   invalidKeys,
   summary,
   status,
@@ -33,6 +35,8 @@ export function FillStage({
   onIssueReport,
   acknowledgedDuplicates,
   onAcknowledgedDuplicates,
+  includeBlankStocks = false,
+  onIncludeBlankStocksChange,
 }) {
   const [tab, setTab] = useState("");
   const [query, setQuery] = useState("");
@@ -105,7 +109,11 @@ export function FillStage({
           <IconDownload className="h-4 w-4" />
           Отчёт для 1С
         </GhostButton>
-        <BudgetPanel brand={brand} deliveryWeeks={summary.deliveryWeeks} rows={rows} edits={edits} onEdit={onEdit} />
+        <label className="inline-flex cursor-pointer items-center gap-2 text-[13px] text-[var(--color-ink-soft)]">
+          <input type="checkbox" checked={includeBlankStocks} onChange={(event) => onIncludeBlankStocksChange?.(event.target.checked)} />
+          Добавить остатки в бланк
+        </label>
+        <BudgetPanel sourceCity={summary.sourceCity} brand={brand} deliveryWeeks={summary.deliveryWeeks} rows={rows} edits={edits} onEdit={onEdit} pricing={pricing} onPricingChange={onPricingChange} />
         <div className="ml-auto flex flex-wrap items-center gap-3">
           <span className="font-mono text-[13px] text-[var(--color-ink-soft)]">
             {status ? (

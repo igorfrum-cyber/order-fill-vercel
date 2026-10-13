@@ -88,3 +88,36 @@ func shiftFormula(formula string, from cellKey, to cellKey) string {
 		return out
 	})
 }
+
+// SetFormula materializes shared followers before replacing a shared master.
+func (s *sheet) SetFormula(row, column int, formula string, value float64) {
+	for _, item := range s.cells {
+		if item.formula == "" {
+			continue
+		}
+		f := item.element.SelectElement("f")
+		if f != nil && strings.EqualFold(f.SelectAttrValue("t", ""), "shared") {
+			f.SetText(item.formula)
+			f.RemoveAttr("t")
+			f.RemoveAttr("si")
+			f.RemoveAttr("ref")
+		}
+	}
+	target := s.findOrCreateCell(row, column)
+	clearCell(target.element)
+	newChild(target.element, "f", nil).SetText(formula)
+	target.formula = formula
+	s.SetFormulaCache(row, column, value)
+}
+
+func (s *sheet) SetFormulaCache(row, column int, value float64) {
+	target := s.findOrCreateCell(row, column)
+	text := strconv.FormatFloat(value, 'f', -1, 64)
+	v := target.element.SelectElement("v")
+	if v == nil {
+		v = newChild(target.element, "v", nil)
+	}
+	v.SetText(text)
+	target.value = text
+	s.modified = true
+}

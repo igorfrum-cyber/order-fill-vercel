@@ -15,6 +15,7 @@ type ChristinaLine struct {
 // the main discount — pricing happens upstream, this service only plans
 // quantities. Matches origin/main budgetPlanner.js.
 type BudgetRow struct {
+	Discount  float64
 	Key       string
 	Name      string
 	Category  string
@@ -62,26 +63,28 @@ type BudgetOptions struct {
 // service turns it into a BudgetRow so the browser and gateway pass only raw
 // numbers and never run the pricing/quantity business logic.
 type BudgetInputRow struct {
-	Key       string
-	Name      string
-	Category  string
-	Quantity  float64
-	BasePrice float64 // price before the main discount
-	Demand    float64
-	Stock     float64
-	Transit   float64
-	Outbound  float64
-	BoxSize   float64 // blank box/multiple hint for order rules
-	Group     string
-	Line      *ChristinaLine
-	Locked    bool
-	Excluded  bool
-	Unsafe    bool
+	DiscountOverride *float64
+	Key              string
+	Name             string
+	Category         string
+	Quantity         float64
+	BasePrice        float64 // price before the main discount
+	Demand           float64
+	Stock            float64
+	Transit          float64
+	Outbound         float64
+	BoxSize          float64 // blank box/multiple hint for order rules
+	Group            string
+	Line             *ChristinaLine
+	Locked           bool
+	Excluded         bool
+	Unsafe           bool
 }
 
 // BudgetRequest is the report-facing budget input: raw rows plus the brand,
 // discount and delivery that the service needs to price and apply order rules.
 type BudgetRequest struct {
+	QuoteOnly     bool
 	Brand         string
 	Discount      float64 // main discount percent (0..99.99)
 	DeliveryWeeks float64

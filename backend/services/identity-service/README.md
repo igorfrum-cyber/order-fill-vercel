@@ -6,7 +6,7 @@
 
 ## Быстрый старт
 
-Требуется Go `1.26.7`. Самодостаточный local-режим с in-memory хранилищем:
+Требуется Go `1.26.9`. Самодостаточный local-режим с in-memory хранилищем:
 
 ```bash
 cd backend/services/identity-service

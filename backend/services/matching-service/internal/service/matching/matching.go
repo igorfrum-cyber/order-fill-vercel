@@ -3,6 +3,7 @@ package matching
 import (
 	"math"
 	"regexp"
+	"slices"
 	"strconv"
 	"strings"
 	"sync"
@@ -16,7 +17,7 @@ type scored struct {
 	score float64
 }
 
-var volumePattern = regexp.MustCompile(`(?i)(\d+(?:[,.]\d+)?)\s*(мл|ml|гр|г|g)(?:\s|$)`)
+var volumePattern = regexp.MustCompile(`(?i)(\d+(?:[,.]\d+)?)\s*(мл|ml|гр|г|g)\b`)
 
 var lcsPool = sync.Pool{New: func() any {
 	buf := make([]int, 0, 64)
@@ -89,39 +90,33 @@ func chooseCandidate(candidates []domain.Item, blankName, blankUnit string) (sco
 }
 
 func chooseNameFallback(candidates []domain.Item, blankName, blankUnit string) (scored, bool) {
-	var best scored
-	second := -1.0
-	found := false
+	ranked := []scored{}
 	for _, item := range candidates {
-		if item.Article != "" {
-			continue
-		}
-		score := volumeAwareSimilarity(blankName, item.Name, blankUnit)
-		if !found || score > best.score {
-			if found {
-				second = best.score
-			}
-			best = scored{item: item, score: score}
-			found = true
-			continue
-		}
-		if score > second {
-			second = score
+		if item.Article == "" {
+			ranked = append(ranked, scored{item: item, score: volumeAwareSimilarity(blankName, item.Name, blankUnit)})
 		}
 	}
-	if !found {
+	slices.SortStableFunc(ranked, func(a, b scored) int {
+		if a.score > b.score {
+			return -1
+		}
+		if a.score < b.score {
+			return 1
+		}
+		return 0
+	})
+	if len(ranked) == 0 {
 		return scored{}, false
 	}
-	if best.item.Rounded <= 0 && best.score >= 0.72 {
-		return best, true
+	for _, candidate := range ranked {
+		if candidate.item.Rounded <= 0 && candidate.score >= .72 {
+			return candidate, true
+		}
 	}
-	if second >= 0 && best.score-second < 0.08 {
-		return scored{score: best.score}, false
+	if ranked[0].score < .72 || len(ranked) > 1 && ranked[0].score-ranked[1].score < .08 {
+		return scored{score: ranked[0].score}, false
 	}
-	if best.score < 0.72 {
-		return scored{score: best.score}, false
-	}
-	return best, true
+	return ranked[0], true
 }
 
 func extractVolumeKeys(values ...string) map[string]bool {
@@ -143,8 +138,8 @@ func extractVolumeKeys(values ...string) map[string]bool {
 }
 
 func volumesConflict(blank, source domain.Item) bool {
-	left := extractVolumeKeys(blank.Name, blank.Volume)
-	right := extractVolumeKeys(source.Name, source.Volume)
+	left := extractConflictVolumeKeys(blank.Name, blank.Volume)
+	right := extractConflictVolumeKeys(source.Name, source.Volume)
 	if len(left) == 0 || len(right) == 0 {
 		return false
 	}
@@ -178,4 +173,23 @@ func extractForm(item domain.Item) string {
 func formsConflict(blank, source domain.Item) bool {
 	left, right := extractForm(blank), extractForm(source)
 	return left != "" && right != "" && left != right
+}
+
+var conflictVolumePattern = regexp.MustCompile(`(?i)(\d+(?:[,.]\d+)?)\s*(мл|ml|гр|г|g)(?:\s|$)`)
+
+func extractConflictVolumeKeys(values ...string) map[string]bool {
+	keys := map[string]bool{}
+	text := normalize.NormalizeHeader(strings.Join(values, " "))
+	for _, m := range conflictVolumePattern.FindAllStringSubmatch(text, -1) {
+		amount, err := strconv.ParseFloat(strings.ReplaceAll(m[1], ",", "."), 64)
+		if err != nil {
+			continue
+		}
+		unit := "гр"
+		if m[2] == "мл" || m[2] == "ml" {
+			unit = "мл"
+		}
+		keys[strconv.FormatFloat(amount, 'f', -1, 64)+":"+unit] = true
+	}
+	return keys
 }

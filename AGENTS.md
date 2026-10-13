@@ -43,7 +43,7 @@ Web UI: `http://127.0.0.1:3200`. Gateway health: `http://127.0.0.1:8080/healthz`
 ## Go workspace
 
 - Go workspace is at `backend/go.work` — unifies `backend/pkg`, `backend/proto`, and all 11 services.
-- Go version: **1.26.7** (pinned in go.work and toolchain scripts).
+- Go version: **1.26.9** (pinned in go.work and toolchain scripts).
 - When running tests in a single module, **must** set `GOWORK=off`:
   ```bash
   cd backend/services/gateway-service

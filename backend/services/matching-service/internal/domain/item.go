@@ -8,4 +8,5 @@ type Item struct {
 	Form        string
 	ChestnyZnak bool
 	Rounded     int
+	Recommended float64
 }

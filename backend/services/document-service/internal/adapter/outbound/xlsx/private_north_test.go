@@ -4,6 +4,9 @@ import (
 	"math"
 	"os"
 	"path/filepath"
+	"regexp"
+	"slices"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -272,8 +275,43 @@ func TestPrivateNorthFinalWorkbookRoundTrip(t *testing.T) {
 		if row.Article != selected.Article {
 			continue
 		}
-		if row.Qty != 7 || math.Abs(row.Price-selected.Price*0.9) > 0.011 {
-			t.Fatalf("round trip quantity=%v price=%v, original price=%v", row.Qty, row.Price, selected.Price)
+		if row.Qty != 7 {
+			t.Fatalf("round trip quantity=%v", row.Qty)
+		}
+		// main changes the effective invoice column and keeps an independent
+		// retail/base column intact. NeedsFromBlank's base is not the invoice.
+		expected := math.Floor(selected.Price*0.9*100+0.5) / 100
+		quantityRef := spreadsheet.ColumnName(row.QuantityColumn) + strconv.Itoa(row.Row)
+		references := regexp.MustCompile(`[A-Z]+[0-9]+`)
+		priceVerified := false
+		for _, sheet := range reloaded.Sheets() {
+			for _, formula := range sheet.(spreadsheet.Formulated).Formulas() {
+				if formula.Row != row.Row {
+					continue
+				}
+				text := strings.ReplaceAll(formula.Text, "$", "")
+				if !slices.Contains(references.FindAllString(text, -1), quantityRef) {
+					continue
+				}
+				for _, price := range row.Prices {
+					ref := spreadsheet.ColumnName(price.Column) + strconv.Itoa(row.Row)
+					if !slices.Contains(references.FindAllString(text, -1), ref) {
+						continue
+					}
+					actual, ok := orderfill.BudgetCellPrice(sheet, row.Row, price.Column)
+					if !ok || math.Abs(actual-expected) > 0.000001 {
+						t.Fatalf("invoice price=%v expected=%v base=%v", actual, expected, selected.Price)
+					}
+					cached, parseErr := strconv.ParseFloat(sheet.Value(formula.Row, formula.Column), 64)
+					if parseErr != nil || math.Abs(cached-expected*7) > 0.000001 {
+						t.Fatalf("invoice total cache=%v expected=%v", cached, expected*7)
+					}
+					priceVerified = true
+				}
+			}
+		}
+		if !priceVerified {
+			t.Fatal("no quantity-times-price invoice formula found")
 		}
 		return
 	}
