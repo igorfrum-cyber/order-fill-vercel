@@ -1,0 +1,9984 @@
+[
+  {
+    "tag": "MAIN",
+    "id": "",
+    "class": "shell",
+    "text": "\n      \n    ",
+    "box": [
+      0,
+      0,
+      1440,
+      1000
+    ],
+    "radii": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "value": null,
+    "checked": null,
+    "disabled": null,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "SECTION",
+    "id": "",
+    "class": "workspace",
+    "text": "\n        \n\n        \n\n        \n\n        \n      ",
+    "box": [
+      24,
+      24,
+      1392,
+      367.875
+    ],
+    "radii": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "value": null,
+    "checked": null,
+    "disabled": null,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "DIV",
+    "id": "",
+    "class": "topbar",
+    "text": "\n          \n          \n        ",
+    "box": [
+      24,
+      24,
+      1392,
+      44
+    ],
+    "radii": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "value": null,
+    "checked": null,
+    "disabled": null,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "DIV",
+    "id": "",
+    "class": "",
+    "text": "\n            \n          ",
+    "box": [
+      24,
+      24,
+      1196,
+      44
+    ],
+    "radii": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "value": null,
+    "checked": null,
+    "disabled": null,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "DIV",
+    "id": "",
+    "class": "title-row",
+    "text": "\n              \n              \n            ",
+    "box": [
+      24,
+      24,
+      1196,
+      44
+    ],
+    "radii": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "value": null,
+    "checked": null,
+    "disabled": null,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "H1",
+    "id": "",
+    "class": "",
+    "text": "Заполнение бланка заказа",
+    "box": [
+      24,
+      27.156,
+      348.484,
+      37.688
+    ],
+    "radii": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "value": null,
+    "checked": null,
+    "disabled": null,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "DIV",
+    "id": "",
+    "class": "mode-switch",
+    "text": "\n                \n                \n                \n              ",
+    "box": [
+      386.484,
+      24,
+      473.109,
+      44
+    ],
+    "radii": [
+      8,
+      8,
+      8,
+      8
+    ],
+    "value": null,
+    "checked": null,
+    "disabled": null,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "BUTTON",
+    "id": "orderModeButton",
+    "class": "mode-button",
+    "text": "Бланк",
+    "box": [
+      391.484,
+      29,
+      70.063,
+      34
+    ],
+    "radii": [
+      6,
+      6,
+      6,
+      6
+    ],
+    "value": "",
+    "checked": null,
+    "disabled": false,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "BUTTON",
+    "id": "northModeButton",
+    "class": "mode-button",
+    "text": "Север",
+    "box": [
+      467.547,
+      29,
+      71.359,
+      34
+    ],
+    "radii": [
+      6,
+      6,
+      6,
+      6
+    ],
+    "value": "",
+    "checked": null,
+    "disabled": false,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "BUTTON",
+    "id": "warehouseModeButton",
+    "class": "mode-button",
+    "text": "Склад Тюмень",
+    "box": [
+      544.906,
+      29,
+      136.031,
+      34
+    ],
+    "radii": [
+      6,
+      6,
+      6,
+      6
+    ],
+    "value": "",
+    "checked": null,
+    "disabled": false,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "BUTTON",
+    "id": "recalculateModeButton",
+    "class": "mode-button active",
+    "text": "Пересчёт таблицы",
+    "box": [
+      686.938,
+      29,
+      167.656,
+      34
+    ],
+    "radii": [
+      6,
+      6,
+      6,
+      6
+    ],
+    "value": "",
+    "checked": null,
+    "disabled": false,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "DIV",
+    "id": "status",
+    "class": "status",
+    "text": "Файлы готовы",
+    "box": [
+      1236,
+      24,
+      180,
+      43.75
+    ],
+    "radii": [
+      8,
+      8,
+      8,
+      8
+    ],
+    "value": null,
+    "checked": null,
+    "disabled": null,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "SECTION",
+    "id": "orderSection",
+    "class": "hidden",
+    "text": "\n          \n\n          \n        ",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "value": null,
+    "checked": null,
+    "disabled": null,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "FORM",
+    "id": "uploadForm",
+    "class": "upload-grid",
+    "text": "\n            \n\n            \n\n            \n\n            \n\n            \n\n            \n\n            \n          ",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "value": null,
+    "checked": null,
+    "disabled": null,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "DIV",
+    "id": "",
+    "class": "brand-column",
+    "text": "\n            \n            \n            ",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "value": null,
+    "checked": null,
+    "disabled": null,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "LABEL",
+    "id": "",
+    "class": "brand-field",
+    "text": "\n              \n              \n            ",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      8,
+      8,
+      8,
+      8
+    ],
+    "value": null,
+    "checked": null,
+    "disabled": null,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "SPAN",
+    "id": "",
+    "class": "label",
+    "text": "Бренд",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "value": null,
+    "checked": null,
+    "disabled": null,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "SELECT",
+    "id": "brandSelect",
+    "class": "",
+    "text": "\n                \n                \n                \n                \n                \n                \n                \n              ",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      8,
+      8,
+      8,
+      8
+    ],
+    "value": "skin_synergy",
+    "checked": null,
+    "disabled": false,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "OPTION",
+    "id": "",
+    "class": "",
+    "text": "ANGIOPHARM",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "value": "angiopharm",
+    "checked": null,
+    "disabled": false,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "OPTION",
+    "id": "",
+    "class": "",
+    "text": "CHRISTINA",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "value": "christina",
+    "checked": null,
+    "disabled": false,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "OPTION",
+    "id": "",
+    "class": "",
+    "text": "LeviSsime",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "value": "levissime",
+    "checked": null,
+    "disabled": false,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "OPTION",
+    "id": "",
+    "class": "",
+    "text": "SOTHYS",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "value": "sothys",
+    "checked": null,
+    "disabled": false,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "OPTION",
+    "id": "",
+    "class": "",
+    "text": "NOVACUTAN",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "value": "novacutan",
+    "checked": null,
+    "disabled": false,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "OPTION",
+    "id": "",
+    "class": "",
+    "text": "Skin Synergy",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "value": "skin_synergy",
+    "checked": null,
+    "disabled": false,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "OPTION",
+    "id": "",
+    "class": "",
+    "text": "KLAPP",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "value": "klapp",
+    "checked": null,
+    "disabled": false,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "DIV",
+    "id": "tyumenUploadCell",
+    "class": "tyumen-upload-cell",
+    "text": "\n              \n              \n            ",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      8,
+      8,
+      8,
+      8
+    ],
+    "value": null,
+    "checked": null,
+    "disabled": null,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "LABEL",
+    "id": "",
+    "class": "tyumen-upload-toggle",
+    "text": "",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "value": null,
+    "checked": null,
+    "disabled": null,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "INPUT",
+    "id": "twoTyumenSources",
+    "class": "",
+    "text": "",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "value": "on",
+    "checked": false,
+    "disabled": false,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "SPAN",
+    "id": "",
+    "class": "label",
+    "text": "Тюмень: 2 склада",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "value": null,
+    "checked": null,
+    "disabled": null,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "LABEL",
+    "id": "warehouseSourceField",
+    "class": "dropzone hidden",
+    "text": "\n                \n                \n                \n              ",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "value": null,
+    "checked": null,
+    "disabled": null,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "SPAN",
+    "id": "",
+    "class": "icon",
+    "text": "↑",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      8,
+      8,
+      8,
+      8
+    ],
+    "value": null,
+    "checked": null,
+    "disabled": null,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "SPAN",
+    "id": "",
+    "class": "label",
+    "text": "СКЛАД ДОСТАВКА",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "value": null,
+    "checked": null,
+    "disabled": null,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "SPAN",
+    "id": "warehouseSourceName",
+    "class": "filename",
+    "text": ".xlsx, .xlsm или .xls",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "value": null,
+    "checked": null,
+    "disabled": null,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "INPUT",
+    "id": "warehouseSourceFile",
+    "class": "",
+    "text": "",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "value": "",
+    "checked": false,
+    "disabled": true,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "LABEL",
+    "id": "",
+    "class": "month-field",
+    "text": "\n              \n              \n            ",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      8,
+      8,
+      8,
+      8
+    ],
+    "value": null,
+    "checked": null,
+    "disabled": null,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "SPAN",
+    "id": "",
+    "class": "label",
+    "text": "Месяц заказа",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "value": null,
+    "checked": null,
+    "disabled": null,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "INPUT",
+    "id": "orderMonth",
+    "class": "",
+    "text": "",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      8,
+      8,
+      8,
+      8
+    ],
+    "value": "2026-10",
+    "checked": false,
+    "disabled": false,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "LABEL",
+    "id": "",
+    "class": "dropzone",
+    "text": "\n              \n              \n              \n              \n            ",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      8,
+      8,
+      8,
+      8
+    ],
+    "value": null,
+    "checked": null,
+    "disabled": null,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "SPAN",
+    "id": "",
+    "class": "icon",
+    "text": "↑",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      8,
+      8,
+      8,
+      8
+    ],
+    "value": null,
+    "checked": null,
+    "disabled": null,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "SPAN",
+    "id": "",
+    "class": "label",
+    "text": "Таблица заказа товара",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "value": null,
+    "checked": null,
+    "disabled": null,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "SPAN",
+    "id": "sourceName",
+    "class": "filename",
+    "text": "Тюмень.xlsx",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "value": null,
+    "checked": null,
+    "disabled": null,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "INPUT",
+    "id": "sourceFile",
+    "class": "",
+    "text": "",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "value": "C:\\fakepath\\Тюмень.xlsx",
+    "checked": false,
+    "disabled": false,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "LABEL",
+    "id": "blankField",
+    "class": "dropzone",
+    "text": "\n              \n              \n              \n              \n            ",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      8,
+      8,
+      8,
+      8
+    ],
+    "value": null,
+    "checked": null,
+    "disabled": null,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "SPAN",
+    "id": "",
+    "class": "icon",
+    "text": "↑",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      8,
+      8,
+      8,
+      8
+    ],
+    "value": null,
+    "checked": null,
+    "disabled": null,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "SPAN",
+    "id": "",
+    "class": "label",
+    "text": "Актуальный бланк",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "value": null,
+    "checked": null,
+    "disabled": null,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "SPAN",
+    "id": "blankName",
+    "class": "filename",
+    "text": "Бланк.xlsx",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "value": null,
+    "checked": null,
+    "disabled": null,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "INPUT",
+    "id": "blankFile",
+    "class": "",
+    "text": "",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "value": "C:\\fakepath\\Бланк.xlsx",
+    "checked": false,
+    "disabled": false,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "LABEL",
+    "id": "homeField",
+    "class": "dropzone christina-only hidden",
+    "text": "\n              \n              \n              \n              \n            ",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      8,
+      8,
+      8,
+      8
+    ],
+    "value": null,
+    "checked": null,
+    "disabled": null,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "SPAN",
+    "id": "",
+    "class": "icon",
+    "text": "↑",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      8,
+      8,
+      8,
+      8
+    ],
+    "value": null,
+    "checked": null,
+    "disabled": null,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "SPAN",
+    "id": "",
+    "class": "label",
+    "text": "Бланк HOME",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "value": null,
+    "checked": null,
+    "disabled": null,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "SPAN",
+    "id": "homeName",
+    "class": "filename",
+    "text": ".xlsx или .xlsm",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "value": null,
+    "checked": null,
+    "disabled": null,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "INPUT",
+    "id": "homeFile",
+    "class": "",
+    "text": "",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "value": "",
+    "checked": false,
+    "disabled": false,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "LABEL",
+    "id": "proffField",
+    "class": "dropzone christina-only hidden",
+    "text": "\n              \n              \n              \n              \n            ",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      8,
+      8,
+      8,
+      8
+    ],
+    "value": null,
+    "checked": null,
+    "disabled": null,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "SPAN",
+    "id": "",
+    "class": "icon",
+    "text": "↑",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      8,
+      8,
+      8,
+      8
+    ],
+    "value": null,
+    "checked": null,
+    "disabled": null,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "SPAN",
+    "id": "",
+    "class": "label",
+    "text": "Бланк PROFF",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "value": null,
+    "checked": null,
+    "disabled": null,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "SPAN",
+    "id": "proffName",
+    "class": "filename",
+    "text": ".xlsx или .xlsm",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "value": null,
+    "checked": null,
+    "disabled": null,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "INPUT",
+    "id": "proffFile",
+    "class": "",
+    "text": "",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "value": "",
+    "checked": false,
+    "disabled": false,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "BUTTON",
+    "id": "",
+    "class": "primary completed",
+    "text": " Бланк заполнен",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      8,
+      8,
+      8,
+      8
+    ],
+    "value": "",
+    "checked": null,
+    "disabled": true,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "SPAN",
+    "id": "",
+    "class": "",
+    "text": "✓",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "value": null,
+    "checked": null,
+    "disabled": null,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "SECTION",
+    "id": "",
+    "class": "order-pricing",
+    "text": "",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "value": null,
+    "checked": null,
+    "disabled": null,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "H3",
+    "id": "",
+    "class": "",
+    "text": "Цена закупки",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "value": null,
+    "checked": null,
+    "disabled": null,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "DIV",
+    "id": "",
+    "class": "",
+    "text": "",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "value": null,
+    "checked": null,
+    "disabled": null,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "STRONG",
+    "id": "",
+    "class": "",
+    "text": "Бланк",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "value": null,
+    "checked": null,
+    "disabled": null,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "LABEL",
+    "id": "",
+    "class": "",
+    "text": "Колонка цены",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "value": null,
+    "checked": null,
+    "disabled": null,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "SELECT",
+    "id": "",
+    "class": "",
+    "text": "",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      6,
+      6,
+      6,
+      6
+    ],
+    "value": "4",
+    "checked": null,
+    "disabled": false,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "OPTION",
+    "id": "",
+    "class": "",
+    "text": "Выберите колонку",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "value": "",
+    "checked": null,
+    "disabled": false,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "OPTION",
+    "id": "",
+    "class": "",
+    "text": "Цена · 100,00 ₽",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "value": "4",
+    "checked": null,
+    "disabled": false,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "OPTION",
+    "id": "",
+    "class": "",
+    "text": "Цена со скидкой · 70,00 ₽",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "value": "5",
+    "checked": null,
+    "disabled": false,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "LABEL",
+    "id": "",
+    "class": "",
+    "text": "Скидка",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "value": null,
+    "checked": null,
+    "disabled": null,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "SELECT",
+    "id": "",
+    "class": "",
+    "text": "",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      6,
+      6,
+      6,
+      6
+    ],
+    "value": "net",
+    "checked": null,
+    "disabled": false,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "OPTION",
+    "id": "",
+    "class": "",
+    "text": "Уже учтена в цене",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "value": "net",
+    "checked": null,
+    "disabled": false,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "OPTION",
+    "id": "",
+    "class": "",
+    "text": "Применить нашу скидку",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "value": "gross",
+    "checked": null,
+    "disabled": false,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "LABEL",
+    "id": "",
+    "class": "",
+    "text": "Наша скидка, %",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "value": null,
+    "checked": null,
+    "disabled": null,
+    "hidden": true,
+    "download": null
+  },
+  {
+    "tag": "INPUT",
+    "id": "",
+    "class": "",
+    "text": "",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      6,
+      6,
+      6,
+      6
+    ],
+    "value": "",
+    "checked": false,
+    "disabled": false,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "SECTION",
+    "id": "result",
+    "class": "result",
+    "text": "\n            \n\n            \n            \n            \n\n            \n\n            \n\n            \n            \n          ",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      8,
+      8,
+      8,
+      8
+    ],
+    "value": null,
+    "checked": null,
+    "disabled": null,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "DIV",
+    "id": "",
+    "class": "result-head",
+    "text": "\n              \n              \n            ",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "value": null,
+    "checked": null,
+    "disabled": null,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "H2",
+    "id": "",
+    "class": "",
+    "text": "Отчет",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "value": null,
+    "checked": null,
+    "disabled": null,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "DIV",
+    "id": "",
+    "class": "result-actions",
+    "text": "\n                \n                \n                \n              ",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "value": null,
+    "checked": null,
+    "disabled": null,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "BUTTON",
+    "id": "issueReportButton",
+    "class": "secondary",
+    "text": "Скачать отчет для 1С",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      8,
+      8,
+      8,
+      8
+    ],
+    "value": "",
+    "checked": null,
+    "disabled": true,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "LABEL",
+    "id": "",
+    "class": "download-stock-option",
+    "text": "\n                  \n                  \n                ",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "value": null,
+    "checked": null,
+    "disabled": null,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "INPUT",
+    "id": "includeBlankStocks",
+    "class": "",
+    "text": "",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "value": "on",
+    "checked": false,
+    "disabled": false,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "SPAN",
+    "id": "",
+    "class": "",
+    "text": "Добавить остатки в бланк",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "value": null,
+    "checked": null,
+    "disabled": null,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "BUTTON",
+    "id": "downloadButton",
+    "class": "download",
+    "text": "Скачать заполненные файлы",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      8,
+      8,
+      8,
+      8
+    ],
+    "value": "",
+    "checked": null,
+    "disabled": false,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "SECTION",
+    "id": "",
+    "class": "budget-panel",
+    "text": "",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "value": null,
+    "checked": null,
+    "disabled": null,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "H3",
+    "id": "",
+    "class": "",
+    "text": "Заказ до суммы",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "value": null,
+    "checked": null,
+    "disabled": null,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "DIV",
+    "id": "",
+    "class": "",
+    "text": "",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "value": null,
+    "checked": null,
+    "disabled": null,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "DIV",
+    "id": "",
+    "class": "",
+    "text": "",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "value": null,
+    "checked": null,
+    "disabled": null,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "STRONG",
+    "id": "",
+    "class": "",
+    "text": "Текущая сумма: 1 100,00 ₽",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "value": null,
+    "checked": null,
+    "disabled": null,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "LABEL",
+    "id": "",
+    "class": "",
+    "text": "Желаемая сумма, ₽",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "value": null,
+    "checked": null,
+    "disabled": null,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "INPUT",
+    "id": "",
+    "class": "",
+    "text": "",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      6,
+      6,
+      6,
+      6
+    ],
+    "value": "",
+    "checked": false,
+    "disabled": false,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "DIV",
+    "id": "",
+    "class": "budget-actions",
+    "text": "",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "value": null,
+    "checked": null,
+    "disabled": null,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "BUTTON",
+    "id": "",
+    "class": "secondary",
+    "text": "Заказ до суммы",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      8,
+      8,
+      8,
+      8
+    ],
+    "value": "",
+    "checked": null,
+    "disabled": false,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "BUTTON",
+    "id": "",
+    "class": "secondary",
+    "text": "Отменить перерасчет суммы",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      8,
+      8,
+      8,
+      8
+    ],
+    "value": "",
+    "checked": null,
+    "disabled": false,
+    "hidden": true,
+    "download": null
+  },
+  {
+    "tag": "DIV",
+    "id": "periodNote",
+    "class": "period-note",
+    "text": "Skin Synergy. Заказ на октябрь 2026. Период: 01.09.2025 - 31.08.2026. Прошлый период: 01.09.2025 - 30.11.2025.",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "value": null,
+    "checked": null,
+    "disabled": null,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "DIV",
+    "id": "metrics",
+    "class": "metrics",
+    "text": "\n      \n    \n      \n    \n      \n    \n      \n    \n      \n    \n      \n    ",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "value": null,
+    "checked": null,
+    "disabled": null,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "BUTTON",
+    "id": "",
+    "class": "metric",
+    "text": "\n        \n      ",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "value": "",
+    "checked": null,
+    "disabled": false,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "STRONG",
+    "id": "",
+    "class": "",
+    "text": "1",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "value": null,
+    "checked": null,
+    "disabled": null,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "SPAN",
+    "id": "",
+    "class": "",
+    "text": "Заполнено",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "value": null,
+    "checked": null,
+    "disabled": null,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "BUTTON",
+    "id": "",
+    "class": "metric",
+    "text": "\n        \n      ",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "value": "",
+    "checked": null,
+    "disabled": false,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "STRONG",
+    "id": "",
+    "class": "",
+    "text": "0",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "value": null,
+    "checked": null,
+    "disabled": null,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "SPAN",
+    "id": "",
+    "class": "",
+    "text": "Оставлено пустым",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "value": null,
+    "checked": null,
+    "disabled": null,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "BUTTON",
+    "id": "",
+    "class": "metric",
+    "text": "\n        \n      ",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "value": "",
+    "checked": null,
+    "disabled": false,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "STRONG",
+    "id": "",
+    "class": "",
+    "text": "0",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "value": null,
+    "checked": null,
+    "disabled": null,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "SPAN",
+    "id": "",
+    "class": "",
+    "text": "Проверить",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "value": null,
+    "checked": null,
+    "disabled": null,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "BUTTON",
+    "id": "",
+    "class": "metric",
+    "text": "\n        \n      ",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "value": "",
+    "checked": null,
+    "disabled": false,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "STRONG",
+    "id": "",
+    "class": "",
+    "text": "0",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "value": null,
+    "checked": null,
+    "disabled": null,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "SPAN",
+    "id": "",
+    "class": "",
+    "text": "Нет в таблице",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "value": null,
+    "checked": null,
+    "disabled": null,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "BUTTON",
+    "id": "",
+    "class": "metric",
+    "text": "\n        \n      ",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "value": "",
+    "checked": null,
+    "disabled": false,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "STRONG",
+    "id": "",
+    "class": "",
+    "text": "0",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "value": null,
+    "checked": null,
+    "disabled": null,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "SPAN",
+    "id": "",
+    "class": "",
+    "text": "Нет в бланке",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "value": null,
+    "checked": null,
+    "disabled": null,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "BUTTON",
+    "id": "",
+    "class": "metric",
+    "text": "\n        \n      ",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "value": "",
+    "checked": null,
+    "disabled": false,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "STRONG",
+    "id": "",
+    "class": "",
+    "text": "0",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "value": null,
+    "checked": null,
+    "disabled": null,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "SPAN",
+    "id": "",
+    "class": "",
+    "text": "Дублей",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "value": null,
+    "checked": null,
+    "disabled": null,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "DIV",
+    "id": "downloadLinks",
+    "class": "download-links",
+    "text": "",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "value": null,
+    "checked": null,
+    "disabled": null,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "A",
+    "id": "",
+    "class": "file-link",
+    "text": "Скачать Skin Synergy",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      8,
+      8,
+      8,
+      8
+    ],
+    "value": null,
+    "checked": null,
+    "disabled": null,
+    "hidden": false,
+    "download": "Бланк Тюмень заполненный.xlsx"
+  },
+  {
+    "tag": "A",
+    "id": "",
+    "class": "file-link",
+    "text": "Скачать таблицу заказа",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      8,
+      8,
+      8,
+      8
+    ],
+    "value": null,
+    "checked": null,
+    "disabled": null,
+    "hidden": false,
+    "download": "Тюмень заполненная таблица.xlsx"
+  },
+  {
+    "tag": "DIV",
+    "id": "",
+    "class": "report-tools",
+    "text": "\n              \n              \n            ",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "value": null,
+    "checked": null,
+    "disabled": null,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "LABEL",
+    "id": "",
+    "class": "search-field",
+    "text": "\n                \n                \n              ",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "value": null,
+    "checked": null,
+    "disabled": null,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "SPAN",
+    "id": "",
+    "class": "label",
+    "text": "Поиск",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "value": null,
+    "checked": null,
+    "disabled": null,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "INPUT",
+    "id": "reportSearch",
+    "class": "",
+    "text": "",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      8,
+      8,
+      8,
+      8
+    ],
+    "value": "",
+    "checked": false,
+    "disabled": false,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "BUTTON",
+    "id": "clearFilterButton",
+    "class": "filter-reset hidden",
+    "text": "Сбросить фильтр",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      8,
+      8,
+      8,
+      8
+    ],
+    "value": "",
+    "checked": null,
+    "disabled": false,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "SECTION",
+    "id": "prioritySection",
+    "class": "priority-section hidden",
+    "text": "\n              \n              \n            ",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "value": null,
+    "checked": null,
+    "disabled": null,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "DIV",
+    "id": "",
+    "class": "table-title",
+    "text": "Нужно проверить",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "value": null,
+    "checked": null,
+    "disabled": null,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "DIV",
+    "id": "",
+    "class": "table-wrap priority-wrap",
+    "text": "\n                \n              ",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "value": null,
+    "checked": null,
+    "disabled": null,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "TABLE",
+    "id": "",
+    "class": "",
+    "text": "\n                  \n                  \n                  \n                ",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "value": null,
+    "checked": null,
+    "disabled": null,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "COLGROUP",
+    "id": "",
+    "class": "",
+    "text": "\n                    \n                    \n                    \n                    \n                    \n                    \n                    \n                    \n                    \n                    \n                    \n                    \n                    \n                  ",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "value": null,
+    "checked": null,
+    "disabled": null,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "COL",
+    "id": "",
+    "class": "col-status",
+    "text": "",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "value": null,
+    "checked": null,
+    "disabled": null,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "COL",
+    "id": "",
+    "class": "col-blank",
+    "text": "",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "value": null,
+    "checked": null,
+    "disabled": null,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "COL",
+    "id": "",
+    "class": "col-article",
+    "text": "",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "value": null,
+    "checked": null,
+    "disabled": null,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "COL",
+    "id": "",
+    "class": "col-name",
+    "text": "",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "value": null,
+    "checked": null,
+    "disabled": null,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "COL",
+    "id": "",
+    "class": "col-unit",
+    "text": "",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "value": null,
+    "checked": null,
+    "disabled": null,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "COL",
+    "id": "",
+    "class": "col-stock",
+    "text": "",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "value": null,
+    "checked": null,
+    "disabled": null,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "COL",
+    "id": "",
+    "class": "col-transit",
+    "text": "",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "value": null,
+    "checked": null,
+    "disabled": null,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "COL",
+    "id": "",
+    "class": "col-recommended",
+    "text": "",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "value": null,
+    "checked": null,
+    "disabled": null,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "COL",
+    "id": "",
+    "class": "col-source-fact",
+    "text": "",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "value": null,
+    "checked": null,
+    "disabled": null,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "COL",
+    "id": "",
+    "class": "col-box",
+    "text": "",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "value": null,
+    "checked": null,
+    "disabled": null,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "COL",
+    "id": "",
+    "class": "col-inserted",
+    "text": "",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "value": null,
+    "checked": null,
+    "disabled": null,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "COL",
+    "id": "",
+    "class": "col-comment",
+    "text": "",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "value": null,
+    "checked": null,
+    "disabled": null,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "COL",
+    "id": "",
+    "class": "col-match",
+    "text": "",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "value": null,
+    "checked": null,
+    "disabled": null,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "THEAD",
+    "id": "",
+    "class": "",
+    "text": "\n                    \n                  ",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "value": null,
+    "checked": null,
+    "disabled": null,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "TR",
+    "id": "",
+    "class": "",
+    "text": "\n                      \n                      \n                      \n                      \n                      \n                      \n                      \n                      \n                      \n                      \n                      \n                      \n                      \n                    ",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "value": null,
+    "checked": null,
+    "disabled": null,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "TH",
+    "id": "",
+    "class": "",
+    "text": "Статус",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "value": null,
+    "checked": null,
+    "disabled": null,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "TH",
+    "id": "",
+    "class": "",
+    "text": "Бланк",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "value": null,
+    "checked": null,
+    "disabled": null,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "TH",
+    "id": "",
+    "class": "",
+    "text": "Артикул",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "value": null,
+    "checked": null,
+    "disabled": null,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "TH",
+    "id": "",
+    "class": "",
+    "text": "Товар в бланке",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "value": null,
+    "checked": null,
+    "disabled": null,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "TH",
+    "id": "",
+    "class": "",
+    "text": "Объем мл/гр",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "value": null,
+    "checked": null,
+    "disabled": null,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "TH",
+    "id": "",
+    "class": "",
+    "text": "Остаток",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "value": null,
+    "checked": null,
+    "disabled": null,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "TH",
+    "id": "",
+    "class": "",
+    "text": "В пути",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "value": null,
+    "checked": null,
+    "disabled": null,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "TH",
+    "id": "",
+    "class": "",
+    "text": "Рекоменд.",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "value": null,
+    "checked": null,
+    "disabled": null,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "TH",
+    "id": "",
+    "class": "",
+    "text": "Заказано по факту",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "value": null,
+    "checked": null,
+    "disabled": null,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "TH",
+    "id": "priorityAdjustmentHeader",
+    "class": "",
+    "text": "Округление",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "value": null,
+    "checked": null,
+    "disabled": null,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "TH",
+    "id": "",
+    "class": "",
+    "text": "Вставлено",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "value": null,
+    "checked": null,
+    "disabled": null,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "TH",
+    "id": "",
+    "class": "",
+    "text": "Комментарий",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "value": null,
+    "checked": null,
+    "disabled": null,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "TH",
+    "id": "",
+    "class": "",
+    "text": "Совпадение",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "value": null,
+    "checked": null,
+    "disabled": null,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "TBODY",
+    "id": "priorityBody",
+    "class": "",
+    "text": "",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "value": null,
+    "checked": null,
+    "disabled": null,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "DIV",
+    "id": "reportTitle",
+    "class": "table-title",
+    "text": "Все остальные позиции: 1",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "value": null,
+    "checked": null,
+    "disabled": null,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "DIV",
+    "id": "",
+    "class": "table-wrap",
+    "text": "\n              \n            ",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "value": null,
+    "checked": null,
+    "disabled": null,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "TABLE",
+    "id": "",
+    "class": "",
+    "text": "\n                \n                \n                \n              ",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "value": null,
+    "checked": null,
+    "disabled": null,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "COLGROUP",
+    "id": "",
+    "class": "",
+    "text": "\n                  \n                  \n                  \n                  \n                  \n                  \n                  \n                  \n                  \n                  \n                  \n                  \n                  \n                ",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "value": null,
+    "checked": null,
+    "disabled": null,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "COL",
+    "id": "",
+    "class": "col-status",
+    "text": "",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "value": null,
+    "checked": null,
+    "disabled": null,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "COL",
+    "id": "",
+    "class": "col-blank",
+    "text": "",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "value": null,
+    "checked": null,
+    "disabled": null,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "COL",
+    "id": "",
+    "class": "col-article",
+    "text": "",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "value": null,
+    "checked": null,
+    "disabled": null,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "COL",
+    "id": "",
+    "class": "col-name",
+    "text": "",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "value": null,
+    "checked": null,
+    "disabled": null,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "COL",
+    "id": "",
+    "class": "col-unit",
+    "text": "",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "value": null,
+    "checked": null,
+    "disabled": null,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "COL",
+    "id": "",
+    "class": "col-stock",
+    "text": "",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "value": null,
+    "checked": null,
+    "disabled": null,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "COL",
+    "id": "",
+    "class": "col-transit",
+    "text": "",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "value": null,
+    "checked": null,
+    "disabled": null,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "COL",
+    "id": "",
+    "class": "col-recommended",
+    "text": "",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "value": null,
+    "checked": null,
+    "disabled": null,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "COL",
+    "id": "",
+    "class": "col-source-fact",
+    "text": "",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "value": null,
+    "checked": null,
+    "disabled": null,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "COL",
+    "id": "",
+    "class": "col-box",
+    "text": "",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "value": null,
+    "checked": null,
+    "disabled": null,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "COL",
+    "id": "",
+    "class": "col-inserted",
+    "text": "",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "value": null,
+    "checked": null,
+    "disabled": null,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "COL",
+    "id": "",
+    "class": "col-comment",
+    "text": "",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "value": null,
+    "checked": null,
+    "disabled": null,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "COL",
+    "id": "",
+    "class": "col-match",
+    "text": "",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "value": null,
+    "checked": null,
+    "disabled": null,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "THEAD",
+    "id": "",
+    "class": "",
+    "text": "\n                  \n                ",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "value": null,
+    "checked": null,
+    "disabled": null,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "TR",
+    "id": "",
+    "class": "",
+    "text": "\n                    \n                    \n                    \n                    \n                    \n                    \n                    \n                    \n                    \n                    \n                    \n                    \n                    \n                  ",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "value": null,
+    "checked": null,
+    "disabled": null,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "TH",
+    "id": "",
+    "class": "",
+    "text": "Статус",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "value": null,
+    "checked": null,
+    "disabled": null,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "TH",
+    "id": "",
+    "class": "",
+    "text": "Бланк",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "value": null,
+    "checked": null,
+    "disabled": null,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "TH",
+    "id": "",
+    "class": "",
+    "text": "Артикул",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "value": null,
+    "checked": null,
+    "disabled": null,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "TH",
+    "id": "",
+    "class": "",
+    "text": "Товар в бланке",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "value": null,
+    "checked": null,
+    "disabled": null,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "TH",
+    "id": "",
+    "class": "",
+    "text": "Объем мл/гр",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "value": null,
+    "checked": null,
+    "disabled": null,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "TH",
+    "id": "",
+    "class": "",
+    "text": "Остаток",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "value": null,
+    "checked": null,
+    "disabled": null,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "TH",
+    "id": "",
+    "class": "",
+    "text": "В пути",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "value": null,
+    "checked": null,
+    "disabled": null,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "TH",
+    "id": "",
+    "class": "",
+    "text": "Рекоменд.",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "value": null,
+    "checked": null,
+    "disabled": null,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "TH",
+    "id": "",
+    "class": "",
+    "text": "Заказано по факту",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "value": null,
+    "checked": null,
+    "disabled": null,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "TH",
+    "id": "adjustmentHeader",
+    "class": "",
+    "text": "Округление",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "value": null,
+    "checked": null,
+    "disabled": null,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "TH",
+    "id": "",
+    "class": "",
+    "text": "Вставлено",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "value": null,
+    "checked": null,
+    "disabled": null,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "TH",
+    "id": "",
+    "class": "",
+    "text": "Комментарий",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "value": null,
+    "checked": null,
+    "disabled": null,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "TH",
+    "id": "",
+    "class": "",
+    "text": "Совпадение",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "value": null,
+    "checked": null,
+    "disabled": null,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "TBODY",
+    "id": "reportBody",
+    "class": "",
+    "text": "\n        \n      ",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "value": null,
+    "checked": null,
+    "disabled": null,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "TR",
+    "id": "",
+    "class": "",
+    "text": "\n          \n          \n          \n          \n          \n          \n          \n          \n          \n          \n          \n          \n          \n        ",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "value": null,
+    "checked": null,
+    "disabled": null,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "TD",
+    "id": "",
+    "class": "ok",
+    "text": "Заполнено",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "value": null,
+    "checked": null,
+    "disabled": null,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "TD",
+    "id": "",
+    "class": "",
+    "text": "Skin Synergy",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "value": null,
+    "checked": null,
+    "disabled": null,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "TD",
+    "id": "",
+    "class": "",
+    "text": "P1",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "value": null,
+    "checked": null,
+    "disabled": null,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "TD",
+    "id": "",
+    "class": "",
+    "text": "Крем 50 мл",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "value": null,
+    "checked": null,
+    "disabled": null,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "TD",
+    "id": "",
+    "class": "",
+    "text": "",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "value": null,
+    "checked": null,
+    "disabled": null,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "TD",
+    "id": "",
+    "class": "",
+    "text": "3",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "value": null,
+    "checked": null,
+    "disabled": null,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "TD",
+    "id": "",
+    "class": "",
+    "text": "0",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "value": null,
+    "checked": null,
+    "disabled": null,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "TD",
+    "id": "",
+    "class": "",
+    "text": "9.50",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "value": null,
+    "checked": null,
+    "disabled": null,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "TD",
+    "id": "",
+    "class": "",
+    "text": "",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "value": null,
+    "checked": null,
+    "disabled": null,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "TD",
+    "id": "",
+    "class": "",
+    "text": "",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "value": null,
+    "checked": null,
+    "disabled": null,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "TD",
+    "id": "",
+    "class": "",
+    "text": "\n        \n        \n      ",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "value": null,
+    "checked": null,
+    "disabled": null,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "INPUT",
+    "id": "",
+    "class": "qty-input",
+    "text": "",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      8,
+      8,
+      8,
+      8
+    ],
+    "value": "11",
+    "checked": false,
+    "disabled": false,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "LABEL",
+    "id": "",
+    "class": "budget-row-lock",
+    "text": " Закрепить",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "value": null,
+    "checked": null,
+    "disabled": null,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "INPUT",
+    "id": "",
+    "class": "",
+    "text": "",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "value": "on",
+    "checked": false,
+    "disabled": false,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "TD",
+    "id": "",
+    "class": "",
+    "text": "\n        \n      ",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "value": null,
+    "checked": null,
+    "disabled": null,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "INPUT",
+    "id": "",
+    "class": "comment-input",
+    "text": "",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      8,
+      8,
+      8,
+      8
+    ],
+    "value": "Ручной комментарий",
+    "checked": false,
+    "disabled": false,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "TD",
+    "id": "",
+    "class": "",
+    "text": "100%",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "value": null,
+    "checked": null,
+    "disabled": null,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "SECTION",
+    "id": "warehouseSection",
+    "class": "north-panel hidden",
+    "text": "\n          \n          \n          \n        ",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      8,
+      8,
+      8,
+      8
+    ],
+    "value": null,
+    "checked": null,
+    "disabled": null,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "H2",
+    "id": "",
+    "class": "",
+    "text": "Склад Тюмень",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "value": null,
+    "checked": null,
+    "disabled": null,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "FORM",
+    "id": "warehouseForm",
+    "class": "upload-grid",
+    "text": "\n            \n            \n            \n            \n          ",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "value": null,
+    "checked": null,
+    "disabled": null,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "LABEL",
+    "id": "",
+    "class": "brand-field",
+    "text": "",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      8,
+      8,
+      8,
+      8
+    ],
+    "value": null,
+    "checked": null,
+    "disabled": null,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "SPAN",
+    "id": "",
+    "class": "label",
+    "text": "Бренд",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "value": null,
+    "checked": null,
+    "disabled": null,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "SELECT",
+    "id": "warehouseBrand",
+    "class": "",
+    "text": "\n                \n                \n                \n                \n                \n                \n                \n              ",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      8,
+      8,
+      8,
+      8
+    ],
+    "value": "skin_synergy",
+    "checked": null,
+    "disabled": false,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "OPTION",
+    "id": "",
+    "class": "",
+    "text": "ANGIOPHARM",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "value": "angiopharm",
+    "checked": null,
+    "disabled": false,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "OPTION",
+    "id": "",
+    "class": "",
+    "text": "CHRISTINA",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "value": "christina",
+    "checked": null,
+    "disabled": false,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "OPTION",
+    "id": "",
+    "class": "",
+    "text": "LeviSsime",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "value": "levissime",
+    "checked": null,
+    "disabled": false,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "OPTION",
+    "id": "",
+    "class": "",
+    "text": "SOTHYS",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "value": "sothys",
+    "checked": null,
+    "disabled": false,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "OPTION",
+    "id": "",
+    "class": "",
+    "text": "NOVACUTAN",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "value": "novacutan",
+    "checked": null,
+    "disabled": false,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "OPTION",
+    "id": "",
+    "class": "",
+    "text": "Skin Synergy",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "value": "skin_synergy",
+    "checked": null,
+    "disabled": false,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "OPTION",
+    "id": "",
+    "class": "",
+    "text": "KLAPP",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "value": "klapp",
+    "checked": null,
+    "disabled": false,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "LABEL",
+    "id": "",
+    "class": "dropzone",
+    "text": "",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      8,
+      8,
+      8,
+      8
+    ],
+    "value": null,
+    "checked": null,
+    "disabled": null,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "SPAN",
+    "id": "",
+    "class": "icon",
+    "text": "↑",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      8,
+      8,
+      8,
+      8
+    ],
+    "value": null,
+    "checked": null,
+    "disabled": null,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "SPAN",
+    "id": "",
+    "class": "label",
+    "text": "Офис: Склад Тюмень",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "value": null,
+    "checked": null,
+    "disabled": null,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "SPAN",
+    "id": "officeTransferName",
+    "class": "filename",
+    "text": "Тюмень.xlsx",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "value": null,
+    "checked": null,
+    "disabled": null,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "INPUT",
+    "id": "officeTransferFile",
+    "class": "",
+    "text": "",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "value": "C:\\fakepath\\Тюмень.xlsx",
+    "checked": false,
+    "disabled": false,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "LABEL",
+    "id": "",
+    "class": "dropzone",
+    "text": "",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      8,
+      8,
+      8,
+      8
+    ],
+    "value": null,
+    "checked": null,
+    "disabled": null,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "SPAN",
+    "id": "",
+    "class": "icon",
+    "text": "↑",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      8,
+      8,
+      8,
+      8
+    ],
+    "value": null,
+    "checked": null,
+    "disabled": null,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "SPAN",
+    "id": "",
+    "class": "label",
+    "text": "СКЛАД ДОСТАВКА",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "value": null,
+    "checked": null,
+    "disabled": null,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "SPAN",
+    "id": "warehouseTransferName",
+    "class": "filename",
+    "text": "Склад.xlsx",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "value": null,
+    "checked": null,
+    "disabled": null,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "INPUT",
+    "id": "warehouseTransferFile",
+    "class": "",
+    "text": "",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "value": "C:\\fakepath\\Склад.xlsx",
+    "checked": false,
+    "disabled": false,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "BUTTON",
+    "id": "",
+    "class": "primary",
+    "text": "Рассчитать перемещение",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      8,
+      8,
+      8,
+      8
+    ],
+    "value": "",
+    "checked": null,
+    "disabled": false,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "SECTION",
+    "id": "warehouseResult",
+    "class": "result",
+    "text": "\n            \n            \n          ",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      8,
+      8,
+      8,
+      8
+    ],
+    "value": null,
+    "checked": null,
+    "disabled": null,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "DIV",
+    "id": "",
+    "class": "result-head",
+    "text": "",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "value": null,
+    "checked": null,
+    "disabled": null,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "H2",
+    "id": "",
+    "class": "",
+    "text": "Со склада в офис Тюмени",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "value": null,
+    "checked": null,
+    "disabled": null,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "BUTTON",
+    "id": "warehouseDownload",
+    "class": "download",
+    "text": "Скачать заказ на перемещение",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      8,
+      8,
+      8,
+      8
+    ],
+    "value": "",
+    "checked": null,
+    "disabled": false,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "DIV",
+    "id": "",
+    "class": "table-wrap",
+    "text": "",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "value": null,
+    "checked": null,
+    "disabled": null,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "TABLE",
+    "id": "",
+    "class": "",
+    "text": "",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "value": null,
+    "checked": null,
+    "disabled": null,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "THEAD",
+    "id": "",
+    "class": "",
+    "text": "",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "value": null,
+    "checked": null,
+    "disabled": null,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "TR",
+    "id": "",
+    "class": "",
+    "text": "",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "value": null,
+    "checked": null,
+    "disabled": null,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "TH",
+    "id": "",
+    "class": "",
+    "text": "Артикул",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "value": null,
+    "checked": null,
+    "disabled": null,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "TH",
+    "id": "",
+    "class": "",
+    "text": "Товар",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "value": null,
+    "checked": null,
+    "disabled": null,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "TH",
+    "id": "",
+    "class": "",
+    "text": "Офис: остаток",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "value": null,
+    "checked": null,
+    "disabled": null,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "TH",
+    "id": "",
+    "class": "",
+    "text": "Склад: остаток",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "value": null,
+    "checked": null,
+    "disabled": null,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "TH",
+    "id": "",
+    "class": "",
+    "text": "Цель офиса 25%",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "value": null,
+    "checked": null,
+    "disabled": null,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "TH",
+    "id": "",
+    "class": "",
+    "text": "Переместить",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "value": null,
+    "checked": null,
+    "disabled": null,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "TH",
+    "id": "",
+    "class": "",
+    "text": "Офис: после",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "value": null,
+    "checked": null,
+    "disabled": null,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "TH",
+    "id": "",
+    "class": "",
+    "text": "Склад: после",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "value": null,
+    "checked": null,
+    "disabled": null,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "TBODY",
+    "id": "warehouseRows",
+    "class": "",
+    "text": "",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "value": null,
+    "checked": null,
+    "disabled": null,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "TR",
+    "id": "",
+    "class": "",
+    "text": "",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "value": null,
+    "checked": null,
+    "disabled": null,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "TD",
+    "id": "",
+    "class": "",
+    "text": "P1",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "value": null,
+    "checked": null,
+    "disabled": null,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "TD",
+    "id": "",
+    "class": "",
+    "text": "Крем 50 мл",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "value": null,
+    "checked": null,
+    "disabled": null,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "TD",
+    "id": "",
+    "class": "",
+    "text": "3",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "value": null,
+    "checked": null,
+    "disabled": null,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "TD",
+    "id": "",
+    "class": "",
+    "text": "90",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "value": null,
+    "checked": null,
+    "disabled": null,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "TD",
+    "id": "",
+    "class": "",
+    "text": "23",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "value": null,
+    "checked": null,
+    "disabled": null,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "TD",
+    "id": "",
+    "class": "",
+    "text": "",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "value": null,
+    "checked": null,
+    "disabled": null,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "INPUT",
+    "id": "",
+    "class": "warehouse-quantity",
+    "text": "",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      6,
+      6,
+      6,
+      6
+    ],
+    "value": "20",
+    "checked": false,
+    "disabled": false,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "TD",
+    "id": "",
+    "class": "",
+    "text": "23",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "value": null,
+    "checked": null,
+    "disabled": null,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "TD",
+    "id": "",
+    "class": "",
+    "text": "70",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "value": null,
+    "checked": null,
+    "disabled": null,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "SECTION",
+    "id": "northSection",
+    "class": "north-panel hidden",
+    "text": "\n          \n\n          \n\n          \n        ",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      8,
+      8,
+      8,
+      8
+    ],
+    "value": null,
+    "checked": null,
+    "disabled": null,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "DIV",
+    "id": "",
+    "class": "north-head",
+    "text": "\n            \n            \n          ",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "value": null,
+    "checked": null,
+    "disabled": null,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "DIV",
+    "id": "",
+    "class": "north-title",
+    "text": "\n              \n              \n            ",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "value": null,
+    "checked": null,
+    "disabled": null,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "H2",
+    "id": "",
+    "class": "",
+    "text": "Север",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "value": null,
+    "checked": null,
+    "disabled": null,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "LABEL",
+    "id": "",
+    "class": "brand-field north-brand-field",
+    "text": "\n                \n                \n              ",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      8,
+      8,
+      8,
+      8
+    ],
+    "value": null,
+    "checked": null,
+    "disabled": null,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "SPAN",
+    "id": "",
+    "class": "label",
+    "text": "Бренд",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "value": null,
+    "checked": null,
+    "disabled": null,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "SELECT",
+    "id": "northBrandSelect",
+    "class": "",
+    "text": "\n                  \n                  \n                  \n                  \n                  \n                  \n                  \n                ",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      8,
+      8,
+      8,
+      8
+    ],
+    "value": "skin_synergy",
+    "checked": null,
+    "disabled": false,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "OPTION",
+    "id": "",
+    "class": "",
+    "text": "ANGIOPHARM",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "value": "angiopharm",
+    "checked": null,
+    "disabled": false,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "OPTION",
+    "id": "",
+    "class": "",
+    "text": "CHRISTINA",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "value": "christina",
+    "checked": null,
+    "disabled": false,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "OPTION",
+    "id": "",
+    "class": "",
+    "text": "LeviSsime",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "value": "levissime",
+    "checked": null,
+    "disabled": false,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "OPTION",
+    "id": "",
+    "class": "",
+    "text": "SOTHYS",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "value": "sothys",
+    "checked": null,
+    "disabled": false,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "OPTION",
+    "id": "",
+    "class": "",
+    "text": "NOVACUTAN",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "value": "novacutan",
+    "checked": null,
+    "disabled": false,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "OPTION",
+    "id": "",
+    "class": "",
+    "text": "Skin Synergy",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "value": "skin_synergy",
+    "checked": null,
+    "disabled": false,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "OPTION",
+    "id": "",
+    "class": "",
+    "text": "KLAPP",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "value": "klapp",
+    "checked": null,
+    "disabled": false,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "DIV",
+    "id": "",
+    "class": "north-actions",
+    "text": "\n              \n              \n            ",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "value": null,
+    "checked": null,
+    "disabled": null,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "BUTTON",
+    "id": "northBackButton",
+    "class": "secondary",
+    "text": "Вернуться к бланку",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      8,
+      8,
+      8,
+      8
+    ],
+    "value": "",
+    "checked": null,
+    "disabled": false,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "DIV",
+    "id": "northStatus",
+    "class": "status",
+    "text": "Проверьте расчет",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      8,
+      8,
+      8,
+      8
+    ],
+    "value": null,
+    "checked": null,
+    "disabled": null,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "FORM",
+    "id": "northForm",
+    "class": "upload-grid north-grid",
+    "text": "\n            \n\n            \n\n            \n            \n            \n\n            \n          ",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "value": null,
+    "checked": null,
+    "disabled": null,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "DIV",
+    "id": "northDefaultUpload",
+    "class": "north-upload-group",
+    "text": "\n              \n\n              \n            ",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "value": null,
+    "checked": null,
+    "disabled": null,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "LABEL",
+    "id": "",
+    "class": "dropzone north-dropzone",
+    "text": "\n                \n                \n                \n                \n              ",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      8,
+      8,
+      8,
+      8
+    ],
+    "value": null,
+    "checked": null,
+    "disabled": null,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "SPAN",
+    "id": "",
+    "class": "icon",
+    "text": "↑",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      8,
+      8,
+      8,
+      8
+    ],
+    "value": null,
+    "checked": null,
+    "disabled": null,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "SPAN",
+    "id": "",
+    "class": "label",
+    "text": "Бланк города",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "value": null,
+    "checked": null,
+    "disabled": null,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "SPAN",
+    "id": "northNames",
+    "class": "filename",
+    "text": "Выберите один или несколько заполненных бланков",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "value": null,
+    "checked": null,
+    "disabled": null,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "INPUT",
+    "id": "northFileInput",
+    "class": "",
+    "text": "",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "value": "",
+    "checked": false,
+    "disabled": false,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "DIV",
+    "id": "northFileList",
+    "class": "north-file-list",
+    "text": "\n      \n    ",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "value": null,
+    "checked": null,
+    "disabled": null,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "DIV",
+    "id": "",
+    "class": "north-file-item",
+    "text": "\n        \n        \n      ",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      8,
+      8,
+      8,
+      8
+    ],
+    "value": null,
+    "checked": null,
+    "disabled": null,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "SPAN",
+    "id": "",
+    "class": "",
+    "text": "Сургут.xlsx",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "value": null,
+    "checked": null,
+    "disabled": null,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "BUTTON",
+    "id": "",
+    "class": "",
+    "text": "×",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      8,
+      8,
+      8,
+      8
+    ],
+    "value": "",
+    "checked": null,
+    "disabled": false,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "DIV",
+    "id": "northChristinaUpload",
+    "class": "north-upload-group hidden",
+    "text": "\n              \n\n              \n\n              \n\n              \n            ",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "value": null,
+    "checked": null,
+    "disabled": null,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "LABEL",
+    "id": "",
+    "class": "dropzone north-dropzone",
+    "text": "\n                \n                \n                \n                \n              ",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      8,
+      8,
+      8,
+      8
+    ],
+    "value": null,
+    "checked": null,
+    "disabled": null,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "SPAN",
+    "id": "",
+    "class": "icon",
+    "text": "↑",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      8,
+      8,
+      8,
+      8
+    ],
+    "value": null,
+    "checked": null,
+    "disabled": null,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "SPAN",
+    "id": "",
+    "class": "label",
+    "text": "Бланки HOME",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "value": null,
+    "checked": null,
+    "disabled": null,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "SPAN",
+    "id": "northHomeNames",
+    "class": "filename",
+    "text": "Выберите HOME-бланки городов",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "value": null,
+    "checked": null,
+    "disabled": null,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "INPUT",
+    "id": "northHomeInput",
+    "class": "",
+    "text": "",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "value": "",
+    "checked": false,
+    "disabled": false,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "DIV",
+    "id": "northHomeFileList",
+    "class": "north-file-list",
+    "text": "",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "value": null,
+    "checked": null,
+    "disabled": null,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "LABEL",
+    "id": "",
+    "class": "dropzone north-dropzone",
+    "text": "\n                \n                \n                \n                \n              ",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      8,
+      8,
+      8,
+      8
+    ],
+    "value": null,
+    "checked": null,
+    "disabled": null,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "SPAN",
+    "id": "",
+    "class": "icon",
+    "text": "↑",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      8,
+      8,
+      8,
+      8
+    ],
+    "value": null,
+    "checked": null,
+    "disabled": null,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "SPAN",
+    "id": "",
+    "class": "label",
+    "text": "Бланки PROFF",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "value": null,
+    "checked": null,
+    "disabled": null,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "SPAN",
+    "id": "northProffNames",
+    "class": "filename",
+    "text": "Выберите PROFF-бланки городов",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "value": null,
+    "checked": null,
+    "disabled": null,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "INPUT",
+    "id": "northProffInput",
+    "class": "",
+    "text": "",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "value": "",
+    "checked": false,
+    "disabled": false,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "DIV",
+    "id": "northProffFileList",
+    "class": "north-file-list",
+    "text": "",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "value": null,
+    "checked": null,
+    "disabled": null,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "LABEL",
+    "id": "",
+    "class": "brand-field",
+    "text": "",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      8,
+      8,
+      8,
+      8
+    ],
+    "value": null,
+    "checked": null,
+    "disabled": null,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "SPAN",
+    "id": "",
+    "class": "label",
+    "text": "Тюмень: две исходные таблицы",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "value": null,
+    "checked": null,
+    "disabled": null,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "INPUT",
+    "id": "northTwoSources",
+    "class": "",
+    "text": "",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "value": "on",
+    "checked": false,
+    "disabled": false,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "LABEL",
+    "id": "northWarehouseField",
+    "class": "dropzone north-dropzone hidden",
+    "text": "\n              \n            ",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      8,
+      8,
+      8,
+      8
+    ],
+    "value": null,
+    "checked": null,
+    "disabled": null,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "SPAN",
+    "id": "",
+    "class": "icon",
+    "text": "↑",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      8,
+      8,
+      8,
+      8
+    ],
+    "value": null,
+    "checked": null,
+    "disabled": null,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "SPAN",
+    "id": "",
+    "class": "label",
+    "text": "СКЛАД ДОСТАВКА",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "value": null,
+    "checked": null,
+    "disabled": null,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "SPAN",
+    "id": "northWarehouseName",
+    "class": "filename",
+    "text": ".xlsx, .xlsm или .xls",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "value": null,
+    "checked": null,
+    "disabled": null,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "INPUT",
+    "id": "northWarehouseFile",
+    "class": "",
+    "text": "",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "value": "",
+    "checked": false,
+    "disabled": false,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "LABEL",
+    "id": "",
+    "class": "dropzone north-dropzone",
+    "text": "\n              \n              \n              \n              \n            ",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      8,
+      8,
+      8,
+      8
+    ],
+    "value": null,
+    "checked": null,
+    "disabled": null,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "SPAN",
+    "id": "",
+    "class": "icon",
+    "text": "↑",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      8,
+      8,
+      8,
+      8
+    ],
+    "value": null,
+    "checked": null,
+    "disabled": null,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "SPAN",
+    "id": "",
+    "class": "label",
+    "text": "Заполненная таблица Тюмени",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "value": null,
+    "checked": null,
+    "disabled": null,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "SPAN",
+    "id": "northSourceName",
+    "class": "filename",
+    "text": "Тюмень.xlsx",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "value": null,
+    "checked": null,
+    "disabled": null,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "INPUT",
+    "id": "northSourceFile",
+    "class": "",
+    "text": "",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "value": "C:\\fakepath\\Тюмень.xlsx",
+    "checked": false,
+    "disabled": false,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "BUTTON",
+    "id": "",
+    "class": "primary",
+    "text": "\n              \n              Соединить бланки\n            ",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      8,
+      8,
+      8,
+      8
+    ],
+    "value": "",
+    "checked": null,
+    "disabled": false,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "SPAN",
+    "id": "",
+    "class": "",
+    "text": "✓",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "value": null,
+    "checked": null,
+    "disabled": null,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "SECTION",
+    "id": "",
+    "class": "order-pricing",
+    "text": "",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "value": null,
+    "checked": null,
+    "disabled": null,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "H3",
+    "id": "",
+    "class": "",
+    "text": "Цена закупки",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "value": null,
+    "checked": null,
+    "disabled": null,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "DIV",
+    "id": "",
+    "class": "",
+    "text": "",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "value": null,
+    "checked": null,
+    "disabled": null,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "STRONG",
+    "id": "",
+    "class": "",
+    "text": "Бланк",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "value": null,
+    "checked": null,
+    "disabled": null,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "LABEL",
+    "id": "",
+    "class": "",
+    "text": "Колонка цены",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "value": null,
+    "checked": null,
+    "disabled": null,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "SELECT",
+    "id": "",
+    "class": "",
+    "text": "",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      6,
+      6,
+      6,
+      6
+    ],
+    "value": "4",
+    "checked": null,
+    "disabled": false,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "OPTION",
+    "id": "",
+    "class": "",
+    "text": "Выберите колонку",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "value": "",
+    "checked": null,
+    "disabled": false,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "OPTION",
+    "id": "",
+    "class": "",
+    "text": "Цена · 100,00 ₽",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "value": "4",
+    "checked": null,
+    "disabled": false,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "OPTION",
+    "id": "",
+    "class": "",
+    "text": "Цена со скидкой · 70,00 ₽",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "value": "5",
+    "checked": null,
+    "disabled": false,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "LABEL",
+    "id": "",
+    "class": "",
+    "text": "Скидка",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "value": null,
+    "checked": null,
+    "disabled": null,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "SELECT",
+    "id": "",
+    "class": "",
+    "text": "",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      6,
+      6,
+      6,
+      6
+    ],
+    "value": "net",
+    "checked": null,
+    "disabled": false,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "OPTION",
+    "id": "",
+    "class": "",
+    "text": "Уже учтена в цене",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "value": "net",
+    "checked": null,
+    "disabled": false,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "OPTION",
+    "id": "",
+    "class": "",
+    "text": "Применить нашу скидку",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "value": "gross",
+    "checked": null,
+    "disabled": false,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "LABEL",
+    "id": "",
+    "class": "",
+    "text": "Наша скидка, %",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "value": null,
+    "checked": null,
+    "disabled": null,
+    "hidden": true,
+    "download": null
+  },
+  {
+    "tag": "INPUT",
+    "id": "",
+    "class": "",
+    "text": "",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      6,
+      6,
+      6,
+      6
+    ],
+    "value": "",
+    "checked": false,
+    "disabled": false,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "SECTION",
+    "id": "northResult",
+    "class": "north-result",
+    "text": "\n            \n            \n            \n            \n          ",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      8,
+      8,
+      8,
+      8
+    ],
+    "value": null,
+    "checked": null,
+    "disabled": null,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "DIV",
+    "id": "",
+    "class": "result-head",
+    "text": "\n              \n              \n            ",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "value": null,
+    "checked": null,
+    "disabled": null,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "H2",
+    "id": "",
+    "class": "",
+    "text": "Расчет заказа",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "value": null,
+    "checked": null,
+    "disabled": null,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "BUTTON",
+    "id": "northDownloadButton",
+    "class": "download",
+    "text": "Скачать файлы",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      8,
+      8,
+      8,
+      8
+    ],
+    "value": "",
+    "checked": null,
+    "disabled": false,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "SECTION",
+    "id": "",
+    "class": "budget-panel",
+    "text": "",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "value": null,
+    "checked": null,
+    "disabled": null,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "H3",
+    "id": "",
+    "class": "",
+    "text": "Заказ до суммы",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "value": null,
+    "checked": null,
+    "disabled": null,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "DIV",
+    "id": "",
+    "class": "",
+    "text": "",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "value": null,
+    "checked": null,
+    "disabled": null,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "DIV",
+    "id": "",
+    "class": "",
+    "text": "",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "value": null,
+    "checked": null,
+    "disabled": null,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "STRONG",
+    "id": "",
+    "class": "",
+    "text": "Текущая сумма: 2 700,00 ₽",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "value": null,
+    "checked": null,
+    "disabled": null,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "LABEL",
+    "id": "",
+    "class": "",
+    "text": "Желаемая сумма, ₽",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "value": null,
+    "checked": null,
+    "disabled": null,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "INPUT",
+    "id": "",
+    "class": "",
+    "text": "",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      6,
+      6,
+      6,
+      6
+    ],
+    "value": "",
+    "checked": false,
+    "disabled": false,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "DIV",
+    "id": "",
+    "class": "budget-actions",
+    "text": "",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "value": null,
+    "checked": null,
+    "disabled": null,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "BUTTON",
+    "id": "",
+    "class": "secondary",
+    "text": "Заказ до суммы",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      8,
+      8,
+      8,
+      8
+    ],
+    "value": "",
+    "checked": null,
+    "disabled": false,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "BUTTON",
+    "id": "",
+    "class": "secondary",
+    "text": "Отменить перерасчет суммы",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      8,
+      8,
+      8,
+      8
+    ],
+    "value": "",
+    "checked": null,
+    "disabled": false,
+    "hidden": true,
+    "download": null
+  },
+  {
+    "tag": "DIV",
+    "id": "northSummary",
+    "class": "period-note",
+    "text": "Города: Сургут. Позиций к заказу у поставщика: 1. Позиций закрыто остатком Тюмени: 0. Перемещений: 1.",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "value": null,
+    "checked": null,
+    "disabled": null,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "DIV",
+    "id": "",
+    "class": "table-wrap north-plan-wrap",
+    "text": "\n              \n            ",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "value": null,
+    "checked": null,
+    "disabled": null,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "TABLE",
+    "id": "",
+    "class": "",
+    "text": "\n                \n                \n                \n              ",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "value": null,
+    "checked": null,
+    "disabled": null,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "COLGROUP",
+    "id": "",
+    "class": "",
+    "text": "\n                  \n                  \n                  \n                  \n                  \n                  \n                  \n                  \n                  \n                ",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "value": null,
+    "checked": null,
+    "disabled": null,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "COL",
+    "id": "",
+    "class": "north-col-name",
+    "text": "",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "value": null,
+    "checked": null,
+    "disabled": null,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "COL",
+    "id": "",
+    "class": "north-col-cities",
+    "text": "",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "value": null,
+    "checked": null,
+    "disabled": null,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "COL",
+    "id": "",
+    "class": "north-col-qty",
+    "text": "",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "value": null,
+    "checked": null,
+    "disabled": null,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "COL",
+    "id": "",
+    "class": "north-col-qty",
+    "text": "",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "value": null,
+    "checked": null,
+    "disabled": null,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "COL",
+    "id": "",
+    "class": "north-col-qty",
+    "text": "",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "value": null,
+    "checked": null,
+    "disabled": null,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "COL",
+    "id": "",
+    "class": "north-col-qty",
+    "text": "",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "value": null,
+    "checked": null,
+    "disabled": null,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "COL",
+    "id": "",
+    "class": "north-col-qty",
+    "text": "",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "value": null,
+    "checked": null,
+    "disabled": null,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "COL",
+    "id": "",
+    "class": "north-col-input",
+    "text": "",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "value": null,
+    "checked": null,
+    "disabled": null,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "COL",
+    "id": "",
+    "class": "north-col-comment",
+    "text": "",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "value": null,
+    "checked": null,
+    "disabled": null,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "THEAD",
+    "id": "",
+    "class": "",
+    "text": "\n                  \n                ",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "value": null,
+    "checked": null,
+    "disabled": null,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "TR",
+    "id": "",
+    "class": "",
+    "text": "\n                    \n                    \n                    \n                    \n                    \n                    \n                    \n                    \n                    \n                  ",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "value": null,
+    "checked": null,
+    "disabled": null,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "TH",
+    "id": "",
+    "class": "",
+    "text": "Позиция",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "value": null,
+    "checked": null,
+    "disabled": null,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "TH",
+    "id": "",
+    "class": "",
+    "text": "По городам",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "value": null,
+    "checked": null,
+    "disabled": null,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "TH",
+    "id": "",
+    "class": "",
+    "text": "Нужно северу",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "value": null,
+    "checked": null,
+    "disabled": null,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "TH",
+    "id": "",
+    "class": "",
+    "text": "Остаток Тюмени",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "value": null,
+    "checked": null,
+    "disabled": null,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "TH",
+    "id": "",
+    "class": "",
+    "text": "Свободно в Тюмени",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "value": null,
+    "checked": null,
+    "disabled": null,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "TH",
+    "id": "",
+    "class": "",
+    "text": "Из Тюмени",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "value": null,
+    "checked": null,
+    "disabled": null,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "TH",
+    "id": "",
+    "class": "",
+    "text": "Нужно заказать",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "value": null,
+    "checked": null,
+    "disabled": null,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "TH",
+    "id": "",
+    "class": "",
+    "text": "Факт. у поставщика",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "value": null,
+    "checked": null,
+    "disabled": null,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "TH",
+    "id": "",
+    "class": "",
+    "text": "Комментарий",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "value": null,
+    "checked": null,
+    "disabled": null,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "TBODY",
+    "id": "northPlanBody",
+    "class": "",
+    "text": "\n        \n      ",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "value": null,
+    "checked": null,
+    "disabled": null,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "TR",
+    "id": "",
+    "class": "",
+    "text": "\n          \n          \n          \n          \n          \n          \n          \n          \n          \n        ",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "value": null,
+    "checked": null,
+    "disabled": null,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "TD",
+    "id": "",
+    "class": "",
+    "text": "Крем 50 мл",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "value": null,
+    "checked": null,
+    "disabled": null,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "TD",
+    "id": "",
+    "class": "north-city-cell",
+    "text": "\n      \n    ",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "value": null,
+    "checked": null,
+    "disabled": null,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "LABEL",
+    "id": "",
+    "class": "north-city-field",
+    "text": "\n        \n        \n      ",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "value": null,
+    "checked": null,
+    "disabled": null,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "SPAN",
+    "id": "",
+    "class": "",
+    "text": "Сургут",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "value": null,
+    "checked": null,
+    "disabled": null,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "INPUT",
+    "id": "",
+    "class": "north-city-input",
+    "text": "",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      8,
+      8,
+      8,
+      8
+    ],
+    "value": "10",
+    "checked": false,
+    "disabled": false,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "TD",
+    "id": "",
+    "class": "",
+    "text": "10",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "value": null,
+    "checked": null,
+    "disabled": null,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "TD",
+    "id": "",
+    "class": "",
+    "text": "ост. 3, цель 20",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "value": null,
+    "checked": null,
+    "disabled": null,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "TD",
+    "id": "",
+    "class": "",
+    "text": "",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "value": null,
+    "checked": null,
+    "disabled": null,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "TD",
+    "id": "",
+    "class": "",
+    "text": "",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "value": null,
+    "checked": null,
+    "disabled": null,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "TD",
+    "id": "",
+    "class": "",
+    "text": "27",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "value": null,
+    "checked": null,
+    "disabled": null,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "TD",
+    "id": "",
+    "class": "",
+    "text": "\n            \n            \n          ",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "value": null,
+    "checked": null,
+    "disabled": null,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "INPUT",
+    "id": "",
+    "class": "north-actual-input",
+    "text": "",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      8,
+      8,
+      8,
+      8
+    ],
+    "value": "27",
+    "checked": false,
+    "disabled": false,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "LABEL",
+    "id": "",
+    "class": "budget-row-lock",
+    "text": " Закрепить",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "value": null,
+    "checked": null,
+    "disabled": null,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "INPUT",
+    "id": "",
+    "class": "",
+    "text": "",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "value": "on",
+    "checked": false,
+    "disabled": false,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "TD",
+    "id": "",
+    "class": "north-comment",
+    "text": "Заказать у поставщика: 27\nОтправить в Сургут: 10\nОставить в Тюмени: 17",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "value": null,
+    "checked": null,
+    "disabled": null,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "DIV",
+    "id": "northDownloadLinks",
+    "class": "download-links hidden",
+    "text": "",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "value": null,
+    "checked": null,
+    "disabled": null,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "SECTION",
+    "id": "recalculateSection",
+    "class": "",
+    "text": "\n  ",
+    "box": [
+      24,
+      90,
+      1392,
+      301.875
+    ],
+    "radii": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "value": null,
+    "checked": null,
+    "disabled": null,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "H2",
+    "id": "",
+    "class": "",
+    "text": "Пересчёт таблицы",
+    "box": [
+      24,
+      90,
+      1392,
+      26.094
+    ],
+    "radii": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "value": null,
+    "checked": null,
+    "disabled": null,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "FORM",
+    "id": "",
+    "class": "upload-grid",
+    "text": "\n  \n  \n  \n  \n  \n  ",
+    "box": [
+      24,
+      116.094,
+      1392,
+      105.75
+    ],
+    "radii": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "value": null,
+    "checked": null,
+    "disabled": null,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "LABEL",
+    "id": "",
+    "class": "brand-field",
+    "text": "",
+    "box": [
+      24,
+      116.094,
+      265.594,
+      105.75
+    ],
+    "radii": [
+      8,
+      8,
+      8,
+      8
+    ],
+    "value": null,
+    "checked": null,
+    "disabled": null,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "SPAN",
+    "id": "",
+    "class": "label",
+    "text": "Бренд",
+    "box": [
+      43,
+      135.094,
+      227.594,
+      21.75
+    ],
+    "radii": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "value": null,
+    "checked": null,
+    "disabled": null,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "SELECT",
+    "id": "",
+    "class": "",
+    "text": "\n                \n                \n                \n                \n                \n                \n                \n              ",
+    "box": [
+      43,
+      164.844,
+      227.594,
+      38
+    ],
+    "radii": [
+      8,
+      8,
+      8,
+      8
+    ],
+    "value": "skin_synergy",
+    "checked": null,
+    "disabled": false,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "OPTION",
+    "id": "",
+    "class": "",
+    "text": "ANGIOPHARM",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "value": "angiopharm",
+    "checked": null,
+    "disabled": false,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "OPTION",
+    "id": "",
+    "class": "",
+    "text": "CHRISTINA",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "value": "christina",
+    "checked": null,
+    "disabled": false,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "OPTION",
+    "id": "",
+    "class": "",
+    "text": "LeviSsime",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "value": "levissime",
+    "checked": null,
+    "disabled": false,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "OPTION",
+    "id": "",
+    "class": "",
+    "text": "SOTHYS",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "value": "sothys",
+    "checked": null,
+    "disabled": false,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "OPTION",
+    "id": "",
+    "class": "",
+    "text": "NOVACUTAN",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "value": "novacutan",
+    "checked": null,
+    "disabled": false,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "OPTION",
+    "id": "",
+    "class": "",
+    "text": "Skin Synergy",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "value": "skin_synergy",
+    "checked": null,
+    "disabled": false,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "OPTION",
+    "id": "",
+    "class": "",
+    "text": "KLAPP",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "value": "klapp",
+    "checked": null,
+    "disabled": false,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "LABEL",
+    "id": "",
+    "class": "brand-field",
+    "text": "",
+    "box": [
+      305.594,
+      116.094,
+      265.594,
+      105.75
+    ],
+    "radii": [
+      8,
+      8,
+      8,
+      8
+    ],
+    "value": null,
+    "checked": null,
+    "disabled": null,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "SPAN",
+    "id": "",
+    "class": "label",
+    "text": "Месяц заказа",
+    "box": [
+      324.594,
+      143.422,
+      227.594,
+      21.75
+    ],
+    "radii": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "value": null,
+    "checked": null,
+    "disabled": null,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "INPUT",
+    "id": "",
+    "class": "",
+    "text": "",
+    "box": [
+      324.594,
+      173.172,
+      227.594,
+      21.328
+    ],
+    "radii": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "value": "2026-10",
+    "checked": false,
+    "disabled": false,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "LABEL",
+    "id": "",
+    "class": "dropzone",
+    "text": "",
+    "box": [
+      587.188,
+      116.094,
+      265.609,
+      105.75
+    ],
+    "radii": [
+      8,
+      8,
+      8,
+      8
+    ],
+    "value": null,
+    "checked": null,
+    "disabled": null,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "SPAN",
+    "id": "",
+    "class": "label",
+    "text": "Таблица / офис Тюмени",
+    "box": [
+      652.547,
+      143.219,
+      181.25,
+      21.75
+    ],
+    "radii": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "value": null,
+    "checked": null,
+    "disabled": null,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "INPUT",
+    "id": "",
+    "class": "",
+    "text": "",
+    "box": [
+      588.188,
+      117.094,
+      263.609,
+      103.75
+    ],
+    "radii": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "value": "C:\\fakepath\\Тюмень.xlsx",
+    "checked": false,
+    "disabled": false,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "SPAN",
+    "id": "",
+    "class": "",
+    "text": "Тюмень.xlsx",
+    "box": [
+      606.188,
+      172.969,
+      86.469,
+      21.75
+    ],
+    "radii": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "value": null,
+    "checked": null,
+    "disabled": null,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "LABEL",
+    "id": "",
+    "class": "brand-field",
+    "text": "",
+    "box": [
+      868.797,
+      116.094,
+      265.594,
+      105.75
+    ],
+    "radii": [
+      8,
+      8,
+      8,
+      8
+    ],
+    "value": null,
+    "checked": null,
+    "disabled": null,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "SPAN",
+    "id": "",
+    "class": "label",
+    "text": "Тюмень: 2 склада",
+    "box": [
+      887.797,
+      140.094,
+      227.594,
+      21.75
+    ],
+    "radii": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "value": null,
+    "checked": null,
+    "disabled": null,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "INPUT",
+    "id": "",
+    "class": "",
+    "text": "",
+    "box": [
+      891.797,
+      172.844,
+      22,
+      22
+    ],
+    "radii": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "value": "on",
+    "checked": false,
+    "disabled": false,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "LABEL",
+    "id": "",
+    "class": "dropzone hidden",
+    "text": "",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      8,
+      8,
+      8,
+      8
+    ],
+    "value": null,
+    "checked": null,
+    "disabled": null,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "SPAN",
+    "id": "",
+    "class": "label",
+    "text": "СКЛАД ДОСТАВКА",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "value": null,
+    "checked": null,
+    "disabled": null,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "INPUT",
+    "id": "",
+    "class": "",
+    "text": "",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "value": "",
+    "checked": false,
+    "disabled": false,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "SPAN",
+    "id": "",
+    "class": "",
+    "text": "",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "value": null,
+    "checked": null,
+    "disabled": null,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "BUTTON",
+    "id": "",
+    "class": "download",
+    "text": "Пересчитать таблицу",
+    "box": [
+      1150.391,
+      116.094,
+      265.609,
+      105.75
+    ],
+    "radii": [
+      8,
+      8,
+      8,
+      8
+    ],
+    "value": "",
+    "checked": null,
+    "disabled": false,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "P",
+    "id": "",
+    "class": "",
+    "text": "Пересчитано позиций: 1. Для проверки: 0. Фактический заказ и комментарии сохранены.",
+    "box": [
+      24,
+      245.844,
+      1392,
+      21.75
+    ],
+    "radii": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "value": null,
+    "checked": null,
+    "disabled": null,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "DIV",
+    "id": "",
+    "class": "",
+    "text": "",
+    "box": [
+      24,
+      267.594,
+      1392,
+      124.281
+    ],
+    "radii": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "value": null,
+    "checked": null,
+    "disabled": null,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "A",
+    "id": "",
+    "class": "download",
+    "text": "Скачать таблицу",
+    "box": [
+      24,
+      267.594,
+      165.313,
+      42
+    ],
+    "radii": [
+      8,
+      8,
+      8,
+      8
+    ],
+    "value": null,
+    "checked": null,
+    "disabled": null,
+    "hidden": false,
+    "download": "Тюмень пересчитанная.xlsx"
+  },
+  {
+    "tag": "H3",
+    "id": "",
+    "class": "",
+    "text": "Позиции для проверки",
+    "box": [
+      24,
+      327.141,
+      1392,
+      25.438
+    ],
+    "radii": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "value": null,
+    "checked": null,
+    "disabled": null,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "DIV",
+    "id": "",
+    "class": "",
+    "text": "Неоднозначных позиций нет.",
+    "box": [
+      24,
+      370.125,
+      1392,
+      21.75
+    ],
+    "radii": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "value": null,
+    "checked": null,
+    "disabled": null,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "DIV",
+    "id": "northShortOrderModal",
+    "class": "modal hidden",
+    "text": "\n      \n    ",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "value": null,
+    "checked": null,
+    "disabled": null,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "DIV",
+    "id": "",
+    "class": "modal-card",
+    "text": "\n        \n        \n        \n      ",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      8,
+      8,
+      8,
+      8
+    ],
+    "value": null,
+    "checked": null,
+    "disabled": null,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "H2",
+    "id": "northShortOrderTitle",
+    "class": "",
+    "text": "Есть позиции ниже потребности",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "value": null,
+    "checked": null,
+    "disabled": null,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "P",
+    "id": "northShortOrderText",
+    "class": "",
+    "text": "",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "value": null,
+    "checked": null,
+    "disabled": null,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "DIV",
+    "id": "",
+    "class": "modal-actions",
+    "text": "\n          \n          \n        ",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "value": null,
+    "checked": null,
+    "disabled": null,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "BUTTON",
+    "id": "northShortOrderBack",
+    "class": "secondary",
+    "text": "Назад",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      8,
+      8,
+      8,
+      8
+    ],
+    "value": "",
+    "checked": null,
+    "disabled": false,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "BUTTON",
+    "id": "northShortOrderContinue",
+    "class": "download",
+    "text": "Все равно продолжить",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      8,
+      8,
+      8,
+      8
+    ],
+    "value": "",
+    "checked": null,
+    "disabled": false,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "DIV",
+    "id": "northMergeModal",
+    "class": "modal hidden",
+    "text": "\n      \n    ",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "value": null,
+    "checked": null,
+    "disabled": null,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "DIV",
+    "id": "",
+    "class": "modal-card",
+    "text": "\n        \n        \n        \n        \n      ",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      8,
+      8,
+      8,
+      8
+    ],
+    "value": null,
+    "checked": null,
+    "disabled": null,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "H2",
+    "id": "northMergeTitle",
+    "class": "",
+    "text": "Соединить бланки городов",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "value": null,
+    "checked": null,
+    "disabled": null,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "P",
+    "id": "",
+    "class": "",
+    "text": "Будут объединены эти бланки:",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "value": null,
+    "checked": null,
+    "disabled": null,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "DIV",
+    "id": "northMergeList",
+    "class": "modal-file-list",
+    "text": "",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "value": null,
+    "checked": null,
+    "disabled": null,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "DIV",
+    "id": "",
+    "class": "modal-file-item",
+    "text": "",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      8,
+      8,
+      8,
+      8
+    ],
+    "value": null,
+    "checked": null,
+    "disabled": null,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "SPAN",
+    "id": "",
+    "class": "",
+    "text": "Сургут: Сургут.xlsx",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "value": null,
+    "checked": null,
+    "disabled": null,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "DIV",
+    "id": "",
+    "class": "modal-actions",
+    "text": "\n          \n          \n        ",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "value": null,
+    "checked": null,
+    "disabled": null,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "BUTTON",
+    "id": "northMergeBack",
+    "class": "secondary",
+    "text": "Назад",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      8,
+      8,
+      8,
+      8
+    ],
+    "value": "",
+    "checked": null,
+    "disabled": false,
+    "hidden": false,
+    "download": null
+  },
+  {
+    "tag": "BUTTON",
+    "id": "northMergeContinue",
+    "class": "download",
+    "text": "Соединить",
+    "box": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "radii": [
+      8,
+      8,
+      8,
+      8
+    ],
+    "value": "",
+    "checked": null,
+    "disabled": false,
+    "hidden": false,
+    "download": null
+  }
+]

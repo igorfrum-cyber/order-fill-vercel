@@ -1,0 +1,14 @@
+import { execFileSync } from 'node:child_process';
+import { mkdir, writeFile, readFile } from 'node:fs/promises';
+import assert from 'node:assert/strict';
+import { pathToFileURL } from 'node:url';
+import { scenarios } from './scenarios.mjs';
+const baseline=JSON.parse(await readFile(new URL('./baseline.json',import.meta.url),'utf8'));
+const names=execFileSync('git',['ls-tree','--name-only',`${baseline.commit}:src`],{encoding:'utf8'}).trim().split('\n').filter(n=>n.endsWith('.js'));
+const dir=new URL('../../test-output/baseline-reference/',import.meta.url);await mkdir(dir,{recursive:true});
+for(const name of names)await writeFile(new URL(name,dir),execFileSync('git',['show',`${baseline.commit}:src/${name}`]));
+const api=await import(new URL('workbookProcessor.js',dir));
+const {planBudget}=await import(new URL('budgetPlanner.js',dir));
+const {priceOrderRows}=await import(new URL('orderPricing.js',dir));
+assert.deepEqual(await scenarios(api,{planBudget,priceOrderRows}),baseline.data);
+console.log('Replayed original Git baseline without updating expected results:',baseline.commit);

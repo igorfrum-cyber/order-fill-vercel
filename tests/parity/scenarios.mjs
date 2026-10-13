@@ -1,12 +1,10 @@
 import { book, source, blank, macroBook } from '../fixtures/workbooks.mjs';
 import { unzipSync } from 'fflate';
-import { planBudget } from '../../src/budgetPlanner.js';
-import { priceOrderRows } from '../../src/orderPricing.js';
 
 function parts(bytes) {
   return Object.fromEntries(Object.entries(unzipSync(new Uint8Array(bytes))).sort(([a],[b])=>a.localeCompare(b)).map(([name,value])=>[name,Buffer.from(value).toString('base64')]));
 }
-export async function scenarios(api) {
+export async function scenarios(api, {planBudget, priceOrderRows}) {
   const data={exports:Object.keys(api).sort(), cases:{}};
   const put=(name, value)=>{data.cases[name]=value;};
   const save=w=>parts(api.saveXlsx(w));

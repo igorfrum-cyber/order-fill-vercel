@@ -1,4 +1,4 @@
-# Заполнение бланка заказа — Vercel версия
+# Order Fill
 
 Это frontend-only версия инструмента. Excel-файлы обрабатываются прямо в браузере:
 
@@ -33,13 +33,15 @@ http://127.0.0.1:3200
 ## Проверка
 
 ```bash
-npm run test:workbook
-npm run test:tyumen
-npm run test:budget
-npm run build
+npm run verify
+npm run test:e2e
 ```
 
-## Документация расчётов
+Для браузерной проверки: `npx playwright install chromium` либо `CHROME_PATH`. Прежние команды сохранены; `test:workbook` требует приватных файлов Downloads и не входит в автономный gate.
+
+## Документация
+
+Полная карта: [docs/README.md](docs/README.md). Архитектура и владельцы: [карта модулей](docs/architecture/modules.md). Проверки и ограничения: [тестирование](docs/development/testing.md).
 
 - [Тюмень: схема движения товара, формулы и примеры](docs/tyumen.md)
 - [Карта кода, функции и проверка](docs/code-map.md)
