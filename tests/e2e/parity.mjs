@@ -35,8 +35,8 @@ async function record(name,value){
         ||(y>=b.y+b.r&&y<=b.y+b.h-b.r&&Math.min(Math.abs(x-b.x),Math.abs(x-b.x-b.w))<=2));
       assert.ok(corner||straight,`${name}: non-border pixel at ${x},${y}`);
     }
-    const pending=new Set(pixels);while(pending.size){const queue=[pending.values().next().value];pending.delete(queue[0]);let count=0,strongCount=0;while(queue.length){const p=queue.pop();count++;if(strong.has(p))strongCount++;for(const dx of [-1,0,1])for(const dy of [-1,0,1]){const n=p+dx+dy*a.width;if(pending.delete(n))queue.push(n);}}assert.ok(count<=12,`${name}: connected difference region of ${count} pixels`);assert.ok(!strongCount||count<=2,`${name}: strong differences must be isolated components of at most two pixels`);}
-    console.log(`Pixels ${name}: count=${changed}, delta=${delta}, strong=${strong.size}, only rounded borders, components<=12`);
+    const components=[];const pending=new Set(pixels);while(pending.size){const queue=[pending.values().next().value];pending.delete(queue[0]);let count=0,strongCount=0;while(queue.length){const p=queue.pop();count++;if(strong.has(p))strongCount++;for(const dx of [-1,0,1])for(const dy of [-1,0,1]){const n=p+dx+dy*a.width;if(pending.delete(n))queue.push(n);}}assert.ok(count<=12,`${name}: connected difference region of ${count} pixels`);components.push({pixels:count,strong:strongCount});}
+    console.log(`Pixels ${name}: count=${changed}, delta=${delta}, strong=${strong.size}, only rounded borders, components=${JSON.stringify(components)}`);
   };
   if(capture){try{await access(path);await compare();return;}catch(e){if(e.code!=='ENOENT')throw e;}await writeFile(path,value);}
   else await compare();
