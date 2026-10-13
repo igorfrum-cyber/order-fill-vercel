@@ -1,69 +1,45 @@
 import { strFromU8, strToU8, unzipSync, zipSync } from "fflate";
 import { DOMParser, XMLSerializer } from "@xmldom/xmldom";
+import { ARTICLE_TRANSLATION, normalizeArticle, normalizeName, isCombinedChzName, isChzCloneName, comparableChzName, chzNameSimilarity, canonicalProductArticle, levissimeRussianIdentity, levissimeVolumeSignature, levissimeEnglishIdentity, matchingLevissimeEnglishNames, similarity, extractVolumeKeys, volumeAwareSimilarity, chooseCandidate, chooseNameFallback, chooseSothysNameFallback } from './domain/matching/identity.js';
+import { MONTHS_RU, addMonths, lastDayOfMonth, parseOrderMonth, formatDate, sameDate, expectedPeriods, formatPeriod, parsePeriodRange, rangesEqual } from './domain/calculation/periods.js';
+import { BRAND_RULES, brandRule, articleNormalizeOptions, blankDetectionOptions } from './domain/brands/rules.js';
+import { asText, normalizeHeader, parseNumber } from './shared/text.js';
+import { roundHalfUp, normalizeCategory, categoryCoefficient, categoryFromCumulative, calculateTargetNew, positiveSale, newProductCalculation } from './domain/calculation/formulas.js';
+import { warehouseTransferQuantity, northTyumenFreeStock } from './domain/warehouse/stock.js';
+import { articleKeys, uniqueBySourceRow, buildSourceContext, sourceDuplicateGroups, candidatesForArticle, duplicateCandidatesForReport } from './domain/matching/source-index.js';
+import { calculateAdjustedQuantity, adjustQuantityForBrand, orderForItem, supplierUnitsFromPieces, demandPiecesFromSupplierUnits, convertOrderToSupplierUnits, novacutanOrderForItem, calculateMultipleAdjustedQuantity, nearestMultipleValue, calculateNearestMultipleAdjustedQuantity, novacutanMinimumQuantity, novacutanSupplierUnitSize, novacutanSummaryQuantity, roundSupplierPack10, novacutanSupplierOrderQuantity } from './domain/order/quantities.js';
+import { budgetOrderRules } from './domain/order/budget-rules.js';
+import { novacutanMatchKey, chooseNovacutanCandidate, novacutanPositionKey, novacutanNameTokens, novacutanNameScore } from './domain/matching/novacutan.js';
+import { outputFileName, sourceOutputFileName, outputExtension } from './shared/filenames.js';
+import { NORTH_CITIES, NORTH_TRANSFER_DISPLAY_ORDER, northCityFromText } from './domain/north/cities.js';
+import { formatNorthQuantity, formatNorthCommentQuantity, supplierPartsForActual, northTransferParts, northSupplierOrderText, northPlanCommentForOrderTable, novacutanNorthOrderTable, northNameKey } from './domain/north/comments.js';
+import { allocateNorthNeedByCity, christinaNorthSupplierQuantity, defaultNorthActualSupplierOrder, northTotalCityParts } from './domain/north/allocation.js';
+export { asText };
+export { normalizeHeader };
+export { normalizeArticle };
+export { normalizeName };
+export { parseNumber };
+export { roundHalfUp };
+export { parseOrderMonth };
+export { formatDate };
+export { expectedPeriods };
+export { formatPeriod };
+export { categoryCoefficient };
+export { similarity };
+export { warehouseTransferQuantity };
+export { northTyumenFreeStock };
+export { adjustQuantityForBrand };
+export { budgetOrderRules };
+export { outputFileName };
+export { sourceOutputFileName };
+export { christinaNorthSupplierQuantity };
+export { defaultNorthActualSupplierOrder };
 
-const ARTICLE_TRANSLATION = new Map([
-  ["А", "A"], ["В", "B"], ["Е", "E"], ["К", "K"], ["М", "M"], ["Н", "H"], ["О", "O"],
-  ["Р", "P"], ["С", "C"], ["Т", "T"], ["Х", "X"], ["У", "Y"], ["а", "A"], ["в", "B"],
-  ["е", "E"], ["к", "K"], ["м", "M"], ["н", "H"], ["о", "O"], ["р", "P"], ["с", "C"],
-  ["т", "T"], ["х", "X"], ["у", "Y"],
-]);
-
-const MONTHS_RU = ["", "январь", "февраль", "март", "апрель", "май", "июнь", "июль", "август", "сентябрь", "октябрь", "ноябрь", "декабрь"];
 const NS_MAIN = "http://schemas.openxmlformats.org/spreadsheetml/2006/main";
+
 const XML_PARSER = new DOMParser();
+
 const XML_SERIALIZER = new XMLSerializer();
-const BRAND_RULES = {
-  angiopharm: {
-    label: "ANGIOPHARM",
-    adjustment: "box",
-    adjustmentLabel: "Шт. в коробке",
-    adjustmentComment: "до коробки",
-  },
-  christina: {
-    label: "CHRISTINA",
-    adjustment: "multiple",
-    multiple: 3,
-    adjustmentLabel: "Кратность",
-    adjustmentComment: "до кратности 3",
-  },
-  levissime: {
-    label: "LeviSsime",
-    adjustment: "box",
-    adjustmentLabel: "Кол-во в уп.",
-    adjustmentComment: "до коробки",
-    articlePrefixAliases: ["MT"],
-    blankQuantityHeader: "order",
-    blankBoxHeader: "packageQuantity",
-  },
-  sothys: {
-    label: "SOTHYS",
-    adjustment: "none",
-    adjustmentLabel: "Без округления",
-    preserveArticleHyphen: true,
-    blankLayout: "splitVariants",
-  },
-  novacutan: {
-    label: "NOVACUTAN",
-    adjustment: "none",
-    adjustmentLabel: "Мин. заказ",
-    blankLayout: "novacutan",
-  },
-  skin_synergy: {
-    label: "Skin Synergy",
-    adjustment: "none",
-    adjustmentLabel: "Без округления",
-    blankQuantityHeader: "exactQuantity",
-    requireUnit: false,
-  },
-  klapp: {
-    label: "KLAPP",
-    adjustment: "nearestMultiple",
-    multiple: 3,
-    adjustmentLabel: "Кратность",
-    adjustmentComment: "до кратности 3",
-    blankQuantityHeader: "order",
-  },
-};
 
 export function loadXlsx(buffer) {
   const files = unzipSync(new Uint8Array(buffer));
@@ -224,89 +200,6 @@ function refreshCellValue(sheet, row, col) {
   if (cell) cell.value = readCellValue(cell.node, []);
 }
 
-export function asText(value) {
-  if (value == null) return "";
-  return String(value).normalize("NFC").replace(/\n/g, " ").trim();
-}
-
-export function normalizeHeader(value) {
-  return asText(value).toLowerCase().replaceAll("ё", "е").replace(/[^\p{L}\p{N}%]+/gu, " ").replace(/\s+/g, " ").trim();
-}
-
-export function normalizeArticle(value, options = {}) {
-  const allowed = options.preserveHyphen ? /[^A-Z0-9-]/g : /[^A-Z0-9]/g;
-  return asText(value).replace(/[АВЕКМНОРСТХУавекмнорстху]/g, (ch) => ARTICLE_TRANSLATION.get(ch) || ch).toUpperCase().replace(allowed, "");
-}
-
-export function normalizeName(value) {
-  return normalizeHeader(value).replace(/\bан\b/g, " ").replace(/\bangiopharm\b/g, " ").replace(/\s+/g, " ").trim();
-}
-
-export function parseNumber(value) {
-  if (value == null || asText(value) === "") return null;
-  const normalized = asText(value).replace(/\s+/g, "").replace(",", ".");
-  const number = Number(normalized);
-  if (Number.isFinite(number)) return number;
-  const match = normalized.match(/-?\d+(?:\.\d+)?/);
-  if (!match) return null;
-  const extracted = Number(match[0]);
-  return Number.isFinite(extracted) ? extracted : null;
-}
-
-export function roundHalfUp(value) {
-  return Math.floor(value + 0.5);
-}
-
-function addMonths(date, months) {
-  return new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth() + months, 1));
-}
-
-function lastDayOfMonth(date) {
-  return new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth() + 1, 0));
-}
-
-export function parseOrderMonth(value) {
-  const match = /^(\d{4})-(\d{2})$/.exec(value || "");
-  if (!match) throw new Error("Выберите месяц заказа.");
-  return new Date(Date.UTC(Number(match[1]), Number(match[2]) - 1, 1));
-}
-
-export function formatDate(date) {
-  return `${String(date.getUTCDate()).padStart(2, "0")}.${String(date.getUTCMonth() + 1).padStart(2, "0")}.${date.getUTCFullYear()}`;
-}
-
-function sameDate(left, right) {
-  return left && right && left.getTime() === right.getTime();
-}
-
-export function expectedPeriods(orderMonth) {
-  const orderDate = parseOrderMonth(orderMonth);
-  const mainStart = addMonths(orderDate, -13);
-  const mainEnd = lastDayOfMonth(addMonths(orderDate, -2));
-  const previousStart = mainStart;
-  const previousEnd = lastDayOfMonth(addMonths(mainStart, 2));
-  return {
-    main: { start: mainStart, end: mainEnd },
-    previous: { start: previousStart, end: previousEnd },
-    label: `${MONTHS_RU[orderDate.getUTCMonth() + 1]} ${orderDate.getUTCFullYear()}`,
-  };
-}
-
-export function formatPeriod(period) {
-  return `${formatDate(period.start)} - ${formatDate(period.end)}`;
-}
-
-function parsePeriodRange(text) {
-  const match = /(\d{1,2})\.(\d{1,2})\.(\d{4}).*?(\d{1,2})\.(\d{1,2})\.(\d{4})/.exec(asText(text));
-  if (!match) return null;
-  const [, d1, m1, y1, d2, m2, y2] = match.map(Number);
-  return { start: new Date(Date.UTC(y1, m1 - 1, d1)), end: new Date(Date.UTC(y2, m2 - 1, d2)) };
-}
-
-function rangesEqual(left, right) {
-  return sameDate(left?.start, right?.start) && sameDate(left?.end, right?.end);
-}
-
 export function findSourcePeriods(workbook) {
   let main = null;
   let previous = null;
@@ -451,33 +344,6 @@ function detectCalculationColumns(detection, options = {}) {
   return found;
 }
 
-function normalizeCategory(value) {
-  return asText(value)
-    .replace(/[АВСавс]/g, (ch) => ARTICLE_TRANSLATION.get(ch) || ch)
-    .toUpperCase()
-    .replace(/\s+/g, "");
-}
-
-export function categoryCoefficient(value, rule = null) {
-  const category = normalizeCategory(value);
-  if (rule?.label === "NOVACUTAN") {
-    if (category === "C") return 1.5;
-    if (category === "A+" || category === "A" || category === "B") return 2;
-  }
-  if (category === "A+") return 2;
-  if (category === "A") return 1.75;
-  if (category === "B") return 1.5;
-  if (category === "C") return 1;
-  return 1;
-}
-
-function categoryFromCumulative(percent) {
-  if (percent <= 50) return "A+";
-  if (percent <= 80) return "A";
-  if (percent <= 95) return "B";
-  return "C";
-}
-
 function maxMonthlySales(sheet, row, salesColumns) {
   let max = 0;
   for (const col of salesColumns) {
@@ -496,121 +362,6 @@ function calculateUrengoyRecommended(sheet, row, urengoyInfo) {
     value: Number((categoryPart + deliveryPart).toFixed(2)),
     maxSales,
     category: normalizeCategory(category),
-  };
-}
-
-function isCombinedChzName(value) {
-  return /^\s*чз\s*\+/iu.test(asText(value));
-}
-
-function isChzCloneName(value) {
-  return normalizeHeader(value).startsWith("чз ") && !isCombinedChzName(value);
-}
-
-function comparableChzName(value, rule) {
-  let name = normalizeHeader(value)
-    .replace(/^чз\s+/u, "")
-    .replace(/\bчз\b/gu, " ")
-    .replace(/\bан\b/gu, " ")
-    .replace(/\bangiopharm\b/gu, " ")
-    .replace(/\s+/gu, " ")
-    .trim();
-  if (rule.label === "LeviSsime") {
-    name = name.replace(/^(?:levissime|lev)\s+/u, "")
-      .replace(/отбеливающая/gu, "осветляющая");
-  }
-  return name;
-}
-
-function chzNameSimilarity(left, right, rule) {
-  return similarity(comparableChzName(left, rule), comparableChzName(right, rule));
-}
-
-function canonicalProductArticle(article, rule) {
-  // LeviSsime uses both numeric and MT-prefixed articles for one product.
-  for (const prefix of rule.articlePrefixAliases || []) {
-    if (article.startsWith(prefix) && /^\d+$/.test(article.slice(prefix.length))) {
-      return article.slice(prefix.length);
-    }
-  }
-  return article;
-}
-
-function levissimeRussianIdentity(value, rule) {
-  const name = asText(value).replace(/^чз\s*\+?\s*/iu, "");
-  const parts = name.split("/");
-  if (parts.length > 2 || (parts.length === 2 && !/^[A-Za-z0-9\s+().,-]+$/.test(parts[1]))) return null;
-  const primary = parts[0];
-  if (!/[а-яё]/iu.test(primary) || !/\d\s*(?:мл|мг|г|л)(?=$|[^а-яё])/iu.test(primary)) return null;
-  return comparableChzName(primary, rule).replace(/[a-z][a-z0-9]*/giu, " ").replace(/\s+/gu, " ").trim();
-}
-
-function levissimeVolumeSignature(value) {
-  const volumes = asText(value).toLowerCase().match(/\d+(?:[.,]\d+)?\s*(?:мл|мг|г|л)(?=$|[^а-яё])/gu) || [];
-  return [...new Set(volumes.map(volume => volume.replace(/\s+/gu, "").replace(",", ".")))].sort().join(";");
-}
-
-function levissimeEnglishIdentity(value) {
-  // The first English product segment precedes optional descriptive text.
-  const segment = asText(value).split("/").slice(1).find(part => /^\s*[A-Za-z]/u.test(part));
-  if (!segment) return null;
-  const product = segment.replace(/\d+(?:[.,]\d+)?\s*(?:мл|мг|г|л)(?=$|[^а-яё]).*$/iu, "").trim();
-  if (!/^[A-Za-z\s+().-]+$/u.test(product)) return null;
-  const normalized = normalizeHeader(product);
-  return normalized.split(" ").length >= 3 ? normalized : null;
-}
-
-function matchingLevissimeEnglishNames(left, right) {
-  const identity = levissimeEnglishIdentity(left);
-  const volume = levissimeVolumeSignature(left);
-  return Boolean(identity && volume && identity === levissimeEnglishIdentity(right)
-    && volume === levissimeVolumeSignature(right));
-}
-
-function calculateTargetNew(values) {
-  const numeric = values.map((value) => (value == null ? null : Number(value)));
-  const total = numeric.reduce((sum, value) => sum + (Number.isFinite(value) ? value : 0), 0);
-  const threshold = total / 24;
-  const stable = numeric.every((value) => Number.isFinite(value) && value > 0) && Math.min(...numeric) > threshold;
-  if (stable) {
-    const average = total / numeric.length;
-    const secondMonth = numeric[1] ?? 0;
-    const firstThreeAverage = numeric.slice(0, 3).reduce((sum, value) => sum + value, 0) / 3;
-    return (average + secondMonth + firstThreeAverage) / 3;
-  }
-
-  const filtered = numeric.filter((value) => Number.isFinite(value) && value > 0 && value > threshold);
-  if (!filtered.length) return 0;
-  return filtered.reduce((sum, value) => sum + value, 0) / filtered.length;
-}
-
-function positiveSale(value) {
-  return Number.isFinite(value) && value > 0;
-}
-
-function newProductCalculation(values, deliveryWeeks) {
-  const numeric = values.map((value) => (value == null ? null : Number(value)));
-  let suffixLength = 0;
-  for (let index = numeric.length - 1; index >= 0; index -= 1) {
-    if (!positiveSale(numeric[index])) break;
-    suffixLength += 1;
-  }
-  if (suffixLength < 1 || suffixLength > 3) return null;
-
-  const firstNoveltyIndex = numeric.length - suffixLength;
-  const hadPreviousSales = numeric.slice(0, firstNoveltyIndex).some((value) => positiveSale(value));
-  if (hadPreviousSales) return null;
-
-  const noveltyValues = numeric.slice(firstNoveltyIndex).filter(positiveSale);
-  const maxMonth = Math.max(...noveltyValues);
-  if (!Number.isFinite(maxMonth) || maxMonth <= 0) return null;
-
-  const deliveryCoefficient = 0.25 * Math.max(1, deliveryWeeks || 1);
-  return {
-    months: suffixLength,
-    maxMonth,
-    monthlyNeed: maxMonth * 1.5,
-    targetStock: maxMonth * 1.5 + maxMonth * deliveryCoefficient,
   };
 }
 
@@ -866,22 +617,6 @@ export function detectColumns(workbook, mode, options = {}) {
   throw new Error(`Не удалось найти все нужные колонки: ${required.join(", ")}. Найдено: ${Object.keys(bestFound).join(", ") || "ничего"}.`);
 }
 
-export function similarity(left, right) {
-  const a = normalizeName(left);
-  const b = normalizeName(right);
-  if (!a || !b) return 0;
-  const rows = Array.from({ length: b.length + 1 }, () => 0);
-  for (let i = 1; i <= a.length; i += 1) {
-    let previous = 0;
-    for (let j = 1; j <= b.length; j += 1) {
-      const tmp = rows[j];
-      rows[j] = a[i - 1] === b[j - 1] ? previous + 1 : Math.max(rows[j], rows[j - 1]);
-      previous = tmp;
-    }
-  }
-  return (2 * rows[b.length]) / (a.length + b.length);
-}
-
 function readSource(workbook, orderMonth, rule = brandRule("angiopharm"), sourceFileName = "") {
   const periodInfo = validateSourcePeriods(workbook, orderMonth);
   const sourceCity = detectSourceCity(workbook, sourceFileName);
@@ -1118,13 +853,6 @@ export function mergeTyumenSources({ officeWorkbook, warehouseWorkbook, brand = 
   return workbook;
 }
 
-/** Whole-piece office top-up to 25% of current stock; never a reverse transfer. */
-export function warehouseTransferQuantity(officeStock, warehouseStock) {
-  const office = Math.max(0, officeStock);
-  const warehouse = Math.max(0, warehouseStock);
-  return Math.min(Math.floor(warehouse), Math.max(0, roundHalfUp((office + warehouse) * 0.25) - office));
-}
-
 /** Standalone recalculation shares the source pipeline, not supplier rounding. */
 export function recalculateOrderTable({workbook,warehouseWorkbook,brand,orderMonth,fileName='',warehouseFileName=''}) {
   const output=warehouseWorkbook ? mergeTyumenSources({officeWorkbook:workbook,warehouseWorkbook,brand,officeFileName:fileName,warehouseFileName,preserveFacts:true}) : loadXlsx(saveXlsx(workbook));
@@ -1147,145 +875,6 @@ export function buildTyumenWarehousePlan(options) {
     if (officeStock < 0 || warehouseStock < 0 || !Number.isInteger(officeStock) || !Number.isInteger(warehouseStock)) throw new Error(`Проверьте остатки «${item.name}»: для перемещения поштучного товара нужны целые неотрицательные значения.`);
     return { article: item.articleRaw, name: item.name, officeStock, warehouseStock, target: roundHalfUp((officeStock + warehouseStock) * 0.25), quantity: warehouseTransferQuantity(officeStock, warehouseStock) };
   });
-}
-
-/**
- * Projected surplus after protecting Tyumen demand, capped by stock that can
- * physically pass through the warehouse. Office surplus cannot go north.
- * Transit and planned supply are future availability, not goods ready to ship.
- * Null location data preserves the legacy single-location calculation.
- */
-export function northTyumenFreeStock(stock, inTransit, plannedOrder, target, warehouseStock = null, warehouseTransit = null) {
-  const free = Math.max(0, stock + inTransit + plannedOrder - target);
-  return warehouseStock == null ? free : Math.min(free, Math.max(0, warehouseStock + (warehouseTransit || 0) + plannedOrder));
-}
-
-function brandRule(brand) {
-  return BRAND_RULES[brand] || BRAND_RULES.angiopharm;
-}
-
-function articleNormalizeOptions(rule) {
-  return { preserveHyphen: Boolean(rule.preserveArticleHyphen) };
-}
-
-function blankDetectionOptions(rule) {
-  return {
-    requireBox: rule.adjustment === "box",
-    requireUnit: rule.requireUnit,
-    quantityHeader: rule.blankQuantityHeader,
-    boxHeader: rule.blankBoxHeader,
-  };
-}
-
-function articleKeys(article, rule) {
-  const keys = new Set([article]);
-  for (const prefix of rule.articlePrefixAliases || []) {
-    if (article.startsWith(prefix) && /^\d+$/.test(article.slice(prefix.length))) {
-      keys.add(article.slice(prefix.length));
-    } else if (/^\d+$/.test(article)) {
-      keys.add(`${prefix}${article}`);
-    }
-  }
-  return Array.from(keys).filter(Boolean);
-}
-
-function uniqueBySourceRow(items) {
-  const seen = new Set();
-  return items.filter((item) => {
-    if (seen.has(item.rowIndex)) return false;
-    seen.add(item.rowIndex);
-    return true;
-  });
-}
-
-function buildSourceContext(source, rule) {
-  const sourceIndex = new Map();
-  const noArticleItems = [];
-  for (const item of source.items) {
-    if (item.article) {
-      for (const key of articleKeys(item.article, rule)) {
-        if (!sourceIndex.has(key)) sourceIndex.set(key, []);
-        sourceIndex.get(key).push(item);
-      }
-    } else {
-      noArticleItems.push(item);
-    }
-  }
-  return {
-    sourceIndex,
-    noArticleItems,
-    sourceDuplicateGroups: sourceDuplicateGroups(sourceIndex),
-    sourceArticleCount: new Set(source.items.map((item) => item.article).filter(Boolean)).size,
-  };
-}
-
-function sourceDuplicateGroups(sourceIndex) {
-  const seenGroups = new Set();
-  const groups = [];
-  for (const [article, items] of sourceIndex.entries()) {
-    const uniqueItems = uniqueBySourceRow(items);
-    if (uniqueItems.length < 2) continue;
-    const signature = uniqueItems.map((item) => item.rowIndex).sort((left, right) => left - right).join(":");
-    if (seenGroups.has(signature)) continue;
-    seenGroups.add(signature);
-    groups.push({
-      article,
-      candidates: duplicateCandidatesForReport(uniqueItems),
-    });
-  }
-  return groups;
-}
-
-function candidatesForArticle(sourceContext, article, rule) {
-  return uniqueBySourceRow(articleKeys(article, rule).flatMap((key) => sourceContext.sourceIndex.get(key) || []));
-}
-
-function duplicateCandidatesForReport(candidates) {
-  return candidates.map((item) => ({
-    sourceRow: item.rowIndex,
-    sourceArticle: item.articleRaw,
-    sourceName: item.name,
-    recommended: item.recommended,
-    rounded: item.rounded,
-    stock: item.stock,
-    inTransit: item.inTransit,
-  }));
-}
-
-function calculateAdjustedQuantity(recommended, rule, boxSizeValue) {
-  const rounded = roundHalfUp(recommended);
-  if (!rule.allowSmallPositiveOrder && recommended < 1.5) return { rounded, inserted: null, autoComment: "", boxAdjusted: false };
-  if (rounded <= 0) return { rounded, inserted: null, autoComment: "", boxAdjusted: false };
-
-  if (rule.adjustment === "none") {
-    return { rounded, inserted: rounded, autoComment: "", boxAdjusted: false };
-  }
-
-  if (rule.adjustment === "multiple") {
-    return calculateMultipleAdjustedQuantity(rounded, rule.multiple, rule.adjustmentComment);
-  }
-
-  if (rule.adjustment === "nearestMultiple") {
-    return calculateNearestMultipleAdjustedQuantity(rounded, rule.multiple, rule.adjustmentComment);
-  }
-
-  if (rule.adjustment === "minimum") {
-    const minimum = Math.round(parseNumber(boxSizeValue) || 0);
-    if (minimum > 0 && rounded < minimum) {
-      return { rounded, inserted: minimum, autoComment: rule.adjustmentComment, boxAdjusted: true };
-    }
-    return { rounded, inserted: rounded, autoComment: "", boxAdjusted: false };
-  }
-
-  const boxSize = parseNumber(boxSizeValue);
-  if (!boxSize || boxSize <= 0) return { rounded, inserted: rounded, autoComment: "", boxAdjusted: false };
-  const box = Math.round(boxSize);
-  return calculateMultipleAdjustedQuantity(rounded, box, rule.adjustmentComment);
-}
-
-export function adjustQuantityForBrand(recommended, brand = "angiopharm", boxSizeValue = null) {
-  const rule = brandRule(brand);
-  return calculateAdjustedQuantity(recommended, rule, boxSizeValue ?? rule.multiple);
 }
 
 function budgetSourceMetrics(detection, row) {
@@ -1391,18 +980,6 @@ function budgetPrices(detection, row, quantityCol) {
     result.push({ id: String(col), column:col, label, price, quantityCol });
   }
   return result;
-}
-
-export function budgetOrderRules(brand, name, box) {
-  const rule = brandRule(brand);
-  if (brand === 'novacutan') {
-    const unit = novacutanSupplierUnitSize(name);
-    const minimum = Number(box) > 0 ? Number(box) : novacutanMinimumQuantity(name);
-    const step = unit > 1 ? 1 : 10;
-    return { unit, minimum: Math.ceil(minimum / step) * step, step };
-  }
-  const step = ['multiple', 'nearestMultiple'].includes(rule.adjustment) ? rule.multiple : rule.adjustment === 'box' ? Math.max(1, Number(box) || 1) : 1;
-  return { unit: 1, step, minimum: rule.adjustment === 'minimum' ? Math.max(1, Number(box) || 1) : step };
 }
 
 const christinaLinesCache = new WeakMap();
@@ -1578,140 +1155,6 @@ export function applyBudgetWorkbookPricing(workbook, sheetName, headerRow, entri
   return output;
 }
 
-function orderForItem(item, rule, adjustmentValue) {
-  if (!item.hasOrderedFact) return calculateAdjustedQuantity(item.recommended, rule, adjustmentValue);
-  return {
-    ...calculateAdjustedQuantity(item.orderedFact, rule, adjustmentValue),
-    autoComment: "",
-    fromOrderedFact: true,
-  };
-}
-
-function supplierUnitsFromPieces(quantity, unitSize = 1) {
-  const number = Number(quantity || 0);
-  const size = Number(unitSize || 1);
-  if (!Number.isFinite(number) || number <= 0) return null;
-  if (!Number.isFinite(size) || size <= 1) return Number(number.toFixed(2));
-  return Math.ceil(number / size);
-}
-
-function demandPiecesFromSupplierUnits(quantity, unitSize = 1) {
-  const number = Number(quantity || 0);
-  const size = Number(unitSize || 1);
-  if (!Number.isFinite(number) || number <= 0) return 0;
-  return Number((number * (Number.isFinite(size) && size > 0 ? size : 1)).toFixed(2));
-}
-
-function convertOrderToSupplierUnits(order, unitSize = 1) {
-  const size = Number(unitSize || 1);
-  if (!Number.isFinite(size) || size <= 1) return order;
-  const rounded = supplierUnitsFromPieces(order.rounded, size);
-  const inserted = supplierUnitsFromPieces(order.inserted, size);
-  return {
-    ...order,
-    rounded,
-    inserted,
-    autoComment: inserted != null ? "коробки по 5 шт." : order.autoComment,
-    supplierUnitSize: size,
-  };
-}
-
-function novacutanOrderForItem(item, rowInfo, rule) {
-  return convertOrderToSupplierUnits(orderForItem(item, rule, rowInfo.blankBoxSize), rowInfo.supplierUnitSize);
-}
-
-function calculateMultipleAdjustedQuantity(rounded, multiple, comment) {
-  const step = Math.round(Number(multiple));
-  if (step <= 0 || rounded % step === 0) return { rounded, inserted: rounded, autoComment: "", boxAdjusted: false };
-
-  const lower = Math.floor(rounded / step) * step;
-  const upper = Math.ceil(rounded / step) * step;
-  const upPercent = (upper - rounded) / rounded;
-  const downPercent = lower > 0 ? (rounded - lower) / rounded : Infinity;
-
-  if (upPercent > 0 && upPercent <= 0.15) {
-    return { rounded, inserted: upper, autoComment: comment, boxAdjusted: true };
-  }
-  if (downPercent > 0 && downPercent <= 0.05) {
-    return { rounded, inserted: lower, autoComment: comment, boxAdjusted: true };
-  }
-  return { rounded, inserted: rounded, autoComment: "", boxAdjusted: false };
-}
-
-function nearestMultipleValue(value, multiple) {
-  const number = Number(value || 0);
-  const step = Math.round(Number(multiple));
-  if (!Number.isFinite(number) || number <= 0) return null;
-  if (!Number.isFinite(step) || step <= 0) return Number(number.toFixed(2));
-  const lower = Math.floor(number / step) * step;
-  const upper = Math.ceil(number / step) * step;
-  if (lower <= 0) return upper;
-  const lowerDiff = number - lower;
-  const upperDiff = upper - number;
-  return upperDiff <= lowerDiff ? upper : lower;
-}
-
-function calculateNearestMultipleAdjustedQuantity(rounded, multiple, comment) {
-  const inserted = nearestMultipleValue(rounded, multiple);
-  if (inserted == null) return { rounded, inserted: null, autoComment: "", boxAdjusted: false };
-  return {
-    rounded,
-    inserted,
-    autoComment: inserted !== rounded ? comment : "",
-    boxAdjusted: inserted !== rounded,
-  };
-}
-
-function extractVolumeKeys(...values) {
-  const keys = new Set();
-  const text = values.map((value) => normalizeHeader(value)).join(" ");
-  const pattern = /(\d+(?:[,.]\d+)?)\s*(мл|ml|гр|г|g)\b/giu;
-  for (const match of text.matchAll(pattern)) {
-    const amount = Number(match[1].replace(",", "."));
-    if (!Number.isFinite(amount)) continue;
-    const unit = match[2].toLowerCase();
-    const normalizedUnit = unit === "ml" || unit === "мл" ? "мл" : "гр";
-    keys.add(`${amount}:${normalizedUnit}`);
-  }
-  return keys;
-}
-
-function volumeAwareSimilarity(blankName, sourceName, blankUnit = "") {
-  const base = similarity(blankName, sourceName);
-  const blankVolumes = extractVolumeKeys(blankName, blankUnit);
-  const sourceVolumes = extractVolumeKeys(sourceName);
-  if (!blankVolumes.size || !sourceVolumes.size) return base;
-
-  const hasMatch = Array.from(blankVolumes).some((key) => sourceVolumes.has(key));
-  if (hasMatch) return Math.min(1, base + 0.06);
-  return Math.max(0, base - 0.35);
-}
-
-function chooseCandidate(candidates, blankName, blankUnit = "") {
-  return candidates.map((item) => ({ item, score: volumeAwareSimilarity(blankName, item.name, blankUnit) })).sort((left, right) => right.score - left.score)[0];
-}
-
-function chooseNameFallback(candidates, blankName, blankUnit = "") {
-  const scored = candidates.filter((item) => !item.article).map((item) => ({ item, score: volumeAwareSimilarity(blankName, item.name, blankUnit) })).sort((left, right) => right.score - left.score);
-  if (!scored.length) return { item: null, score: 0 };
-  const bestNonpositive = scored.find((entry) => entry.item.rounded <= 0 && entry.score >= 0.72);
-  if (bestNonpositive) return bestNonpositive;
-  if (scored.length > 1 && scored[0].score - scored[1].score < 0.08) return { item: null, score: scored[0].score };
-  if (scored[0].score < 0.72) return { item: null, score: scored[0].score };
-  return scored[0];
-}
-
-function chooseSothysNameFallback(candidates, blankName, blankUnit) {
-  const unitText = normalizeHeader(blankUnit);
-  const scored = candidates
-    .filter((item) => !item.article && (!unitText || normalizeHeader(item.name).includes(unitText)))
-    .map((item) => ({ item, score: volumeAwareSimilarity(blankName, item.name, blankUnit) }))
-    .sort((left, right) => right.score - left.score);
-  if (!scored.length || scored[0].score < 0.72) return { item: null, score: scored[0]?.score || 0 };
-  if (scored.length > 1 && scored[0].score - scored[1].score < 0.08) return { item: null, score: scored[0].score };
-  return scored[0];
-}
-
 function genericBlankPositions(blank, blankId, blankLabel, rule) {
   const rows = [];
   const { maxRow } = sheetBounds(blank.sheet);
@@ -1857,57 +1300,6 @@ function novacutanBlankPositions(blank, blankId, blankLabel) {
     });
   }
   return rows;
-}
-
-function novacutanMatchKey(value) {
-  const text = normalizeHeader(value)
-    .replace(/\bbiopro\b/g, "bio pro")
-    .replace(/\bbio\s*pro\b/g, "bio pro");
-  if (!text || text.includes("термопакет") || text.includes("хладоэлемент")) return "";
-  const hasFillerMask = text.includes("filler") || text.includes("филлер") || text.includes("маск") || text.includes("mask");
-  if (hasFillerMask && (text.includes("глаз") || text.includes("eye"))) return "mask-eye";
-  if (hasFillerMask && (text.includes("лица") || text.includes("face"))) return "mask-face";
-  if (text.includes("sbio")) return "sbio";
-  if (text.includes("ybio")) return "ybio";
-  if (text.includes("bio pro")) return "bio-pro";
-  if (text.includes("prima")) return "prima";
-  if (text.includes("master")) return "master";
-  if (text.includes("bright") || text.includes("брайт")) return "bright";
-  if (text.includes("gentle") || text.includes("джентл") || text.includes("джентел")) return "gentle";
-  if (text.includes("fbio") && text.includes("dvs") && text.includes("light")) return "dvs-fbio-light";
-  if (text.includes("fbio") && text.includes("dvs") && text.includes("medium")) return "dvs-fbio-medium";
-  if (text.includes("fbio") && text.includes("dvs") && text.includes("volume")) return "dvs-fbio-volume";
-  if (text.includes("fbio") && text.includes("light")) return "fbio-light";
-  if (text.includes("fbio") && text.includes("medium")) return "fbio-medium";
-  if (text.includes("fbio") && text.includes("volume")) return "fbio-volume";
-  if (text.includes("eye")) return "eye";
-  return "";
-}
-
-function chooseNovacutanCandidate(sourceItems, blankName, blankUnit = "") {
-  const key = novacutanMatchKey(blankName);
-  if (key) {
-    const keyed = sourceItems.filter((item) => novacutanMatchKey(item.name) === key);
-    const blankText = normalizeHeader(blankName);
-    const beautyBoxAligned = keyed.filter((item) => {
-      const sourceText = normalizeHeader(item.name);
-      const blankIsBeautyBox = blankText.includes("бьюти") || blankText.includes("beauty");
-      const sourceIsBeautyBox = sourceText.includes("бьюти") || sourceText.includes("beauty");
-      return blankIsBeautyBox === sourceIsBeautyBox;
-    });
-    const nonBonus = (beautyBoxAligned.length ? beautyBoxAligned : keyed).filter((item) => !normalizeHeader(item.name).includes("бонус"));
-    const pool = nonBonus.length ? nonBonus : beautyBoxAligned.length ? beautyBoxAligned : keyed;
-    if (pool.length) {
-      return pool
-        .map((item) => ({ item, score: Math.max(0.92, volumeAwareSimilarity(blankName, item.name, blankUnit)) }))
-        .sort((left, right) => {
-          const positiveDiff = Number(right.item.recommended > 0) - Number(left.item.recommended > 0);
-          if (positiveDiff) return positiveDiff;
-          return right.score - left.score;
-        })[0];
-    }
-  }
-  return chooseCandidate(sourceItems, blankName, blankUnit);
 }
 
 export function fillWorkbook({ sourceWorkbook, sourceFileName = "", blankWorkbook, orderMonth, brand = "angiopharm", blankId = "blank", blankLabel = "" }) {
@@ -2462,41 +1854,6 @@ export function applyFinalEdits({ blankWorkbook, sourceWorkbook, reportRows, edi
   return { blankWorkbook, sourceWorkbook };
 }
 
-export function outputFileName(originalName, cityName = "") {
-  const text = asText(originalName);
-  const extension = outputExtension(text);
-  const stem = text.replace(/\.(xlsx|xlsm|xls)$/i, "").replace(/[^\p{L}\p{N}_ .-]+/gu, "").trim() || "blank";
-  const city = asText(cityName).replace(/[^\p{L}\p{N}_ .-]+/gu, "").trim();
-  const cityAlreadyInName = city && normalizeHeader(stem).includes(normalizeHeader(city));
-  const namedStem = city && !cityAlreadyInName ? `${stem} ${city}` : stem;
-  return `${namedStem} заполненный.${extension}`;
-}
-
-export function sourceOutputFileName(originalName) {
-  const text = asText(originalName);
-  const extension = outputExtension(text);
-  const stem = text.replace(/\.(xlsx|xlsm|xls)$/i, "").replace(/[^\p{L}\p{N}_ .-]+/gu, "").trim() || "order";
-  return `${stem} заполненная таблица.${extension}`;
-}
-
-function outputExtension(fileName) {
-  return /\.xlsm$/i.test(asText(fileName)) ? "xlsm" : "xlsx";
-}
-
-const NORTH_CITIES = [
-  { key: "nizhnevartovsk", label: "Нижневартовск", warehouse: "Склад Нижневартовск", aliases: ["нижневартовск", "вартовск"] },
-  { key: "urengoy", label: "Уренгой", warehouse: "Склад Уренгой", aliases: ["новый уренгой", "уренгой"] },
-  { key: "surgut", label: "Сургут", warehouse: "Склад Сургут", aliases: ["сургут"] },
-  { key: "tyumen", label: "Тюмень", warehouse: "Склад Тюмень", aliases: ["тюмень", "склад доставка"] },
-];
-const NORTH_TRANSFER_DISPLAY_ORDER = ["surgut", "nizhnevartovsk", "urengoy"];
-
-function northCityFromText(value) {
-  const text = normalizeHeader(value);
-  if (!text) return null;
-  return NORTH_CITIES.find((city) => city.aliases.some((alias) => text.includes(alias))) || null;
-}
-
 function detectSourceCity(workbook, fileName = "") {
   for (const sheet of workbook.sheets) {
     const city = northCityFromText(sheet.name);
@@ -2783,53 +2140,6 @@ function northNovacutanPositions(detection, blankId, blankLabel) {
   return rows;
 }
 
-function novacutanPositionKey(name) {
-  const matched = novacutanMatchKey(name);
-  return `novacutan:${matched || normalizeName(name).replace(/\bновакутан\b/g, "novacutan")}`;
-}
-
-function novacutanMinimumQuantity(name) {
-  const text = normalizeHeader(name);
-  if ((text.includes("mask") || text.includes("маск")) && (text.includes("filler") || text.includes("филлер"))) {
-    return 10;
-  }
-  if (
-    text.includes("fbio")
-    || text.includes("bright")
-    || text.includes("брайт")
-    || text.includes("gentle")
-    || text.includes("джентл")
-    || text.includes("джентел")
-  ) {
-    return 50;
-  }
-  return 100;
-}
-
-function novacutanSupplierUnitSize(name) {
-  const key = novacutanMatchKey(name);
-  return key === "mask-eye" || key === "mask-face" ? 5 : 1;
-}
-
-function novacutanSummaryQuantity(position, total) {
-  if (total <= 0) return null;
-  const minimum = Number(position.novacutanMinimum || 100);
-  return total < minimum ? minimum : Number(total.toFixed(2));
-}
-
-function roundSupplierPack10(value) {
-  if (value <= 0) return null;
-  return Math.round(value / 10) * 10;
-}
-
-function novacutanSupplierOrderQuantity(position, supplierNeed) {
-  if (supplierNeed <= 0) return null;
-  const minimum = Number(position.novacutanMinimum || 100);
-  const base = Math.max(Number(supplierNeed), minimum);
-  if (Number(position.supplierUnitSize || 1) > 1) return Number(base.toFixed(2));
-  return roundSupplierPack10(base);
-}
-
 function northSplitVariantPositions(detection, blankId, blankLabel) {
   const rows = [];
   const rule = { preserveArticleHyphen: true, adjustment: "none" };
@@ -2997,95 +2307,6 @@ function transferFilesFromTotals(totals, cities) {
     }));
 }
 
-function formatNorthQuantity(value) {
-  const number = Number(value || 0);
-  if (Number.isInteger(number)) return String(number);
-  return String(Number(number.toFixed(2)));
-}
-
-function formatNorthCommentQuantity(value) {
-  const number = Math.round(Number(value || 0));
-  return Number.isFinite(number) && number > 0 ? String(number) : "";
-}
-
-function supplierPartsForActual(row, actualValue) {
-  const actual = demandPiecesFromSupplierUnits(actualValue, row.supplierUnitSize);
-  const northParts = (row.supplierParts || []).filter((part) => part.key !== "tyumen");
-  const northNeed = northParts.reduce((sum, part) => sum + Number(part.quantity || 0), 0);
-  const tyumenQuantity = Number(Math.max(0, actual - northNeed).toFixed(2));
-  return [
-    ...(tyumenQuantity > 0 ? [{ key: "tyumen", label: "Тюмень", quantity: tyumenQuantity }] : []),
-    ...northParts,
-  ];
-}
-
-function northTransferParts(row) {
-  const quantities = new Map((row.cities || []).map((city) => [city.key, Number(city.quantity || 0)]));
-  return NORTH_TRANSFER_DISPLAY_ORDER
-    .map((cityKey) => {
-      const city = NORTH_CITIES.find((item) => item.key === cityKey);
-      return city ? { key: city.key, label: city.label, quantity: quantities.get(city.key) || 0 } : null;
-    })
-    .filter(Boolean);
-}
-
-function northSupplierOrderText(row, actual) {
-  const actualRounded = Math.round(Number(actual || 0));
-  const neededRounded = Math.round(Number(row.supplierNeed || 0));
-  const extraRounded = Math.max(0, actualRounded - neededRounded);
-  const unitNote = Number(row.supplierUnitSize || 1) > 1 ? ` коробок по ${Number(row.supplierUnitSize)}` : "";
-  if (extraRounded > 0) {
-    return `${neededRounded} + ${extraRounded} (${row.budgetComment ? 'сверх потребности' : 'до минимального'}) = ${actualRounded}${unitNote}`;
-  }
-  return `${formatNorthQuantity(actual)}${unitNote}`;
-}
-
-function northPlanCommentForOrderTable(row, actualValue) {
-  const lines = [];
-  const actual = Number(actualValue || 0);
-  const supplierParts = supplierPartsForActual(row, actualValue);
-  const tyumenSupplier = supplierParts.find((part) => part.key === "tyumen");
-  const transferParts = northTransferParts(row);
-
-  if (actual > 0) lines.push(`Заказать у поставщика: ${northSupplierOrderText(row, actual)}`);
-  for (const part of transferParts) {
-    if (Number(part.quantity || 0) > 0) lines.push(`Отправить в ${part.label}: ${formatNorthQuantity(part.quantity)}`);
-  }
-  if (Number(tyumenSupplier?.quantity || 0) > 0) {
-    lines.push(`Оставить в Тюмени: ${formatNorthCommentQuantity(tyumenSupplier.quantity)}`);
-  }
-  if (!lines.length && Number(row.northNeed || 0) > 0) lines.push("Закрывается остатком Тюмени");
-  if (row.budgetComment) lines.push(row.budgetComment);
-  return lines.join("\n");
-}
-
-function novacutanNorthOrderTable(summary, planRows, actualByKey) {
-  if (summary.kind !== "novacutan" && !planRows.some(r => r.budgetComment)) return null;
-  const rows = [];
-
-  for (const row of planRows) {
-    const orderedQuantity = Number(actualByKey.get(row.key) || 0);
-    if (orderedQuantity == null) continue;
-    if (orderedQuantity <= 0) continue;
-
-    rows.push({
-      name: row.name,
-      quantity: orderedQuantity,
-      comment: northPlanCommentForOrderTable(row, orderedQuantity),
-    });
-  }
-
-  return {
-    fileName: `${summary.kind === 'novacutan' ? 'NOVACUTAN' : 'Север'} заполненная таблица.xlsx`,
-    rows,
-  };
-}
-
-function northNameKey(name, unit = "") {
-  const normalized = normalizeName(`${name} ${unit || ""}`);
-  return normalized ? `name:${normalized}` : "";
-}
-
 function sourceKeyCandidatesForNorth(item, kind) {
   const keys = new Set();
   if (kind === "novacutan") keys.add(novacutanPositionKey(item.name));
@@ -3143,29 +2364,6 @@ function readNorthTyumenAvailability(workbook, kind) {
   return availability;
 }
 
-function allocateNorthNeedByCity(total, tyumenFree) {
-  const supplierParts = [];
-  const tyumenParts = [];
-  let freeLeft = Math.max(0, tyumenFree || 0);
-
-  for (const city of NORTH_CITIES.filter((item) => item.key !== "tyumen")) {
-    const quantity = Number(total.cities.get(city.key) || 0);
-    if (quantity <= 0) continue;
-    const fromTyumen = Math.min(quantity, freeLeft);
-    const fromSupplier = quantity - fromTyumen;
-    freeLeft -= fromTyumen;
-    if (fromTyumen > 0) tyumenParts.push({ key: city.key, label: city.label, quantity: Number(fromTyumen.toFixed(2)) });
-    if (fromSupplier > 0) supplierParts.push({ key: city.key, label: city.label, quantity: Number(fromSupplier.toFixed(2)) });
-  }
-
-  return {
-    fromTyumen: tyumenParts.reduce((sum, part) => sum + part.quantity, 0),
-    supplierNorthNeed: supplierParts.reduce((sum, part) => sum + part.quantity, 0),
-    supplierParts,
-    tyumenParts,
-  };
-}
-
 function northAvailabilityForTotal(availability, total, kind) {
   const exact = availability.get(total.key);
   if (exact) return exact;
@@ -3188,50 +2386,6 @@ function northAvailabilityForTotal(availability, total, kind) {
   if (scored[0].score >= 0.9) return scored[0].item;
   if (scored.length > 1 && scored[0].score - scored[1].score < 0.08) return null;
   return scored[0].item;
-}
-
-function novacutanNameTokens(value) {
-  return normalizeHeader(value)
-    .split(/\s+/u)
-    .map((token) => token.trim())
-    .filter((token) => token && token !== "novacutan" && token !== "мл" && token !== "гр");
-}
-
-function novacutanNameScore(left, right, unit = "") {
-  const base = volumeAwareSimilarity(left, right, unit);
-  const leftTokens = new Set(novacutanNameTokens(left));
-  const rightTokens = new Set(novacutanNameTokens(right));
-  if (!leftTokens.size || !rightTokens.size) return base;
-  const intersection = Array.from(leftTokens).filter((token) => rightTokens.has(token)).length;
-  const coverage = intersection / Math.min(leftTokens.size, rightTokens.size);
-  if (coverage >= 0.75) return Math.max(base, 0.9);
-  return base;
-}
-
-export function christinaNorthSupplierQuantity(need) {
-  return need > 0 ? Math.ceil(Number(need) / 3 - 1e-10) * 3 : null;
-}
-
-export function defaultNorthActualSupplierOrder(summary, position, supplierNeed) {
-  if (supplierNeed <= 0) return null;
-  if (summary.brand === 'christina' || summary.variant === 'home' || summary.variant === 'proff') return christinaNorthSupplierQuantity(supplierNeed);
-  if (summary.brand === 'novacutan' || summary.kind === "novacutan") return novacutanSupplierOrderQuantity(position, supplierNeed);
-  if (summary.brand === 'klapp' || summary.kind === "klapp") return nearestMultipleValue(supplierNeed, 3);
-  const rule=BRAND_RULES[summary.brand];
-  const box=Number(position.blankBoxSize);
-  const step=rule?.adjustment==='box' && Number.isFinite(box) && box>0 ? Math.ceil(box) : 1;
-  // Fractional target stock is valid, but the supplier receives whole units/packs.
-  return Math.ceil(supplierNeed/step-1e-10)*step;
-}
-
-function northTotalCityParts(total) {
-  return NORTH_CITIES
-    .map((city) => ({
-      key: city.key,
-      label: city.label,
-      quantity: Number((total.cities.get(city.key) || 0).toFixed(2)),
-    }))
-    .filter((city) => city.quantity > 0);
 }
 
 function northPlanRowFromTotal(summary, total, position, tyumen = null, tyumenFallbackOrder = 0) {
