@@ -13,7 +13,7 @@
     "test:christina": "node scripts/test-christina-lines.mjs",
     "test:parity": "node tests/parity/check.mjs",
     "test:baseline": "node tests/parity/replay-baseline.mjs",
-    "test:e2e": "node tests/e2e/parity.mjs",
+    "test:e2e": "node scripts/test-ui-parity.mjs",
     "test:private": "node scripts/test-workbook.mjs",
     "verify:structure": "node scripts/verify-structure.mjs",
     "verify": "node scripts/verify.mjs",

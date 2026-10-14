@@ -1,5 +1,86 @@
+# Dependencies, build output and local hosting state
 node_modules/
-dist/
-test-output/
-.vercel/
+/dist/
+/build/
+/.vercel/
+/.netlify/
+
+# Local credentials. Keep only explicit, secret-free examples in Git.
+.env
+.env.*
+!.env.example
+!.env.*.example
+!.env.template
+.npmrc
+.netrc
+.credentials
+credentials.json
+secrets.json
+service-account*.json
+*.key
+*.pem
+*.p12
+*.pfx
+*.jks
+*.keystore
+id_rsa
+id_dsa
+id_ed25519
+.ssh/
+.aws/
+.azure/
+.kube/
+secrets/
+
+# Generated fixtures, browser baselines and private customer workbooks
+/tests/fixtures/input/
+/tests/parity/ui/
+/tests/private/fixtures/
+/testdata/private/
+*.xlsx
+*.xlsm
+*.xls
+~$*
+
+# Test/debug artifacts, screenshots and exports (not application assets)
+/test-output/
+/test-results/
+/playwright-report/
+/blob-report/
+/coverage/
+/artifacts/
+/screenshots/
+/outputs/
+/exports/
+Screenshot*.png
+Screen Shot*.png
+Снимок экрана*.png
+*.log
+*.heapsnapshot
+*.cpuprofile
+
+# Caches, temporary files and local editor/OS state
+.cache/
+.vite/
+.eslintcache
+*.tsbuildinfo
+__pycache__/
+*.py[cod]
+/tmp/
+/temp/
+*.tmp
+*.bak
+*.swp
+*.swo
+*~
 .DS_Store
+Thumbs.db
+Desktop.ini
+/.idea/
+/.vscode/
+/.agents/
+/.codex/
+/.worktrees/
+
+# Runtime pictures/icons under src/ or public/ are deliberately not ignored.
+# A required workbook template must get an explicit reviewed exception.

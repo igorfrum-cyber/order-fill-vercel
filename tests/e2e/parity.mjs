@@ -1,12 +1,15 @@
 import assert from 'node:assert/strict';
 import { readFile, writeFile, mkdir, access } from 'node:fs/promises';
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
+import { resolve, sep } from 'node:path';
 import { unzipSync } from 'fflate';
 import {functional} from './functional.mjs';
 const { chromium }=await import(process.env.PLAYWRIGHT_MODULE || 'playwright');
 const { PNG }=await import(process.env.PNG_MODULE || 'pngjs');
 const capture=process.argv.includes('--capture');
-const golden=new URL('../parity/ui/',import.meta.url);
+const golden=process.env.UI_BASELINE_DIR
+  ? pathToFileURL(resolve(process.env.UI_BASELINE_DIR)+sep)
+  : new URL('../../test-output/ui-baseline/',import.meta.url);
 const fixtures=new URL('../fixtures/input/',import.meta.url);
 await mkdir(golden,{recursive:true});
 const browser=await chromium.launch({headless:true,...(process.env.CHROME_PATH?{executablePath:process.env.CHROME_PATH}:{})});
