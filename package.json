@@ -10,7 +10,14 @@
     "test:workbook": "node scripts/test-workbook.mjs",
     "test:tyumen": "node scripts/test-tyumen.mjs",
     "test:budget": "node scripts/test-budget.mjs",
-    "test:christina": "node scripts/test-christina-lines.mjs"
+    "test:christina": "node scripts/test-christina-lines.mjs",
+    "test:parity": "node tests/parity/check.mjs",
+    "test:baseline": "node tests/parity/replay-baseline.mjs",
+    "test:e2e": "node scripts/test-ui-parity.mjs",
+    "test:private": "node scripts/test-workbook.mjs",
+    "verify:structure": "node scripts/verify-structure.mjs",
+    "verify": "node scripts/verify.mjs",
+    "verify:full": "npm run verify && npm run test:e2e"
   },
   "dependencies": {
     "@xmldom/xmldom": "^0.9.10",
@@ -18,5 +25,10 @@
     "vite": "^7.2.4",
     "xlsx": "^0.18.5",
     "xpath": "^0.0.34"
+  },
+  "devDependencies": {
+    "eslint-scope": "^9.1.2",
+    "playwright": "^1.62.1",
+    "pngjs": "^7.0.0"
   }
 }
