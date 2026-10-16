@@ -15,7 +15,7 @@ Friend's `main` is product intent, never a merge source and never a UI kit.
 
 1. Read this skill, CLAUDE.md owners, and the affected service README.
 2. Load the skills for the files you will touch (table below).
-3. If HEAD is `artemch`, `dev`, `main`, or `igorfrum`: create `feat/<slug>` from `artemch` before edits. Use `.worktrees/<slug>` when the workspace already has unrelated dirty files. Do not commit to those four branches. Merge into `artemch` only when the user asks.
+3. Default: create `feat/<slug>` from `artemch` before edits. Friend profile (`AGENT_HANDOFF.md`): start on updated `igorfrum`, create `feat/igorfrum-<slug>` from `origin/igorfrum` and target PRs only to `igorfrum`. Follow the friend-profile restrictions in `AGENTS.md`: never switch to, commit/push/merge into, or deploy `dev`, `artemch` or `main`; do not change shared production/deploy settings. Stop if a request needs them. Check branch and explicit push/PR destinations; no bare push, `--all`, wildcard refspecs or force push. Use `.worktrees/<slug>` for unrelated dirty files. Do not commit to any of the four base branches. Merge into the selected base only when the user asks.
 
 ## Place the change
 
@@ -40,4 +40,4 @@ Ponytail is already always on. Do not invent a new visual language.
 
 ## Finish
 
-Do not merge yourself. When the user asks to land, use finishing-a-development-branch with base `artemch`, not `main`.
+Do not merge yourself. When the user asks to land, use finishing-a-development-branch with base `artemch` by default, or `igorfrum` in the friend profile. Never target `main`. Recheck the explicit PR/push destination before publication.

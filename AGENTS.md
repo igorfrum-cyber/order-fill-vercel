@@ -2,10 +2,33 @@
 
 ## Branch workflow
 
-- `artemch` is the canonical development branch. Create `feat/<slug>` from `artemch` before any edit.
+- Default workflow: `artemch` is the canonical development branch. Create `feat/<slug>` from `artemch` before any edit, except for the explicit friend profile below.
 - **Never commit to** `artemch`, `dev`, `main`, or `igorfrum` directly. Merge to `artemch` only when explicitly asked.
 - `main` is a prototype sandbox (old browser-based Excel); do not merge it into `artemch`.
 - `dev` is the deploy target; CI auto-deploys to self-hosted on push to `dev`.
+
+### Friend profile — AGENT_HANDOFF.md / igorfrum
+
+When following `AGENT_HANDOFF.md` or working explicitly on the friend's copy,
+start on updated `igorfrum`; make changes in `feat/igorfrum-<slug>` created
+from `origin/igorfrum`. PRs target **only `igorfrum`**. Do not commit to
+`igorfrum` directly; merge there only when the user asks.
+
+**Never switch to, commit to, merge into, push to, or deploy `dev`, `artemch`,
+or `main` in this profile.** Do not change production deployment scripts,
+workflow deployment settings, runner routing, server credentials or branch
+protection to work around this restriction. Do not run `scripts/deploy.sh`
+or `make https` on the shared server. If a task needs one of those branches
+or the shared server, stop and explain that it needs the maintainer.
+Repository-wide `git fetch` is allowed; it does not modify those branches.
+Local Docker setup and local app startup are allowed.
+
+Before edits and before every push, verify the current branch, explicit push
+destination and PR base. Never rely on GitHub's default branch (`main`) or an
+inherited upstream. Do not use bare `git push`, `--all`, `--mirror`, force push
+or wildcard refspecs. For example, push a task with
+`git push -u origin HEAD:refs/heads/feat/igorfrum-<slug>` and create its PR
+with `--base igorfrum`. A release to `dev` is outside this profile.
 
 ## Setup (first time)
 
@@ -138,4 +161,4 @@ Web UI: `http://127.0.0.1:3200`. Gateway health: `http://127.0.0.1:8080/healthz`
 - `order-fill-docs` skill — load before reading service READMEs, proto, OpenAPI
 - `use-modern-go` + `golang-how-to` — load for any Go file changes
 - `systematic-debugging` — load for unexpected failures
-- `finishing-a-development-branch` — use when user asks to land, base `artemch`
+- `finishing-a-development-branch` — use when user asks to land, base `artemch` by default; `igorfrum` in the friend profile

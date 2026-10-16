@@ -96,9 +96,15 @@ actual RPCs, environment variables, dependencies, and known limitations.
 
 ## Before editing
 
-1. Load `.cursor/skills/order-fill-work/SKILL.md`. If HEAD is `artemch`, `dev`,
-   `main`, or `igorfrum`, create `feat/<slug>` from `artemch` first. Do not
-   commit those four branches. Merge into `artemch` only when asked.
+1. Load `.cursor/skills/order-fill-work/SKILL.md`. Default: create `feat/<slug>`
+   from `artemch` first. In the friend profile (`AGENT_HANDOFF.md`), start on
+   `igorfrum`, create `feat/igorfrum-<slug>` from `origin/igorfrum` and target
+   PRs only to `igorfrum`. Follow the full friend-profile restrictions in
+   `AGENTS.md`: never switch to, write/push/merge into, or deploy `dev`,
+   `artemch` or `main`; do not change shared production/deploy settings.
+   Stop and refer requests involving them to the maintainer.
+   Do not commit those four base branches directly. Merge into the selected
+   base only when asked. Check branch and explicit push/PR destinations.
 2. Inspect `git status` and preserve unrelated changes.
 3. Read the service README, domain code, transport, config, tests, and contract
    involved in the change. Load `order-fill-docs` and the Go/UI skills the
