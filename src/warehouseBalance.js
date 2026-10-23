@@ -73,9 +73,10 @@ export function installWarehouseBalance({ loadWorkbook, activate }) {
   };
   $('[data-download]').onclick = () => {
     const workbook = utils.book_new();
-    const sheet = utils.aoa_to_sheet([['Артикул', 'Название', 'К перемещению'], ...rows.map(row => [row.article, row.name, row.quantity])]);
+    const exportRows = rows.filter(row => row.quantity !== 0);
+    const sheet = utils.aoa_to_sheet([['Артикул', 'Название', 'К перемещению'], ...exportRows.map(row => [row.article, row.name, row.quantity])]);
     sheet['!cols'] = [{ wch: 20 }, { wch: 90 }, { wch: 20 }];
-    rows.forEach((row, index) => {
+    exportRows.forEach((row, index) => {
       if (!row.warning) return;
       const address = `B${index + 2}`;
       sheet[address].c = [{ a: 'Проверка', t: row.warning }];
