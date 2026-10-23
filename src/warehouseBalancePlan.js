@@ -15,9 +15,10 @@ function sameProduct(left, right, brand) {
       && chzNameSimilarity(left.name, right.name, brandRule(brand)) >= 0.9);
 }
 
-export function balanceQuantity(delivery, tyumen) {
+export function balanceQuantity(delivery, tyumen, tyumenPercent = 20) {
   if (![delivery, tyumen].every(v => Number.isFinite(v) && v >= 0)) return null;
-  const quantity = Math.min(Math.floor(delivery), Math.max(0, Math.ceil((delivery - 4 * tyumen) / 5 - 1e-10)));
+  if (!Number.isFinite(tyumenPercent) || tyumenPercent < 0 || tyumenPercent > 100) throw Error('Доля склада должна быть от 0 до 100%.');
+  const quantity = Math.min(Math.floor(delivery), Math.max(0, Math.ceil((delivery + tyumen) * tyumenPercent / 100 - tyumen - 1e-10)));
   return quantity === 1 ? 0 : quantity;
 }
 

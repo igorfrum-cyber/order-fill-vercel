@@ -11,6 +11,11 @@ const options = (delivery, tyumen) => ({ deliveryWorkbook: book(delivery, 'СК�
 assert.equal(balanceQuantity(200, 25), 20);
 assert.equal(balanceQuantity(200, 250), 0);
 assert.equal(balanceQuantity(13, 0), 3);
+assert.equal(balanceQuantity(200, 25, 70), 133);
+assert.equal(balanceQuantity(200, 25, 0), 0);
+assert.equal(balanceQuantity(200, 25, 100), 200);
+assert.equal(balanceQuantity(200, 25, 30), 43);
+assert.throws(() => balanceQuantity(200, 25, 101), /0 до 100/);
 assert.equal(balanceQuantity(5, 0), 0);
 assert.equal(balanceQuantity(1, 0), 0);
 assert.equal(balanceQuantity(6, 0), 2);

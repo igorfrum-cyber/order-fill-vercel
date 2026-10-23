@@ -1,10 +1,14 @@
-import { buildWarehouseBalanceResult } from './warehouseBalancePlan.js';
+import { buildWarehouseBalanceResult, balanceQuantity } from './warehouseBalancePlan.js';
 import { utils, write } from 'xlsx';
 
 export function installWarehouseBalance({ loadWorkbook, activate }) {
   const section = document.createElement('section');
   section.id = 'balanceSection'; section.className = 'hidden';
-  section.innerHTML = `<h2>Между складами</h2><form class="upload-grid">
+  section.innerHTML = `<h2>Между складами</h2>
+    <div class="upload-grid">
+      <label class="brand-field"><span class="label">Доставка, %</span><input class="warehouse-quantity" type="number" data-ratio="delivery" min="0" max="100" step="any" required value="80"></label>
+      <label class="brand-field"><span class="label">Тюмень, %</span><input class="warehouse-quantity" type="number" data-ratio="tyumen" min="0" max="100" step="any" required value="20"></label>
+    </div><form class="upload-grid">
     <label class="dropzone"><span class="label">Склад Тюмень</span><input data-tyumen type="file" accept=".xlsx,.xlsm,.xls" required><span data-tyumen-name></span></label>
     <label class="dropzone"><span class="label">Склад Доставка</span><input data-delivery type="file" accept=".xlsx,.xlsm,.xls" required><span data-delivery-name></span></label>
     <button class="download" type="submit">Рассчитать перемещение</button></form>
@@ -19,6 +23,31 @@ export function installWarehouseBalance({ loadWorkbook, activate }) {
   const $ = selector => section.querySelector(selector);
   let rows = [];
   let brandLabel = '';
+  const ratios = [...section.querySelectorAll('[data-ratio]')];
+  const validRatio = () => ratios.every(input => input.value !== '' && input.validity.valid);
+  const updateDownload = () => {
+    $('[data-download]').disabled = !validRatio() || [...$('tbody').querySelectorAll('input')].some(input => !input.validity.valid);
+  };
+  function applyRatio() {
+    if (!validRatio()) { updateDownload(); return; }
+    const percent = Number($('[data-ratio="tyumen"]').value);
+    [...$('tbody').rows].forEach((tr, index) => {
+      const row = rows[index];
+      if (!row.warning) {
+        row.quantity = balanceQuantity(row.deliveryStock, row.tyumenStock, percent);
+        const input = tr.querySelector('input');
+        input.value = row.quantity ?? ''; input.setCustomValidity('');
+      }
+    });
+    updateDownload();
+  }
+  ratios.forEach(input => input.oninput = () => {
+    if (input.value !== '' && input.validity.valid) {
+      const other = ratios.find(candidate => candidate !== input);
+      other.value = Number((100 - Number(input.value)).toFixed(10));
+    }
+    applyRatio();
+  });
   const searchable = value => String(value ?? '').toLocaleLowerCase('ru').replace(/ё/g, 'е').replace(/\s+/g, ' ').trim();
   $('[data-search]').oninput = () => {
     const query = searchable($('[data-search]').value);
@@ -35,7 +64,8 @@ export function installWarehouseBalance({ loadWorkbook, activate }) {
   };
   $('form').onsubmit = async event => {
     event.preventDefault(); $('[data-result]').hidden = true;
-    const controls = [...$('form').querySelectorAll('input,select,button')];
+    if (!validRatio()) { ratios.find(input => !input.validity.valid)?.reportValidity(); return; }
+    const controls = [...$('form').querySelectorAll('input,select,button'), ...ratios];
     controls.forEach(control => control.disabled = true);
     try {
       $('[data-status]').textContent = 'Рассчитываю…';
@@ -60,13 +90,13 @@ export function installWarehouseBalance({ loadWorkbook, activate }) {
           const valid = quantity === null || (Number.isInteger(quantity) && quantity >= 0 && (row.deliveryStock === null || quantity <= row.deliveryStock));
           input.setCustomValidity(valid ? '' : 'Укажите целое неотрицательное количество не больше остатка Доставки.');
           if (valid) row.quantity = quantity;
-          $('[data-download]').disabled = [...$('tbody').querySelectorAll('input')].some(el => !el.validity.valid);
+          updateDownload();
         };
         td.append(input);
         if (row.warning) { const warning = document.createElement('p'); warning.className = 'warn'; warning.textContent = row.warning; td.append(warning); }
         tr.append(td); $('tbody').append(tr);
       }
-      $('[data-download]').disabled = false; $('[data-result]').hidden = false;
+      applyRatio(); $('[data-result]').hidden = false;
       $('[data-status]').textContent = `Позиций: ${rows.length}. Для проверки: ${rows.filter(row => row.warning).length}.`;
     } catch (error) { $('[data-status]').textContent = error.message; }
     finally { controls.forEach(control => control.disabled = false); }
