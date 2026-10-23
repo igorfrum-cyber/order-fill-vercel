@@ -1,4 +1,4 @@
-import { buildWarehouseBalance } from './warehouseBalancePlan.js';
+import { buildWarehouseBalanceResult } from './warehouseBalancePlan.js';
 import { utils, write } from 'xlsx';
 
 export function installWarehouseBalance({ loadWorkbook, activate }) {
@@ -18,6 +18,7 @@ export function installWarehouseBalance({ loadWorkbook, activate }) {
   button.onclick = () => activate('balance'); document.querySelector('.mode-switch').append(button);
   const $ = selector => section.querySelector(selector);
   let rows = [];
+  let brandLabel = '';
   const searchable = value => String(value ?? '').toLocaleLowerCase('ru').replace(/ё/g, 'е').replace(/\s+/g, ' ').trim();
   $('[data-search]').oninput = () => {
     const query = searchable($('[data-search]').value);
@@ -40,7 +41,8 @@ export function installWarehouseBalance({ loadWorkbook, activate }) {
       $('[data-status]').textContent = 'Рассчитываю…';
       const delivery = $('[data-delivery]').files[0], tyumen = $('[data-tyumen]').files[0];
       if (delivery.name === tyumen.name && delivery.size === tyumen.size && delivery.lastModified === tyumen.lastModified) throw Error('Выбрана одна и та же таблица для двух складов.');
-      rows = buildWarehouseBalance({ deliveryWorkbook: await loadWorkbook(delivery, { allowLegacyXls: true }), tyumenWorkbook: await loadWorkbook(tyumen, { allowLegacyXls: true }), deliveryFileName: delivery.name, tyumenFileName: tyumen.name });
+      const result = buildWarehouseBalanceResult({ deliveryWorkbook: await loadWorkbook(delivery, { allowLegacyXls: true }), tyumenWorkbook: await loadWorkbook(tyumen, { allowLegacyXls: true }), deliveryFileName: delivery.name, tyumenFileName: tyumen.name });
+      rows = result.rows; brandLabel = result.brandLabel;
       $('tbody').replaceChildren();
       $('[data-search]').value = ''; $('[data-empty]').hidden = true;
       for (const row of rows) {
@@ -80,7 +82,7 @@ export function installWarehouseBalance({ loadWorkbook, activate }) {
     });
     utils.book_append_sheet(workbook, sheet, 'Между складами');
     const url = URL.createObjectURL(new Blob([write(workbook, { type: 'array', bookType: 'xlsx' })], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }));
-    const link = document.createElement('a'); link.href = url; link.download = 'Доставка - Тюмень перемещение.xlsx'; link.click();
+    const link = document.createElement('a'); link.href = url; link.download = `${brandLabel} Доставка - Тюмень перемещение.xlsx`; link.click();
     setTimeout(() => URL.revokeObjectURL(url), 1000);
   };
 }

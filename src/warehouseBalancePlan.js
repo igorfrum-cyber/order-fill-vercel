@@ -94,7 +94,7 @@ function readStock(workbook, fileName) {
   return { groups, brand, warehouse };
 }
 
-export function buildWarehouseBalance({ deliveryWorkbook, tyumenWorkbook, deliveryFileName, tyumenFileName }) {
+export function buildWarehouseBalanceResult({ deliveryWorkbook, tyumenWorkbook, deliveryFileName, tyumenFileName }) {
   const first = readStock(deliveryWorkbook, deliveryFileName);
   const second = readStock(tyumenWorkbook, tyumenFileName);
   if (first.warehouse === second.warehouse) throw Error('Загружены два одинаковых склада. Нужны склад Доставка и склад Тюмень.');
@@ -124,5 +124,9 @@ export function buildWarehouseBalance({ deliveryWorkbook, tyumenWorkbook, delive
     }
   }
   for (const items of tyumen.values()) for (const item of items) if (!used.has(item)) rows.push({ article: item.articleRaw, name: item.name, deliveryStock: null, tyumenStock: item.stock, quantity: null, warning: MATCH_WARNING });
-  return rows;
+  return { rows, brandLabel: brandRule(brand).label };
+}
+
+export function buildWarehouseBalance(options) {
+  return buildWarehouseBalanceResult(options).rows;
 }
