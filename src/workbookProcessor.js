@@ -1,5 +1,6 @@
 import { strFromU8, strToU8, unzipSync, zipSync } from "fflate";
 import { DOMParser, XMLSerializer } from "@xmldom/xmldom";
+export { BRAND_RULES, brandRule, articleNormalizeOptions, chzNameSimilarity, levissimeVolumeSignature, compatibleTyumenNames, tyumenProductKey, sheetBounds, sheetCellValue, isSourceTotalRow };
 
 const ARTICLE_TRANSLATION = new Map([
   ["А", "A"], ["В", "B"], ["Е", "E"], ["К", "K"], ["М", "M"], ["Н", "H"], ["О", "O"],

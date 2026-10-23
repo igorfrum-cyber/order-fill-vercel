@@ -3,3 +3,4 @@ dist/
 test-output/
 .vercel/
 .DS_Store
+.vercel
