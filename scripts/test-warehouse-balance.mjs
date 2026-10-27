@@ -10,15 +10,25 @@ function book(rows, warehouse, brand = 'ANGIOPHARM') {
 const options = (delivery, tyumen) => ({ deliveryWorkbook: book(delivery, 'СКЛАД ДОСТАВКА'), tyumenWorkbook: book(tyumen, 'Склад Тюмень'), deliveryFileName: 'доставка.xlsx', tyumenFileName: 'тюмень.xlsx', brand: 'angiopharm' });
 assert.equal(balanceQuantity(200, 25), 20);
 assert.equal(balanceQuantity(200, 250), 0);
-assert.equal(balanceQuantity(13, 0), 3);
+assert.equal(balanceQuantity(13, 0), 4);
 assert.equal(balanceQuantity(200, 25, 70), 133);
 assert.equal(balanceQuantity(200, 25, 0), 0);
 assert.equal(balanceQuantity(200, 25, 100), 200);
 assert.equal(balanceQuantity(200, 25, 30), 43);
 assert.throws(() => balanceQuantity(200, 25, 101), /0 до 100/);
-assert.equal(balanceQuantity(5, 0), 0);
+assert.equal(balanceQuantity(5, 0), 2);
 assert.equal(balanceQuantity(1, 0), 0);
-assert.equal(balanceQuantity(6, 0), 2);
+assert.equal(balanceQuantity(6, 0), 4);
+for (const percent of [0, 20, 70, 100]) {
+  for (const [stock, expected] of [[0, 0], [3, 0], [4, 2], [5, 2], [6, 4], [20, 4]]) {
+    assert.equal(balanceQuantity(stock, 0, percent), expected);
+  }
+}
+assert.equal(balanceQuantity(21, 0), 5);
+assert.equal(balanceQuantity(5, 1), 0);
+assert.equal(balanceQuantity(13, 1), 2);
+assert.equal(balanceQuantity(20, 1), 4);
+assert.equal(balanceQuantity(13, 1, 70), 9);
 assert.equal(balanceQuantity(24, 5), 0);
 assert.equal(balanceQuantity(0, 0), 0);
 assert.equal(balanceQuantity(null, 0), null);
