@@ -18,7 +18,7 @@ function sameProduct(left, right, brand) {
 export function balanceQuantity(delivery, tyumen, tyumenPercent = 20) {
   if (![delivery, tyumen].every(v => Number.isFinite(v) && v >= 0)) return null;
   if (!Number.isFinite(tyumenPercent) || tyumenPercent < 0 || tyumenPercent > 100) throw Error('Доля склада должна быть от 0 до 100%.');
-  if (tyumen === 0 && delivery <= 20) {
+  if (tyumen <= 1 && delivery <= 20) {
     if (delivery < 4) return 0;
     if (delivery < 6) return 2;
     return 4;

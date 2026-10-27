@@ -22,13 +22,18 @@ assert.equal(balanceQuantity(6, 0), 4);
 for (const percent of [0, 20, 70, 100]) {
   for (const [stock, expected] of [[0, 0], [3, 0], [4, 2], [5, 2], [6, 4], [20, 4]]) {
     assert.equal(balanceQuantity(stock, 0, percent), expected);
+    assert.equal(balanceQuantity(stock, 1, percent), expected);
   }
 }
 assert.equal(balanceQuantity(21, 0), 5);
-assert.equal(balanceQuantity(5, 1), 0);
-assert.equal(balanceQuantity(13, 1), 2);
+assert.equal(balanceQuantity(5, 1), 2);
+assert.equal(balanceQuantity(13, 1), 4);
 assert.equal(balanceQuantity(20, 1), 4);
-assert.equal(balanceQuantity(13, 1, 70), 9);
+assert.equal(balanceQuantity(13, 1, 70), 4);
+assert.equal(balanceQuantity(5, 2), 0);
+assert.equal(balanceQuantity(13, 2), 0);
+assert.equal(balanceQuantity(13, 2, 70), 9);
+assert.equal(balanceQuantity(21, 1), 4);
 assert.equal(balanceQuantity(24, 5), 0);
 assert.equal(balanceQuantity(0, 0), 0);
 assert.equal(balanceQuantity(null, 0), null);
