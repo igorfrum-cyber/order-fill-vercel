@@ -21,15 +21,21 @@ assert.equal(balanceQuantity(1, 0), 0);
 assert.equal(balanceQuantity(6, 0), 4);
 for (const percent of [0, 20, 70, 100]) {
   for (const [stock, expected] of [[0, 0], [3, 0], [4, 2], [5, 2], [6, 4], [20, 4]]) {
-    assert.equal(balanceQuantity(stock, 0, percent), expected);
-    assert.equal(balanceQuantity(stock, 1, percent), expected);
+    for (const tyumen of [0, 1]) {
+      const proportional = Math.max(0, Math.ceil((stock + tyumen) * percent / 100 - tyumen - 1e-10));
+      const quantity = Math.min(stock, Math.max(expected, proportional));
+      assert.equal(balanceQuantity(stock, tyumen, percent), quantity === 1 ? 0 : quantity);
+    }
   }
 }
 assert.equal(balanceQuantity(21, 0), 5);
 assert.equal(balanceQuantity(5, 1), 2);
 assert.equal(balanceQuantity(13, 1), 4);
 assert.equal(balanceQuantity(20, 1), 4);
-assert.equal(balanceQuantity(13, 1, 70), 4);
+assert.equal(balanceQuantity(13, 1, 70), 9);
+assert.equal(balanceQuantity(13, 0, 100), 13);
+assert.equal(balanceQuantity(5, 1, 100), 5);
+assert.equal(balanceQuantity(3, 0, 100), 3);
 assert.equal(balanceQuantity(5, 2), 0);
 assert.equal(balanceQuantity(13, 2), 0);
 assert.equal(balanceQuantity(13, 2, 70), 9);
