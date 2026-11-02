@@ -39,6 +39,22 @@ for(const second of [null,warehouse]) {
   assert.notEqual(item.recommended,999);
 }
 const merged = mergeTyumenSources(options);
+// A new warehouse may have sales in only the last month of the same period.
+const sparseRows = utils.sheet_to_json(read(saveXlsx(warehouse), { type: 'buffer' }).Sheets.Тюмень, { header: 1, defval: '' })
+  .map((row, index) => index === 0 ? row : row.filter((_, col) => col < 2 || col >= 13));
+const sparseWarehouse = book(sparseRows);
+const sparseMerged = mergeTyumenSources({ ...options, warehouseWorkbook: sparseWarehouse });
+const sparseOutput = utils.sheet_to_json(read(saveXlsx(sparseMerged), { type: 'buffer' }).Sheets.Тюмень, { header: 1, defval: '' });
+const sparseP1 = sparseOutput.find(row => row[0] === 'P1');
+assert.equal(sparseP1[2], 10, 'Missing warehouse September is zero, not August sales');
+assert.equal(sparseP1[13], 30, 'Warehouse August sales align with office August');
+assert.equal(sparseP1[14], 140, 'Year total includes 12 office months and one warehouse month');
+assert.equal(sparseOutput[1][2], months[0]);
+assert.equal(sparseOutput[1][13], months[11]);
+assert.equal(sparseP1[22], 100);
+const swappedSparse = mergeTyumenSources({ ...options, officeWorkbook: sparseWarehouse, warehouseWorkbook: office });
+const swappedP1 = utils.sheet_to_json(read(saveXlsx(swappedSparse), { type: 'buffer' }).Sheets.Тюмень, { header: 1 }).find(row => row[0] === 'P1');
+assert.equal(swappedP1[14], 140);
 const decoded = read(saveXlsx(merged), { type: "buffer" });
 const rows = utils.sheet_to_json(decoded.Sheets[decoded.SheetNames[0]], { header: 1, defval: "" });
 const p1 = rows.find((r) => r[0] === "P1");

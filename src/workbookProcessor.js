@@ -1062,13 +1062,24 @@ export function mergeTyumenSources({ officeWorkbook, warehouseWorkbook, brand = 
   }
   const deliveryWeeks = Math.max(1, detectDeliveryWeeks(officeWorkbook) ?? 1);
   if (warehouseHasSales && deliveryWeeks !== Math.max(1, detectDeliveryWeeks(warehouseWorkbook) ?? 1)) throw new Error("Срок поставки в таблицах офиса и склада различается. Укажите одинаковый срок поставки от поставщика.");
-  // A new warehouse may have inventory but no monthly columns yet. Use the
-  // office template so the combined report still has a complete sales timeline.
-  const workbook = warehouseHasSales ? warehouseCopy : officeCopy;
+  const monthColumns = ({ detection, calculation }) => {
+    const result = new Map();
+    for (const col of calculation.salesColumns) {
+      const month = normalizeHeader(sheetCellValue(detection.sheet, detection.headerRow - 1, col));
+      if (!month || result.has(month)) throw new Error("Не удалось однозначно определить месяцы продаж в таблице.");
+      result.set(month, col);
+    }
+    return result;
+  };
+  const officeMonths = monthColumns(office), warehouseMonths = monthColumns(warehouse);
+  // 1C omits empty months for a new warehouse. Retain the wider timeline and
+  // align quantities by month rather than by column position.
+  const covers = (full, part) => [...part.keys()].every(month => full.has(month));
+  const useWarehouse = warehouseHasSales && covers(warehouseMonths, officeMonths);
+  if (!useWarehouse && !covers(officeMonths, warehouseMonths)) throw new Error("Месяцы продаж складов не входят в одну общую шкалу. Выгрузите таблицы с полным набором месяцев.");
+  const workbook = useWarehouse ? warehouseCopy : officeCopy;
   alignTyumenKeys(office, warehouse, brand);
-  const monthHeaders = ({ detection, calculation }) => calculation.salesColumns.map((col) => normalizeHeader(sheetCellValue(detection.sheet, detection.headerRow - 1, col)));
-  if (warehouseHasSales && JSON.stringify(monthHeaders(office)) !== JSON.stringify(monthHeaders(warehouse))) throw new Error("Месяцы продаж офиса и склада не совпадают.");
-  const { detection, calculation } = warehouseHasSales ? warehouse : office;
+  const { detection, calculation } = useWarehouse ? warehouse : office;
   const { sheet, columns, headerRow } = detection;
   let lastRow = sheetBounds(sheet).maxRow;
   const firstExtra = sheetBounds(sheet).maxColumn + 1;
@@ -1081,7 +1092,7 @@ export function mergeTyumenSources({ officeWorkbook, warehouseWorkbook, brand = 
     const a = office.byKey.get(key);
     const b = warehouse.byKey.get(key);
     if (a && b && !compatibleTyumenNames(a, b, brand)) throw new Error(`У артикула ${a.articleRaw} разные названия: «${a.name}» и «${b.name}». Уточните соответствие перед объединением.`);
-    const row = (warehouseHasSales ? b?.row : a?.row) ?? ++lastRow;
+    const row = (useWarehouse ? b?.row : a?.row) ?? ++lastRow;
     const value = (source, item, col) => item && col ? (parseNumber(sheetCellValue(source.detection.sheet, item.row, col)) ?? 0) : 0;
     const stockOffice = value(office, a, office.detection.columns.stock);
     const stockWarehouse = value(warehouse, b, warehouse.detection.columns.stock);
@@ -1093,7 +1104,10 @@ export function mergeTyumenSources({ officeWorkbook, warehouseWorkbook, brand = 
     let mergedName = b?.name || a?.name || "";
     if (a && b && [a.name, b.name].some((name) => /^\s*чз/iu.test(name))) mergedName = `ЧЗ + ${mergedName.replace(/^\s*чз\s*\+?\s*/iu, "")}`;
     setTextCell(sheet, row, columns.name, mergedName);
-    calculation.salesColumns.forEach((col, index) => setNumericCell(sheet, row, col, value(office, a, office.calculation.salesColumns[index]) + value(warehouse, b, warehouse.calculation.salesColumns[index])));
+    for (const col of calculation.salesColumns) {
+      const month = normalizeHeader(sheetCellValue(sheet, headerRow - 1, col));
+      setNumericCell(sheet, row, col, value(office, a, officeMonths.get(month)) + value(warehouse, b, warehouseMonths.get(month)));
+    }
     for (const field of ["revenue", "previousQuantity"]) setNumericCell(sheet, row, calculation[field], value(office, a, office.calculation[field]) + value(warehouse, b, warehouse.calculation[field]));
     setNumericCell(sheet, row, columns.stock, stockOffice + stockWarehouse);
     setNumericCell(sheet, row, columns.inTransit, transitOffice + transitWarehouse);
