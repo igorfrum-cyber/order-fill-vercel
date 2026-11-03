@@ -6,8 +6,8 @@ export function installWarehouseBalance({ loadWorkbook, activate }) {
   section.id = 'balanceSection'; section.className = 'hidden';
   section.innerHTML = `<h2>Между складами</h2>
     <div class="upload-grid">
-      <label class="brand-field"><span class="label">Доставка, %</span><input class="warehouse-quantity" type="number" data-ratio="delivery" min="0" max="100" step="any" required value="80"></label>
-      <label class="brand-field"><span class="label">Тюмень, %</span><input class="warehouse-quantity" type="number" data-ratio="tyumen" min="0" max="100" step="any" required value="20"></label>
+      <label class="brand-field"><span class="label">Доставка, %</span><input class="warehouse-quantity" type="number" data-ratio="delivery" min="0" max="100" step="any" required value="70"></label>
+      <label class="brand-field"><span class="label">Тюмень, %</span><input class="warehouse-quantity" type="number" data-ratio="tyumen" min="0" max="100" step="any" required value="30"></label>
     </div><form class="upload-grid">
     <label class="dropzone"><span class="label">Склад Тюмень</span><input data-tyumen type="file" accept=".xlsx,.xlsm,.xls" required><span data-tyumen-name></span></label>
     <label class="dropzone"><span class="label">Склад Доставка</span><input data-delivery type="file" accept=".xlsx,.xlsm,.xls" required><span data-delivery-name></span></label>

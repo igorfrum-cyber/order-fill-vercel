@@ -15,7 +15,7 @@ function sameProduct(left, right, brand) {
       && chzNameSimilarity(left.name, right.name, brandRule(brand)) >= 0.9);
 }
 
-export function balanceQuantity(delivery, tyumen, tyumenPercent = 20) {
+export function balanceQuantity(delivery, tyumen, tyumenPercent = 30) {
   if (![delivery, tyumen].every(v => Number.isFinite(v) && v >= 0)) return null;
   if (!Number.isFinite(tyumenPercent) || tyumenPercent < 0 || tyumenPercent > 100) throw Error('Доля склада должна быть от 0 до 100%.');
   const minimum = tyumen <= 1 && delivery >= 4 && delivery <= 20 ? (delivery < 6 ? 2 : 4) : 0;

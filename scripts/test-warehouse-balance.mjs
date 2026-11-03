@@ -8,7 +8,7 @@ function book(rows, warehouse, brand = 'ANGIOPHARM') {
   return loadXlsx(write(workbook, { type: 'array', bookType: 'xlsx' }));
 }
 const options = (delivery, tyumen) => ({ deliveryWorkbook: book(delivery, 'СКЛАД ДОСТАВКА'), tyumenWorkbook: book(tyumen, 'Склад Тюмень'), deliveryFileName: 'доставка.xlsx', tyumenFileName: 'тюмень.xlsx', brand: 'angiopharm' });
-assert.equal(balanceQuantity(200, 25), 20);
+assert.equal(balanceQuantity(200, 25), 43);
 assert.equal(balanceQuantity(200, 250), 0);
 assert.equal(balanceQuantity(13, 0), 4);
 assert.equal(balanceQuantity(200, 25, 70), 133);
@@ -28,24 +28,24 @@ for (const percent of [0, 20, 70, 100]) {
     }
   }
 }
-assert.equal(balanceQuantity(21, 0), 5);
+assert.equal(balanceQuantity(21, 0), 7);
 assert.equal(balanceQuantity(5, 1), 2);
 assert.equal(balanceQuantity(13, 1), 4);
-assert.equal(balanceQuantity(20, 1), 4);
+assert.equal(balanceQuantity(20, 1), 6);
 assert.equal(balanceQuantity(13, 1, 70), 9);
 assert.equal(balanceQuantity(13, 0, 100), 13);
 assert.equal(balanceQuantity(5, 1, 100), 5);
 assert.equal(balanceQuantity(3, 0, 100), 3);
 assert.equal(balanceQuantity(5, 2), 0);
-assert.equal(balanceQuantity(13, 2), 0);
+assert.equal(balanceQuantity(13, 2), 3);
 assert.equal(balanceQuantity(13, 2, 70), 9);
-assert.equal(balanceQuantity(21, 1), 4);
-assert.equal(balanceQuantity(24, 5), 0);
+assert.equal(balanceQuantity(21, 1), 6);
+assert.equal(balanceQuantity(24, 5), 4);
 assert.equal(balanceQuantity(0, 0), 0);
 assert.equal(balanceQuantity(null, 0), null);
 assert.equal(balanceQuantity(-1, 0), null);
 let rows = buildWarehouseBalance(options([['1', 'Крем 50 мл', 150], ['1', 'ЧЗ Крем 50 мл', 50]], [['1', 'Крем 50 мл', 25]]));
-assert.equal(rows.length, 1); assert.equal(rows[0].deliveryStock, 200); assert.equal(rows[0].quantity, 20);
+assert.equal(rows.length, 1); assert.equal(rows[0].deliveryStock, 200); assert.equal(rows[0].quantity, 43);
 rows = buildWarehouseBalance(options([['1', 'Крем 50 мл', 0]], [['1', 'Крем 50 мл', 0]]));
 assert.equal(rows[0].quantity, 0);
 rows = buildWarehouseBalance(options([['1', 'Крем 50 мл', 10]], [['2', 'Крем 50 мл', 0]]));
@@ -65,17 +65,17 @@ for (const [brand, label] of Object.entries({ angiopharm: 'ANGIOPHARM', christin
   input.deliveryWorkbook = book([['1', 'Крем 50 мл', 200], ['1', 'ЧЗ Крем 50 мл', 0]], 'СКЛАД ДОСТАВКА', label);
   input.tyumenWorkbook = book([['1', 'Крем 50 мл', 25]], 'Склад Тюмень', label);
   const result = buildWarehouseBalance(input);
-  assert.equal(result.length, 1, brand); assert.equal(result[0].quantity, 20, brand);
+  assert.equal(result.length, 1, brand); assert.equal(result[0].quantity, 43, brand);
 }
 const sizes = buildWarehouseBalance(options([['1', 'Крем 50 мл', 200], ['1', 'ЧЗ Крем 500 мл', 100]], [['1', 'Крем 50 мл', 25]]));
-assert.equal(sizes.find(row => row.name === 'Крем 50 мл').quantity, 20);
+assert.equal(sizes.find(row => row.name === 'Крем 50 мл').quantity, 43);
 assert.equal(sizes.find(row => row.name === 'ЧЗ Крем 500 мл').quantity, null);
 const invalidStock = options([['1', 'Крем', 'неизвестно']], [['1', 'Крем', 0]]);
 assert.equal(buildWarehouseBalance(invalidStock)[0].quantity, null);
 console.log('All seven brands and ambiguous sizes passed');
 const auto = options([['1', 'Крем', 200]], [['1', 'Крем', 25]]);
 delete auto.brand;
-assert.equal(buildWarehouseBalance(auto)[0].quantity, 20);
+assert.equal(buildWarehouseBalance(auto)[0].quantity, 43);
 auto.tyumenWorkbook = book([['1', 'Крем', 25]], 'Тюмень', 'Без марки');
 assert.throws(() => buildWarehouseBalance(auto), /однозначно определить бренд/);
 for (const location of ['Склад Сургут', 'Склад Казань', 'Склад Основной', 'Склад Москва', 'Склад Доставка']) {
