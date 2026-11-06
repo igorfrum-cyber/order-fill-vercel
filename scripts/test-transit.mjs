@@ -1,0 +1,21 @@
+import assert from 'node:assert/strict';
+import {utils,write,read} from 'xlsx';
+import {loadXlsx,saveXlsx} from '../src/workbookProcessor.js';
+import {parseInvoiceExcel,buildTransitPlan,applyTransitPlan} from '../src/transitInvoices.js';
+function book(rows){const b=utils.book_new();utils.book_append_sheet(b,utils.aoa_to_sheet(rows),'Лист');return loadXlsx(write(b,{type:'buffer',bookType:'xlsx'}));}
+const source=book([['ANGIOPHARM Сургут'],['Артикул','Товар','Остаток','В пути','Рекомендованный заказ','Заказано по факту','Комментарий'],['AA04','АН Сыворотка с ниацинамидом 30 мл',2,99,8,5,'сохранить'],['AA04','ЧЗ АН Сыворотка с ниацинамидом 30 мл',3,12,4,2,'текст'],['CL23','ЧЗ АН Гель 200 мл',9,8,7,6,'старый']]);
+const invoice=book([['ANGIOPHARM счёт'],['Артикул','Наименование','Кол-во'],['AA04','Сыворотка с ниацинамидом 30 мл',10],['ZZ99','Нет в таблице',2]]);
+const rows=parseInvoiceExcel(invoice,'счёт.xlsx');assert.equal(rows.length,2);
+const plan=buildTransitPlan(source,[{name:'a.xlsx',rows},{name:'b.xlsx',rows:[{article:'AA04',name:'Сыворотка с ниацинамидом 30 мл',quantity:5}]}]);
+assert.equal(plan.rows[0].targetRow,4);assert.equal(plan.rows[0].quantity,15);assert.equal(plan.rows[1].targetRow,null);
+const output=read(saveXlsx(applyTransitPlan(source,plan)),{type:'buffer'}).Sheets.Лист;
+assert.equal(output.D3.v,0);assert.equal(output.D4.v,15);assert.equal(output.D5.v,0);
+assert.equal(output.E4.v,4);assert.equal(output.F4.v,2);assert.equal(output.G4.v,'текст');
+assert.equal(read(saveXlsx(source),{type:'buffer'}).Sheets.Лист.D4.v,12);
+plan.rows[1].targetRow=4;assert.throws(()=>applyTransitPlan(source,plan),/Несколько позиций/);
+assert.throws(()=>parseInvoiceExcel(book([['ANGIOPHARM'],['Артикул','Наименование','Количество'],['AA01','Крем','непонятно']]),'bad.xlsx'),/количество/);
+const identified=parseInvoiceExcel(book([['ANGIOPHARM Счёт на оплату № 123 от 06.11.2026'],['Артикул','Наименование','Количество'],['AA04','Сыворотка',3]]),'id.xlsx');
+assert.equal(identified.invoiceId,'123:06.11.2026');
+const wrongSize=buildTransitPlan(source,[{name:'wrong.xlsx',rows:[{article:'CL23',name:'Гель 500 мл',quantity:5}]}]);
+assert.equal(wrongSize.rows[0].targetRow,null);
+console.log('Transit Excel parsing, multi-invoice sums, CHZ, replacement, review and original preservation passed');

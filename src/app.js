@@ -6,6 +6,7 @@ import { openBudgetDialog, budgetChangeComment } from './budgetDialog.js';
 import { createOrderPricing, priceOrderRows, money } from './orderPricing.js';
 import { procurementTotalCents } from './christinaLines.js';
 import { installTableRecalculation } from './recalculateTable.js';
+import { installTransitMode } from './transitMode.js';
 import { installWarehouseBalance } from './warehouseBalance.js';
 import {
   applyFinalEdits,
@@ -280,6 +281,8 @@ function setDefaultOrderMonth() {
 setDefaultOrderMonth();
 
 function setActiveMode(mode) {
+  document.querySelector('#transitSection')?.classList.toggle('hidden',mode!=='transit');
+  document.querySelector('#transitModeButton')?.classList.toggle('active',mode==='transit');
   document.querySelector('#balanceSection')?.classList.toggle('hidden', mode !== 'balance');
   document.querySelector('#balanceModeButton')?.classList.toggle('active', mode === 'balance');
   document.querySelector('#balanceModeButton')?.setAttribute('aria-pressed', String(mode === 'balance'));
@@ -304,6 +307,7 @@ warehouseModeButton.addEventListener("click", () => setActiveMode("warehouse"));
 northBackButton.addEventListener("click", () => setActiveMode("order"));
 setActiveMode("order");
 installTableRecalculation({loadWorkbook,activate:setActiveMode,brands:brandSelect.innerHTML,month:orderMonth.value});
+installTransitMode({loadWorkbook,activate:setActiveMode});
 installWarehouseBalance({loadWorkbook,activate:setActiveMode});
 
 function scrollTargetForKeyboard(element) {

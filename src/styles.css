@@ -932,5 +932,10 @@ tr.invalid .comment-input {
 #recalculateSection .brand-column > .brand-field { min-height: 120px; }
 #recalculateSection .dropzone { min-width:0; }
 #recalculateSection .dropzone span { max-width:100%; overflow-wrap:anywhere; }
+#transitSection .upload-grid { align-items: start; }
+#transitSection table { min-width: 1150px; table-layout: auto; }
+#transitSection .table-wrap select { min-width: 240px; max-width: 360px; padding: 8px; border: 1px solid var(--line); border-radius: 6px; background: white; font: inherit; }
+#transitSection td:nth-child(2) { min-width: 260px; }
+#transitSection td:last-child { min-width: 220px; }
 #recalculateSection [data-review] p { padding:12px; border-left:3px solid #b7791f; background:#fff8e8; }
 #recalculateSection [data-result] > a { display:inline-block; }
